@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "repo-guard project configuration",
+  "description": "Project-level protected-file rules consumed by @cxyi7/repo-guard.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "rules"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "description": "Configuration format version."
+    },
+    "preCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eslint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run ESLint against staged files before the protected-file gate."
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "default": "*.{js,jsx,ts,tsx,vue}",
+              "description": "lint-staged glob used to select staged files."
+            },
+            "fix": {
+              "type": "boolean",
+              "default": true,
+              "description": "Apply ESLint auto-fixes before the final verification pass."
+            },
+            "maxWarnings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Maximum ESLint warning count allowed by the commit gate."
+            }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pattern",
+          "category",
+          "level"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Repository-relative glob. * matches one path segment and ** crosses directories."
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable category included in reports and notifications."
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "notify",
+              "audit"
+            ],
+            "description": "notify requires a successful notification; audit only records the change."
+          }
+        }
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    }
+  }
+}

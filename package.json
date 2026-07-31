@@ -1,0 +1,60 @@
+{
+  "name": "@cxyi7/repo-guard",
+  "version": "0.3.0",
+  "description": "Git guard for protected files and staged ESLint auto-fixes",
+  "keywords": [
+    "git-hooks",
+    "repository-policy",
+    "protected-files",
+    "internal-cli"
+  ],
+  "type": "module",
+  "bin": {
+    "repo-guard": "bin/repo-guard.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./config.schema.json": "./config.schema.json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "config.schema.json",
+    "CHANGELOG.md",
+    "README.md",
+    "PUBLISHING.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix --max-warnings=0",
+    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/cli.js && node --check src/eslint-runner.js",
+    "pack:check": "npm pack --dry-run --json",
+    "prepublishOnly": "npm run check && npm test"
+  },
+  "dependencies": {
+    "lint-staged": "15.5.2"
+  },
+  "peerDependencies": {
+    "eslint": ">=8"
+  },
+  "peerDependenciesMeta": {
+    "eslint": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "globals": "16.5.0"
+  },
+  "engines": {
+    "node": ">=18.12.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "license": "UNLICENSED",
+  "private": false
+}
