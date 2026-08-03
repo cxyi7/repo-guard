@@ -13,23 +13,24 @@ export async function runQualityGate({ cwd = process.cwd() } = {}) {
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
   const eslintConfig = config.preCommit.eslint;
+  const prettierConfig = config.preCommit.prettier;
 
-  if (!eslintConfig.enabled) {
-    console.log('repo-guard ESLint gate skipped: disabled by project configuration.');
+  if (!eslintConfig.enabled && !prettierConfig.enabled) {
+    console.log('repo-guard quality gate skipped: ESLint and Prettier are disabled.');
     return 0;
   }
 
   const task = [
     quoteCommandArgument(process.execPath),
     quoteCommandArgument(CLI_PATH),
-    'lint-files',
+    'quality-files',
   ].join(' ');
 
   const passed = await lintStaged({
     allowEmpty: false,
     concurrent: false,
     config: {
-      [eslintConfig.pattern]: task,
+      '{*,.*}': task,
     },
     cwd: root,
     relative: false,

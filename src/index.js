@@ -3,7 +3,9 @@ export { collectStagedChanges, collectWorkingTreeChanges } from './git-changes.j
 export { ensureGitAttributes } from './git-attributes.js';
 export { installHooks } from './hook-installer.js';
 export { runEslintFiles } from './eslint-runner.js';
+export { runPrettierFiles } from './prettier-runner.js';
 export { runQualityGate } from './quality-gate.js';
+export { runQualityFiles } from './quality-runner.js';
 export {
   ensureLocalEnvironment,
   loadLocalEnvironment,

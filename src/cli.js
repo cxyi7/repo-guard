@@ -3,7 +3,11 @@ import { runDoctor } from './commands/doctor.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
-import { runLintFiles, runPreCommit } from './commands/pre-commit.js';
+import {
+  runLintFiles,
+  runPreCommit,
+  runQualityFileCommand,
+} from './commands/pre-commit.js';
 
 const HELP_TEXT = `
 repo-guard - protected repository file guard
@@ -55,6 +59,8 @@ export async function runCli(argumentsList) {
         return await runPreCommit();
       case 'lint-files':
         return await runLintFiles(rest);
+      case 'quality-files':
+        return await runQualityFileCommand(rest);
       case 'check':
         ensureSupportedOptions(rest, new Set());
         return runCheck();

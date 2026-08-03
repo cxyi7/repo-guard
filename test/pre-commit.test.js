@@ -27,12 +27,25 @@ function normalizeEol(value) {
   return value.replace(/\r\n/g, '\n');
 }
 
-function writeConfig(root, { enabled = true, pattern = '*.js' } = {}) {
+function writeConfig(root, {
+  enabled = true,
+  pattern = '*.js',
+  prettierEnabled = false,
+  prettierPattern = '*.{js,json,css}',
+  prettierFix = true,
+  prettierRequireConfig = true,
+} = {}) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
       preCommit: {
+        prettier: {
+          enabled: prettierEnabled,
+          pattern: prettierPattern,
+          fix: prettierFix,
+          requireConfig: prettierRequireConfig,
+        },
         eslint: {
           enabled,
           pattern,
@@ -52,7 +65,7 @@ function writeConfig(root, { enabled = true, pattern = '*.js' } = {}) {
   );
 }
 
-function createRepository(options) {
+function createRepository(options = {}) {
   const root = mkdtempSync(path.join(TEST_ROOT, 'pre-commit-'));
   git(root, ['init']);
   git(root, ['config', 'user.name', 'repo-guard test']);
@@ -76,6 +89,15 @@ function createRepository(options) {
       '',
     ].join('\n'),
   );
+  if (options.prettierConfig !== null) {
+    writeFileSync(
+      path.join(root, '.prettierrc.json'),
+      `${JSON.stringify(options.prettierConfig || {
+        semi: true,
+        singleQuote: true,
+      }, null, 2)}\n`,
+    );
+  }
   writeConfig(root, options);
   return root;
 }
@@ -168,4 +190,126 @@ test('does not block files ignored by the project ESLint configuration', async (
 
   assert.equal(await runPreCommit(root), 0);
   assert.equal(normalizeEol(git(root, ['show', ':ignored.js'])), ignored);
+});
+
+test('formats staged code and non-code files with project Prettier rules', async (context) => {
+  const root = createRepository({ prettierEnabled: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  writeFileSync(path.join(root, 'sample.js'), 'const value={answer:42}\n');
+  writeFileSync(path.join(root, 'data.json'), '{"answer":42}\n');
+  writeFileSync(path.join(root, 'style.css'), '.sample{color:red}\n');
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 0);
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.js'])),
+    "const value = { answer: 42 };\n",
+  );
+  assert.equal(
+    normalizeEol(git(root, ['show', ':data.json'])),
+    '{ "answer": 42 }\n',
+  );
+  assert.equal(
+    normalizeEol(git(root, ['show', ':style.css'])),
+    '.sample {\n  color: red;\n}\n',
+  );
+});
+
+test('formats only staged content and restores unstaged Prettier edits', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: true,
+    prettierPattern: '*.css',
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  writeFileSync(path.join(root, 'style.css'), '.sample {\n  color: red;\n}\n');
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'test: baseline']);
+
+  writeFileSync(path.join(root, 'style.css'), '.sample{color:blue}\n');
+  git(root, ['add', 'style.css']);
+  writeFileSync(
+    path.join(root, 'style.css'),
+    '.sample{color:blue}\n.local{color:red}\n',
+  );
+
+  assert.equal(await runPreCommit(root), 0);
+  assert.equal(
+    normalizeEol(git(root, ['show', ':style.css'])),
+    '.sample {\n  color: blue;\n}\n',
+  );
+  assert.match(readFileSync(path.join(root, 'style.css'), 'utf8'), /\.local/);
+  assert.doesNotMatch(git(root, ['show', ':style.css']), /\.local/);
+});
+
+test('honors the project Prettier ignore file', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: true,
+    prettierPattern: '*.css',
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const ignored = '.ignored{color:red}\n';
+  writeFileSync(path.join(root, '.prettierignore'), 'ignored.css\n');
+  writeFileSync(path.join(root, 'ignored.css'), ignored);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 0);
+  assert.equal(normalizeEol(git(root, ['show', ':ignored.css'])), ignored);
+});
+
+test('blocks formatting when required project Prettier config is missing', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierConfig: null,
+    prettierEnabled: true,
+    prettierPattern: '*.css',
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const unformatted = '.sample{color:red}\n';
+  writeFileSync(path.join(root, 'style.css'), unformatted);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':style.css'])), unformatted);
+  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), unformatted);
+});
+
+test('blocks unformatted staged files when Prettier fixes are disabled', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: true,
+    prettierFix: false,
+    prettierPattern: '*.css',
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const unformatted = '.sample{color:red}\n';
+  writeFileSync(path.join(root, 'style.css'), unformatted);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':style.css'])), unformatted);
+  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), unformatted);
+});
+
+test('rolls back the whole quality pipeline when Prettier conflicts with ESLint', async (context) => {
+  const root = createRepository({
+    prettierConfig: { semi: false },
+    prettierEnabled: true,
+    prettierPattern: '*.js',
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const original = 'const value=1\n';
+  writeFileSync(path.join(root, 'sample.js'), original);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), original);
+  assert.equal(normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')), original);
 });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   DEFAULT_ESLINT_PATTERN,
+  DEFAULT_PRETTIER_PATTERN,
   validateConfig,
 } from '../src/config.js';
 
@@ -23,11 +24,37 @@ function baseConfig(extra = {}) {
 test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
+  assert.deepEqual(config.preCommit.prettier, {
+    enabled: false,
+    pattern: DEFAULT_PRETTIER_PATTERN,
+    fix: true,
+    requireConfig: true,
+  });
   assert.deepEqual(config.preCommit.eslint, {
     enabled: false,
     pattern: DEFAULT_ESLINT_PATTERN,
     fix: true,
     maxWarnings: 0,
+  });
+});
+
+test('validates and normalizes staged Prettier configuration', () => {
+  const config = validateConfig(baseConfig({
+    preCommit: {
+      prettier: {
+        enabled: true,
+        pattern: '  *.{js,json,css}  ',
+        fix: false,
+        requireConfig: false,
+      },
+    },
+  }));
+
+  assert.deepEqual(config.preCommit.prettier, {
+    enabled: true,
+    pattern: '*.{js,json,css}',
+    fix: false,
+    requireConfig: false,
   });
 });
 
@@ -72,5 +99,29 @@ test('rejects unknown and invalid staged ESLint properties', () => {
       },
     })),
     /non-negative integer/,
+  );
+});
+
+test('rejects unknown and invalid staged Prettier properties', () => {
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        prettier: {
+          command: 'prettier --write',
+        },
+      },
+    })),
+    /unsupported properties: command/,
+  );
+
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        prettier: {
+          requireConfig: 'yes',
+        },
+      },
+    })),
+    /requireConfig must be a boolean/,
   );
 });

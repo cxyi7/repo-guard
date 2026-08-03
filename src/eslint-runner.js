@@ -1,41 +1,13 @@
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-function projectRequire(root) {
-  const packageJsonPath = path.join(root, 'package.json');
-  if (!existsSync(packageJsonPath)) {
-    throw new Error(`package.json was not found in repository root: ${root}`);
-  }
-  return createRequire(packageJsonPath);
-}
+import {
+  captureFileContents,
+  restoreFileContents,
+} from './file-snapshot.js';
+import { resolveProjectPackageMetadata } from './project-package.js';
+import { normalizeStagedFiles } from './staged-files.js';
 
 export function resolveProjectEslintMetadata(root) {
-  const requireFromProject = projectRequire(root);
-  let packagePath;
-  let entryPath;
-
-  try {
-    packagePath = requireFromProject.resolve('eslint/package.json');
-    entryPath = requireFromProject.resolve('eslint');
-  } catch {
-    throw new Error(
-      'ESLint is enabled but is not installed by this project. '
-      + 'Install eslint as a project devDependency.',
-    );
-  }
-
-  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
-  return {
-    entryPath,
-    packagePath,
-    version: packageJson.version || 'unknown',
-  };
+  return resolveProjectPackageMetadata(root, 'eslint', 'ESLint');
 }
 
 async function loadProjectEslint(root) {
@@ -53,17 +25,6 @@ async function loadProjectEslint(root) {
     ESLint,
     version: metadata.version,
   };
-}
-
-function normalizeFiles(root, files) {
-  return [...new Set(files)].map((file) => {
-    const absolute = path.resolve(root, file);
-    const relative = path.relative(root, absolute);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw new Error(`ESLint staged file is outside the repository: ${file}`);
-    }
-    return absolute;
-  });
 }
 
 async function collectLintableFiles(eslint, files) {
@@ -99,16 +60,6 @@ async function printResults(eslint, results) {
   }
 }
 
-function captureFileContents(files) {
-  return new Map(files.map((file) => [file, readFileSync(file)]));
-}
-
-function restoreFileContents(contents) {
-  for (const [file, content] of contents) {
-    writeFileSync(file, content);
-  }
-}
-
 export async function runEslintFiles({
   root,
   files,
@@ -120,7 +71,8 @@ export async function runEslintFiles({
   }
 
   const { ESLint, version } = await loadProjectEslint(root);
-  const normalizedFiles = normalizeFiles(root, files);
+  const normalizedFiles = normalizeStagedFiles(root, files, 'ESLint')
+    .map(({ absolute }) => absolute);
   const initialEslint = new ESLint({ cwd: root, fix: false });
   const lintableFiles = await collectLintableFiles(initialEslint, normalizedFiles);
 

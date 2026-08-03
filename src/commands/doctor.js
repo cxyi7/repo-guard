@@ -2,6 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../config.js';
 import { resolveProjectEslintMetadata } from '../eslint-runner.js';
+import {
+  resolveProjectPrettierConfigFile,
+  resolveProjectPrettierMetadata,
+} from '../prettier-runner.js';
 import { findRepositoryRoot, gitValue } from '../git.js';
 import {
   isCurrentManagedHook,
@@ -20,7 +24,7 @@ function nodeVersionIsSupported() {
   return major > 18 || (major === 18 && minor >= 12);
 }
 
-export function runDoctor(cwd = process.cwd()) {
+export async function runDoctor(cwd = process.cwd()) {
   const errors = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
@@ -101,6 +105,29 @@ export function runDoctor(cwd = process.cwd()) {
     }
   } else {
     checks.push('ESLint staged gate is disabled');
+  }
+
+  if (config?.preCommit.prettier.enabled) {
+    try {
+      const prettier = resolveProjectPrettierMetadata(root);
+      let configDescription = 'project config optional';
+      if (config.preCommit.prettier.requireConfig) {
+        const prettierConfigFile = await resolveProjectPrettierConfigFile(root);
+        if (!prettierConfigFile) {
+          throw new Error('Prettier staged gate requires a project Prettier configuration file');
+        }
+        configDescription = path.relative(root, prettierConfigFile);
+      }
+      checks.push(
+        `Prettier ${prettier.version} staged gate `
+        + `(${config.preCommit.prettier.pattern}, fix=${config.preCommit.prettier.fix}, `
+        + `config=${configDescription})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Prettier staged gate is disabled');
   }
 
   console.log(`repo-guard doctor: ${root}`);

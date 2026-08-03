@@ -2,6 +2,7 @@ import { loadConfig } from '../config.js';
 import { runEslintFiles } from '../eslint-runner.js';
 import { findRepositoryRoot } from '../git.js';
 import { runQualityGate } from '../quality-gate.js';
+import { runQualityFiles } from '../quality-runner.js';
 import { runGate } from './gate.js';
 
 export async function runPreCommit(cwd = process.cwd()) {
@@ -27,4 +28,10 @@ export async function runLintFiles(files, cwd = process.cwd()) {
     fix: eslintConfig.fix,
     maxWarnings: eslintConfig.maxWarnings,
   });
+}
+
+export async function runQualityFileCommand(files, cwd = process.cwd()) {
+  const root = findRepositoryRoot(cwd);
+  const config = loadConfig(root);
+  return await runQualityFiles({ root, files, config });
 }

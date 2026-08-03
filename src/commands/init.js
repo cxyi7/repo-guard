@@ -8,6 +8,12 @@ const STARTER_CONFIG = {
   $schema: './node_modules/@cxyi7/repo-guard/config.schema.json',
   version: 1,
   preCommit: {
+    prettier: {
+      enabled: false,
+      pattern: '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}',
+      fix: true,
+      requireConfig: true,
+    },
     eslint: {
       enabled: false,
       pattern: '*.{js,jsx,ts,tsx,vue}',

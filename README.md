@@ -1,12 +1,12 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供暂存文件 ESLint 自动修复、公共文件保护、
-企业微信备案和提交信息文件清单。
+面向团队 Git 仓库的本地提交门禁，提供暂存文件 ESLint 自动修复、Prettier
+格式化、公共文件保护、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.3.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.4.0
 npx repo-guard init
 ```
 
@@ -27,16 +27,16 @@ npx repo-guard init
 ```text
 git commit
   → lint-staged 隔离本次暂存内容
-  → ESLint 首次检查
-  → ESLint 自动修复
-  → ESLint 最终复检
-  → 修复结果写回暂存区并恢复未暂存内容
+  → ESLint 检查和自动修复
+  → Prettier 检查或格式化
+  → ESLint 最终只读复检
+  → 质量结果写回暂存区并恢复未暂存内容
   → 保护文件识别、指纹和企业微信通知
   → 提交信息文件清单
 ```
 
-ESLint 失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件门禁始终在
-ESLint 成功之后运行，因此通知和指纹对应最终暂存内容。
+ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
 文件只会在项目 ESLint 配置支持时接受普通 ESLint 检查。
@@ -50,6 +50,12 @@ ESLint 成功之后运行，因此通知和指纹对应最终暂存内容。
   "$schema": "./node_modules/@cxyi7/repo-guard/config.schema.json",
   "version": 1,
   "preCommit": {
+    "prettier": {
+      "enabled": true,
+      "pattern": "*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}",
+      "fix": true,
+      "requireConfig": true
+    },
     "eslint": {
       "enabled": true,
       "pattern": "*.{js,jsx,ts,tsx,vue}",
@@ -84,6 +90,24 @@ ESLint 必须由业务项目自行安装和配置。repo-guard 使用项目本�
 不要把全项目 `npm run lint:fix` 配置成 Hook 命令。repo-guard 只对暂存文件
 执行修复，避免把同一文件中的未暂存内容或其他任务改动带入提交。
 
+### Prettier 配置
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | `false` | 是否启用暂存文件 Prettier 门禁 |
+| `pattern` | 常见代码、样式、数据和文档扩展名 | 需要格式化的暂存文件 |
+| `fix` | `true` | 自动格式化；设为 `false` 时只检查并阻止不合规提交 |
+| `requireConfig` | `true` | 是否要求匹配文件必须找到项目 Prettier 配置 |
+
+Prettier 必须由业务项目安装为开发依赖，支持 `>=3 <4`。repo-guard 加载业务项目
+本地的 Prettier，并使用项目已有的 `.prettierrc`、`prettier.config.*` 或
+`package.json#prettier` 规则。`.gitignore` 和 `.prettierignore` 中的文件不会被
+格式化。
+
+建议在 ESLint 配置的 `extends` 最后添加 `prettier`，通过
+`eslint-config-prettier` 关闭相互冲突的格式规则。无需启用
+`eslint-plugin-prettier`，格式化由独立的 Prettier 门禁负责。
+
 ### 保护文件规则
 
 - `notify`：企业微信通知成功后允许提交。
@@ -114,13 +138,15 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、项目 ESLint 和通知设置。
+`doctor` 会检查 Node.js、配置、Hook 版本、项目 ESLint、项目 Prettier 配置和
+通知设置。
 
-## 从 0.2.0 升级
+## 从 0.3.0 升级
 
-1. 安装 `0.3.0`；
-2. 运行 `npx repo-guard init` 或 `npx repo-guard install-hooks`；
-3. 在项目配置中显式加入 `preCommit.eslint`；
+1. 安装 `@cxyi7/repo-guard@0.4.0` 和项目级 `prettier@^3`；
+2. 在项目配置中显式加入 `preCommit.prettier`；
+3. 准备项目 Prettier 配置和 `.prettierignore`；
 4. 运行 `npx repo-guard doctor`。
 
-升级会把受管理的 v1 Hook 更新为 v2。非 repo-guard 管理的 Hook 仍不会被覆盖。
+0.4.0 继续使用 v2 托管 Hook，不需要重新生成 Hook；旧项目未配置
+`preCommit.prettier` 时保持禁用，行为与 0.3.0 一致。

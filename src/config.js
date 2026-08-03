@@ -4,6 +4,7 @@ import path from 'node:path';
 export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
+export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
 
 export function normalizeGitPath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
@@ -75,9 +76,37 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     preCommitValue,
-    new Set(['eslint']),
+    new Set(['eslint', 'prettier']),
     `${configPath} preCommit`,
   );
+
+  const prettierValue = preCommitValue.prettier ?? {};
+  if (!prettierValue || typeof prettierValue !== 'object' || Array.isArray(prettierValue)) {
+    throw new Error(`${configPath} preCommit.prettier must be an object`);
+  }
+  assertKnownProperties(
+    prettierValue,
+    new Set(['enabled', 'pattern', 'fix', 'requireConfig']),
+    `${configPath} preCommit.prettier`,
+  );
+  if (prettierValue.enabled != null && typeof prettierValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} preCommit.prettier.enabled must be a boolean`);
+  }
+  if (
+    prettierValue.pattern != null
+    && (typeof prettierValue.pattern !== 'string' || !prettierValue.pattern.trim())
+  ) {
+    throw new Error(`${configPath} preCommit.prettier.pattern must be a non-empty string`);
+  }
+  if (prettierValue.fix != null && typeof prettierValue.fix !== 'boolean') {
+    throw new Error(`${configPath} preCommit.prettier.fix must be a boolean`);
+  }
+  if (
+    prettierValue.requireConfig != null
+    && typeof prettierValue.requireConfig !== 'boolean'
+  ) {
+    throw new Error(`${configPath} preCommit.prettier.requireConfig must be a boolean`);
+  }
 
   const eslintValue = preCommitValue.eslint ?? {};
   if (!eslintValue || typeof eslintValue !== 'object' || Array.isArray(eslintValue)) {
@@ -151,6 +180,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   return {
     version: 1,
     preCommit: {
+      prettier: {
+        enabled: prettierValue.enabled ?? false,
+        pattern: prettierValue.pattern?.trim() || DEFAULT_PRETTIER_PATTERN,
+        fix: prettierValue.fix ?? true,
+        requireConfig: prettierValue.requireConfig ?? true,
+      },
       eslint: {
         enabled: eslintValue.enabled ?? false,
         pattern: eslintValue.pattern?.trim() || DEFAULT_ESLINT_PATTERN,

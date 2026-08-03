@@ -20,6 +20,33 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "prettier": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run Prettier against staged files before the protected-file gate."
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "default": "*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}",
+              "description": "Glob used to select staged files for Prettier."
+            },
+            "fix": {
+              "type": "boolean",
+              "default": true,
+              "description": "Format staged files automatically; false performs a check-only gate."
+            },
+            "requireConfig": {
+              "type": "boolean",
+              "default": true,
+              "description": "Require a project Prettier configuration for every matched file."
+            }
+          }
+        },
         "eslint": {
           "type": "object",
           "additionalProperties": false,

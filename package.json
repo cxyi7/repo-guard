@@ -1,11 +1,12 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.3.0",
-  "description": "Git guard for protected files and staged ESLint auto-fixes",
+  "version": "0.4.0",
+  "description": "Git guard for protected files with staged ESLint and Prettier quality gates",
   "keywords": [
     "git-hooks",
     "repository-policy",
     "protected-files",
+    "prettier",
     "internal-cli"
   ],
   "type": "module",
@@ -28,25 +29,31 @@
     "test": "node --test",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
-    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/cli.js && node --check src/eslint-runner.js",
+    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/cli.js && node --check src/eslint-runner.js && node --check src/prettier-runner.js && node --check src/quality-runner.js",
     "pack:check": "npm pack --dry-run --json",
     "prepublishOnly": "npm run check && npm test"
   },
   "dependencies": {
-    "lint-staged": "15.5.2"
+    "lint-staged": "15.5.2",
+    "micromatch": "4.0.8"
   },
   "peerDependencies": {
-    "eslint": ">=8"
+    "eslint": ">=8",
+    "prettier": ">=3 <4"
   },
   "peerDependenciesMeta": {
     "eslint": {
+      "optional": true
+    },
+    "prettier": {
       "optional": true
     }
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "eslint": "9.39.5",
-    "globals": "16.5.0"
+    "globals": "16.5.0",
+    "prettier": "3.6.2"
   },
   "engines": {
     "node": ">=18.12.0"
