@@ -1,4 +1,10 @@
 export { loadConfig, matchRule, validateConfig } from './config.js';
+export {
+  createStarterConfig,
+  enableQualityGates,
+  ensureProjectConfig,
+  migrateProjectConfig,
+} from './config-management.js';
 export { collectStagedChanges, collectWorkingTreeChanges } from './git-changes.js';
 export { ensureGitAttributes } from './git-attributes.js';
 export { installHooks } from './hook-installer.js';

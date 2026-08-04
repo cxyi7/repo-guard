@@ -6,9 +6,14 @@
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.4.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.5.0
 npx repo-guard init
+npx repo-guard doctor
 ```
+
+新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化和 9 条通知级保护
+规则。业务项目必须安装并配置 ESLint、Prettier，并在 `.env.config` 中填写企业
+微信通知参数；`doctor` 会检查这些前置条件。
 
 `init` 会：
 
@@ -16,11 +21,30 @@ npx repo-guard init
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
-5. 在配置不存在时生成 `repo-guard.config.json`；
-6. 补充 `guard:init`、`guard:doctor`、`guard:check` 和 `guard:dry-run`；
+5. 在配置不存在时生成默认全开启的 `repo-guard.config.json`；
+6. 补充初始化、迁移、门禁启用、诊断和检查相关的 `guard:*` 脚本；
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
+
+## 配置迁移与自动修复
+
+```bash
+repo-guard migrate
+repo-guard doctor --fix
+```
+
+`migrate` 只补齐当前版本缺失的 `$schema`、`preCommit` 和默认字段，保留已有
+保护规则、排除项和显式质量配置；重复执行不会继续改文件，也不会改变已有项目的
+门禁开关。
+
+`doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
+`.gitignore`、`.env.config` 和 `guard:*` 项目脚本，最后执行完整诊断。它不会：
+
+- 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
+- 自动解除已被 Git 跟踪的 `.env.config`；
+- 安装 ESLint、Prettier 或生成业务项目的规则文件；
+- 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
 
@@ -132,21 +156,28 @@ REPO_GUARD_MENTION_MOBILES=
 ```bash
 repo-guard init
 repo-guard install-hooks
+repo-guard migrate
+repo-guard enable eslint prettier
 repo-guard doctor
+repo-guard doctor --fix
 repo-guard check
 repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
 `doctor` 会检查 Node.js、配置、Hook 版本、项目 ESLint、项目 Prettier 配置和
-通知设置。
+通知设置。`enable` 只修改指定门禁的 `enabled` 字段，随后应运行 `doctor` 验证
+业务项目依赖和配置是否完整。
 
-## 从 0.3.0 升级
+## 从 0.4.0 升级
 
-1. 安装 `@cxyi7/repo-guard@0.4.0` 和项目级 `prettier@^3`；
-2. 在项目配置中显式加入 `preCommit.prettier`；
-3. 准备项目 Prettier 配置和 `.prettierignore`；
-4. 运行 `npx repo-guard doctor`。
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.5.0
+npx repo-guard doctor --fix
+npx repo-guard enable eslint prettier
+npx repo-guard doctor
+```
 
-0.4.0 继续使用 v2 托管 Hook，不需要重新生成 Hook；旧项目未配置
-`preCommit.prettier` 时保持禁用，行为与 0.3.0 一致。
+如果某个门禁不需要启用，可从 `enable` 命令中删去对应名称。0.5.0 继续使用
+`version: 1` 配置和 v2 托管 Hook。新项目通过 `init` 默认全部启用；旧项目未
+显式启用的门禁仍保持关闭，可通过 `enable` 命令主动开启。

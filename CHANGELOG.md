@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- 新项目执行 `init` 时默认启用 ESLint 修复、Prettier 格式化和 9 条通知级保护规则。
+- 增加幂等的 `repo-guard migrate`，补齐缺失配置但保留项目规则和显式设置。
+- 增加 `repo-guard enable eslint prettier`，显式快速启用暂存质量门禁。
+- 增加 `repo-guard doctor --fix`，修复托管 Hook、项目脚本和受管理仓库文件。
+- 安装器写入前预检全部 Hook，遇到自定义 Hook 时不再产生部分升级。
+- 初始化和修复时增加 `guard:migrate`、`guard:enable-quality` 项目脚本。
+- 配置仍使用 `version: 1`，升级包不会使旧项目配置失效。
+
 ## 0.4.0
 
 - 增加可配置的暂存文件 Prettier 自动格式化和只检查门禁。

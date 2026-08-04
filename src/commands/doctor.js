@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../config.js';
+import {
+  ensureProjectConfig,
+  migrateProjectConfig,
+} from '../config-management.js';
 import { resolveProjectEslintMetadata } from '../eslint-runner.js';
 import {
   resolveProjectPrettierConfigFile,
@@ -10,6 +14,7 @@ import { findRepositoryRoot, gitValue } from '../git.js';
 import {
   isCurrentManagedHook,
   isManagedHook,
+  installHooks,
   managedHookNames,
 } from '../hook-installer.js';
 import {
@@ -24,10 +29,45 @@ function nodeVersionIsSupported() {
   return major > 18 || (major === 18 && minor >= 12);
 }
 
-export async function runDoctor(cwd = process.cwd()) {
+function repairRepository(root) {
+  const repairs = [];
+  const repairErrors = [];
+
+  try {
+    const { created } = ensureProjectConfig(root);
+    if (created) {
+      repairs.push('created repo-guard.config.json');
+    } else {
+      const { changed } = migrateProjectConfig(root);
+      repairs.push(
+        changed
+          ? 'migrated repo-guard.config.json'
+          : 'repo-guard.config.json is already current',
+      );
+    }
+  } catch (error) {
+    repairErrors.push(`configuration repair failed: ${error.message}`);
+  }
+
+  try {
+    installHooks({ cwd: root, updatePackageScripts: true });
+    repairs.push('reconciled managed hooks, repository files, and package scripts');
+  } catch (error) {
+    repairErrors.push(`installation repair failed: ${error.message}`);
+  }
+
+  return { repairErrors, repairs };
+}
+
+export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   const errors = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
+  const repairResult = fix
+    ? repairRepository(root)
+    : { repairErrors: [], repairs: [] };
+
+  errors.push(...repairResult.repairErrors);
 
   if (nodeVersionIsSupported()) {
     checks.push(`Node.js ${process.versions.node}`);
@@ -131,6 +171,9 @@ export async function runDoctor(cwd = process.cwd()) {
   }
 
   console.log(`repo-guard doctor: ${root}`);
+  for (const repair of repairResult.repairs) {
+    console.log(`  FIX   ${repair}`);
+  }
   for (const check of checks) {
     console.log(`  OK    ${check}`);
   }

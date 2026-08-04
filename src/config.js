@@ -5,6 +5,18 @@ export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
 export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
+export const DEFAULT_ESLINT_CONFIG = Object.freeze({
+  enabled: false,
+  pattern: DEFAULT_ESLINT_PATTERN,
+  fix: true,
+  maxWarnings: 0,
+});
+export const DEFAULT_PRETTIER_CONFIG = Object.freeze({
+  enabled: false,
+  pattern: DEFAULT_PRETTIER_PATTERN,
+  fix: true,
+  requireConfig: true,
+});
 
 export function normalizeGitPath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
@@ -181,16 +193,16 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     version: 1,
     preCommit: {
       prettier: {
-        enabled: prettierValue.enabled ?? false,
-        pattern: prettierValue.pattern?.trim() || DEFAULT_PRETTIER_PATTERN,
-        fix: prettierValue.fix ?? true,
-        requireConfig: prettierValue.requireConfig ?? true,
+        enabled: prettierValue.enabled ?? DEFAULT_PRETTIER_CONFIG.enabled,
+        pattern: prettierValue.pattern?.trim() || DEFAULT_PRETTIER_CONFIG.pattern,
+        fix: prettierValue.fix ?? DEFAULT_PRETTIER_CONFIG.fix,
+        requireConfig: prettierValue.requireConfig ?? DEFAULT_PRETTIER_CONFIG.requireConfig,
       },
       eslint: {
-        enabled: eslintValue.enabled ?? false,
-        pattern: eslintValue.pattern?.trim() || DEFAULT_ESLINT_PATTERN,
-        fix: eslintValue.fix ?? true,
-        maxWarnings: eslintValue.maxWarnings ?? 0,
+        enabled: eslintValue.enabled ?? DEFAULT_ESLINT_CONFIG.enabled,
+        pattern: eslintValue.pattern?.trim() || DEFAULT_ESLINT_CONFIG.pattern,
+        fix: eslintValue.fix ?? DEFAULT_ESLINT_CONFIG.fix,
+        maxWarnings: eslintValue.maxWarnings ?? DEFAULT_ESLINT_CONFIG.maxWarnings,
       },
     },
     rules,

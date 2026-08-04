@@ -72,3 +72,25 @@ test('refuses to overwrite a non-managed hook', (context) => {
     /Refusing to overwrite non-managed Git hook/,
   );
 });
+
+test('preflights every hook before upgrading any managed file', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  mkdirSync(path.join(root, '.githooks'), { recursive: true });
+  const legacyHook = '#!/bin/sh\n# repo-guard-managed:v1\nexec node old-cli gate\n';
+  writeFileSync(path.join(root, '.githooks', 'pre-commit'), legacyHook);
+  writeFileSync(
+    path.join(root, '.githooks', 'prepare-commit-msg'),
+    '#!/bin/sh\necho custom\n',
+  );
+
+  assert.throws(
+    () => installHooks({ cwd: root }),
+    /Refusing to overwrite non-managed Git hook/,
+  );
+  assert.equal(
+    readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
+    legacyHook,
+  );
+});

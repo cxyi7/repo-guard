@@ -77,6 +77,8 @@ function ensurePackageScripts(root) {
   const packageJson = JSON.parse(readFileSync(target, 'utf8'));
   packageJson.scripts ||= {};
   packageJson.scripts['guard:init'] ||= 'repo-guard init';
+  packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
+  packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';
   packageJson.scripts['guard:check'] ||= 'repo-guard check';
   packageJson.scripts['guard:dry-run'] ||= 'repo-guard dry-run';
@@ -113,6 +115,14 @@ export function installHooks({
   }
 
   const hooksPath = path.join(root, HOOKS_DIRECTORY);
+
+  for (const hookName of Object.keys(HOOK_COMMANDS)) {
+    const target = path.join(hooksPath, hookName);
+    if (existsSync(target) && !isManagedHook(readFileSync(target, 'utf8'))) {
+      throw new Error(`Refusing to overwrite non-managed Git hook: ${target}`);
+    }
+  }
+
   mkdirSync(hooksPath, { recursive: true });
 
   for (const [hookName, argumentsList] of Object.entries(HOOK_COMMANDS)) {
