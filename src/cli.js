@@ -1,5 +1,5 @@
 import { runCheck } from './commands/check.js';
-import { runEnable, runMigrate } from './commands/configure.js';
+import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
@@ -17,7 +17,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier> [...]
+  repo-guard enable <eslint|prettier|notification> [...]
+  repo-guard disable <eslint|prettier|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
@@ -60,6 +61,9 @@ export async function runCli(argumentsList) {
       case 'enable':
         ensureSupportedOptions(rest, new Set());
         return runEnable(rest);
+      case 'disable':
+        ensureSupportedOptions(rest, new Set());
+        return runDisable(rest);
       case 'doctor':
         ensureSupportedOptions(rest, new Set(['--fix']));
         return runDoctor(process.cwd(), { fix: rest.includes('--fix') });

@@ -7,17 +7,23 @@ import path from 'node:path';
 import {
   CONFIG_FILE,
   DEFAULT_ESLINT_CONFIG,
+  DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   validateConfig,
 } from './config.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';
 export const QUALITY_GATES = Object.freeze(['eslint', 'prettier']);
+export const CONFIGURABLE_FEATURES = Object.freeze([
+  ...QUALITY_GATES,
+  'notification',
+]);
 
 export function createStarterConfig() {
   return {
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
+    notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     preCommit: {
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
       eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true },
@@ -72,6 +78,10 @@ export function migrateProjectConfig(root) {
   const next = {
     $schema: prepared.$schema ?? CONFIG_SCHEMA_PATH,
     ...prepared,
+    notification: {
+      ...DEFAULT_NOTIFICATION_CONFIG,
+      ...(prepared.notification ?? {}),
+    },
     preCommit: {
       ...preCommit,
       prettier: {
@@ -94,34 +104,64 @@ export function migrateProjectConfig(root) {
   return { changed, config: next };
 }
 
-export function enableQualityGates(root, requestedGates) {
-  const uniqueGates = [...new Set(requestedGates)];
-  if (uniqueGates.length === 0) {
-    throw new Error(`Choose at least one quality gate: ${QUALITY_GATES.join(', ')}`);
+function featureConfig(config, feature) {
+  return feature === 'notification'
+    ? config.notification
+    : config.preCommit[feature];
+}
+
+export function setFeaturesEnabled(root, requestedFeatures, enabled) {
+  if (typeof enabled !== 'boolean') {
+    throw new Error('Feature state must be a boolean');
+  }
+  const uniqueFeatures = [...new Set(requestedFeatures)];
+  if (uniqueFeatures.length === 0) {
+    throw new Error(`Choose at least one feature: ${CONFIGURABLE_FEATURES.join(', ')}`);
   }
 
-  const unsupported = uniqueGates.filter((gate) => !QUALITY_GATES.includes(gate));
+  const unsupported = uniqueFeatures.filter(
+    (feature) => !CONFIGURABLE_FEATURES.includes(feature),
+  );
   if (unsupported.length > 0) {
-    throw new Error(`Unsupported quality gate(s): ${unsupported.join(', ')}`);
+    throw new Error(`Unsupported feature(s): ${unsupported.join(', ')}`);
   }
 
   const migration = migrateProjectConfig(root);
   const next = migration.config;
-  const enabled = [];
-  const alreadyEnabled = [];
+  const changed = [];
+  const unchanged = [];
 
-  for (const gate of uniqueGates) {
-    if (next.preCommit[gate].enabled) {
-      alreadyEnabled.push(gate);
+  for (const feature of uniqueFeatures) {
+    const target = featureConfig(next, feature);
+    if (target.enabled === enabled) {
+      unchanged.push(feature);
     } else {
-      next.preCommit[gate].enabled = true;
-      enabled.push(gate);
+      target.enabled = enabled;
+      changed.push(feature);
     }
   }
 
   validateConfig(next);
-  if (enabled.length > 0) {
+  if (changed.length > 0) {
     writeProjectConfig(root, next);
   }
-  return { alreadyEnabled, enabled, migrated: migration.changed };
+  return {
+    changed,
+    migrated: migration.changed,
+    targetEnabled: enabled,
+    unchanged,
+  };
+}
+
+export function enableQualityGates(root, requestedGates) {
+  const unsupported = requestedGates.filter((gate) => !QUALITY_GATES.includes(gate));
+  if (unsupported.length > 0) {
+    throw new Error(`Unsupported quality gate(s): ${unsupported.join(', ')}`);
+  }
+  const result = setFeaturesEnabled(root, requestedGates, true);
+  return {
+    alreadyEnabled: result.unchanged,
+    enabled: result.changed,
+    migrated: result.migrated,
+  };
 }

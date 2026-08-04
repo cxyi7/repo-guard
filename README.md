@@ -6,14 +6,14 @@
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.5.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.6.0
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化和 9 条通知级保护
-规则。业务项目必须安装并配置 ESLint、Prettier，并在 `.env.config` 中填写企业
-微信通知参数；`doctor` 会检查这些前置条件。
+新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、企业微信通知和
+9 条通知级保护规则。业务项目必须安装并配置 ESLint、Prettier，并在
+`.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 
 `init` 会：
 
@@ -34,9 +34,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`preCommit` 和默认字段，保留已有
-保护规则、排除项和显式质量配置；重复执行不会继续改文件，也不会改变已有项目的
-门禁开关。
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`preCommit` 和默认
+字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
+已有项目的门禁开关。
 
 `doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
 `.gitignore`、`.env.config` 和 `guard:*` 项目脚本，最后执行完整诊断。它不会：
@@ -73,6 +73,9 @@ ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提�
 {
   "$schema": "./node_modules/@cxyi7/repo-guard/config.schema.json",
   "version": 1,
+  "notification": {
+    "enabled": true
+  },
   "preCommit": {
     "prettier": {
       "enabled": true,
@@ -102,7 +105,7 @@ ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提�
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
-| `enabled` | `false` | 是否启用暂存文件 ESLint 门禁 |
+| `enabled` | 新项目 `true`；旧配置缺省 `false` | 是否启用暂存文件 ESLint 门禁 |
 | `pattern` | `*.{js,jsx,ts,tsx,vue}` | `lint-staged` 文件匹配规则 |
 | `fix` | `true` | 是否应用 ESLint 自动修复 |
 | `maxWarnings` | `0` | 提交允许的最大警告数 |
@@ -114,11 +117,15 @@ ESLint 必须由业务项目自行安装和配置。repo-guard 使用项目本�
 不要把全项目 `npm run lint:fix` 配置成 Hook 命令。repo-guard 只对暂存文件
 执行修复，避免把同一文件中的未暂存内容或其他任务改动带入提交。
 
+如果 ESLint 自动修复后仍有问题，repo-guard 会按 `1.`、`2.` 编号输出每一个
+问题。每段都包含文件、行列、规则、原始错误和修复约束，可单独完整复制给 AI；
+提示会明确要求 AI 不得关闭 ESLint 规则或修改无关文件。
+
 ### Prettier 配置
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
-| `enabled` | `false` | 是否启用暂存文件 Prettier 门禁 |
+| `enabled` | 新项目 `true`；旧配置缺省 `false` | 是否启用暂存文件 Prettier 门禁 |
 | `pattern` | 常见代码、样式、数据和文档扩展名 | 需要格式化的暂存文件 |
 | `fix` | `true` | 自动格式化；设为 `false` 时只检查并阻止不合规提交 |
 | `requireConfig` | `true` | 是否要求匹配文件必须找到项目 Prettier 配置 |
@@ -141,6 +148,24 @@ Prettier 必须由业务项目安装为开发依赖，支持 `>=3 <4`。repo-gua
 
 ## 通知配置
 
+企业微信通知默认开启，可以通过配置或命令关闭：
+
+```json
+{
+  "notification": {
+    "enabled": false
+  }
+}
+```
+
+```bash
+repo-guard disable notification
+repo-guard enable notification
+```
+
+关闭后，`notify` 级文件仍会被识别并写入提交信息，但不会校验通知参数、发送网络
+请求或阻止提交。`audit` 规则始终只记录、不通知。
+
 `init` 创建不会被提交的 `.env.config`：
 
 ```dotenv
@@ -158,6 +183,8 @@ repo-guard init
 repo-guard install-hooks
 repo-guard migrate
 repo-guard enable eslint prettier
+repo-guard enable notification
+repo-guard disable notification
 repo-guard doctor
 repo-guard doctor --fix
 repo-guard check
@@ -166,18 +193,17 @@ repo-guard gate --dry-run
 ```
 
 `doctor` 会检查 Node.js、配置、Hook 版本、项目 ESLint、项目 Prettier 配置和
-通知设置。`enable` 只修改指定门禁的 `enabled` 字段，随后应运行 `doctor` 验证
-业务项目依赖和配置是否完整。
+通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
+`doctor` 验证业务项目依赖和配置是否完整。
 
-## 从 0.4.0 升级
+## 从 0.5.0 升级
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.5.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.6.0
 npx repo-guard doctor --fix
-npx repo-guard enable eslint prettier
 npx repo-guard doctor
 ```
 
-如果某个门禁不需要启用，可从 `enable` 命令中删去对应名称。0.5.0 继续使用
-`version: 1` 配置和 v2 托管 Hook。新项目通过 `init` 默认全部启用；旧项目未
-显式启用的门禁仍保持关闭，可通过 `enable` 命令主动开启。
+0.6.0 继续使用 `version: 1` 配置和 v2 托管 Hook。迁移会补充默认开启的通知
+开关，保持旧版本原本会发送通知的行为。如项目不需要企业微信通知，执行
+`npx repo-guard disable notification`。

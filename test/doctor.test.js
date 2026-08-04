@@ -30,7 +30,8 @@ function createRepository() {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
-      rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
+      notification: { enabled: false },
+      rules: [{ pattern: 'src/**', category: 'Source', level: 'notify' }],
     }, null, 2)}\n`,
   );
   return root;
@@ -53,10 +54,18 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard enable eslint prettier',
   );
   assert.equal(packageJson.scripts.prepare, 'repo-guard install-hooks');
+  assert.equal(
+    packageJson.scripts['guard:disable-notification'],
+    'repo-guard disable notification',
+  );
+  assert.equal(config.notification.enabled, false);
   assert.equal(config.preCommit.eslint.enabled, false);
   assert.equal(config.preCommit.prettier.enabled, false);
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
     /repo-guard-managed:v2/,
   );
+
+  rmSync(path.join(root, '.env.config'));
+  assert.equal(await runDoctor(root), 0);
 });

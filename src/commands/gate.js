@@ -45,6 +45,14 @@ export async function runGate({
     return 0;
   }
 
+  if (!config.notification.enabled) {
+    console.log(
+      'repo-guard gate passed: WeCom notification is disabled; '
+      + 'notify-level changes were recorded without sending a notification.',
+    );
+    return 0;
+  }
+
   const fingerprint = createStagedFingerprint(root, notifyChanges);
   const content = buildNotificationText(root, notifyChanges, fingerprint);
   console.log(`Fingerprint: ${fingerprint}`);

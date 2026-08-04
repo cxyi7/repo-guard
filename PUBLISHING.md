@@ -14,7 +14,7 @@ npm run pack:check
 - Git 工作区干净；
 - `package.json` 与 `CHANGELOG.md` 版本一致；
 - 配置 Schema、README 和行为同步；
-- 配置迁移、诊断修复、Hook 安全预检和质量门禁测试通过；
+- 配置迁移、通知开关、ESLint AI 提示、诊断修复和 Hook 安全预检测试通过；
 - ESLint/Prettier 暂存自动修复、部分暂存恢复和失败回滚测试通过；
 
 ## npm 登录与 2FA
@@ -47,8 +47,8 @@ npm publish --access public
 发布后验证：
 
 ```bash
-npm view @cxyi7/repo-guard@0.5.0 version
-npm view @cxyi7/repo-guard@0.5.0 dist.integrity
+npm view @cxyi7/repo-guard@0.6.0 version
+npm view @cxyi7/repo-guard@0.6.0 dist.integrity
 ```
 
 不要从业务项目、临时目录或 `node_modules` 发布。所有版本都必须从本独立仓库

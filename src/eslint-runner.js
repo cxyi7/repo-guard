@@ -3,6 +3,7 @@ import {
   captureFileContents,
   restoreFileContents,
 } from './file-snapshot.js';
+import { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
 
@@ -52,12 +53,8 @@ function hasBlockingProblems(summary, maxWarnings) {
   return summary.errors > 0 || summary.warnings > maxWarnings;
 }
 
-async function printResults(eslint, results) {
-  const formatter = await eslint.loadFormatter('stylish');
-  const output = await formatter.format(results);
-  if (output.trim()) {
-    console.error(output.trimEnd());
-  }
+function printRepairInstructions(root, results, maxWarnings) {
+  console.error(buildEslintAiRepairInstructions({ root, results, maxWarnings }));
 }
 
 export async function runEslintFiles({
@@ -89,8 +86,8 @@ export async function runEslintFiles({
   }
 
   if (!fix) {
-    await printResults(initialEslint, initialResults);
-    console.error('ESLint failed and automatic fixes are disabled.');
+    printRepairInstructions(root, initialResults, maxWarnings);
+    console.error('ESLint 检查未通过，请按上面的编号信息修复后重新提交。');
     return 1;
   }
 
@@ -113,10 +110,10 @@ export async function runEslintFiles({
   const finalSummary = summarize(finalResults);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    await printResults(finalEslint, finalResults);
+    printRepairInstructions(root, finalResults, maxWarnings);
     console.error(
-      `ESLint auto-fix did not resolve all problems `
-      + `(${finalSummary.errors} error(s), ${finalSummary.warnings} warning(s)).`,
+      `ESLint 自动修复后仍有 ${finalSummary.errors} 个错误、`
+      + `${finalSummary.warnings} 个警告，提交已停止。`,
     );
     return 1;
   }

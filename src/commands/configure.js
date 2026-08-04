@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { CONFIG_FILE } from '../config.js';
 import {
-  enableQualityGates,
   migrateProjectConfig,
+  setFeaturesEnabled,
 } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
 
@@ -14,19 +14,28 @@ export function runMigrate(cwd = process.cwd()) {
   return 0;
 }
 
-export function runEnable(requestedGates, cwd = process.cwd()) {
+function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const root = findRepositoryRoot(cwd);
-  const result = enableQualityGates(root, requestedGates);
-  console.log(`repo-guard quality gates: ${path.join(root, CONFIG_FILE)}`);
+  const result = setFeaturesEnabled(root, requestedFeatures, enabled);
+  const state = enabled ? 'enabled' : 'disabled';
+  console.log(`repo-guard features: ${path.join(root, CONFIG_FILE)}`);
   if (result.migrated) {
     console.log('- configuration: migrated');
   }
-  for (const gate of result.enabled) {
-    console.log(`- ${gate}: enabled`);
+  for (const feature of result.changed) {
+    console.log(`- ${feature}: ${state}`);
   }
-  for (const gate of result.alreadyEnabled) {
-    console.log(`- ${gate}: already enabled`);
+  for (const feature of result.unchanged) {
+    console.log(`- ${feature}: already ${state}`);
   }
   console.log('- run "repo-guard doctor" to verify project dependencies and configuration');
   return 0;
+}
+
+export function runEnable(requestedFeatures, cwd = process.cwd()) {
+  return runFeatureToggle(requestedFeatures, true, cwd);
+}
+
+export function runDisable(requestedFeatures, cwd = process.cwd()) {
+  return runFeatureToggle(requestedFeatures, false, cwd);
 }

@@ -108,9 +108,15 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     checks.push(`${managedHookNames.length} managed Git hooks`);
   }
 
+  const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
+  const notificationRequired = config?.notification.enabled && hasNotifyRules;
   const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
   if (!existsSync(localEnvironmentPath)) {
-    errors.push(`missing local notification template: ${LOCAL_ENV_FILE}; run repo-guard init`);
+    if (notificationRequired) {
+      errors.push(`missing local notification template: ${LOCAL_ENV_FILE}; run repo-guard init`);
+    } else {
+      checks.push(`${LOCAL_ENV_FILE} is not required by the current notification settings`);
+    }
   } else {
     const { ignored, tracked } = getLocalEnvironmentGitStatus(root);
     if (tracked) {
@@ -124,13 +130,17 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   }
 
-  if (config?.rules.some(({ level }) => level === 'notify')) {
+  if (config && !config.notification.enabled) {
+    checks.push('WeCom notification is disabled');
+  } else if (notificationRequired) {
     try {
       loadNotificationConfig(resolveNotificationEnvironment(root));
       checks.push('WeCom notification configuration');
     } catch (error) {
       errors.push(error.message);
     }
+  } else if (config) {
+    checks.push('WeCom notification is not required because no notify rules are configured');
   }
 
   if (config?.preCommit.eslint.enabled) {

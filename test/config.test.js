@@ -24,6 +24,7 @@ function baseConfig(extra = {}) {
 test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
+  assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.preCommit.prettier, {
     enabled: false,
     pattern: DEFAULT_PRETTIER_PATTERN,
@@ -36,6 +37,20 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
     fix: true,
     maxWarnings: 0,
   });
+});
+
+test('validates the project notification switch', () => {
+  const config = validateConfig(baseConfig({
+    notification: {
+      enabled: false,
+    },
+  }));
+
+  assert.equal(config.notification.enabled, false);
+  assert.throws(
+    () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
+    /notification.enabled must be a boolean/,
+  );
 });
 
 test('validates and normalizes staged Prettier configuration', () => {

@@ -49,4 +49,12 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   );
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.prettier.enabled, true);
+
+  const disableResult = run(root, ['disable', 'notification']);
+  assert.equal(disableResult.status, 0, disableResult.stderr);
+  assert.match(disableResult.stdout, /notification: disabled/);
+  const disabledConfig = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(disabledConfig.notification.enabled, false);
 });

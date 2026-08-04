@@ -79,6 +79,8 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:init'] ||= 'repo-guard init';
   packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
+  packageJson.scripts['guard:enable-notification'] ||= 'repo-guard enable notification';
+  packageJson.scripts['guard:disable-notification'] ||= 'repo-guard disable notification';
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';
   packageJson.scripts['guard:check'] ||= 'repo-guard check';
   packageJson.scripts['guard:dry-run'] ||= 'repo-guard dry-run';

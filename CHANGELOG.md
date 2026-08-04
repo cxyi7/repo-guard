@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+- 增加默认开启的项目级 `notification.enabled` 企业微信通知开关。
+- 增加 `repo-guard enable notification` 和 `repo-guard disable notification`。
+- 通知关闭后仍识别并记录受保护文件，但不校验通知参数、不发送请求且不阻止提交。
+- ESLint 无法修复时，为每个问题生成带编号、可单独复制给 AI 的中文修复指令。
+- 修复指令包含相对路径、行列、规则、原始错误和禁止绕过规则的约束。
+
 ## 0.5.0
 
 - 新项目执行 `init` 时默认启用 ESLint 修复、Prettier 格式化和 9 条通知级保护规则。

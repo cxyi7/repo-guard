@@ -12,6 +12,7 @@ import {
   createStarterConfig,
   enableQualityGates,
   migrateProjectConfig,
+  setFeaturesEnabled,
 } from '../src/config-management.js';
 import { CONFIG_FILE } from '../src/config.js';
 
@@ -52,6 +53,7 @@ test('starter configuration enables both gates and all protected rules', () => {
   assert.equal(config.preCommit.eslint.fix, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.fix, true);
+  assert.equal(config.notification.enabled, true);
   assert.equal(config.rules.length, 9);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
 });
@@ -68,6 +70,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.deepEqual(migrated.exclusions, []);
   assert.equal(migrated.preCommit.eslint.enabled, false);
   assert.equal(migrated.preCommit.prettier.enabled, false);
+  assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
   const second = migrateProjectConfig(root);
@@ -103,6 +106,19 @@ test('rejects unsupported gates without rewriting configuration', (context) => {
     /Unsupported quality gate/,
   );
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
+});
+
+test('disables and re-enables project notification', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const disabled = setFeaturesEnabled(root, ['notification'], false);
+  assert.deepEqual(disabled.changed, ['notification']);
+  assert.equal(readConfig(root).notification.enabled, false);
+
+  const enabled = setFeaturesEnabled(root, ['notification'], true);
+  assert.deepEqual(enabled.changed, ['notification']);
+  assert.equal(readConfig(root).notification.enabled, true);
 });
 
 test('rejects invalid values before migration can rewrite the file', (context) => {

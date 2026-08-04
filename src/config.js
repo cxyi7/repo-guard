@@ -17,6 +17,9 @@ export const DEFAULT_PRETTIER_CONFIG = Object.freeze({
   fix: true,
   requireConfig: true,
 });
+export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
+  enabled: true,
+});
 
 export function normalizeGitPath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
@@ -69,7 +72,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     value,
-    new Set(['$schema', 'version', 'preCommit', 'rules', 'exclusions']),
+    new Set(['$schema', 'version', 'notification', 'preCommit', 'rules', 'exclusions']),
     configPath,
   );
   if (value.version !== 1) {
@@ -80,6 +83,26 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   if (value.exclusions != null && !Array.isArray(value.exclusions)) {
     throw new Error(`${configPath} exclusions must be an array`);
+  }
+
+  const notificationValue = value.notification ?? {};
+  if (
+    !notificationValue
+    || typeof notificationValue !== 'object'
+    || Array.isArray(notificationValue)
+  ) {
+    throw new Error(`${configPath} notification must be an object`);
+  }
+  assertKnownProperties(
+    notificationValue,
+    new Set(['enabled']),
+    `${configPath} notification`,
+  );
+  if (
+    notificationValue.enabled != null
+    && typeof notificationValue.enabled !== 'boolean'
+  ) {
+    throw new Error(`${configPath} notification.enabled must be a boolean`);
   }
 
   const preCommitValue = value.preCommit ?? {};
@@ -191,6 +214,9 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   return {
     version: 1,
+    notification: {
+      enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+    },
     preCommit: {
       prettier: {
         enabled: prettierValue.enabled ?? DEFAULT_PRETTIER_CONFIG.enabled,
