@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_PRETTIER_PATTERN,
+  DEFAULT_STYLELINT_PATTERN,
   validateConfig,
 } from '../src/config.js';
 
@@ -29,6 +30,13 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
     enabled: false,
     pattern: DEFAULT_PRETTIER_PATTERN,
     fix: true,
+    requireConfig: true,
+  });
+  assert.deepEqual(config.preCommit.stylelint, {
+    enabled: false,
+    pattern: DEFAULT_STYLELINT_PATTERN,
+    fix: true,
+    maxWarnings: 0,
     requireConfig: true,
   });
   assert.deepEqual(config.preCommit.eslint, {
@@ -93,6 +101,28 @@ test('validates and normalizes staged ESLint configuration', () => {
   });
 });
 
+test('validates and normalizes staged Stylelint configuration', () => {
+  const config = validateConfig(baseConfig({
+    preCommit: {
+      stylelint: {
+        enabled: true,
+        pattern: '  **/*.{css,scss,vue}  ',
+        fix: false,
+        maxWarnings: 3,
+        requireConfig: false,
+      },
+    },
+  }));
+
+  assert.deepEqual(config.preCommit.stylelint, {
+    enabled: true,
+    pattern: '**/*.{css,scss,vue}',
+    fix: false,
+    maxWarnings: 3,
+    requireConfig: false,
+  });
+});
+
 test('rejects unknown and invalid staged ESLint properties', () => {
   assert.throws(
     () => validateConfig(baseConfig({
@@ -138,5 +168,29 @@ test('rejects unknown and invalid staged Prettier properties', () => {
       },
     })),
     /requireConfig must be a boolean/,
+  );
+});
+
+test('rejects unknown and invalid staged Stylelint properties', () => {
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          command: 'stylelint --fix',
+        },
+      },
+    })),
+    /unsupported properties: command/,
+  );
+
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          maxWarnings: -1,
+        },
+      },
+    })),
+    /non-negative integer/,
   );
 });

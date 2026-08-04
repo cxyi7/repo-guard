@@ -23,6 +23,10 @@ import {
   resolveNotificationEnvironment,
 } from '../local-env.js';
 import { loadNotificationConfig } from '../wecom.js';
+import {
+  findProjectStylelintConfig,
+  resolveProjectStylelintMetadata,
+} from '../stylelint-project.js';
 
 function nodeVersionIsSupported() {
   const [major, minor] = process.versions.node.split('.').map(Number);
@@ -155,6 +159,25 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else {
     checks.push('ESLint staged gate is disabled');
+  }
+
+  if (config?.preCommit.stylelint.enabled) {
+    try {
+      const stylelint = resolveProjectStylelintMetadata(root);
+      const stylelintConfigFile = findProjectStylelintConfig(root);
+      if (config.preCommit.stylelint.requireConfig && !stylelintConfigFile) {
+        throw new Error('Stylelint staged gate requires a project Stylelint configuration file');
+      }
+      checks.push(
+        `Stylelint ${stylelint.version} staged gate `
+        + `(${config.preCommit.stylelint.pattern}, fix=${config.preCommit.stylelint.fix}, `
+        + `config=${stylelintConfigFile || 'project config optional'})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Stylelint staged gate is disabled');
   }
 
   if (config?.preCommit.prettier.enabled) {

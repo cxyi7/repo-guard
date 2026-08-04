@@ -6,6 +6,7 @@ import {
 import { runEslintFiles } from './eslint-runner.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
+import { runStylelintFiles } from './stylelint-runner.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -24,13 +25,17 @@ export async function runQualityFiles({ root, files, config }) {
   const normalizedFiles = normalizeStagedFiles(root, files, 'Quality gate');
   const eslintConfig = config.preCommit.eslint;
   const prettierConfig = config.preCommit.prettier;
+  const stylelintConfig = config.preCommit.stylelint;
   const eslintFiles = eslintConfig.enabled
     ? selectFiles(normalizedFiles, eslintConfig.pattern)
     : [];
   const prettierFiles = prettierConfig.enabled
     ? selectFiles(normalizedFiles, prettierConfig.pattern)
     : [];
-  const relevantFiles = uniqueFiles(eslintFiles, prettierFiles);
+  const stylelintFiles = stylelintConfig.enabled
+    ? selectFiles(normalizedFiles, stylelintConfig.pattern)
+    : [];
+  const relevantFiles = uniqueFiles(stylelintFiles, eslintFiles, prettierFiles);
 
   if (relevantFiles.length === 0) {
     console.log('repo-guard quality gate: no staged files matched the configured patterns.');
@@ -46,6 +51,19 @@ export async function runQualityFiles({ root, files, config }) {
   };
 
   try {
+    if (stylelintFiles.length > 0) {
+      const stylelintExitCode = await runStylelintFiles({
+        root,
+        files: stylelintFiles,
+        fix: stylelintConfig.fix,
+        maxWarnings: stylelintConfig.maxWarnings,
+        requireConfig: stylelintConfig.requireConfig,
+      });
+      if (stylelintExitCode !== 0) {
+        return fail(stylelintExitCode);
+      }
+    }
+
     if (eslintFiles.length > 0 && eslintConfig.fix) {
       const eslintFixExitCode = await runEslintFiles({
         root,
@@ -67,6 +85,19 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (prettierExitCode !== 0) {
         return fail(prettierExitCode);
+      }
+    }
+
+    if (stylelintFiles.length > 0) {
+      const stylelintVerifyExitCode = await runStylelintFiles({
+        root,
+        files: stylelintFiles,
+        fix: false,
+        maxWarnings: stylelintConfig.maxWarnings,
+        requireConfig: stylelintConfig.requireConfig,
+      });
+      if (stylelintVerifyExitCode !== 0) {
+        return fail(stylelintVerifyExitCode);
       }
     }
 

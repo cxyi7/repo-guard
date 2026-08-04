@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- 增加使用业务项目本地安装和配置的暂存文件 Stylelint 自动修复门禁。
+- 固定质量流水线为 Stylelint 修复、ESLint 修复、Prettier、Stylelint 复检、ESLint 复检。
+- Stylelint 修复失败或后续门禁失败时恢复整个质量流水线修改，并保留部分暂存文件的未暂存内容。
+- `init` 仅在本地 Stylelint 和项目配置都存在时自动启用，不安装依赖、不生成规则、不探测语言组合。
+- 同一个 Vue 文件混用多种 `<style lang>` 时直接阻止提交；未修复问题输出编号式中文 AI 修复指令。
+- 增加可选 peer dependency `stylelint >=16 <18`，Node.js 最低版本保持 `18.12.0`。
+
 ## 0.6.0
 
 - 增加默认开启的项目级 `notification.enabled` 企业微信通知开关。

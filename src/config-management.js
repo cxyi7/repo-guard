@@ -9,22 +9,24 @@ import {
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
+  DEFAULT_STYLELINT_CONFIG,
   validateConfig,
 } from './config.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';
-export const QUALITY_GATES = Object.freeze(['eslint', 'prettier']);
+export const QUALITY_GATES = Object.freeze(['eslint', 'prettier', 'stylelint']);
 export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'notification',
 ]);
 
-export function createStarterConfig() {
+export function createStarterConfig({ stylelintEnabled = false } = {}) {
   return {
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     preCommit: {
+      stylelint: { ...DEFAULT_STYLELINT_CONFIG, enabled: stylelintEnabled },
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
       eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true },
     },
@@ -59,11 +61,11 @@ function writeProjectConfig(root, value) {
   writeFileSync(configPath(root), `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-export function ensureProjectConfig(root) {
+export function ensureProjectConfig(root, options) {
   if (existsSync(configPath(root))) {
     return { created: false };
   }
-  writeProjectConfig(root, createStarterConfig());
+  writeProjectConfig(root, createStarterConfig(options));
   return { created: true };
 }
 
@@ -84,6 +86,10 @@ export function migrateProjectConfig(root) {
     },
     preCommit: {
       ...preCommit,
+      stylelint: {
+        ...DEFAULT_STYLELINT_CONFIG,
+        ...(preCommit.stylelint ?? {}),
+      },
       prettier: {
         ...DEFAULT_PRETTIER_CONFIG,
         ...(preCommit.prettier ?? {}),

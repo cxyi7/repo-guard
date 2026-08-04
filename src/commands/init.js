@@ -2,10 +2,14 @@ import { CONFIG_FILE } from '../config.js';
 import { ensureProjectConfig } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
+import { detectProjectStylelintSetup } from '../stylelint-project.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
-  const { created: configCreated } = ensureProjectConfig(root);
+  const stylelintSetup = detectProjectStylelintSetup(root);
+  const { created: configCreated } = ensureProjectConfig(root, {
+    stylelintEnabled: stylelintSetup.ready,
+  });
   const result = installHooks({
     cwd: root,
     updatePackageScripts: true,
@@ -22,6 +26,13 @@ export function runInit(cwd = process.cwd()) {
     `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
   );
   console.log(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  if (configCreated && stylelintSetup.ready) {
+    console.log(
+      `- Stylelint ${stylelintSetup.metadata.version}: enabled with ${stylelintSetup.configFile}`,
+    );
+  } else if (configCreated) {
+    console.log('- Stylelint: disabled until the project installs Stylelint and adds a config');
+  }
   console.log('- run "repo-guard doctor" after configuring notification environment variables');
   return 0;
 }

@@ -14,9 +14,10 @@ export async function runQualityGate({ cwd = process.cwd() } = {}) {
   const config = loadConfig(root);
   const eslintConfig = config.preCommit.eslint;
   const prettierConfig = config.preCommit.prettier;
+  const stylelintConfig = config.preCommit.stylelint;
 
-  if (!eslintConfig.enabled && !prettierConfig.enabled) {
-    console.log('repo-guard quality gate skipped: ESLint and Prettier are disabled.');
+  if (!eslintConfig.enabled && !prettierConfig.enabled && !stylelintConfig.enabled) {
+    console.log('repo-guard quality gate skipped: ESLint, Prettier, and Stylelint are disabled.');
     return 0;
   }
 

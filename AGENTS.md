@@ -3,9 +3,9 @@
 This repository is the canonical source for `@cxyi7/repo-guard`.
 
 - Keep protected-file checks and staged-code quality checks as separate modules.
-- The pre-commit order is fixed: staged ESLint gate first, protected-file gate second.
+- The pre-commit order is fixed: Stylelint fix, ESLint fix, Prettier, read-only Stylelint and ESLint verification, then the protected-file gate.
 - Never run a project-wide fix command from a Git hook.
-- Use the consuming project's ESLint installation and configuration.
+- Use the consuming project's ESLint, Prettier, and Stylelint installations and configurations.
 - Do not add TypeScript type checking to the pre-commit gate.
 - Preserve partially staged and unstaged changes through `lint-staged`.
 - Managed Hook upgrades must accept known older markers but generate only the current version.

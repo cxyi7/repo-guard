@@ -39,16 +39,18 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(migrateResult.status, 0, migrateResult.stderr);
   assert.match(migrateResult.stdout, /migration: updated/);
 
-  const enableResult = run(root, ['enable', 'eslint', 'prettier']);
+  const enableResult = run(root, ['enable', 'eslint', 'prettier', 'stylelint']);
   assert.equal(enableResult.status, 0, enableResult.stderr);
   assert.match(enableResult.stdout, /eslint: enabled/);
   assert.match(enableResult.stdout, /prettier: enabled/);
+  assert.match(enableResult.stdout, /stylelint: enabled/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.prettier.enabled, true);
+  assert.equal(config.preCommit.stylelint.enabled, true);
 
   const disableResult = run(root, ['disable', 'notification']);
   assert.equal(disableResult.status, 0, disableResult.stderr);
@@ -57,4 +59,28 @@ test('CLI migrates configuration and enables selected gates', (context) => {
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(disabledConfig.notification.enabled, false);
+});
+
+test('init enables Stylelint when the project already provides it and a config', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-stylelint-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+  assert.equal(gitResult.status, 0, gitResult.stderr);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
+  );
+  writeFileSync(
+    path.join(root, 'stylelint.config.mjs'),
+    'export default { rules: { "property-no-unknown": true } };\n',
+  );
+
+  const initResult = run(root, ['init']);
+  assert.equal(initResult.status, 0, initResult.stderr);
+  assert.match(initResult.stdout, /Stylelint .* enabled/);
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(config.preCommit.stylelint.enabled, true);
 });

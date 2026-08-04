@@ -33,6 +33,40 @@
       "description": "Staged quality gates. Missing defaults can be materialized with repo-guard migrate.",
       "additionalProperties": false,
       "properties": {
+        "stylelint": {
+          "type": "object",
+          "description": "Stylelint gate loaded from the consuming project's installation and configuration.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run the consuming project's Stylelint against staged style files before the protected-file gate."
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "default": "**/*.{css,scss,sass,less,vue}",
+              "description": "Glob used to select staged files for Stylelint."
+            },
+            "fix": {
+              "type": "boolean",
+              "default": true,
+              "description": "Apply Stylelint auto-fixes before the final verification pass."
+            },
+            "maxWarnings": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Maximum Stylelint warning count allowed by the commit gate."
+            },
+            "requireConfig": {
+              "type": "boolean",
+              "default": true,
+              "description": "Require a project Stylelint configuration when the staged gate is enabled."
+            }
+          }
+        },
         "prettier": {
           "type": "object",
           "additionalProperties": false,

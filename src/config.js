@@ -5,6 +5,7 @@ export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
 export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
+export const DEFAULT_STYLELINT_PATTERN = '**/*.{css,scss,sass,less,vue}';
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
   enabled: false,
   pattern: DEFAULT_ESLINT_PATTERN,
@@ -15,6 +16,13 @@ export const DEFAULT_PRETTIER_CONFIG = Object.freeze({
   enabled: false,
   pattern: DEFAULT_PRETTIER_PATTERN,
   fix: true,
+  requireConfig: true,
+});
+export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
+  enabled: false,
+  pattern: DEFAULT_STYLELINT_PATTERN,
+  fix: true,
+  maxWarnings: 0,
   requireConfig: true,
 });
 export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
@@ -111,9 +119,43 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     preCommitValue,
-    new Set(['eslint', 'prettier']),
+    new Set(['eslint', 'prettier', 'stylelint']),
     `${configPath} preCommit`,
   );
+
+  const stylelintValue = preCommitValue.stylelint ?? {};
+  if (!stylelintValue || typeof stylelintValue !== 'object' || Array.isArray(stylelintValue)) {
+    throw new Error(`${configPath} preCommit.stylelint must be an object`);
+  }
+  assertKnownProperties(
+    stylelintValue,
+    new Set(['enabled', 'pattern', 'fix', 'maxWarnings', 'requireConfig']),
+    `${configPath} preCommit.stylelint`,
+  );
+  if (stylelintValue.enabled != null && typeof stylelintValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} preCommit.stylelint.enabled must be a boolean`);
+  }
+  if (
+    stylelintValue.pattern != null
+    && (typeof stylelintValue.pattern !== 'string' || !stylelintValue.pattern.trim())
+  ) {
+    throw new Error(`${configPath} preCommit.stylelint.pattern must be a non-empty string`);
+  }
+  if (stylelintValue.fix != null && typeof stylelintValue.fix !== 'boolean') {
+    throw new Error(`${configPath} preCommit.stylelint.fix must be a boolean`);
+  }
+  if (
+    stylelintValue.maxWarnings != null
+    && (!Number.isInteger(stylelintValue.maxWarnings) || stylelintValue.maxWarnings < 0)
+  ) {
+    throw new Error(`${configPath} preCommit.stylelint.maxWarnings must be a non-negative integer`);
+  }
+  if (
+    stylelintValue.requireConfig != null
+    && typeof stylelintValue.requireConfig !== 'boolean'
+  ) {
+    throw new Error(`${configPath} preCommit.stylelint.requireConfig must be a boolean`);
+  }
 
   const prettierValue = preCommitValue.prettier ?? {};
   if (!prettierValue || typeof prettierValue !== 'object' || Array.isArray(prettierValue)) {
@@ -218,6 +260,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
     },
     preCommit: {
+      stylelint: {
+        enabled: stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled,
+        pattern: stylelintValue.pattern?.trim() || DEFAULT_STYLELINT_CONFIG.pattern,
+        fix: stylelintValue.fix ?? DEFAULT_STYLELINT_CONFIG.fix,
+        maxWarnings: stylelintValue.maxWarnings ?? DEFAULT_STYLELINT_CONFIG.maxWarnings,
+        requireConfig: stylelintValue.requireConfig ?? DEFAULT_STYLELINT_CONFIG.requireConfig,
+      },
       prettier: {
         enabled: prettierValue.enabled ?? DEFAULT_PRETTIER_CONFIG.enabled,
         pattern: prettierValue.pattern?.trim() || DEFAULT_PRETTIER_CONFIG.pattern,

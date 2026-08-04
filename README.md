@@ -1,18 +1,20 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供暂存文件 ESLint 自动修复、Prettier
-格式化、公共文件保护、企业微信备案和提交信息文件清单。
+面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
+Prettier 格式化、公共文件保护、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.6.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.7.0
 npx repo-guard init
 npx repo-guard doctor
 ```
 
 新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、企业微信通知和
-9 条通知级保护规则。业务项目必须安装并配置 ESLint、Prettier，并在
+9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
+`init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
+所启用的 ESLint、Prettier、Stylelint，并在
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 
 `init` 会：
@@ -43,7 +45,7 @@ repo-guard doctor --fix
 
 - 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
 - 自动解除已被 Git 跟踪的 `.env.config`；
-- 安装 ESLint、Prettier 或生成业务项目的规则文件；
+- 安装 ESLint、Prettier、Stylelint 或生成业务项目的规则文件；
 - 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
@@ -51,15 +53,17 @@ repo-guard doctor --fix
 ```text
 git commit
   → lint-staged 隔离本次暂存内容
+  → Stylelint 检查和自动修复
   → ESLint 检查和自动修复
   → Prettier 检查或格式化
+  → Stylelint 最终只读复检
   → ESLint 最终只读复检
   → 质量结果写回暂存区并恢复未暂存内容
   → 保护文件识别、指纹和企业微信通知
   → 提交信息文件清单
 ```
 
-ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Stylelint、ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
@@ -77,6 +81,13 @@ ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提�
     "enabled": true
   },
   "preCommit": {
+    "stylelint": {
+      "enabled": false,
+      "pattern": "**/*.{css,scss,sass,less,vue}",
+      "fix": true,
+      "maxWarnings": 0,
+      "requireConfig": true
+    },
     "prettier": {
       "enabled": true,
       "pattern": "*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}",
@@ -100,6 +111,30 @@ ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提�
   "exclusions": []
 }
 ```
+
+### Stylelint 配置
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 检测到本地安装和配置时 `true`；否则 `false` | 是否启用暂存样式文件门禁 |
+| `pattern` | `**/*.{css,scss,sass,less,vue}` | `lint-staged` 文件匹配规则 |
+| `fix` | `true` | 是否应用 Stylelint 自动修复 |
+| `maxWarnings` | `0` | 提交允许的最大警告数 |
+| `requireConfig` | `true` | 是否要求项目根目录存在 Stylelint 配置 |
+
+Stylelint 必须由业务项目自行安装和配置，支持 `>=16 <18`。repo-guard 只加载项目
+本地的 Stylelint、插件、自定义语法和规则，不会内置规则预设、自动安装依赖、探测
+CSS/SCSS/Less/Vue 语言组合或生成 `stylelint.config.*`。准备完成后可执行：
+
+```bash
+repo-guard enable stylelint
+repo-guard doctor
+```
+
+同一个 Vue 文件可以包含多个相同语言的 `<style>` 块，但不能混用不同语言；例如
+同时出现 `<style>` 和 `<style lang="scss">` 时，提交会在调用 Stylelint 前直接失败。
+自动修复后 repo-guard 会再次只读检查；仍有问题时恢复 Stylelint 修改并输出编号式
+中文 AI 修复指令。所有处理都限定在暂存文件，部分暂存文件的未暂存内容会被保留。
 
 ### ESLint 配置
 
@@ -182,7 +217,7 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier
+repo-guard enable eslint prettier stylelint
 repo-guard enable notification
 repo-guard disable notification
 repo-guard doctor
@@ -192,18 +227,18 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、项目 ESLint、项目 Prettier 配置和
+`doctor` 会检查 Node.js、配置、Hook 版本、项目 Stylelint、项目 ESLint、项目 Prettier 配置和
 通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 从 0.5.0 升级
+## 从 0.6.0 升级
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.6.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.7.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-0.6.0 继续使用 `version: 1` 配置和 v2 托管 Hook。迁移会补充默认开启的通知
-开关，保持旧版本原本会发送通知的行为。如项目不需要企业微信通知，执行
-`npx repo-guard disable notification`。
+0.7.0 继续使用 `version: 1` 配置和 v2 托管 Hook。升级已有配置时，迁移只会补充
+默认关闭的 `preCommit.stylelint`，不会因为仓库中存在样式文件而自动开启。项目完成
+Stylelint 安装和配置后，再执行 `npx repo-guard enable stylelint`。

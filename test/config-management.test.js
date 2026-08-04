@@ -46,16 +46,23 @@ function sparseConfig(extra = {}) {
   };
 }
 
-test('starter configuration enables both gates and all protected rules', () => {
+test('starter configuration enables existing gates and leaves Stylelint opt-in', () => {
   const config = createStarterConfig();
 
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.eslint.fix, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.fix, true);
+  assert.equal(config.preCommit.stylelint.enabled, false);
   assert.equal(config.notification.enabled, true);
   assert.equal(config.rules.length, 9);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
+});
+
+test('starter configuration enables Stylelint when project setup was detected', () => {
+  const config = createStarterConfig({ stylelintEnabled: true });
+
+  assert.equal(config.preCommit.stylelint.enabled, true);
 });
 
 test('migrates sparse configuration without changing project rules', (context) => {
@@ -70,6 +77,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.deepEqual(migrated.exclusions, []);
   assert.equal(migrated.preCommit.eslint.enabled, false);
   assert.equal(migrated.preCommit.prettier.enabled, false);
+  assert.equal(migrated.preCommit.stylelint.enabled, false);
   assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
@@ -87,13 +95,14 @@ test('enables selected quality gates and preserves explicit settings', (context)
   }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const result = enableQualityGates(root, ['eslint', 'prettier', 'eslint']);
+  const result = enableQualityGates(root, ['eslint', 'prettier', 'stylelint', 'eslint']);
   const config = readConfig(root);
 
-  assert.deepEqual(result.enabled, ['eslint', 'prettier']);
+  assert.deepEqual(result.enabled, ['eslint', 'prettier', 'stylelint']);
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.requireConfig, false);
+  assert.equal(config.preCommit.stylelint.enabled, true);
 });
 
 test('rejects unsupported gates without rewriting configuration', (context) => {
@@ -102,7 +111,7 @@ test('rejects unsupported gates without rewriting configuration', (context) => {
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
   assert.throws(
-    () => enableQualityGates(root, ['stylelint']),
+    () => enableQualityGates(root, ['biome']),
     /Unsupported quality gate/,
   );
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);

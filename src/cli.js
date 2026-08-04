@@ -17,8 +17,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|notification> [...]
-  repo-guard disable <eslint|prettier|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
