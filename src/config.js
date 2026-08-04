@@ -25,6 +25,12 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   maxWarnings: 0,
   requireConfig: true,
 });
+export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
+  enabled: false,
+  configFile: null,
+  buildScript: 'build',
+  timeoutMs: 300000,
+});
 export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
   enabled: true,
 });
@@ -80,7 +86,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     value,
-    new Set(['$schema', 'version', 'notification', 'preCommit', 'rules', 'exclusions']),
+    new Set(['$schema', 'version', 'notification', 'lighthouse', 'preCommit', 'rules', 'exclusions']),
     configPath,
   );
   if (value.version !== 1) {
@@ -111,6 +117,40 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && typeof notificationValue.enabled !== 'boolean'
   ) {
     throw new Error(`${configPath} notification.enabled must be a boolean`);
+  }
+
+  const lighthouseValue = value.lighthouse ?? {};
+  if (!lighthouseValue || typeof lighthouseValue !== 'object' || Array.isArray(lighthouseValue)) {
+    throw new Error(`${configPath} lighthouse must be an object`);
+  }
+  assertKnownProperties(
+    lighthouseValue,
+    new Set(['enabled', 'configFile', 'buildScript', 'timeoutMs']),
+    `${configPath} lighthouse`,
+  );
+  if (lighthouseValue.enabled != null && typeof lighthouseValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} lighthouse.enabled must be a boolean`);
+  }
+  for (const field of ['configFile', 'buildScript']) {
+    const fieldValue = lighthouseValue[field];
+    if (
+      fieldValue != null
+      && (typeof fieldValue !== 'string' || !fieldValue.trim())
+    ) {
+      throw new Error(`${configPath} lighthouse.${field} must be null or a non-empty string`);
+    }
+  }
+  if (
+    typeof lighthouseValue.buildScript === 'string'
+    && !/^[A-Za-z0-9:_-]+$/.test(lighthouseValue.buildScript.trim())
+  ) {
+    throw new Error(`${configPath} lighthouse.buildScript must be an npm script name`);
+  }
+  if (
+    lighthouseValue.timeoutMs != null
+    && (!Number.isInteger(lighthouseValue.timeoutMs) || lighthouseValue.timeoutMs <= 0)
+  ) {
+    throw new Error(`${configPath} lighthouse.timeoutMs must be a positive integer`);
   }
 
   const preCommitValue = value.preCommit ?? {};
@@ -258,6 +298,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     version: 1,
     notification: {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+    },
+    lighthouse: {
+      enabled: lighthouseValue.enabled ?? DEFAULT_LIGHTHOUSE_CONFIG.enabled,
+      configFile: lighthouseValue.configFile?.trim() || DEFAULT_LIGHTHOUSE_CONFIG.configFile,
+      buildScript: lighthouseValue.buildScript === null
+        ? null
+        : lighthouseValue.buildScript?.trim() || DEFAULT_LIGHTHOUSE_CONFIG.buildScript,
+      timeoutMs: lighthouseValue.timeoutMs ?? DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
     },
     preCommit: {
       stylelint: {

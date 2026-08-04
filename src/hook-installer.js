@@ -10,10 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { ensureGitAttributes } from './git-attributes.js';
 import { findRepositoryRoot, gitValue, runGit } from './git.js';
 import { ensureLocalEnvironment } from './local-env.js';
+import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 
-const MANAGED_MARKER = '# repo-guard-managed:v2';
+const MANAGED_MARKER = '# repo-guard-managed:v3';
 const LEGACY_MANAGED_MARKERS = Object.freeze([
   '# repo-guard-managed:v1',
+  '# repo-guard-managed:v2',
 ]);
 const HOOKS_DIRECTORY = '.githooks';
 const PACKAGE_JSON_PATH = fileURLToPath(new URL('../package.json', import.meta.url));
@@ -21,6 +23,7 @@ const PACKAGE_NAME = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8')).name;
 
 const HOOK_COMMANDS = {
   'pre-commit': ['pre-commit'],
+  'pre-push': ['pre-push'],
   'prepare-commit-msg': ['hook-message', 'prepare', '"$@"'],
   'commit-msg': ['hook-message', 'finalize', '"$1"'],
   'post-commit': ['hook-message', 'cleanup'],
@@ -80,6 +83,8 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
+  packageJson.scripts['guard:enable-lighthouse'] ||= 'repo-guard enable lighthouse';
+  packageJson.scripts['guard:lighthouse'] ||= 'repo-guard lighthouse';
   packageJson.scripts['guard:enable-notification'] ||= 'repo-guard enable notification';
   packageJson.scripts['guard:disable-notification'] ||= 'repo-guard disable notification';
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';
@@ -137,6 +142,7 @@ export function installHooks({
 
   const gitAttributes = ensureGitAttributes(root);
   const localEnvironment = ensureLocalEnvironment(root);
+  const lighthouseIgnore = ensureLighthouseIgnore(root);
   if (updatePackageScripts) {
     ensurePackageScripts(root);
   }
@@ -152,6 +158,7 @@ export function installHooks({
     hooks: Object.keys(HOOK_COMMANDS),
     gitAttributes,
     localEnvironment,
+    lighthouseIgnore,
   };
 }
 

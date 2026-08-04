@@ -37,7 +37,7 @@ function createRepository() {
   return root;
 }
 
-test('upgrades managed v1 hooks to the v2 pre-commit orchestrator', (context) => {
+test('upgrades managed v1 hooks to the v3 orchestrator', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -52,9 +52,13 @@ test('upgrades managed v1 hooks to the v2 pre-commit orchestrator', (context) =>
 
   assert.equal(isManagedHook(hook), true);
   assert.equal(isCurrentManagedHook(hook), true);
-  assert.match(hook, /repo-guard-managed:v2/);
+  assert.match(hook, /repo-guard-managed:v3/);
   assert.match(hook, /repo_guard_cli" pre-commit/);
   assert.doesNotMatch(hook, /repo_guard_cli" gate/);
+  assert.match(
+    readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8'),
+    /repo_guard_cli" pre-push/,
+  );
 });
 
 test('refuses to overwrite a non-managed hook', (context) => {
@@ -70,6 +74,23 @@ test('refuses to overwrite a non-managed hook', (context) => {
   assert.throws(
     () => installHooks({ cwd: root }),
     /Refusing to overwrite non-managed Git hook/,
+  );
+});
+
+test('recognizes and upgrades managed v2 hooks', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  mkdirSync(path.join(root, '.githooks'), { recursive: true });
+  writeFileSync(
+    path.join(root, '.githooks', 'pre-commit'),
+    '#!/bin/sh\n# repo-guard-managed:v2\nexec node old-cli pre-commit\n',
+  );
+
+  installHooks({ cwd: root });
+  assert.match(
+    readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
+    /repo-guard-managed:v3/,
   );
 });
 

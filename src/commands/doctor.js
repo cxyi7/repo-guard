@@ -23,6 +23,7 @@ import {
   resolveNotificationEnvironment,
 } from '../local-env.js';
 import { loadNotificationConfig } from '../wecom.js';
+import { validateVueLighthouseSetup } from '../lighthouse-project.js';
 import {
   findProjectStylelintConfig,
   resolveProjectStylelintMetadata,
@@ -145,6 +146,20 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else if (config) {
     checks.push('WeCom notification is not required because no notify rules are configured');
+  }
+
+  if (config?.lighthouse.enabled) {
+    try {
+      const setup = validateVueLighthouseSetup(root, config.lighthouse);
+      checks.push(
+        `Lighthouse CI ${setup.lighthouse.version} Vue pre-push gate `
+        + `(config=${setup.configFile}, build=${config.lighthouse.buildScript || 'skipped'})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Lighthouse Vue pre-push gate is disabled');
   }
 
   if (config?.preCommit.eslint.enabled) {

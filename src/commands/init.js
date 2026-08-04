@@ -33,6 +33,9 @@ export function runInit(cwd = process.cwd()) {
   } else if (configCreated) {
     console.log('- Stylelint: disabled until the project installs Stylelint and adds a config');
   }
+  if (configCreated) {
+    console.log('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
+  }
   console.log('- run "repo-guard doctor" after configuring notification environment variables');
   return 0;
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- 增加仅面向 Vue 项目的 `repo-guard lighthouse`，使用业务项目本地 `@lhci/cli` 和 `lighthouserc.*`。
+- Lighthouse 执行项目 npm 构建脚本后依次运行 `collect` 和 `assert`，支持 `--skip-build`。
+- 增加默认关闭的 Lighthouse `pre-push` 门禁、环境诊断和 `.lighthouseci/` 忽略维护。
+- 托管 Hook 升级为 v3，兼容识别和升级 v1、v2 Hook。
+
 ## 0.7.0
 
 - 增加使用业务项目本地安装和配置的暂存文件 Stylelint 自动修复门禁。

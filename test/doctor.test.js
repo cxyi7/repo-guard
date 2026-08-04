@@ -54,6 +54,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard enable eslint prettier',
   );
   assert.equal(packageJson.scripts.prepare, 'repo-guard install-hooks');
+  assert.equal(packageJson.scripts['guard:lighthouse'], 'repo-guard lighthouse');
   assert.equal(
     packageJson.scripts['guard:disable-notification'],
     'repo-guard disable notification',
@@ -61,9 +62,15 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.notification.enabled, false);
   assert.equal(config.preCommit.eslint.enabled, false);
   assert.equal(config.preCommit.prettier.enabled, false);
+  assert.equal(config.lighthouse.enabled, false);
+  assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
-    /repo-guard-managed:v2/,
+    /repo-guard-managed:v3/,
+  );
+  assert.match(
+    readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8'),
+    /repo_guard_cli" pre-push/,
   );
 
   rmSync(path.join(root, '.env.config'));

@@ -39,11 +39,12 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(migrateResult.status, 0, migrateResult.stderr);
   assert.match(migrateResult.stdout, /migration: updated/);
 
-  const enableResult = run(root, ['enable', 'eslint', 'prettier', 'stylelint']);
+  const enableResult = run(root, ['enable', 'eslint', 'prettier', 'stylelint', 'lighthouse']);
   assert.equal(enableResult.status, 0, enableResult.stderr);
   assert.match(enableResult.stdout, /eslint: enabled/);
   assert.match(enableResult.stdout, /prettier: enabled/);
   assert.match(enableResult.stdout, /stylelint: enabled/);
+  assert.match(enableResult.stdout, /lighthouse: enabled/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -51,6 +52,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.equal(config.lighthouse.enabled, true);
 
   const disableResult = run(root, ['disable', 'notification']);
   assert.equal(disableResult.status, 0, disableResult.stderr);

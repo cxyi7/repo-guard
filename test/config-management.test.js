@@ -54,6 +54,7 @@ test('starter configuration enables existing gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.fix, true);
   assert.equal(config.preCommit.stylelint.enabled, false);
+  assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.notification.enabled, true);
   assert.equal(config.rules.length, 9);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
@@ -78,6 +79,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.eslint.enabled, false);
   assert.equal(migrated.preCommit.prettier.enabled, false);
   assert.equal(migrated.preCommit.stylelint.enabled, false);
+  assert.equal(migrated.lighthouse.enabled, false);
   assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
@@ -128,6 +130,15 @@ test('disables and re-enables project notification', (context) => {
   const enabled = setFeaturesEnabled(root, ['notification'], true);
   assert.deepEqual(enabled.changed, ['notification']);
   assert.equal(readConfig(root).notification.enabled, true);
+});
+
+test('enables the Vue Lighthouse pre-push feature', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['lighthouse'], true);
+  assert.deepEqual(enabled.changed, ['lighthouse']);
+  assert.equal(readConfig(root).lighthouse.enabled, true);
 });
 
 test('rejects invalid values before migration can rewrite the file', (context) => {

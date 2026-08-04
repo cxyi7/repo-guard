@@ -16,6 +16,7 @@ export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export { runQualityGate } from './quality-gate.js';
 export { runQualityFiles } from './quality-runner.js';
+export { runVueLighthouse } from './lighthouse-runner.js';
 export {
   ensureLocalEnvironment,
   loadLocalEnvironment,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   DEFAULT_ESLINT_PATTERN,
+  DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
   validateConfig,
@@ -26,6 +27,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
+  assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
     enabled: false,
     pattern: DEFAULT_PRETTIER_PATTERN,
@@ -58,6 +60,32 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled must be a boolean/,
+  );
+});
+
+test('validates and normalizes Vue Lighthouse configuration', () => {
+  const config = validateConfig(baseConfig({
+    lighthouse: {
+      enabled: true,
+      configFile: '  config/lighthouserc.cjs  ',
+      buildScript: '  build:lhci  ',
+      timeoutMs: 120000,
+    },
+  }));
+
+  assert.deepEqual(config.lighthouse, {
+    enabled: true,
+    configFile: 'config/lighthouserc.cjs',
+    buildScript: 'build:lhci',
+    timeoutMs: 120000,
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ lighthouse: { buildScript: 'npm run build' } })),
+    /must be an npm script name/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ lighthouse: { timeoutMs: 0 } })),
+    /positive integer/,
   );
 });
 

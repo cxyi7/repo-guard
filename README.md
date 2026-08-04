@@ -1,12 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、公共文件保护、企业微信备案和提交信息文件清单。
+Prettier 格式化、Vue Lighthouse 推送前质量检查、公共文件保护、企业微信备案和
+提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.7.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.8.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -14,16 +15,17 @@ npx repo-guard doctor
 新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、企业微信通知和
 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
-所启用的 ESLint、Prettier、Stylelint，并在
+所启用的 ESLint、Prettier、Stylelint。Vue Lighthouse 默认关闭，开启时业务项目还需
+安装 `@lhci/cli`、提供 `lighthouserc.*` 和 Chrome。通知功能需要在
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 
 `init` 会：
 
-1. 生成四个受管理的 Git Hook；
+1. 生成五个受管理的 Git Hook，包括可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
-5. 在配置不存在时生成默认全开启的 `repo-guard.config.json`；
+5. 在配置不存在时生成 `repo-guard.config.json`；
 6. 补充初始化、迁移、门禁启用、诊断和检查相关的 `guard:*` 脚本；
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`。
 
@@ -36,7 +38,7 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
 已有项目的门禁开关。
 
@@ -45,7 +47,7 @@ repo-guard doctor --fix
 
 - 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
 - 自动解除已被 Git 跟踪的 `.env.config`；
-- 安装 ESLint、Prettier、Stylelint 或生成业务项目的规则文件；
+- 安装 ESLint、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
 - 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
@@ -69,6 +71,16 @@ Stylelint、ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态�
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
 文件只会在项目 ESLint 配置支持时接受普通 ESLint 检查。
 
+开启 Lighthouse 后，`git push` 的附加流程为：
+
+```text
+git push
+  → 执行 Vue 项目的 npm build 脚本
+  → @lhci/cli collect 按 lighthouserc 访问配置页面
+  → @lhci/cli assert 检查性能、可访问性、最佳实践和 SEO 阈值
+  → 全部通过后继续推送
+```
+
 ## 项目配置
 
 规则和代码质量配置都保存在项目根目录的 `repo-guard.config.json`：
@@ -79,6 +91,12 @@ Stylelint、ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态�
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "lighthouse": {
+    "enabled": false,
+    "configFile": null,
+    "buildScript": "build",
+    "timeoutMs": 300000
   },
   "preCommit": {
     "stylelint": {
@@ -111,6 +129,94 @@ Stylelint、ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态�
   "exclusions": []
 }
 ```
+
+### Vue Lighthouse 配置
+
+Lighthouse 当前只支持根目录 `package.json` 声明了 `vue` 的项目。业务项目自行安装：
+
+```bash
+npm install --save-dev @lhci/cli
+```
+
+repo-guard 不内置 Lighthouse、Chrome、页面列表或分数阈值。`lighthouse.enabled` 只控制
+是否在 `pre-push` 自动运行；即使为 `false`，也可以手动执行：
+
+```bash
+repo-guard lighthouse
+repo-guard lighthouse --skip-build
+repo-guard enable lighthouse
+repo-guard doctor
+```
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
+| `configFile` | `null` | 指定仓库内配置；`null` 自动查找标准 `lighthouserc.*` 文件名 |
+| `buildScript` | `build` | 收集数据前运行的 npm 脚本；`null` 表示不构建 |
+| `timeoutMs` | `300000` | 构建、收集和断言各自的超时时间 |
+
+Vite + Vue 项目可以配置：
+
+```json
+{
+  "scripts": {
+    "build": "vite build",
+    "preview:lhci": "vite preview --host 127.0.0.1 --port 4173"
+  }
+}
+```
+
+`lighthouserc.cjs`：
+
+```js
+module.exports = {
+  ci: {
+    collect: {
+      startServerCommand: 'npm run preview:lhci',
+      startServerReadyPattern: 'Local',
+      numberOfRuns: 3,
+      url: [
+        'http://127.0.0.1:4173/',
+        'http://127.0.0.1:4173/login',
+        'http://127.0.0.1:4173/dashboard',
+      ],
+    },
+    assert: {
+      assertions: {
+        'categories:performance': ['error', {
+          minScore: 0.8,
+          aggregationMethod: 'median',
+        }],
+        'categories:accessibility': ['error', {
+          minScore: 0.9,
+          aggregationMethod: 'median',
+        }],
+        'categories:best-practices': ['error', {
+          minScore: 0.9,
+          aggregationMethod: 'median',
+        }],
+        'categories:seo': ['warn', {
+          minScore: 0.9,
+          aggregationMethod: 'median',
+        }],
+        'largest-contentful-paint': ['error', {
+          maxNumericValue: 2500,
+          aggregationMethod: 'median',
+        }],
+        'cumulative-layout-shift': ['error', {
+          maxNumericValue: 0.1,
+          aggregationMethod: 'median',
+        }],
+      },
+    },
+  },
+};
+```
+
+Vue Router 的路由不会被自动猜测，必须写入 `collect.url`。`numberOfRuns: 3` 表示每个
+URL 收集三次，断言使用中位数降低波动。多页静态项目也可以改用 `staticDistDir`。
+repo-guard 只执行 `collect` 和 `assert`，不会执行 LHCI upload，也不会把报告上传到外部；
+原始报告保存在已被 `.gitignore` 排除的 `.lighthouseci/`。
 
 ### Stylelint 配置
 
@@ -218,6 +324,9 @@ repo-guard init
 repo-guard install-hooks
 repo-guard migrate
 repo-guard enable eslint prettier stylelint
+repo-guard lighthouse
+repo-guard enable lighthouse
+repo-guard disable lighthouse
 repo-guard enable notification
 repo-guard disable notification
 repo-guard doctor
@@ -227,14 +336,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、项目 Stylelint、项目 ESLint、项目 Prettier 配置和
-通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
+`doctor` 会检查 Node.js、配置、Hook 版本、项目 Lighthouse CI、Stylelint、ESLint、
+Prettier 配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 从 0.6.0 升级
+## 升级到 0.8.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.7.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.8.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -242,3 +351,7 @@ npx repo-guard doctor
 0.7.0 继续使用 `version: 1` 配置和 v2 托管 Hook。升级已有配置时，迁移只会补充
 默认关闭的 `preCommit.stylelint`，不会因为仓库中存在样式文件而自动开启。项目完成
 Stylelint 安装和配置后，再执行 `npx repo-guard enable stylelint`。
+
+0.8.0 会把托管 Hook 升级为 v3，并新增默认关闭的
+`lighthouse` 配置。执行 `doctor --fix` 可升级 v1/v2 托管 Hook；只有显式执行
+`repo-guard enable lighthouse` 后，推送前门禁才会运行。

@@ -4,6 +4,7 @@ import { runDoctor } from './commands/doctor.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
+import { runLighthouseCommand, runPrePush } from './commands/lighthouse.js';
 import {
   runLintFiles,
   runPreCommit,
@@ -17,13 +18,15 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
   repo-guard pre-commit
+  repo-guard pre-push
+  repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
 Exit codes:
@@ -70,6 +73,14 @@ export async function runCli(argumentsList) {
       case 'pre-commit':
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();
+      case 'pre-push':
+        ensureSupportedOptions(rest, new Set());
+        return runPrePush();
+      case 'lighthouse':
+        ensureSupportedOptions(rest, new Set(['--skip-build']));
+        return runLighthouseCommand(process.cwd(), {
+          skipBuild: rest.includes('--skip-build'),
+        });
       case 'lint-files':
         return await runLintFiles(rest);
       case 'quality-files':

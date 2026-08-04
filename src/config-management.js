@@ -7,6 +7,7 @@ import path from 'node:path';
 import {
   CONFIG_FILE,
   DEFAULT_ESLINT_CONFIG,
+  DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
@@ -17,6 +18,7 @@ export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schem
 export const QUALITY_GATES = Object.freeze(['eslint', 'prettier', 'stylelint']);
 export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
+  'lighthouse',
   'notification',
 ]);
 
@@ -25,6 +27,7 @@ export function createStarterConfig({ stylelintEnabled = false } = {}) {
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
     preCommit: {
       stylelint: { ...DEFAULT_STYLELINT_CONFIG, enabled: stylelintEnabled },
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
@@ -84,6 +87,10 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
     },
+    lighthouse: {
+      ...DEFAULT_LIGHTHOUSE_CONFIG,
+      ...(prepared.lighthouse ?? {}),
+    },
     preCommit: {
       ...preCommit,
       stylelint: {
@@ -111,9 +118,10 @@ export function migrateProjectConfig(root) {
 }
 
 function featureConfig(config, feature) {
-  return feature === 'notification'
-    ? config.notification
-    : config.preCommit[feature];
+  if (feature === 'notification' || feature === 'lighthouse') {
+    return config[feature];
+  }
+  return config.preCommit[feature];
 }
 
 export function setFeaturesEnabled(root, requestedFeatures, enabled) {
