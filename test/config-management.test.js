@@ -46,14 +46,23 @@ function sparseConfig(extra = {}) {
   };
 }
 
-test('starter configuration enables existing gates and leaves Stylelint opt-in', () => {
+test('starter configuration enables standard gates and leaves Stylelint opt-in', () => {
   const config = createStarterConfig();
 
   assert.equal(config.preCommit.eslint.enabled, true);
+  assert.equal(config.preCommit.eslint.preset, true);
   assert.equal(config.preCommit.eslint.fix, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.fix, true);
   assert.equal(config.preCommit.stylelint.enabled, false);
+  assert.equal(config.preCommit.maxFileLines.enabled, true);
+  assert.equal(config.preCommit.maxFileLines.mode, 'strict');
+  assert.equal(config.preCommit.maxFileLines.warnAt, 0.85);
+  assert.deepEqual(config.preCommit.maxFileLines.rules, [
+    { pattern: '**/*.vue', maxLines: 700 },
+    { pattern: '**/*.{js,mjs,cjs,jsx}', maxLines: 1000 },
+    { pattern: '**/*.{ts,tsx}', maxLines: 1000 },
+  ]);
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.notification.enabled, true);
   assert.equal(config.rules.length, 9);
@@ -77,8 +86,12 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.deepEqual(migrated.rules, sparseConfig().rules);
   assert.deepEqual(migrated.exclusions, []);
   assert.equal(migrated.preCommit.eslint.enabled, false);
+  assert.equal(migrated.preCommit.eslint.preset, false);
   assert.equal(migrated.preCommit.prettier.enabled, false);
   assert.equal(migrated.preCommit.stylelint.enabled, false);
+  assert.equal(migrated.preCommit.maxFileLines.enabled, false);
+  assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
+  assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
   assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
@@ -139,6 +152,15 @@ test('enables the Vue Lighthouse pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['lighthouse'], true);
   assert.deepEqual(enabled.changed, ['lighthouse']);
   assert.equal(readConfig(root).lighthouse.enabled, true);
+});
+
+test('enables the maximum file lines pre-commit feature', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['maxFileLines'], true);
+  assert.deepEqual(enabled.changed, ['maxFileLines']);
+  assert.equal(readConfig(root).preCommit.maxFileLines.enabled, true);
 });
 
 test('rejects invalid values before migration can rewrite the file', (context) => {

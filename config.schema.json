@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, staged quality and file-line, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -69,6 +69,81 @@
       "description": "Staged quality gates. Missing defaults can be materialized with repo-guard migrate.",
       "additionalProperties": false,
       "properties": {
+        "maxFileLines": {
+          "type": "object",
+          "description": "Maximum physical line counts for complete staged files, evaluated after formatting and lint verification.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Reject staged files that exceed the first matching rule and print standalone AI refactoring instructions. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "noRegression"
+              ],
+              "default": "strict",
+              "description": "strict always rejects an over-limit file; noRegression allows an existing over-limit file only while its staged line count does not exceed its HEAD baseline. New files remain strict."
+            },
+            "warnAt": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "default": 0.85,
+              "description": "Non-blocking warning threshold expressed as a fraction of maxLines."
+            },
+            "rules": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                {
+                  "pattern": "**/*.vue",
+                  "maxLines": 700
+                },
+                {
+                  "pattern": "**/*.{js,mjs,cjs,jsx}",
+                  "maxLines": 1000
+                },
+                {
+                  "pattern": "**/*.{ts,tsx}",
+                  "maxLines": 1000
+                }
+              ],
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "pattern",
+                  "maxLines"
+                ],
+                "properties": {
+                  "pattern": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Repository-relative glob matched against staged file paths."
+                  },
+                  "maxLines": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum allowed physical line count, including comments and blank lines."
+                  }
+                }
+              }
+            },
+            "exclusions": {
+              "type": "array",
+              "default": [],
+              "description": "Repository-relative globs excluded before line-limit rules are matched.",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
         "stylelint": {
           "type": "object",
           "description": "Stylelint gate loaded from the consuming project's installation and configuration.",
@@ -132,12 +207,18 @@
         },
         "eslint": {
           "type": "object",
+          "description": "ESLint is loaded from the consuming project. The optional repo-guard preset is injected as a base Flat Config, then the project's own ESLint configuration is loaded and may override it.",
           "additionalProperties": false,
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": false,
               "description": "Run ESLint against staged files before the protected-file gate. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+            },
+            "preset": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically inject the repo-guard AI maintainability preset before the project's ESLint Flat Config. New init configurations set this to true; omitted values stay false for upgrade compatibility."
             },
             "pattern": {
               "type": "string",

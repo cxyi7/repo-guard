@@ -5,7 +5,10 @@ import {
   ensureProjectConfig,
   migrateProjectConfig,
 } from '../config-management.js';
-import { resolveProjectEslintMetadata } from '../eslint-runner.js';
+import {
+  resolveProjectEslintMetadata,
+  resolveRepoGuardEslintPreset,
+} from '../eslint-runner.js';
 import {
   resolveProjectPrettierConfigFile,
   resolveProjectPrettierMetadata,
@@ -165,15 +168,32 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   if (config?.preCommit.eslint.enabled) {
     try {
       const eslint = resolveProjectEslintMetadata(root);
+      const preset = config.preCommit.eslint.preset
+        ? await resolveRepoGuardEslintPreset(root, eslint.version)
+        : null;
       checks.push(
         `ESLint ${eslint.version} staged gate `
-        + `(${config.preCommit.eslint.pattern}, fix=${config.preCommit.eslint.fix})`,
+        + `(${config.preCommit.eslint.pattern}, fix=${config.preCommit.eslint.fix}, `
+        + `preset=${preset ? `enabled: ${preset.integrations.join(', ')}` : 'disabled'})`,
       );
     } catch (error) {
       errors.push(error.message);
     }
   } else {
     checks.push('ESLint staged gate is disabled');
+  }
+
+  if (config?.preCommit.maxFileLines.enabled) {
+    const limits = config.preCommit.maxFileLines.rules
+      .map(({ pattern, maxLines }) => `${pattern}<=${maxLines}`)
+      .join(', ');
+    checks.push(
+      `Maximum file lines staged gate `
+      + `(mode=${config.preCommit.maxFileLines.mode}, `
+      + `warnAt=${config.preCommit.maxFileLines.warnAt}, ${limits})`,
+    );
+  } else {
+    checks.push('Maximum file lines staged gate is disabled');
   }
 
   if (config?.preCommit.stylelint.enabled) {

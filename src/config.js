@@ -8,6 +8,7 @@ export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5
 export const DEFAULT_STYLELINT_PATTERN = '**/*.{css,scss,sass,less,vue}';
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
   enabled: false,
+  preset: false,
   pattern: DEFAULT_ESLINT_PATTERN,
   fix: true,
   maxWarnings: 0,
@@ -24,6 +25,17 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   fix: true,
   maxWarnings: 0,
   requireConfig: true,
+});
+export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
+  enabled: false,
+  mode: 'strict',
+  warnAt: 0.85,
+  rules: Object.freeze([
+    Object.freeze({ pattern: '**/*.vue', maxLines: 700 }),
+    Object.freeze({ pattern: '**/*.{js,mjs,cjs,jsx}', maxLines: 1000 }),
+    Object.freeze({ pattern: '**/*.{ts,tsx}', maxLines: 1000 }),
+  ]),
+  exclusions: Object.freeze([]),
 });
 export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   enabled: false,
@@ -159,9 +171,85 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     preCommitValue,
-    new Set(['eslint', 'prettier', 'stylelint']),
+    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines']),
     `${configPath} preCommit`,
   );
+
+  const maxFileLinesValue = preCommitValue.maxFileLines ?? {};
+  if (
+    !maxFileLinesValue
+    || typeof maxFileLinesValue !== 'object'
+    || Array.isArray(maxFileLinesValue)
+  ) {
+    throw new Error(`${configPath} preCommit.maxFileLines must be an object`);
+  }
+  assertKnownProperties(
+    maxFileLinesValue,
+    new Set(['enabled', 'mode', 'warnAt', 'rules', 'exclusions']),
+    `${configPath} preCommit.maxFileLines`,
+  );
+  if (
+    maxFileLinesValue.enabled != null
+    && typeof maxFileLinesValue.enabled !== 'boolean'
+  ) {
+    throw new Error(`${configPath} preCommit.maxFileLines.enabled must be a boolean`);
+  }
+  if (
+    maxFileLinesValue.mode != null
+    && !['strict', 'noRegression'].includes(maxFileLinesValue.mode)
+  ) {
+    throw new Error(
+      `${configPath} preCommit.maxFileLines.mode must be strict or noRegression`,
+    );
+  }
+  if (
+    maxFileLinesValue.warnAt != null
+    && (
+      typeof maxFileLinesValue.warnAt !== 'number'
+      || !Number.isFinite(maxFileLinesValue.warnAt)
+      || maxFileLinesValue.warnAt <= 0
+      || maxFileLinesValue.warnAt > 1
+    )
+  ) {
+    throw new Error(`${configPath} preCommit.maxFileLines.warnAt must be greater than 0 and at most 1`);
+  }
+
+  const maxFileLineRulesValue = maxFileLinesValue.rules
+    ?? DEFAULT_MAX_FILE_LINES_CONFIG.rules;
+  if (!Array.isArray(maxFileLineRulesValue) || maxFileLineRulesValue.length === 0) {
+    throw new Error(`${configPath} preCommit.maxFileLines.rules must be a non-empty array`);
+  }
+  const maxFileLineRules = maxFileLineRulesValue.map((rule, index) => {
+    const label = `${configPath} preCommit.maxFileLines rule ${index + 1}`;
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(rule, new Set(['pattern', 'maxLines']), label);
+    if (typeof rule.pattern !== 'string' || !rule.pattern.trim()) {
+      throw new Error(`${label}.pattern must be a non-empty string`);
+    }
+    if (!Number.isInteger(rule.maxLines) || rule.maxLines <= 0) {
+      throw new Error(`${label}.maxLines must be a positive integer`);
+    }
+    return {
+      pattern: normalizeGitPath(rule.pattern.trim()),
+      maxLines: rule.maxLines,
+    };
+  });
+
+  const maxFileLineExclusionsValue = maxFileLinesValue.exclusions
+    ?? DEFAULT_MAX_FILE_LINES_CONFIG.exclusions;
+  if (!Array.isArray(maxFileLineExclusionsValue)) {
+    throw new Error(`${configPath} preCommit.maxFileLines.exclusions must be an array`);
+  }
+  const maxFileLineExclusions = maxFileLineExclusionsValue.map((pattern, index) => {
+    if (typeof pattern !== 'string' || !pattern.trim()) {
+      throw new Error(
+        `${configPath} preCommit.maxFileLines exclusion ${index + 1} must be a non-empty string`,
+      );
+    }
+    return normalizeGitPath(pattern.trim());
+  });
 
   const stylelintValue = preCommitValue.stylelint ?? {};
   if (!stylelintValue || typeof stylelintValue !== 'object' || Array.isArray(stylelintValue)) {
@@ -231,11 +319,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     eslintValue,
-    new Set(['enabled', 'pattern', 'fix', 'maxWarnings']),
+    new Set(['enabled', 'preset', 'pattern', 'fix', 'maxWarnings']),
     `${configPath} preCommit.eslint`,
   );
   if (eslintValue.enabled != null && typeof eslintValue.enabled !== 'boolean') {
     throw new Error(`${configPath} preCommit.eslint.enabled must be a boolean`);
+  }
+  if (eslintValue.preset != null && typeof eslintValue.preset !== 'boolean') {
+    throw new Error(`${configPath} preCommit.eslint.preset must be a boolean`);
   }
   if (
     eslintValue.pattern != null
@@ -308,6 +399,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       timeoutMs: lighthouseValue.timeoutMs ?? DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
     },
     preCommit: {
+      maxFileLines: {
+        enabled: maxFileLinesValue.enabled ?? DEFAULT_MAX_FILE_LINES_CONFIG.enabled,
+        mode: maxFileLinesValue.mode ?? DEFAULT_MAX_FILE_LINES_CONFIG.mode,
+        warnAt: maxFileLinesValue.warnAt ?? DEFAULT_MAX_FILE_LINES_CONFIG.warnAt,
+        rules: maxFileLineRules,
+        exclusions: maxFileLineExclusions,
+      },
       stylelint: {
         enabled: stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled,
         pattern: stylelintValue.pattern?.trim() || DEFAULT_STYLELINT_CONFIG.pattern,
@@ -323,6 +421,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       },
       eslint: {
         enabled: eslintValue.enabled ?? DEFAULT_ESLINT_CONFIG.enabled,
+        preset: eslintValue.preset ?? DEFAULT_ESLINT_CONFIG.preset,
         pattern: eslintValue.pattern?.trim() || DEFAULT_ESLINT_CONFIG.pattern,
         fix: eslintValue.fix ?? DEFAULT_ESLINT_CONFIG.fix,
         maxWarnings: eslintValue.maxWarnings ?? DEFAULT_ESLINT_CONFIG.maxWarnings,

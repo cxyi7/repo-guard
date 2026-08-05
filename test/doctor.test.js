@@ -61,6 +61,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
   assert.equal(config.notification.enabled, false);
   assert.equal(config.preCommit.eslint.enabled, false);
+  assert.equal(config.preCommit.eslint.preset, false);
   assert.equal(config.preCommit.prettier.enabled, false);
   assert.equal(config.lighthouse.enabled, false);
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);

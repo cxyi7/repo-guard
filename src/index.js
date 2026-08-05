@@ -16,6 +16,16 @@ export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export { runQualityGate } from './quality-gate.js';
 export { runQualityFiles } from './quality-runner.js';
+export {
+  analyzeVueSections,
+  buildMaxFileLinesAiInstructions,
+  buildMaxFileLinesWarnings,
+  countPhysicalLines,
+  evaluateMaxFileLines,
+  inspectMaxFileLines,
+  matchMaxFileLineRule,
+  runMaxFileLinesFiles,
+} from './max-file-lines.js';
 export { runVueLighthouse } from './lighthouse-runner.js';
 export {
   ensureLocalEnvironment,

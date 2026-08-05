@@ -1,21 +1,22 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、Vue Lighthouse 推送前质量检查、公共文件保护、企业微信备案和
-提交信息文件清单。
+Prettier 格式化、单文件行数限制、Vue Lighthouse 推送前质量检查、公共文件保护、
+企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.8.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.9.0
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、企业微信通知和
-9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
+新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、Vue/JS/TS 单文件行数门禁、
+企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
-所启用的 ESLint、Prettier、Stylelint。Vue Lighthouse 默认关闭，开启时业务项目还需
+所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
+Vue Lighthouse 默认关闭，开启时业务项目还需
 安装 `@lhci/cli`、提供 `lighthouserc.*` 和 Chrome。通知功能需要在
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 
@@ -40,14 +41,15 @@ repo-guard doctor --fix
 
 `migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目的门禁开关。
+已有项目的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `maxFileLines` 和
+`preCommit.eslint.preset` 默认关闭；可在确认存量文件情况后分别开启。
 
 `doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
 `.gitignore`、`.env.config` 和 `guard:*` 项目脚本，最后执行完整诊断。它不会：
 
 - 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
 - 自动解除已被 Git 跟踪的 `.env.config`；
-- 安装 ESLint、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
+- 安装 ESLint、`@eslint/js`、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
 - 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
@@ -60,12 +62,13 @@ git commit
   → Prettier 检查或格式化
   → Stylelint 最终只读复检
   → ESLint 最终只读复检
+  → 检查最终暂存文件的完整行数
   → 质量结果写回暂存区并恢复未暂存内容
   → 保护文件识别、指纹和企业微信通知
   → 提交信息文件清单
 ```
 
-Stylelint、ESLint 或 Prettier 失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Stylelint、ESLint、Prettier 或单文件行数门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
@@ -99,6 +102,17 @@ git push
     "timeoutMs": 300000
   },
   "preCommit": {
+    "maxFileLines": {
+      "enabled": true,
+      "mode": "strict",
+      "warnAt": 0.85,
+      "rules": [
+        { "pattern": "**/*.vue", "maxLines": 700 },
+        { "pattern": "**/*.{js,mjs,cjs,jsx}", "maxLines": 1000 },
+        { "pattern": "**/*.{ts,tsx}", "maxLines": 1000 }
+      ],
+      "exclusions": []
+    },
     "stylelint": {
       "enabled": false,
       "pattern": "**/*.{css,scss,sass,less,vue}",
@@ -114,6 +128,7 @@ git push
     },
     "eslint": {
       "enabled": true,
+      "preset": true,
       "pattern": "*.{js,jsx,ts,tsx,vue}",
       "fix": true,
       "maxWarnings": 0
@@ -127,6 +142,65 @@ git push
     }
   ],
   "exclusions": []
+}
+```
+
+### 单文件行数门禁
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 新项目 `true`；旧配置迁移后 `false` | 是否检查最终暂存文件的完整行数 |
+| `mode` | `strict` | `strict` 严格限制；`noRegression` 允许存量超限文件不再增长 |
+| `warnAt` | `0.85` | 达到限制比例时输出非阻断预警 |
+| `rules` | Vue 700 行、JS/TS 1000 行 | 按顺序匹配，第一条命中的规则生效 |
+| `exclusions` | `[]` | 排除生成代码等不适合人工拆分的仓库相对路径 |
+
+门禁统计物理行数，空行和注释都计入；文件末尾是否有换行符不会额外增加一行。它在
+格式化和最终 lint 复检后运行，因此判断的是本次实际提交的完整文件，而不是只统计
+本次新增的行。部分暂存文件的未暂存内容会由 `lint-staged` 隔离，不会造成误判。
+
+`strict` 模式下，最终文件超过限制就停止提交。旧项目存在大量历史超限文件时，可以使用
+`noRegression`：门禁读取 `HEAD` 中同一文件作为基线，允许存量超限文件保持或缩短，但
+只要继续增长就停止提交；新增文件和原本未超限的文件仍必须满足正式限制。文件重命名时
+会沿用旧路径在 `HEAD` 中的基线。该模式适合逐步治理，不会把正常修复完全卡住：
+
+```json
+{
+  "preCommit": {
+    "maxFileLines": {
+      "enabled": true,
+      "mode": "noRegression",
+      "warnAt": 0.85
+    }
+  }
+}
+```
+
+达到 `warnAt`（默认 85%）但尚未超限时，门禁会输出剩余行数和提前拆分建议，但不会阻止
+提交。存量超限文件在 `noRegression` 下持平或缩短时也会持续预警，直到低于正式限制。
+
+超过限制时提交会被阻止，并为每个文件输出一段可单独复制给 AI 的完整重构指令。指令会
+列出文件、当前行数、限制和至少需要减少的行数，并根据 Vue/JS/TS 文件给出不同拆分方向；
+Vue 文件还会分别统计 `template`、`script`、`style` 的有效内容行数，指出最大的区域和
+优先拆分方向。多个同类 Vue 区块会合并统计，标签外围的空白行不会计入区域数据。
+同时要求保持接口和行为、限制修改范围、执行项目验证，并禁止通过删除必要注释、压缩代码、
+修改阈值、关闭门禁、修改扩展名或增加排除项绕过检查。自动生成且无法合理拆分的文件可以显式排除，例如：
+
+```json
+{
+  "preCommit": {
+    "maxFileLines": {
+      "enabled": true,
+      "mode": "strict",
+      "warnAt": 0.85,
+      "rules": [
+        { "pattern": "**/*.vue", "maxLines": 700 },
+        { "pattern": "**/*.{js,mjs,cjs,jsx}", "maxLines": 1000 },
+        { "pattern": "**/*.{ts,tsx}", "maxLines": 1000 }
+      ],
+      "exclusions": ["src/generated/**", "public/vendor/**"]
+    }
+  }
 }
 ```
 
@@ -247,6 +321,7 @@ repo-guard doctor
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
 | `enabled` | 新项目 `true`；旧配置缺省 `false` | 是否启用暂存文件 ESLint 门禁 |
+| `preset` | 新项目 `true`；旧配置缺省 `false` | 是否自动注入 repo-guard AI 可维护性规则基线 |
 | `pattern` | `*.{js,jsx,ts,tsx,vue}` | `lint-staged` 文件匹配规则 |
 | `fix` | `true` | 是否应用 ESLint 自动修复 |
 | `maxWarnings` | `0` | 提交允许的最大警告数 |
@@ -254,6 +329,55 @@ repo-guard doctor
 ESLint 必须由业务项目自行安装和配置。repo-guard 使用项目本地的 ESLint，
 不会强制替换项目的 ESLint 版本、插件或规则。项目 ESLint 配置中忽略的文件
 不会阻止提交。
+
+`preset: true` 后不需要在 `eslint.config.js` 中 import repo-guard。门禁会从业务项目
+加载 ESLint 和 `@eslint/js`，把 repo-guard 规则作为 Flat Config 基础配置注入，再
+加载项目原有的 `eslint.config.*`。因此项目规则天然位于后面并拥有最终覆盖权：
+
+```text
+repo-guard AI 规则基线 → 项目 eslint.config.* → ESLint 执行
+```
+
+例如基线的 `complexity` 阈值是 `15`，项目原有配置写成下面这样时，最终使用项目的
+`20`，无需复制或修改 repo-guard 规则：
+
+```js
+export default [
+  {
+    rules: {
+      complexity: ['error', 20],
+      'no-warning-comments': 'off',
+    },
+  },
+];
+```
+
+自动规则基线要求 ESLint `>=9.19` 和 `@eslint/js`；Vue、TypeScript 规则只在业务
+项目已安装对应插件时自动加入。未使用 Vue 或 TypeScript 时不需要安装对应插件：
+
+```bash
+npm install --save-dev eslint @eslint/js
+# Vue 项目按需安装 eslint-plugin-vue
+# TypeScript 项目按需安装 typescript-eslint
+```
+
+`preset: false` 时只运行项目原有 ESLint 配置。新项目初始化默认开启；已有配置迁移
+时默认关闭，避免包升级后突然增加阻断规则。`doctor` 会检查 ESLint 版本、
+`@eslint/js` 和已发现的可选插件，并输出实际启用的集成。
+
+该基线包含以下规则组：
+
+- ESLint 推荐规则，以及未使用禁用注释和未使用行内配置检查；
+- 复杂度、嵌套深度、函数行数、参数数量和回调嵌套限制；
+- 强制大括号、严格相等、`const`，并禁止 `eval`、隐式 `eval`、`Function`
+  构造器、`debugger`、`var` 和未处理的 TODO/FIXME/HACK；
+- Vue 推荐规则，以及组合式 API、按钮类型、props 数量、模板深度和 emit 校验；
+- TypeScript 推荐和风格规则、类型导入一致性；显式 `any` 默认作为警告，而门禁
+  默认 `maxWarnings: 0`，因此仍会阻止提交，项目可以在后置配置中渐进调整。
+
+该预设只使用不需要类型信息的 TypeScript 规则，不会在 pre-commit 中运行 `tsc`、
+`vue-tsc` 或 `recommendedTypeChecked`；需要类型信息的检查应由项目在独立 CI
+命令中执行。
 
 不要把全项目 `npm run lint:fix` 配置成 Hook 命令。repo-guard 只对暂存文件
 执行修复，避免把同一文件中的未暂存内容或其他任务改动带入提交。
@@ -276,8 +400,8 @@ Prettier 必须由业务项目安装为开发依赖，支持 `>=3 <4`。repo-gua
 `package.json#prettier` 规则。`.gitignore` 和 `.prettierignore` 中的文件不会被
 格式化。
 
-建议在 ESLint 配置的 `extends` 最后添加 `prettier`，通过
-`eslint-config-prettier` 关闭相互冲突的格式规则。无需启用
+建议在 ESLint Flat Config 数组最后添加 `eslint-config-prettier`，关闭相互冲突的
+格式规则。无需启用
 `eslint-plugin-prettier`，格式化由独立的 Prettier 门禁负责。
 
 ### 保护文件规则
@@ -323,7 +447,7 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint
+repo-guard enable eslint prettier stylelint maxFileLines
 repo-guard lighthouse
 repo-guard enable lighthouse
 repo-guard disable lighthouse
@@ -337,13 +461,13 @@ repo-guard gate --dry-run
 ```
 
 `doctor` 会检查 Node.js、配置、Hook 版本、项目 Lighthouse CI、Stylelint、ESLint、
-Prettier 配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
+Prettier、单文件行数门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.8.0
+## 升级到 0.9.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.8.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.9.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -355,3 +479,7 @@ Stylelint 安装和配置后，再执行 `npx repo-guard enable stylelint`。
 0.8.0 会把托管 Hook 升级为 v3，并新增默认关闭的
 `lighthouse` 配置。执行 `doctor --fix` 可升级 v1/v2 托管 Hook；只有显式执行
 `repo-guard enable lighthouse` 后，推送前门禁才会运行。
+
+0.9.0 新增单文件行数门禁和由 `preCommit.eslint.preset` 控制的自动 ESLint 规则
+基线。已有项目执行迁移时两项均保持关闭；评估存量代码后，可执行
+`repo-guard enable maxFileLines`，并在配置中把 ESLint `preset` 改为 `true`。

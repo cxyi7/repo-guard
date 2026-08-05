@@ -7,6 +7,10 @@ import { runEslintFiles } from './eslint-runner.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
+import {
+  runMaxFileLinesFiles,
+  selectMaxFileLineFiles,
+} from './max-file-lines.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -26,6 +30,7 @@ export async function runQualityFiles({ root, files, config }) {
   const eslintConfig = config.preCommit.eslint;
   const prettierConfig = config.preCommit.prettier;
   const stylelintConfig = config.preCommit.stylelint;
+  const maxFileLinesConfig = config.preCommit.maxFileLines;
   const eslintFiles = eslintConfig.enabled
     ? selectFiles(normalizedFiles, eslintConfig.pattern)
     : [];
@@ -35,7 +40,15 @@ export async function runQualityFiles({ root, files, config }) {
   const stylelintFiles = stylelintConfig.enabled
     ? selectFiles(normalizedFiles, stylelintConfig.pattern)
     : [];
-  const relevantFiles = uniqueFiles(stylelintFiles, eslintFiles, prettierFiles);
+  const maxFileLineFiles = maxFileLinesConfig.enabled
+    ? selectMaxFileLineFiles(normalizedFiles, maxFileLinesConfig)
+    : [];
+  const relevantFiles = uniqueFiles(
+    stylelintFiles,
+    eslintFiles,
+    prettierFiles,
+    maxFileLineFiles,
+  );
 
   if (relevantFiles.length === 0) {
     console.log('repo-guard quality gate: no staged files matched the configured patterns.');
@@ -70,6 +83,7 @@ export async function runQualityFiles({ root, files, config }) {
         files: eslintFiles,
         fix: true,
         maxWarnings: eslintConfig.maxWarnings,
+        preset: eslintConfig.preset,
       });
       if (eslintFixExitCode !== 0) {
         return fail(eslintFixExitCode);
@@ -107,9 +121,21 @@ export async function runQualityFiles({ root, files, config }) {
         files: eslintFiles,
         fix: false,
         maxWarnings: eslintConfig.maxWarnings,
+        preset: eslintConfig.preset,
       });
       if (eslintVerifyExitCode !== 0) {
         return fail(eslintVerifyExitCode);
+      }
+    }
+
+    if (maxFileLineFiles.length > 0) {
+      const maxFileLinesExitCode = runMaxFileLinesFiles({
+        root,
+        files: maxFileLineFiles,
+        config: maxFileLinesConfig,
+      });
+      if (maxFileLinesExitCode !== 0) {
+        return fail(maxFileLinesExitCode);
       }
     }
 

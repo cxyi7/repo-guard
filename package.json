@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Git guard with staged code quality, Vue Lighthouse, protected files, and notifications",
   "keywords": [
     "git-hooks",
@@ -30,7 +30,7 @@
     "test": "node --test",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
-    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/cli.js && node --check src/config-management.js && node --check src/commands/doctor.js && node --check src/commands/lighthouse.js && node --check src/eslint-diagnostics.js && node --check src/eslint-runner.js && node --check src/lighthouse-project.js && node --check src/lighthouse-runner.js && node --check src/prettier-runner.js && node --check src/stylelint-diagnostics.js && node --check src/stylelint-runner.js && node --check src/vue-style-languages.js && node --check src/quality-runner.js",
+    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/cli.js && node --check src/config-management.js && node --check src/commands/doctor.js && node --check src/commands/lighthouse.js && node --check src/eslint-config.js && node --check src/eslint-diagnostics.js && node --check src/eslint-runner.js && node --check src/lighthouse-project.js && node --check src/lighthouse-runner.js && node --check src/max-file-lines.js && node --check src/prettier-runner.js && node --check src/stylelint-diagnostics.js && node --check src/stylelint-runner.js && node --check src/vue-style-languages.js && node --check src/quality-runner.js",
     "pack:check": "npm pack --dry-run --json",
     "prepublishOnly": "npm run check && npm test"
   },
@@ -39,22 +39,34 @@
     "micromatch": "4.0.8"
   },
   "peerDependencies": {
+    "@eslint/js": ">=8.57",
     "@lhci/cli": ">=0.13 <0.16",
     "eslint": ">=8",
+    "eslint-plugin-vue": ">=9.28",
     "prettier": ">=3 <4",
-    "stylelint": ">=16 <18"
+    "stylelint": ">=16 <18",
+    "typescript-eslint": ">=8"
   },
   "peerDependenciesMeta": {
+    "@eslint/js": {
+      "optional": true
+    },
     "@lhci/cli": {
       "optional": true
     },
     "eslint": {
       "optional": true
     },
+    "eslint-plugin-vue": {
+      "optional": true
+    },
     "prettier": {
       "optional": true
     },
     "stylelint": {
+      "optional": true
+    },
+    "typescript-eslint": {
       "optional": true
     }
   },

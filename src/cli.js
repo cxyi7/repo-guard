@@ -18,8 +18,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]

@@ -14,15 +14,21 @@
    ├─ stylelint-diagnostics    编号化 AI 修复指令
    ├─ eslint-runner            检查、修复、复检
    ├─ eslint-diagnostics       编号化 AI 修复指令
+   ├─ eslint-config            由 JSON 开关控制的 AI 可维护性基础规则
    ├─ prettier-runner          检查、格式化
+   ├─ max-file-lines          行数预警、Vue 区域分析和 strict/noRegression 门禁
    ├─ lighthouse-runner       Vue 构建、LHCI 收集和断言
    ├─ protected-file gate      规则、指纹和通知
    └─ hook installer           Hook 生命周期
 ```
 
-repo-guard 负责流程编排，不拥有业务项目的 Stylelint、ESLint、Prettier 或 Lighthouse
-规则。项目负责选择版本、插件、解析器、页面、断言和忽略范围。Lighthouse 仅运行
-`collect` 和 `assert`，不会隐式上传报告。
+repo-guard 负责流程编排，不替换业务项目的 Stylelint、ESLint、Prettier 或
+Lighthouse 安装。项目负责选择版本、插件、解析器、页面、断言和忽略范围。
+`preCommit.eslint.preset` 开启时，`eslint-runner` 从业务项目加载 `@eslint/js`，并
+按已安装情况加载 `eslint-plugin-vue` 和 `typescript-eslint`，然后通过 ESLint
+`baseConfig` 注入 repo-guard 规则。项目的 `eslint.config.*` 随后正常加载，因此
+项目同名规则、忽略范围和 `eslint-config-prettier` 拥有最终优先级。Lighthouse
+仅运行 `collect` 和 `assert`，不会隐式上传报告。
 
 ## Pre-commit 状态流
 
@@ -31,16 +37,18 @@ repo-guard 负责流程编排，不拥有业务项目的 Stylelint、ESLint、Pr
   ↓
 读取并校验项目配置
   ↓
-质量门禁均未启用 ───────────┐
-  ↓ 任一启用                │
-lint-staged 备份 Git 状态    │
-  ↓                         │
-隐藏部分暂存文件的未暂存内容 │
-  ↓                         │
+质量门禁均未启用 ──────────────────────────┐
+  ↓ 任一启用                               │
+lint-staged 备份 Git 状态                   │
+  ↓                                        │
+隐藏部分暂存文件的未暂存内容                │
+  ↓                                        │
 Stylelint 修复 → ESLint 修复 → Prettier → Stylelint 复检 → ESLint 复检
-  ↓ 成功                    │
-写回暂存区并恢复未暂存内容   │
-  └─────────────────────────┘
+  ↓
+最终暂存文件物理行数检查
+  ↓ 成功                                   │
+写回暂存区并恢复未暂存内容                  │
+  └────────────────────────────────────────┘
   ↓
 保护文件门禁
   ↓
@@ -52,8 +60,13 @@ notify 规则发送企业微信  │
 提交继续
 ```
 
-任一 Stylelint/ESLint/Prettier 配置错误、运行错误或最终规则错误都会返回非零退出码。
+任一 Stylelint/ESLint/Prettier 配置错误、运行错误、最终规则错误或文件行数超限都会返回非零退出码。
 lint-staged 负责恢复备份，保护文件门禁不会在失败状态下运行。
+
+行数门禁在隔离后的最终暂存文件上统计物理行数。`strict` 直接执行阈值；`noRegression`
+只在当前文件超限时读取 `HEAD` 基线，允许存量文件持平或缩短，并对新增文件保持严格限制。
+达到 `warnAt` 的文件只输出预警。Vue 文件额外分析 `template`、`script`、`style` 有效内容，
+用于生成更具体、可直接交给 AI 的拆分指令。
 
 ESLint 无法自动修复时，`eslint-diagnostics` 从结构化结果中提取项目相对路径、
 行列、规则和原始错误。每个问题生成一段带编号、可独立复制给 AI 的完整指令，
@@ -82,7 +95,7 @@ Vue Router 页面由业务项目在 `lighthouserc.*` 中显式配置。LHCI 的�
 doctor --fix → 配置迁移 + 托管安装状态修复 ──────────────┘
 ```
 
-新建配置默认启用 ESLint、Prettier、企业微信通知和 9 条通知级保护规则；只有
+新建配置默认启用 ESLint、Prettier、单文件行数门禁、企业微信通知和 9 条通知级保护规则；只有
 本地 Stylelint 和项目配置均存在时才自动启用 Stylelint。通知关闭时
 `notify` 规则仍参与保护文件识别和提交信息记录，但 gate 不读取凭据、不发送请求。
 迁移只物化旧项目已有的默认行为，不主动开启质量门禁。`doctor --fix` 只修复
@@ -92,11 +105,14 @@ repo-guard 可安全拥有的内容；自定义 Hook、其他 hooksPath、已跟
 ## 兼容策略
 
 - 配置格式继续使用 `version: 1`，新增字段均为可选。
-- 新项目初始化默认启用 ESLint 和 Prettier，并按已有 Stylelint 安装与配置决定是否启用 Stylelint；已有配置升级时不改变显式或缺省开关行为。
+- 新项目初始化默认启用 ESLint、repo-guard ESLint 规则基线、Prettier 和单文件行数门禁，并按已有 Stylelint 安装与配置决定是否启用 Stylelint；已有配置升级时新规则基线和行数门禁保持关闭。
+- 行数门禁缺少 `mode` 和 `warnAt` 时分别使用 `strict` 和 `0.85`；默认覆盖 Vue、JS/JSX 和 TS/TSX 常见扩展名。
 - 缺少 `preCommit` 时按质量门禁未启用处理，保持旧版本行为。
 - 缺少 `notification` 时按启用处理，保持旧版本的通知行为。
 - Hook 生成版本为 v3，安装器可识别并升级 v1、v2。
 - Node.js 最低版本为 18.12.0，与 `lint-staged@15.5.2` 一致。
 - Stylelint、ESLint 和 Prettier 是可选 peer dependency；启用门禁时必须由业务项目安装。
+- 自动 ESLint 基线要求业务项目提供 ESLint `>=9.19` 和 `@eslint/js`；`eslint-plugin-vue` 和 `typescript-eslint` 是按项目安装情况自动启用的可选 peer dependency。
+- repo-guard ESLint 基线只启用无需类型信息的 TypeScript 规则；类型感知配置和 `tsc`/`vue-tsc` 留在项目独立 CI，不进入 pre-commit。
 - `@lhci/cli` 是可选 peer dependency；Vue Lighthouse 启用时必须由业务项目安装并提供 Chrome。
 - Stylelint 不内置规则或语言探测；同一个 Vue 文件出现多种 `<style lang>` 时会在执行前失败。

@@ -27,6 +27,7 @@ export async function runLintFiles(files, cwd = process.cwd()) {
     files,
     fix: eslintConfig.fix,
     maxWarnings: eslintConfig.maxWarnings,
+    preset: eslintConfig.preset,
   });
 }
 

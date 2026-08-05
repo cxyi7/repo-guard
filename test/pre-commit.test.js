@@ -29,6 +29,7 @@ function normalizeEol(value) {
 
 function writeConfig(root, {
   enabled = true,
+  eslintPreset = false,
   pattern = '*.js',
   prettierEnabled = false,
   prettierPattern = '*.{js,json,css}',
@@ -38,12 +39,22 @@ function writeConfig(root, {
   stylelintFix = true,
   stylelintPattern = '**/*.{css,scss,sass,less,vue}',
   stylelintRequireConfig = true,
+  maxFileLinesEnabled = false,
+  maxFileLineRules = [
+    { pattern: '**/*.vue', maxLines: 700 },
+    { pattern: '**/*.js', maxLines: 1000 },
+  ],
 } = {}) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
       preCommit: {
+        maxFileLines: {
+          enabled: maxFileLinesEnabled,
+          rules: maxFileLineRules,
+          exclusions: [],
+        },
         stylelint: {
           enabled: stylelintEnabled,
           pattern: stylelintPattern,
@@ -59,6 +70,7 @@ function writeConfig(root, {
         },
         eslint: {
           enabled,
+          preset: eslintPreset,
           pattern,
           fix: true,
           maxWarnings: 0,
@@ -94,7 +106,11 @@ function createRepository(options = {}) {
       '  },',
       '  {',
       '    files: ["**/*.js"],',
-      '    rules: { semi: ["error", "always"] },',
+      '    languageOptions: { globals: { console: "readonly" } },',
+      `    rules: ${JSON.stringify({
+        semi: ['error', 'always'],
+        ...(options.eslintRules ?? {}),
+      })},`,
       '  },',
       '];',
       '',
@@ -197,8 +213,57 @@ test('lets the project disable the ESLint gate explicitly', async (context) => {
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), invalid);
 });
 
+test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {
+  const root = createRepository({ eslintPreset: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  writeFileSync(path.join(root, 'sample.js'), 'console.log("automatic");\n');
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.js'])),
+    'console.log("automatic");\n',
+  );
+});
+
+test('lets the project ESLint config override the automatic preset', async (context) => {
+  const root = createRepository({
+    eslintPreset: true,
+    eslintRules: { 'no-console': 'off' },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  writeFileSync(path.join(root, 'sample.js'), 'console.log("project override");\n');
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 0);
+});
+
+test('checks the staged file line count and ignores unstaged lines', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    maxFileLinesEnabled: true,
+    maxFileLineRules: [{ pattern: '**/*.js', maxLines: 2 }],
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  writeFileSync(path.join(root, 'sample.js'), 'const one = 1;\nconst two = 2;\n');
+  git(root, ['add', '.']);
+  writeFileSync(
+    path.join(root, 'sample.js'),
+    'const one = 1;\nconst two = 2;\nconst unstaged = 3;\n',
+  );
+
+  assert.equal(await runPreCommit(root), 0);
+  assert.doesNotMatch(git(root, ['show', ':sample.js']), /unstaged/);
+
+  git(root, ['add', 'sample.js']);
+  assert.equal(await runPreCommit(root), 1);
+});
+
 test('does not block files ignored by the project ESLint configuration', async (context) => {
-  const root = createRepository();
+  const root = createRepository({ eslintPreset: true });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const ignored = 'const = ;\n';

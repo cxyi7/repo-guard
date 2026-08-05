@@ -4,8 +4,11 @@ import {
   restoreFileContents,
 } from './file-snapshot.js';
 import { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
+import { createRepoGuardEslintConfig } from './eslint-config.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
+
+const MINIMUM_PRESET_ESLINT_VERSION = Object.freeze([9, 19]);
 
 export function resolveProjectEslintMetadata(root) {
   return resolveProjectPackageMetadata(root, 'eslint', 'ESLint');
@@ -25,6 +28,70 @@ async function loadProjectEslint(root) {
   return {
     ESLint,
     version: metadata.version,
+  };
+}
+
+function normalizeImportedModule(module) {
+  return module.default ?? module;
+}
+
+async function loadProjectIntegration(root, packageName, displayName, required) {
+  let metadata;
+  try {
+    metadata = resolveProjectPackageMetadata(root, packageName, displayName);
+  } catch (error) {
+    if (!required && /is enabled but is not installed/.test(error.message)) {
+      return null;
+    }
+    throw error;
+  }
+
+  const imported = await import(pathToFileURL(metadata.entryPath).href);
+  return {
+    module: normalizeImportedModule(imported),
+    version: metadata.version,
+  };
+}
+
+function supportsRepoGuardPreset(version) {
+  const [major, minor] = String(version).split('.').map(Number);
+  const [minimumMajor, minimumMinor] = MINIMUM_PRESET_ESLINT_VERSION;
+  return major > minimumMajor
+    || (major === minimumMajor && minor >= minimumMinor);
+}
+
+export async function resolveRepoGuardEslintPreset(root, eslintVersion) {
+  if (!supportsRepoGuardPreset(eslintVersion)) {
+    throw new Error(
+      `repo-guard ESLint preset requires ESLint >=9.19; project has ${eslintVersion}`,
+    );
+  }
+
+  const js = await loadProjectIntegration(root, '@eslint/js', '@eslint/js', true);
+  const vue = await loadProjectIntegration(
+    root,
+    'eslint-plugin-vue',
+    'eslint-plugin-vue',
+    false,
+  );
+  const typescript = await loadProjectIntegration(
+    root,
+    'typescript-eslint',
+    'typescript-eslint',
+    false,
+  );
+
+  return {
+    configs: createRepoGuardEslintConfig({
+      js: js.module,
+      vue: vue?.module ?? null,
+      typescript: typescript?.module ?? null,
+    }),
+    integrations: [
+      `@eslint/js ${js.version}`,
+      ...(vue ? [`eslint-plugin-vue ${vue.version}`] : []),
+      ...(typescript ? [`typescript-eslint ${typescript.version}`] : []),
+    ],
   };
 }
 
@@ -62,15 +129,24 @@ export async function runEslintFiles({
   files,
   fix,
   maxWarnings,
+  preset = false,
 }) {
   if (files.length === 0) {
     return 0;
   }
 
   const { ESLint, version } = await loadProjectEslint(root);
+  const repoGuardPreset = preset
+    ? await resolveRepoGuardEslintPreset(root, version)
+    : null;
+  const eslintOptions = (fixEnabled) => ({
+    cwd: root,
+    fix: fixEnabled,
+    ...(repoGuardPreset ? { baseConfig: repoGuardPreset.configs } : {}),
+  });
   const normalizedFiles = normalizeStagedFiles(root, files, 'ESLint')
     .map(({ absolute }) => absolute);
-  const initialEslint = new ESLint({ cwd: root, fix: false });
+  const initialEslint = new ESLint(eslintOptions(false));
   const lintableFiles = await collectLintableFiles(initialEslint, normalizedFiles);
 
   if (lintableFiles.length === 0) {
@@ -91,7 +167,7 @@ export async function runEslintFiles({
     return 1;
   }
 
-  const fixingEslint = new ESLint({ cwd: root, fix: true });
+  const fixingEslint = new ESLint(eslintOptions(true));
   const originalContents = captureFileContents(lintableFiles);
   let finalEslint;
   let finalResults;
@@ -100,7 +176,7 @@ export async function runEslintFiles({
     const fixedResults = await fixingEslint.lintFiles(lintableFiles);
     await ESLint.outputFixes(fixedResults);
 
-    finalEslint = new ESLint({ cwd: root, fix: false });
+    finalEslint = new ESLint(eslintOptions(false));
     finalResults = await finalEslint.lintFiles(lintableFiles);
   } catch (error) {
     restoreFileContents(originalContents);

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_LIGHTHOUSE_CONFIG,
+  DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
   validateConfig,
@@ -28,6 +29,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
 
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
+  assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
     enabled: false,
     pattern: DEFAULT_PRETTIER_PATTERN,
@@ -43,6 +45,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   });
   assert.deepEqual(config.preCommit.eslint, {
     enabled: false,
+    preset: false,
     pattern: DEFAULT_ESLINT_PATTERN,
     fix: true,
     maxWarnings: 0,
@@ -114,6 +117,7 @@ test('validates and normalizes staged ESLint configuration', () => {
     preCommit: {
       eslint: {
         enabled: true,
+        preset: true,
         pattern: '  *.{js,vue}  ',
         fix: false,
         maxWarnings: 2,
@@ -123,6 +127,7 @@ test('validates and normalizes staged ESLint configuration', () => {
 
   assert.deepEqual(config.preCommit.eslint, {
     enabled: true,
+    preset: true,
     pattern: '*.{js,vue}',
     fix: false,
     maxWarnings: 2,
@@ -151,6 +156,79 @@ test('validates and normalizes staged Stylelint configuration', () => {
   });
 });
 
+test('validates and normalizes maximum file line rules', () => {
+  const config = validateConfig(baseConfig({
+    preCommit: {
+      maxFileLines: {
+        enabled: true,
+        mode: 'noRegression',
+        warnAt: 0.9,
+        rules: [
+          { pattern: '  src/**/*.vue  ', maxLines: 700 },
+          { pattern: '**/*.js', maxLines: 1000 },
+        ],
+        exclusions: ['  src/generated/**  '],
+      },
+    },
+  }));
+
+  assert.deepEqual(config.preCommit.maxFileLines, {
+    enabled: true,
+    mode: 'noRegression',
+    warnAt: 0.9,
+    rules: [
+      { pattern: 'src/**/*.vue', maxLines: 700 },
+      { pattern: '**/*.js', maxLines: 1000 },
+    ],
+    exclusions: ['src/generated/**'],
+  });
+});
+
+test('rejects invalid maximum file line rules', () => {
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        maxFileLines: {
+          rules: [{ pattern: '**/*.vue', maxLines: 0 }],
+        },
+      },
+    })),
+    /maxLines must be a positive integer/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        maxFileLines: {
+          rules: [],
+        },
+      },
+    })),
+    /rules must be a non-empty array/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        maxFileLines: {
+          exclusions: [''],
+        },
+      },
+    })),
+    /exclusion 1 must be a non-empty string/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: { maxFileLines: { mode: 'gradual' } },
+    })),
+    /mode must be strict or noRegression/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: { maxFileLines: { warnAt: 0 } },
+    })),
+    /warnAt must be greater than 0 and at most 1/,
+  );
+});
+
 test('rejects unknown and invalid staged ESLint properties', () => {
   assert.throws(
     () => validateConfig(baseConfig({
@@ -172,6 +250,16 @@ test('rejects unknown and invalid staged ESLint properties', () => {
       },
     })),
     /non-negative integer/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        eslint: {
+          preset: 'yes',
+        },
+      },
+    })),
+    /eslint.preset must be a boolean/,
   );
 });
 

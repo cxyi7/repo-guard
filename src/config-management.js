@@ -8,6 +8,7 @@ import {
   CONFIG_FILE,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
+  DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
@@ -18,6 +19,7 @@ export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schem
 export const QUALITY_GATES = Object.freeze(['eslint', 'prettier', 'stylelint']);
 export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
+  'maxFileLines',
   'lighthouse',
   'notification',
 ]);
@@ -29,9 +31,15 @@ export function createStarterConfig({ stylelintEnabled = false } = {}) {
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
     preCommit: {
+      maxFileLines: {
+        ...DEFAULT_MAX_FILE_LINES_CONFIG,
+        enabled: true,
+        rules: DEFAULT_MAX_FILE_LINES_CONFIG.rules.map((rule) => ({ ...rule })),
+        exclusions: [...DEFAULT_MAX_FILE_LINES_CONFIG.exclusions],
+      },
       stylelint: { ...DEFAULT_STYLELINT_CONFIG, enabled: stylelintEnabled },
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
-      eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true },
+      eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true, preset: true },
     },
     rules: [
       { pattern: 'package.json', category: 'Dependencies and package metadata', level: 'notify' },
@@ -93,6 +101,10 @@ export function migrateProjectConfig(root) {
     },
     preCommit: {
       ...preCommit,
+      maxFileLines: {
+        ...DEFAULT_MAX_FILE_LINES_CONFIG,
+        ...(preCommit.maxFileLines ?? {}),
+      },
       stylelint: {
         ...DEFAULT_STYLELINT_CONFIG,
         ...(preCommit.stylelint ?? {}),
