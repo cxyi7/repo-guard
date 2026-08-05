@@ -20,6 +20,15 @@ mkdirSync(TEST_ROOT, { recursive: true });
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function commitFixture(root, message = 'fixture') {
+  git(root, ['config', 'user.name', 'repo-guard test']);
+  git(root, ['config', 'user.email', 'repo-guard@example.invalid']);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', message]);
+  return git(root, ['rev-parse', 'HEAD']);
 }
 
 function createFixture({ enabled = false, vue = true } = {}) {
@@ -173,4 +182,76 @@ test('pre-push only runs Lighthouse when enabled', (context) => {
     readFileSync(path.join(enabledRoot, 'calls.log'), 'utf8'),
     'build\ncollect\nassert\n',
   );
+});
+
+test('pre-push runs enabled gates against a clean pushed HEAD', (context) => {
+  const root = createFixture({ enabled: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const head = commitFixture(root);
+  const input = `refs/heads/main ${head} refs/heads/main ${'0'.repeat(40)}\n`;
+
+  assert.equal(runPrePush(root, { input }), 0);
+  assert.equal(
+    readFileSync(path.join(root, 'calls.log'), 'utf8'),
+    'build\ncollect\nassert\n',
+  );
+});
+
+test('pre-push rejects uncommitted configuration that could disable committed gates', (context) => {
+  const root = createFixture({ enabled: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const head = commitFixture(root);
+  const configPath = path.join(root, 'repo-guard.config.json');
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  config.lighthouse.enabled = false;
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  const input = `refs/heads/main ${head} refs/heads/main ${'0'.repeat(40)}\n`;
+
+  assert.throws(
+    () => runPrePush(root, { input }),
+    /require a clean working tree/,
+  );
+});
+
+test('pre-push rejects non-HEAD and multi-commit pushes when gates are enabled', (context) => {
+  const root = createFixture({ enabled: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = commitFixture(root, 'base');
+  writeFileSync(path.join(root, 'README.md'), 'next\n');
+  git(root, ['add', 'README.md']);
+  git(root, ['commit', '-m', 'next']);
+  const head = git(root, ['rev-parse', 'HEAD']);
+
+  assert.throws(
+    () => runPrePush(root, {
+      input: `refs/heads/base ${base} refs/heads/base ${'0'.repeat(40)}\n`,
+    }),
+    /currently checked-out HEAD/,
+  );
+  assert.throws(
+    () => runPrePush(root, {
+      input: [
+        `refs/heads/base ${base} refs/heads/base ${'0'.repeat(40)}`,
+        `refs/heads/main ${head} refs/heads/main ${base}`,
+        '',
+      ].join('\n'),
+    }),
+    /multiple different commits/,
+  );
+});
+
+test('pre-push skips historical commits that do not contain repo-guard configuration', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'pre-push-no-config-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, ['init']);
+  git(root, ['config', 'user.name', 'repo-guard test']);
+  git(root, ['config', 'user.email', 'repo-guard@example.invalid']);
+  writeFileSync(path.join(root, 'README.md'), 'historical\n');
+  git(root, ['add', 'README.md']);
+  git(root, ['commit', '-m', 'historical']);
+  const head = git(root, ['rev-parse', 'HEAD']);
+
+  assert.equal(runPrePush(root, {
+    input: `refs/tags/historical ${head} refs/tags/historical ${'0'.repeat(40)}\n`,
+  }), 0);
 });

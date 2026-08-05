@@ -77,6 +77,26 @@ test('refuses to overwrite a non-managed hook', (context) => {
   );
 });
 
+test('does not trust a managed marker embedded in custom hook text', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  mkdirSync(path.join(root, '.githooks'), { recursive: true });
+  const custom = [
+    '#!/bin/sh',
+    'echo "custom documentation mentions # repo-guard-managed:v1"',
+    '',
+  ].join('\n');
+  writeFileSync(path.join(root, '.githooks', 'pre-commit'), custom);
+
+  assert.equal(isManagedHook(custom), false);
+  assert.throws(
+    () => installHooks({ cwd: root }),
+    /Refusing to overwrite non-managed Git hook/,
+  );
+  assert.equal(readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'), custom);
+});
+
 test('recognizes and upgrades managed v2 hooks', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));

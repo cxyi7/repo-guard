@@ -9,6 +9,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { runGate } from '../src/commands/gate.js';
+import { buildNotificationText } from '../src/wecom.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -49,4 +50,14 @@ test('enabled notification still requires WeCom credentials', async (context) =>
     () => runGate({ cwd: root }),
     /REPO_GUARD_WECOM_WEBHOOK is not configured/,
   );
+});
+
+test('redacts credentials from SCP-style Git remotes in notifications', (context) => {
+  const root = createRepository({ enabled: false });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, ['remote', 'add', 'origin', 'secret-token@git.example.com:group/repo.git']);
+
+  const output = buildNotificationText(root, [], 'sha256:test');
+  assert.doesNotMatch(output, /secret-token/);
+  assert.match(output, /Remote: git\.example\.com:group\/repo\.git/);
 });

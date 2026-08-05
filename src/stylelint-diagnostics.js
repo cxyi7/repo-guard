@@ -18,6 +18,9 @@ function repairAdvice(rule) {
   if (rule === 'selector-pseudo-class-no-unknown') {
     return '请检查伪类名称和当前样式语法是否正确。';
   }
+  if (rule === 'invalid-option') {
+    return '请修复项目 Stylelint 配置中的无效规则选项，并保留原有规则意图。';
+  }
   if (!rule || rule === 'CssSyntaxError') {
     return '请判断是样式语法错误还是项目 Stylelint 解析配置不匹配，并修复根因。';
   }
@@ -26,19 +29,31 @@ function repairAdvice(rule) {
 
 function collectBlockingWarnings(results, maxWarnings) {
   const warningCount = results.reduce(
-    (total, result) => total + result.warnings.filter(({ severity }) => severity === 'warning').length,
+    (total, result) => total + (result.warnings || [])
+      .filter(({ severity }) => severity === 'warning').length,
     0,
   );
   const warningsAreBlocking = warningCount > maxWarnings;
 
-  return results.flatMap((result) => result.warnings
-    .filter((warning) => warning.severity === 'error' || (
-      warningsAreBlocking && warning.severity === 'warning'
-    ))
-    .map((warning) => ({
+  return results.flatMap((result) => [
+    ...(result.warnings || [])
+      .filter((warning) => warning.severity === 'error' || (
+        warningsAreBlocking && warning.severity === 'warning'
+      ))
+      .map((warning) => ({
+        filePath: result.source,
+        warning,
+      })),
+    ...(result.invalidOptionWarnings || []).map((warning) => ({
       filePath: result.source,
-      warning,
-    })));
+      warning: {
+        ...warning,
+        rule: 'invalid-option',
+        severity: 'error',
+        text: warning.text || warning.message || 'Invalid Stylelint rule option',
+      },
+    })),
+  ]);
 }
 
 export function buildStylelintAiRepairInstructions({

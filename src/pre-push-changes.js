@@ -69,7 +69,10 @@ export function collectPrePushChanges({ input, remoteName = 'origin', root }) {
       ? newBranchBase(root, remoteName, update.localSha)
       : update.remoteSha;
     for (const change of diffRange(root, base, update.localSha)) {
-      combined.set(`${change.oldPath || ''}\0${change.path}`, change);
+      combined.set(
+        `${change.headSha}\0${change.oldPath || ''}\0${change.path}`,
+        change,
+      );
     }
   }
   return [...combined.values()];

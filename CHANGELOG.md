@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0
+
+- 让自动 `pre-push` 从待推送提交读取配置，并在质量门禁启用时要求单一的当前 `HEAD` 和干净工作区，确保 Vitest、构建与 Lighthouse 验证的就是实际推送内容。
+- 保留多个待推送提交中同路径的独立变更记录，并对无法安全验证的多提交推送给出拆分提示。
+- 单元测试静态检查忽略注释和字面量，拒绝 `.skipIf/.todo`，并支持 `.mjs/.cjs/.jsx` 源码映射。
+- 加强托管 Hook 标记识别、人工文本保留、Git Remote 凭据脱敏和 Stylelint 无效选项诊断。
+
 ## 0.10.0
 
 - 增加面向纯 JavaScript/Vue 项目的可配置 Vitest 单元测试门禁，在 `pre-push` 中先于 Lighthouse 自动执行。

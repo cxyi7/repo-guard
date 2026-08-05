@@ -38,9 +38,7 @@ export function buildManagedTextBlock({
 
   const block = [startMarker, ...managedLines, endMarker];
   if (starts.length === 0) {
-    const existing = trimTrailingBlankLines(
-      lines.filter((line) => !managedLines.includes(line.trim())),
-    );
+    const existing = trimTrailingBlankLines(lines);
     return [...existing, ...(existing.length > 0 ? [''] : []), ...block, ''].join('\n');
   }
 

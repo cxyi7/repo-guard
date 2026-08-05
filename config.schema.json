@@ -114,7 +114,7 @@
             "src/api/**/*.js",
             "src/components/**/*.vue"
           ],
-          "description": "Repository-relative source globs that require a colocated .spec.js file."
+          "description": "Repository-relative .js, .mjs, .cjs, .jsx, and .vue source globs that require a colocated .spec.js file."
         },
         "testPatterns": {
           "type": "array",
@@ -126,7 +126,7 @@
           "default": [
             "**/*.spec.js"
           ],
-          "description": "Repository-relative test globs scanned for empty tests and forbidden .skip and .only calls."
+          "description": "Repository-relative test globs scanned for empty tests and forbidden .skip, .skipIf, .todo, and .only calls while ignoring comments and literals."
         },
         "exclusions": {
           "type": "array",

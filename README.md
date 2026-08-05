@@ -90,6 +90,11 @@ git push
   → 全部通过后继续推送
 ```
 
+启用单元测试或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
+`repo-guard.config.json`，并要求待推送提交就是当前检出的 `HEAD`、工作区和暂存区均无改动。
+这样 Vitest、项目构建和 Lighthouse 检查的就是实际推送内容，不会被未提交的本地修复或临时关闭
+开关影响。一次推送包含多个不同提交时应拆成多次推送；纯删除远程引用不运行质量门禁。
+
 ## 项目配置
 
 规则和代码质量配置都保存在项目根目录的 `repo-guard.config.json`：
@@ -258,12 +263,14 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js
 开启功能时，repo-guard 会增量维护根目录 `AGENTS.md` 中带标记的“前端单元测试要求”。AI 修改
 目标源码时会先看到应测试的内容、文件位置和禁止绕过方式；文件原有人工内容不会被覆盖。
 门禁则提供机器可执行的兜底：根据本次推送的精确 Git 范围检查测试是否存在，扫描本次修改的
-测试文件是否使用 `describe/it/test.skip` 或 `.only`，随后自动运行完整的 `npm run test:unit`。
+测试文件是否使用 `describe/it/test.skip`、`.skipIf`、`.todo` 或 `.only`，随后自动运行完整的
+`npm run test:unit`。扫描会忽略注释、字符串、模板字符串和正则表达式中的测试字样。
 
 默认 `requireTests: "newFiles"` 只强制新增或复制的目标源码必须同时有 `.spec.js`，适合已有项目
 渐进接入；`changedFiles` 会要求每个被修改的目标源码都已有对应测试，适合测试基础较完整的项目。
 即使选择 `newFiles`，本次推送仍会执行完整测试套件。静态门禁还会拒绝没有 `it/test` 用例的
-空测试文件和 `.skip/.only` 绕过；断言是否充分等更深层语义由 AI 规范、评审和覆盖率阈值共同约束。
+空测试文件和 `.skip/.skipIf/.todo/.only` 绕过；断言是否充分等更深层语义由 AI 规范、评审和
+覆盖率阈值共同约束。
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
@@ -272,8 +279,8 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js
 | `timeoutMs` | `120000` | 单元测试进程最长运行时间 |
 | `coverage` | `false` | 是否向脚本追加 `--coverage`；覆盖率 Provider 和阈值由项目提供 |
 | `requireTests` | `newFiles` | `newFiles` 仅检查新增/复制源码；`changedFiles` 检查所有变更源码 |
-| `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要同目录测试文件的源码 glob |
-| `testPatterns` | `**/*.spec.js` | 测试文件 glob，同时用于检查 `.skip/.only` |
+| `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要同目录测试文件的源码 glob；支持 `.js/.mjs/.cjs/.jsx/.vue` |
+| `testPatterns` | `**/*.spec.js` | 测试文件 glob，同时用于检查 `.skip/.skipIf/.todo/.only` |
 | `exclusions` | 入口、聚合导出、生成代码 | 不要求测试文件的源码 glob |
 
 自动开启或手动开启只需要控制开关，不需要再导入 repo-guard 配置：

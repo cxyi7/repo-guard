@@ -32,3 +32,22 @@ test('builds one numbered AI repair instruction for each Stylelint problem', () 
   assert.match(output, /请检查属性拼写/);
   assert.match(output, /不要关闭 Stylelint 规则，不要修改无关文件。/);
 });
+
+test('includes invalid Stylelint rule options in AI repair instructions', () => {
+  const root = path.resolve('fixture');
+  const output = buildStylelintAiRepairInstructions({
+    root,
+    maxWarnings: 0,
+    results: [{
+      source: path.join(root, 'stylelint.config.mjs'),
+      warnings: [],
+      invalidOptionWarnings: [{
+        text: 'Invalid option value "wrong" for rule "selector-max-id"',
+      }],
+    }],
+  });
+
+  assert.match(output, /1\./);
+  assert.match(output, /invalid-option/);
+  assert.match(output, /selector-max-id/);
+});

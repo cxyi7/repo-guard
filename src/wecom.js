@@ -62,7 +62,11 @@ function sanitizeRemoteUrl(root) {
     parsed.hash = '';
     return parsed.toString();
   } catch {
-    return remote;
+    const scp = /^(?:[^@\s]+@)?([^:\s]+):([^?#]+)(?:[?#].*)?$/.exec(remote);
+    if (scp) {
+      return `${scp[1]}:${scp[2]}`;
+    }
+    return 'unrecognized remote (redacted)';
   }
 }
 

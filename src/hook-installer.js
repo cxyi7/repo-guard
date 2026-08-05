@@ -166,12 +166,15 @@ export function installHooks({
 }
 
 export function isManagedHook(content) {
-  return content.includes(MANAGED_MARKER)
-    || LEGACY_MANAGED_MARKERS.some((marker) => content.includes(marker));
+  const lines = String(content).replace(/\r\n/g, '\n').split('\n')
+    .map((line) => line.trim());
+  return lines.includes(MANAGED_MARKER)
+    || LEGACY_MANAGED_MARKERS.some((marker) => lines.includes(marker));
 }
 
 export function isCurrentManagedHook(content) {
-  return content.includes(MANAGED_MARKER);
+  return String(content).replace(/\r\n/g, '\n').split('\n')
+    .some((line) => line.trim() === MANAGED_MARKER);
 }
 
 export const managedHookNames = Object.freeze(Object.keys(HOOK_COMMANDS));
