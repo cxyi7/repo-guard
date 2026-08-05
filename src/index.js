@@ -14,6 +14,13 @@ export { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
 export { runStylelintFiles } from './stylelint-runner.js';
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
+export {
+  buildFilePlacementAiInstructions,
+  collectProjectFiles,
+  inspectFilePlacement,
+  runFilePlacementFiles,
+  runFilePlacementProject,
+} from './file-placement.js';
 export { runQualityGate } from './quality-gate.js';
 export { runQualityFiles } from './quality-runner.js';
 export {

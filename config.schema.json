@@ -148,6 +148,120 @@
       "description": "Staged quality gates. Missing defaults can be materialized with repo-guard migrate.",
       "additionalProperties": false,
       "properties": {
+        "filePlacement": {
+          "type": "object",
+          "description": "Configurable staged and full-project file location policy.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically enforce file placement in pre-commit. Explicit full-project checks still use the configured rules when this switch is false."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "newFiles",
+                "changedFiles"
+              ],
+              "default": "newFiles",
+              "description": "newFiles checks added, copied, and renamed paths; changedFiles checks every non-deleted staged matching file."
+            },
+            "rules": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                {
+                  "name": "资源文件",
+                  "patterns": [
+                    "**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,bmp,tif,tiff}",
+                    "**/*.{woff,woff2,ttf,otf,eot}",
+                    "**/*.{mp3,wav,ogg,m4a,mp4,webm,mov,pdf}"
+                  ],
+                  "allowedPatterns": [
+                    "src/assets/**",
+                    "public/assets/**",
+                    "docs/assets/**"
+                  ],
+                  "exceptions": [
+                    "public/favicon.{ico,png,svg}"
+                  ],
+                  "suggestedDirectory": "src/assets"
+                },
+                {
+                  "name": "Markdown 文档",
+                  "patterns": [
+                    "**/*.md"
+                  ],
+                  "allowedPatterns": [
+                    "docs/**",
+                    ".github/**",
+                    ".changeset/**"
+                  ],
+                  "exceptions": [
+                    "README*.md",
+                    "CHANGELOG*.md",
+                    "AGENTS.md",
+                    "SECURITY.md",
+                    "CONTRIBUTING.md",
+                    "CODE_OF_CONDUCT.md",
+                    "LICENSE*.md"
+                  ],
+                  "suggestedDirectory": "docs"
+                }
+              ],
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "patterns",
+                  "allowedPatterns",
+                  "suggestedDirectory"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Human-readable file category used in AI repair instructions."
+                  },
+                  "patterns": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Case-insensitive repository-relative globs selecting files for this rule. The first matching rule wins."
+                  },
+                  "allowedPatterns": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Repository-relative locations allowed for matching files."
+                  },
+                  "exceptions": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Special matching files exempt from this rule."
+                  },
+                  "suggestedDirectory": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Concrete repository-relative directory proposed to AI when a file is misplaced."
+                  }
+                }
+              }
+            }
+          }
+        },
         "maxFileLines": {
           "type": "object",
           "description": "Maximum physical line counts for complete staged files, evaluated after formatting and lint verification.",

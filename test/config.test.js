@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   DEFAULT_ESLINT_PATTERN,
+  DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
@@ -31,6 +32,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
+  assert.deepEqual(config.preCommit.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
   assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
     enabled: false,
@@ -218,6 +220,57 @@ test('validates and normalizes maximum file line rules', () => {
     ],
     exclusions: ['src/generated/**'],
   });
+});
+
+test('validates configurable file placement rules', () => {
+  const config = validateConfig(baseConfig({
+    preCommit: {
+      filePlacement: {
+        enabled: false,
+        mode: 'changedFiles',
+        rules: [{
+          name: '  设计文件  ',
+          patterns: ['  **/*.{fig,sketch}  '],
+          allowedPatterns: ['  design/**  '],
+          exceptions: ['design/examples/**'],
+          suggestedDirectory: '  design/source/  ',
+        }],
+      },
+    },
+  }));
+
+  assert.deepEqual(config.preCommit.filePlacement, {
+    enabled: false,
+    mode: 'changedFiles',
+    rules: [{
+      name: '设计文件',
+      patterns: ['**/*.{fig,sketch}'],
+      allowedPatterns: ['design/**'],
+      exceptions: ['design/examples/**'],
+      suggestedDirectory: 'design/source',
+    }],
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: { filePlacement: { mode: 'strict' } },
+    })),
+    /mode must be newFiles or changedFiles/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        filePlacement: {
+          rules: [{
+            name: 'Unsafe',
+            patterns: ['**/*.key'],
+            allowedPatterns: ['../secrets/**'],
+            suggestedDirectory: 'secrets',
+          }],
+        },
+      },
+    })),
+    /must stay inside the repository/,
+  );
 });
 
 test('rejects invalid maximum file line rules', () => {

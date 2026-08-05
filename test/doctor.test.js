@@ -57,6 +57,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(packageJson.scripts['guard:lighthouse'], 'repo-guard lighthouse');
   assert.equal(packageJson.scripts['guard:unit-test'], 'repo-guard unit-test');
   assert.equal(
+    packageJson.scripts['guard:file-placement'],
+    'repo-guard file-placement',
+  );
+  assert.equal(
     packageJson.scripts['guard:enable-unit-test'],
     'repo-guard enable unitTest',
   );
@@ -68,6 +72,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.preCommit.eslint.enabled, false);
   assert.equal(config.preCommit.eslint.preset, false);
   assert.equal(config.preCommit.prettier.enabled, false);
+  assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);

@@ -238,6 +238,15 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     checks.push('Maximum file lines staged gate is disabled');
   }
 
+  if (config?.preCommit.filePlacement.enabled) {
+    checks.push(
+      `File placement staged gate (mode=${config.preCommit.filePlacement.mode}, `
+      + `${config.preCommit.filePlacement.rules.length} rules)`,
+    );
+  } else {
+    checks.push('File placement staged gate is disabled');
+  }
+
   if (config?.preCommit.stylelint.enabled) {
     try {
       const stylelint = resolveProjectStylelintMetadata(root);

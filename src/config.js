@@ -37,6 +37,48 @@ export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
   ]),
   exclusions: Object.freeze([]),
 });
+export const DEFAULT_FILE_PLACEMENT_CONFIG = Object.freeze({
+  enabled: true,
+  mode: 'newFiles',
+  rules: Object.freeze([
+    Object.freeze({
+      name: '资源文件',
+      patterns: Object.freeze([
+        '**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,bmp,tif,tiff}',
+        '**/*.{woff,woff2,ttf,otf,eot}',
+        '**/*.{mp3,wav,ogg,m4a,mp4,webm,mov,pdf}',
+      ]),
+      allowedPatterns: Object.freeze([
+        'src/assets/**',
+        'public/assets/**',
+        'docs/assets/**',
+      ]),
+      exceptions: Object.freeze([
+        'public/favicon.{ico,png,svg}',
+      ]),
+      suggestedDirectory: 'src/assets',
+    }),
+    Object.freeze({
+      name: 'Markdown 文档',
+      patterns: Object.freeze(['**/*.md']),
+      allowedPatterns: Object.freeze([
+        'docs/**',
+        '.github/**',
+        '.changeset/**',
+      ]),
+      exceptions: Object.freeze([
+        'README*.md',
+        'CHANGELOG*.md',
+        'AGENTS.md',
+        'SECURITY.md',
+        'CONTRIBUTING.md',
+        'CODE_OF_CONDUCT.md',
+        'LICENSE*.md',
+      ]),
+      suggestedDirectory: 'docs',
+    }),
+  ]),
+});
 export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   enabled: false,
   configFile: null,
@@ -80,6 +122,32 @@ function assertKnownProperties(value, allowed, label) {
   if (unknown.length > 0) {
     throw new Error(`${label} has unsupported properties: ${unknown.join(', ')}`);
   }
+}
+
+function normalizeRelativePattern(value, label) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  const pattern = normalizeGitPath(value.trim());
+  if (
+    path.isAbsolute(value.trim())
+    || pattern.startsWith('/')
+    || /^[A-Za-z]:\//.test(pattern)
+    || pattern.startsWith('!')
+    || pattern.split('/').includes('..')
+  ) {
+    throw new Error(`${label} must stay inside the repository`);
+  }
+  return pattern;
+}
+
+function normalizePatternList(value, label, { allowEmpty = false } = {}) {
+  if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
+    throw new Error(`${label} must be ${allowEmpty ? 'an array' : 'a non-empty array'}`);
+  }
+  return value.map((pattern, index) => (
+    normalizeRelativePattern(pattern, `${label} item ${index + 1}`)
+  ));
 }
 
 export function globToRegExp(pattern) {
@@ -277,9 +345,85 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     preCommitValue,
-    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines']),
+    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines', 'filePlacement']),
     `${configPath} preCommit`,
   );
+
+  const filePlacementValue = preCommitValue.filePlacement ?? {};
+  if (
+    !filePlacementValue
+    || typeof filePlacementValue !== 'object'
+    || Array.isArray(filePlacementValue)
+  ) {
+    throw new Error(`${configPath} preCommit.filePlacement must be an object`);
+  }
+  assertKnownProperties(
+    filePlacementValue,
+    new Set(['enabled', 'mode', 'rules']),
+    `${configPath} preCommit.filePlacement`,
+  );
+  if (
+    filePlacementValue.enabled != null
+    && typeof filePlacementValue.enabled !== 'boolean'
+  ) {
+    throw new Error(`${configPath} preCommit.filePlacement.enabled must be a boolean`);
+  }
+  if (
+    filePlacementValue.mode != null
+    && !['newFiles', 'changedFiles'].includes(filePlacementValue.mode)
+  ) {
+    throw new Error(
+      `${configPath} preCommit.filePlacement.mode must be newFiles or changedFiles`,
+    );
+  }
+  const filePlacementRulesValue = filePlacementValue.rules
+    ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
+  if (!Array.isArray(filePlacementRulesValue) || filePlacementRulesValue.length === 0) {
+    throw new Error(`${configPath} preCommit.filePlacement.rules must be a non-empty array`);
+  }
+  const filePlacementRules = filePlacementRulesValue.map((rule, index) => {
+    const label = `${configPath} preCommit.filePlacement rule ${index + 1}`;
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(
+      rule,
+      new Set([
+        'name',
+        'patterns',
+        'allowedPatterns',
+        'exceptions',
+        'suggestedDirectory',
+      ]),
+      label,
+    );
+    if (typeof rule.name !== 'string' || !rule.name.trim()) {
+      throw new Error(`${label}.name must be a non-empty string`);
+    }
+    const suggestedDirectory = normalizeRelativePattern(
+      rule.suggestedDirectory,
+      `${label}.suggestedDirectory`,
+    ).replace(/\/$/, '');
+    if (['*', '?', '{', '}', '[', ']', '!'].some((character) => (
+      suggestedDirectory.includes(character)
+    ))) {
+      throw new Error(`${label}.suggestedDirectory must be a concrete directory`);
+    }
+    return {
+      name: rule.name.trim(),
+      patterns: normalizePatternList(rule.patterns, `${label}.patterns`),
+      allowedPatterns: normalizePatternList(
+        rule.allowedPatterns,
+        `${label}.allowedPatterns`,
+      ),
+      exceptions: normalizePatternList(
+        rule.exceptions ?? [],
+        `${label}.exceptions`,
+        { allowEmpty: true },
+      ),
+      suggestedDirectory,
+    };
+  });
 
   const maxFileLinesValue = preCommitValue.maxFileLines ?? {};
   if (
@@ -515,6 +659,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       exclusions: unitTestExclusions,
     },
     preCommit: {
+      filePlacement: {
+        enabled: filePlacementValue.enabled ?? DEFAULT_FILE_PLACEMENT_CONFIG.enabled,
+        mode: filePlacementValue.mode ?? DEFAULT_FILE_PLACEMENT_CONFIG.mode,
+        rules: filePlacementRules,
+      },
       maxFileLines: {
         enabled: maxFileLinesValue.enabled ?? DEFAULT_MAX_FILE_LINES_CONFIG.enabled,
         mode: maxFileLinesValue.mode ?? DEFAULT_MAX_FILE_LINES_CONFIG.mode,

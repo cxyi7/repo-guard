@@ -88,6 +88,7 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:lighthouse'] ||= 'repo-guard lighthouse';
   packageJson.scripts['guard:enable-unit-test'] ||= 'repo-guard enable unitTest';
   packageJson.scripts['guard:unit-test'] ||= 'repo-guard unit-test';
+  packageJson.scripts['guard:file-placement'] ||= 'repo-guard file-placement';
   packageJson.scripts['guard:enable-notification'] ||= 'repo-guard enable notification';
   packageJson.scripts['guard:disable-notification'] ||= 'repo-guard disable notification';
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';

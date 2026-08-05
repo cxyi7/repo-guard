@@ -7,6 +7,7 @@ import path from 'node:path';
 import {
   CONFIG_FILE,
   DEFAULT_ESLINT_CONFIG,
+  DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
@@ -20,11 +21,26 @@ export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schem
 export const QUALITY_GATES = Object.freeze(['eslint', 'prettier', 'stylelint']);
 export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
+  'filePlacement',
   'maxFileLines',
   'lighthouse',
   'unitTest',
   'notification',
 ]);
+
+function cloneFilePlacementConfig(value = {}) {
+  const rules = value.rules ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
+  return {
+    ...DEFAULT_FILE_PLACEMENT_CONFIG,
+    ...value,
+    rules: rules.map((rule) => ({
+      ...rule,
+      patterns: [...rule.patterns],
+      allowedPatterns: [...rule.allowedPatterns],
+      exceptions: [...(rule.exceptions ?? [])],
+    })),
+  };
+}
 
 export function createStarterConfig({
   stylelintEnabled = false,
@@ -43,6 +59,7 @@ export function createStarterConfig({
       exclusions: [...DEFAULT_UNIT_TEST_CONFIG.exclusions],
     },
     preCommit: {
+      filePlacement: cloneFilePlacementConfig(),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
         enabled: true,
@@ -117,6 +134,7 @@ export function migrateProjectConfig(root) {
     },
     preCommit: {
       ...preCommit,
+      filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
         ...(preCommit.maxFileLines ?? {}),

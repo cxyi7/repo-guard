@@ -4,6 +4,7 @@ import {
   restoreFileContents,
 } from './file-snapshot.js';
 import { runEslintFiles } from './eslint-runner.js';
+import { runFilePlacementFiles } from './file-placement.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
@@ -31,6 +32,7 @@ export async function runQualityFiles({ root, files, config }) {
   const prettierConfig = config.preCommit.prettier;
   const stylelintConfig = config.preCommit.stylelint;
   const maxFileLinesConfig = config.preCommit.maxFileLines;
+  const filePlacementConfig = config.preCommit.filePlacement;
   const eslintFiles = eslintConfig.enabled
     ? selectFiles(normalizedFiles, eslintConfig.pattern)
     : [];
@@ -50,7 +52,7 @@ export async function runQualityFiles({ root, files, config }) {
     maxFileLineFiles,
   );
 
-  if (relevantFiles.length === 0) {
+  if (relevantFiles.length === 0 && !filePlacementConfig.enabled) {
     console.log('repo-guard quality gate: no staged files matched the configured patterns.');
     return 0;
   }
@@ -136,6 +138,17 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (maxFileLinesExitCode !== 0) {
         return fail(maxFileLinesExitCode);
+      }
+    }
+
+    if (filePlacementConfig.enabled) {
+      const filePlacementExitCode = runFilePlacementFiles({
+        root,
+        files: normalizedFiles,
+        config: filePlacementConfig,
+      });
+      if (filePlacementExitCode !== 0) {
+        return fail(filePlacementExitCode);
       }
     }
 

@@ -40,6 +40,15 @@ function writeConfig(root, {
   stylelintPattern = '**/*.{css,scss,sass,less,vue}',
   stylelintRequireConfig = true,
   maxFileLinesEnabled = false,
+  filePlacementEnabled = false,
+  filePlacementMode = 'newFiles',
+  filePlacementRules = [{
+    name: 'Assets',
+    patterns: ['**/*.{png,svg}'],
+    allowedPatterns: ['src/assets/**'],
+    exceptions: [],
+    suggestedDirectory: 'src/assets',
+  }],
   maxFileLineRules = [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
@@ -50,6 +59,11 @@ function writeConfig(root, {
     `${JSON.stringify({
       version: 1,
       preCommit: {
+        filePlacement: {
+          enabled: filePlacementEnabled,
+          mode: filePlacementMode,
+          rules: filePlacementRules,
+        },
         maxFileLines: {
           enabled: maxFileLinesEnabled,
           rules: maxFileLineRules,
@@ -260,6 +274,39 @@ test('checks the staged file line count and ignores unstaged lines', async (cont
 
   git(root, ['add', 'sample.js']);
   assert.equal(await runPreCommit(root), 1);
+});
+
+test('blocks newly staged resources outside configured asset folders', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: true,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+
+  mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'components', 'logo.png'), 'fixture');
+  git(root, ['add', 'src/components/logo.png']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.match(git(root, ['show', ':src/components/logo.png']), /fixture/);
+});
+
+test('does not block modified legacy resources in newFiles mode', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: true,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'components', 'legacy.png'), 'baseline');
+  commitBaseline(root);
+
+  writeFileSync(path.join(root, 'src', 'components', 'legacy.png'), 'updated');
+  git(root, ['add', 'src/components/legacy.png']);
+
+  assert.equal(await runPreCommit(root), 0);
+  assert.match(git(root, ['show', ':src/components/legacy.png']), /updated/);
 });
 
 test('does not block files ignored by the project ESLint configuration', async (context) => {

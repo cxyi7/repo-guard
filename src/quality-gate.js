@@ -16,16 +16,18 @@ export async function runQualityGate({ cwd = process.cwd() } = {}) {
   const prettierConfig = config.preCommit.prettier;
   const stylelintConfig = config.preCommit.stylelint;
   const maxFileLinesConfig = config.preCommit.maxFileLines;
+  const filePlacementConfig = config.preCommit.filePlacement;
 
   if (
     !eslintConfig.enabled
     && !prettierConfig.enabled
     && !stylelintConfig.enabled
     && !maxFileLinesConfig.enabled
+    && !filePlacementConfig.enabled
   ) {
     console.log(
       'repo-guard quality gate skipped: ESLint, Prettier, Stylelint, '
-      + 'and maximum file lines are disabled.',
+      + 'maximum file lines, and file placement are disabled.',
     );
     return 0;
   }

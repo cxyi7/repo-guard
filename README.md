@@ -1,18 +1,18 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、单文件行数限制、JS/Vue 单元测试、Vue Lighthouse 推送前质量检查、公共文件保护、
+Prettier 格式化、文件归位、单文件行数限制、JS/Vue 单元测试、Vue Lighthouse 推送前质量检查、公共文件保护、
 企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.10.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.0
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、Vue/JS/TS 单文件行数门禁、
+新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
@@ -44,8 +44,9 @@ repo-guard doctor --fix
 
 `migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `unitTest`、`maxFileLines` 和
-`preCommit.eslint.preset` 默认关闭；可在确认存量文件情况后分别开启。
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `unitTest`、
+`maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
+只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
 `doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
 `.gitignore`、`.env.config` 和 `guard:*` 项目脚本，最后执行完整诊断。它不会：
@@ -66,12 +67,13 @@ git commit
   → Stylelint 最终只读复检
   → ESLint 最终只读复检
   → 检查最终暂存文件的完整行数
+  → 检查新增、复制或重命名文件的存放位置
   → 质量结果写回暂存区并恢复未暂存内容
   → 保护文件识别、指纹和企业微信通知
   → 提交信息文件清单
 ```
 
-Stylelint、ESLint、Prettier 或单文件行数门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
@@ -129,6 +131,38 @@ git push
     "timeoutMs": 300000
   },
   "preCommit": {
+    "filePlacement": {
+      "enabled": true,
+      "mode": "newFiles",
+      "rules": [
+        {
+          "name": "资源文件",
+          "patterns": [
+            "**/*.{png,jpg,jpeg,gif,webp,avif,svg,ico,bmp,tif,tiff}",
+            "**/*.{woff,woff2,ttf,otf,eot}",
+            "**/*.{mp3,wav,ogg,m4a,mp4,webm,mov,pdf}"
+          ],
+          "allowedPatterns": ["src/assets/**", "public/assets/**", "docs/assets/**"],
+          "exceptions": ["public/favicon.{ico,png,svg}"],
+          "suggestedDirectory": "src/assets"
+        },
+        {
+          "name": "Markdown 文档",
+          "patterns": ["**/*.md"],
+          "allowedPatterns": ["docs/**", ".github/**", ".changeset/**"],
+          "exceptions": [
+            "README*.md",
+            "CHANGELOG*.md",
+            "AGENTS.md",
+            "SECURITY.md",
+            "CONTRIBUTING.md",
+            "CODE_OF_CONDUCT.md",
+            "LICENSE*.md"
+          ],
+          "suggestedDirectory": "docs"
+        }
+      ]
+    },
     "maxFileLines": {
       "enabled": true,
       "mode": "strict",
@@ -171,6 +205,54 @@ git push
   "exclusions": []
 }
 ```
+
+### 文件归位门禁
+
+`preCommit.filePlacement` 默认开启，内置“资源文件”和“Markdown 文档”两组规则。资源默认只能放在
+`src/assets/**`、`public/assets/**` 或 `docs/assets/**`，Markdown 默认只能放在 `docs/**`、
+`.github/**` 或 `.changeset/**`；README、CHANGELOG、AGENTS 等标准根目录文档属于默认例外。
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | `true` | 是否在提交时启用文件归位门禁 |
+| `mode` | `newFiles` | `newFiles` 只检查新增、复制和重命名后的路径；`changedFiles` 也检查修改的存量文件 |
+| `rules` | 资源、Markdown 两组 | 按顺序匹配，第一条命中的规则生效 |
+| `patterns` | 按规则定义 | 该规则负责的仓库相对路径 glob |
+| `allowedPatterns` | 按规则定义 | 文件允许出现的位置 glob |
+| `exceptions` | 按规则定义 | 明确允许跳过的文件路径 glob |
+| `suggestedDirectory` | 按规则定义 | 失败提示提供给 AI 的建议目标目录，必须是具体目录而不是 glob |
+
+提交失败时会按文件输出可直接交给 AI 的中文指令，包括当前路径、建议目标、允许位置、引用路径更新、
+验证命令和禁止绕过要求。移动文件本身不是自动完成的，因为 AI 还需要同步修改 Vue、JavaScript、CSS、
+HTML 和 Markdown 中的引用。
+
+新增文件类型只需要在配置中增加规则，不需要改 npm 包代码。例如要求 Figma 和 Sketch 源文件统一放在
+`design/**`，可将下面的规则对象追加到现有 `preCommit.filePlacement.rules` 数组：
+
+```json
+{
+  "name": "设计源文件",
+  "patterns": ["**/*.{fig,sketch}"],
+  "allowedPatterns": ["design/**"],
+  "exceptions": [],
+  "suggestedDirectory": "design"
+}
+```
+
+负责人需要一次性检查整个项目时，执行：
+
+```bash
+npm run guard:file-placement
+# 或
+npx repo-guard file-placement
+```
+
+`guard:file-placement` 项目脚本由 `repo-guard init` 或 `repo-guard doctor --fix` 自动补充；
+尚未更新项目脚本时可以直接使用 `npx` 命令。
+
+全项目命令检查所有已跟踪文件和未被 Git 忽略的未跟踪文件，并始终按全量模式检查，因此即使
+`enabled: false` 或 `mode: "newFiles"` 也能用于专项治理。它只报告问题，不移动文件；通过
+`.gitignore` 忽略的构建产物和依赖目录不会进入扫描。
 
 ### 单文件行数门禁
 
@@ -542,7 +624,9 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines unitTest
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement unitTest
+repo-guard disable filePlacement
+repo-guard file-placement
 repo-guard unit-test
 repo-guard lighthouse
 repo-guard enable lighthouse
@@ -557,13 +641,13 @@ repo-guard gate --dry-run
 ```
 
 `doctor` 会检查 Node.js、配置、Hook 版本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
-Stylelint、ESLint、Prettier、单文件行数门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
+Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.10.0
+## 升级到 0.12.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.10.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -583,3 +667,10 @@ Stylelint 安装和配置后，再执行 `npx repo-guard enable stylelint`。
 0.10.0 新增 `unitTest` 配置、JS/Vue 同目录测试要求、受管理的 `AGENTS.md` AI 规范和
 pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目迁移后测试开关保持关闭；
 准备好 Vitest 与 `test:unit` 后执行 `repo-guard enable unitTest`，再运行 `doctor --fix`。
+
+0.11.0 加强 pre-push 的提交范围和工作区校验，确保单元测试、构建与 Lighthouse 针对实际推送内容执行，
+并补强单元测试绕过识别、Hook 升级和配置诊断。
+
+0.12.0 新增默认开启的 `preCommit.filePlacement` 文件归位门禁。已有项目迁移后使用 `newFiles`
+模式，只约束新增、复制和重命名后的路径；运行 `doctor --fix` 会补充全项目专项检查脚本
+`guard:file-placement`。如需关闭日常提交检查，可执行 `repo-guard disable filePlacement`。
