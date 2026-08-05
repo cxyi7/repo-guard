@@ -1,10 +1,11 @@
 import path from 'node:path';
-import { CONFIG_FILE } from '../config.js';
+import { CONFIG_FILE, loadConfig } from '../config.js';
 import {
   migrateProjectConfig,
   setFeaturesEnabled,
 } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
+import { ensureUnitTestPolicy } from '../unit-test-policy.js';
 
 export function runMigrate(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
@@ -17,6 +18,12 @@ export function runMigrate(cwd = process.cwd()) {
 function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const root = findRepositoryRoot(cwd);
   const result = setFeaturesEnabled(root, requestedFeatures, enabled);
+  if (enabled && requestedFeatures.includes('unitTest')) {
+    const policy = ensureUnitTestPolicy(root, loadConfig(root).unitTest);
+    console.log(
+      `repo-guard unit test policy: ${policy.changed ? 'updated' : 'already current'}`,
+    );
+  }
   const state = enabled ? 'enabled' : 'disabled';
   console.log(`repo-guard features: ${path.join(root, CONFIG_FILE)}`);
   if (result.migrated) {

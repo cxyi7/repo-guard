@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
-import { runLighthouseCommand, runPrePush } from './commands/lighthouse.js';
+import { runLighthouseCommand } from './commands/lighthouse.js';
+import { runPrePush } from './commands/pre-push.js';
+import { runUnitTestCommand } from './commands/unit-test.js';
 import {
   runLintFiles,
   runPreCommit,
@@ -18,14 +21,15 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|maxFileLines|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|maxFileLines|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|unitTest|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|unitTest|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
   repo-guard pre-commit
   repo-guard pre-push
+  repo-guard unit-test
   repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
@@ -74,8 +78,13 @@ export async function runCli(argumentsList) {
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();
       case 'pre-push':
+        return runPrePush(process.cwd(), {
+          input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
+          remoteName: rest[0] || 'origin',
+        });
+      case 'unit-test':
         ensureSupportedOptions(rest, new Set());
-        return runPrePush();
+        return runUnitTestCommand();
       case 'lighthouse':
         ensureSupportedOptions(rest, new Set(['--skip-build']));
         return runLighthouseCommand(process.cwd(), {

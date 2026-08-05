@@ -6,6 +6,7 @@ import {
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
+  DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from '../src/config.js';
 
@@ -29,6 +30,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
 
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
+  assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
   assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
     enabled: false,
@@ -89,6 +91,40 @@ test('validates and normalizes Vue Lighthouse configuration', () => {
   assert.throws(
     () => validateConfig(baseConfig({ lighthouse: { timeoutMs: 0 } })),
     /positive integer/,
+  );
+});
+
+test('validates and normalizes unit test configuration', () => {
+  const config = validateConfig(baseConfig({
+    unitTest: {
+      enabled: true,
+      script: '  test:unit  ',
+      timeoutMs: 60000,
+      coverage: true,
+      requireTests: 'changedFiles',
+      sourcePatterns: ['  src/utils/**/*.js  '],
+      testPatterns: ['**/*.spec.js'],
+      exclusions: [],
+    },
+  }));
+
+  assert.deepEqual(config.unitTest, {
+    enabled: true,
+    script: 'test:unit',
+    timeoutMs: 60000,
+    coverage: true,
+    requireTests: 'changedFiles',
+    sourcePatterns: ['src/utils/**/*.js'],
+    testPatterns: ['**/*.spec.js'],
+    exclusions: [],
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ unitTest: { requireTests: 'all' } })),
+    /requireTests must be newFiles or changedFiles/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ unitTest: { sourcePatterns: [] } })),
+    /sourcePatterns must be a non-empty array/,
   );
 });
 

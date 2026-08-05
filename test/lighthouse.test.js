@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { runPrePush } from '../src/commands/lighthouse.js';
+import { runPrePush } from '../src/commands/pre-push.js';
 import { runVueLighthouse } from '../src/lighthouse-runner.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

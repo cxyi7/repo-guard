@@ -12,6 +12,7 @@ import {
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
+  DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from './config.js';
 
@@ -21,15 +22,26 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'maxFileLines',
   'lighthouse',
+  'unitTest',
   'notification',
 ]);
 
-export function createStarterConfig({ stylelintEnabled = false } = {}) {
+export function createStarterConfig({
+  stylelintEnabled = false,
+  unitTestEnabled = false,
+} = {}) {
   return {
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
+    unitTest: {
+      ...DEFAULT_UNIT_TEST_CONFIG,
+      enabled: unitTestEnabled,
+      sourcePatterns: [...DEFAULT_UNIT_TEST_CONFIG.sourcePatterns],
+      testPatterns: [...DEFAULT_UNIT_TEST_CONFIG.testPatterns],
+      exclusions: [...DEFAULT_UNIT_TEST_CONFIG.exclusions],
+    },
     preCommit: {
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -99,6 +111,10 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_LIGHTHOUSE_CONFIG,
       ...(prepared.lighthouse ?? {}),
     },
+    unitTest: {
+      ...DEFAULT_UNIT_TEST_CONFIG,
+      ...(prepared.unitTest ?? {}),
+    },
     preCommit: {
       ...preCommit,
       maxFileLines: {
@@ -130,7 +146,7 @@ export function migrateProjectConfig(root) {
 }
 
 function featureConfig(config, feature) {
-  if (feature === 'notification' || feature === 'lighthouse') {
+  if (feature === 'notification' || feature === 'lighthouse' || feature === 'unitTest') {
     return config[feature];
   }
   return config.preCommit[feature];

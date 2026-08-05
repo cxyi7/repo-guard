@@ -1,19 +1,34 @@
-import { CONFIG_FILE } from '../config.js';
+import {
+  CONFIG_FILE,
+  DEFAULT_UNIT_TEST_CONFIG,
+  loadConfig,
+} from '../config.js';
 import { ensureProjectConfig } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../stylelint-project.js';
+import {
+  ensureUnitTestPolicy,
+  UNIT_TEST_POLICY_FILE,
+} from '../unit-test-policy.js';
+import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const stylelintSetup = detectProjectStylelintSetup(root);
+  const unitTestSetup = detectProjectUnitTestSetup(root, DEFAULT_UNIT_TEST_CONFIG);
   const { created: configCreated } = ensureProjectConfig(root, {
     stylelintEnabled: stylelintSetup.ready,
+    unitTestEnabled: unitTestSetup.ready,
   });
   const result = installHooks({
     cwd: root,
     updatePackageScripts: true,
   });
+  const config = loadConfig(root);
+  const unitTestPolicy = config.unitTest.enabled
+    ? ensureUnitTestPolicy(root, config.unitTest)
+    : null;
 
   console.log(`repo-guard initialized in ${root}`);
   console.log(`- hooks path: ${result.hooksPath}`);
@@ -26,6 +41,11 @@ export function runInit(cwd = process.cwd()) {
     `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
   );
   console.log(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  if (unitTestPolicy) {
+    console.log(
+      `- ${UNIT_TEST_POLICY_FILE}: ${unitTestPolicy.changed ? 'updated' : 'preserved'}`,
+    );
+  }
   if (configCreated && stylelintSetup.ready) {
     console.log(
       `- Stylelint ${stylelintSetup.metadata.version}: enabled with ${stylelintSetup.configFile}`,
@@ -35,6 +55,11 @@ export function runInit(cwd = process.cwd()) {
   }
   if (configCreated) {
     console.log('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
+    console.log(
+      unitTestSetup.ready
+        ? `- Unit tests: enabled with npm script "${DEFAULT_UNIT_TEST_CONFIG.script}"`
+        : '- Unit tests: disabled until the project installs Vitest and adds test:unit',
+    );
   }
   console.log('- run "repo-guard doctor" after configuring notification environment variables');
   return 0;

@@ -41,7 +41,15 @@ test('CLI migrates configuration and enables selected gates', (context) => {
 
   const enableResult = run(
     root,
-    ['enable', 'eslint', 'prettier', 'stylelint', 'maxFileLines', 'lighthouse'],
+    [
+      'enable',
+      'eslint',
+      'prettier',
+      'stylelint',
+      'maxFileLines',
+      'unitTest',
+      'lighthouse',
+    ],
   );
   assert.equal(enableResult.status, 0, enableResult.stderr);
   assert.match(enableResult.stdout, /eslint: enabled/);
@@ -49,6 +57,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /stylelint: enabled/);
   assert.match(enableResult.stdout, /lighthouse: enabled/);
   assert.match(enableResult.stdout, /maxFileLines: enabled/);
+  assert.match(enableResult.stdout, /unitTest: enabled/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -58,6 +67,11 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
+  assert.equal(config.unitTest.enabled, true);
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:unit-test-policy:start/,
+  );
 
   const disableResult = run(root, ['disable', 'notification']);
   assert.equal(disableResult.status, 0, disableResult.stderr);
@@ -90,4 +104,39 @@ test('init enables Stylelint when the project already provides it and a config',
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(config.preCommit.stylelint.enabled, true);
+});
+
+test('init enables unit tests and writes AI policy when Vitest is ready', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-unit-test-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+  assert.equal(gitResult.status, 0, gitResult.stderr);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({
+      name: 'fixture',
+      version: '1.0.0',
+      scripts: { 'test:unit': 'vitest run' },
+    }, null, 2)}\n`,
+  );
+  const vitestRoot = path.join(root, 'node_modules', 'vitest');
+  mkdirSync(vitestRoot, { recursive: true });
+  writeFileSync(
+    path.join(vitestRoot, 'package.json'),
+    `${JSON.stringify({ name: 'vitest', version: '3.2.4', main: 'index.js' }, null, 2)}\n`,
+  );
+  writeFileSync(path.join(vitestRoot, 'index.js'), 'export default {};\n');
+
+  const initResult = run(root, ['init']);
+  assert.equal(initResult.status, 0, initResult.stderr);
+  assert.match(initResult.stdout, /Unit tests: enabled/);
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(config.unitTest.enabled, true);
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:unit-test-policy:start/,
+  );
 });

@@ -11,13 +11,3 @@ export function runLighthouseCommand(cwd = process.cwd(), { skipBuild = false } 
     skipBuild,
   });
 }
-
-export function runPrePush(cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
-  if (!config.lighthouse.enabled) {
-    console.log('repo-guard pre-push: Lighthouse is disabled.');
-    return 0;
-  }
-  return runVueLighthouse({ root, config: config.lighthouse });
-}

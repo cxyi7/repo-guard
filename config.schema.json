@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality and file-line, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, staged quality, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -61,6 +61,85 @@
           "minimum": 1,
           "default": 300000,
           "description": "Timeout applied separately to the build, collect, and assert processes."
+        }
+      }
+    },
+    "unitTest": {
+      "type": "object",
+      "description": "JavaScript/Vue unit-test policy and pre-push Vitest gate. The consuming project owns Vitest, Vue Test Utils, its test environment, configuration, and tests.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run missing-test and bypass checks followed by the configured unit-test script from the managed pre-push hook. Init enables this only when Vitest and the script are already available."
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "default": "test:unit",
+          "description": "Name of the consuming project's npm script used to run unit tests."
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 120000,
+          "description": "Maximum runtime for the unit-test process."
+        },
+        "coverage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Append --coverage to the configured npm script. The project must provide a compatible Vitest coverage provider and thresholds."
+        },
+        "requireTests": {
+          "type": "string",
+          "enum": [
+            "newFiles",
+            "changedFiles"
+          ],
+          "default": "newFiles",
+          "description": "Require colocated tests only for newly added/copied source files, or for every changed source file."
+        },
+        "sourcePatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "src/utils/**/*.js",
+            "src/composables/**/*.js",
+            "src/stores/**/*.js",
+            "src/api/**/*.js",
+            "src/components/**/*.vue"
+          ],
+          "description": "Repository-relative source globs that require a colocated .spec.js file."
+        },
+        "testPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "**/*.spec.js"
+          ],
+          "description": "Repository-relative test globs scanned for empty tests and forbidden .skip and .only calls."
+        },
+        "exclusions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "src/main.js",
+            "src/**/index.js",
+            "src/generated/**"
+          ],
+          "description": "Source paths excluded from the missing-test requirement, such as entry points and generated files."
         }
       }
     },

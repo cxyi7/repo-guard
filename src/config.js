@@ -43,6 +43,26 @@ export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   buildScript: 'build',
   timeoutMs: 300000,
 });
+export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
+  enabled: false,
+  script: 'test:unit',
+  timeoutMs: 120000,
+  coverage: false,
+  requireTests: 'newFiles',
+  sourcePatterns: Object.freeze([
+    'src/utils/**/*.js',
+    'src/composables/**/*.js',
+    'src/stores/**/*.js',
+    'src/api/**/*.js',
+    'src/components/**/*.vue',
+  ]),
+  testPatterns: Object.freeze(['**/*.spec.js']),
+  exclusions: Object.freeze([
+    'src/main.js',
+    'src/**/index.js',
+    'src/generated/**',
+  ]),
+});
 export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
   enabled: true,
 });
@@ -98,7 +118,16 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     value,
-    new Set(['$schema', 'version', 'notification', 'lighthouse', 'preCommit', 'rules', 'exclusions']),
+    new Set([
+      '$schema',
+      'version',
+      'notification',
+      'lighthouse',
+      'unitTest',
+      'preCommit',
+      'rules',
+      'exclusions',
+    ]),
     configPath,
   );
   if (value.version !== 1) {
@@ -164,6 +193,83 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   ) {
     throw new Error(`${configPath} lighthouse.timeoutMs must be a positive integer`);
   }
+
+  const unitTestValue = value.unitTest ?? {};
+  if (!unitTestValue || typeof unitTestValue !== 'object' || Array.isArray(unitTestValue)) {
+    throw new Error(`${configPath} unitTest must be an object`);
+  }
+  assertKnownProperties(
+    unitTestValue,
+    new Set([
+      'enabled',
+      'script',
+      'timeoutMs',
+      'coverage',
+      'requireTests',
+      'sourcePatterns',
+      'testPatterns',
+      'exclusions',
+    ]),
+    `${configPath} unitTest`,
+  );
+  for (const field of ['enabled', 'coverage']) {
+    if (unitTestValue[field] != null && typeof unitTestValue[field] !== 'boolean') {
+      throw new Error(`${configPath} unitTest.${field} must be a boolean`);
+    }
+  }
+  if (
+    unitTestValue.script != null
+    && (
+      typeof unitTestValue.script !== 'string'
+      || !/^[A-Za-z0-9:_-]+$/.test(unitTestValue.script.trim())
+    )
+  ) {
+    throw new Error(`${configPath} unitTest.script must be an npm script name`);
+  }
+  if (
+    unitTestValue.timeoutMs != null
+    && (!Number.isInteger(unitTestValue.timeoutMs) || unitTestValue.timeoutMs <= 0)
+  ) {
+    throw new Error(`${configPath} unitTest.timeoutMs must be a positive integer`);
+  }
+  if (
+    unitTestValue.requireTests != null
+    && !['newFiles', 'changedFiles'].includes(unitTestValue.requireTests)
+  ) {
+    throw new Error(
+      `${configPath} unitTest.requireTests must be newFiles or changedFiles`,
+    );
+  }
+
+  const normalizePatterns = (field, defaults, { allowEmpty = false } = {}) => {
+    const patterns = unitTestValue[field] ?? defaults;
+    if (!Array.isArray(patterns) || (!allowEmpty && patterns.length === 0)) {
+      throw new Error(
+        `${configPath} unitTest.${field} must be ${allowEmpty ? 'an' : 'a non-empty'} array`,
+      );
+    }
+    return patterns.map((pattern, index) => {
+      if (typeof pattern !== 'string' || !pattern.trim()) {
+        throw new Error(
+          `${configPath} unitTest.${field} item ${index + 1} must be a non-empty string`,
+        );
+      }
+      return normalizeGitPath(pattern.trim());
+    });
+  };
+  const unitTestSourcePatterns = normalizePatterns(
+    'sourcePatterns',
+    DEFAULT_UNIT_TEST_CONFIG.sourcePatterns,
+  );
+  const unitTestPatterns = normalizePatterns(
+    'testPatterns',
+    DEFAULT_UNIT_TEST_CONFIG.testPatterns,
+  );
+  const unitTestExclusions = normalizePatterns(
+    'exclusions',
+    DEFAULT_UNIT_TEST_CONFIG.exclusions,
+    { allowEmpty: true },
+  );
 
   const preCommitValue = value.preCommit ?? {};
   if (!preCommitValue || typeof preCommitValue !== 'object' || Array.isArray(preCommitValue)) {
@@ -397,6 +503,16 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         ? null
         : lighthouseValue.buildScript?.trim() || DEFAULT_LIGHTHOUSE_CONFIG.buildScript,
       timeoutMs: lighthouseValue.timeoutMs ?? DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
+    },
+    unitTest: {
+      enabled: unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled,
+      script: unitTestValue.script?.trim() || DEFAULT_UNIT_TEST_CONFIG.script,
+      timeoutMs: unitTestValue.timeoutMs ?? DEFAULT_UNIT_TEST_CONFIG.timeoutMs,
+      coverage: unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage,
+      requireTests: unitTestValue.requireTests ?? DEFAULT_UNIT_TEST_CONFIG.requireTests,
+      sourcePatterns: unitTestSourcePatterns,
+      testPatterns: unitTestPatterns,
+      exclusions: unitTestExclusions,
     },
     preCommit: {
       maxFileLines: {

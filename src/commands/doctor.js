@@ -31,6 +31,12 @@ import {
   findProjectStylelintConfig,
   resolveProjectStylelintMetadata,
 } from '../stylelint-project.js';
+import {
+  ensureUnitTestPolicy,
+  isUnitTestPolicyCurrent,
+  UNIT_TEST_POLICY_FILE,
+} from '../unit-test-policy.js';
+import { validateUnitTestSetup } from '../unit-test-runner.js';
 
 function nodeVersionIsSupported() {
   const [major, minor] = process.versions.node.split('.').map(Number);
@@ -46,12 +52,20 @@ function repairRepository(root) {
     if (created) {
       repairs.push('created repo-guard.config.json');
     } else {
-      const { changed } = migrateProjectConfig(root);
+      const { changed, config } = migrateProjectConfig(root);
       repairs.push(
         changed
           ? 'migrated repo-guard.config.json'
           : 'repo-guard.config.json is already current',
       );
+      if (config.unitTest.enabled) {
+        const policy = ensureUnitTestPolicy(root, config.unitTest);
+        repairs.push(
+          policy.changed
+            ? `updated ${UNIT_TEST_POLICY_FILE} unit test policy`
+            : `${UNIT_TEST_POLICY_FILE} unit test policy is already current`,
+        );
+      }
     }
   } catch (error) {
     repairErrors.push(`configuration repair failed: ${error.message}`);
@@ -163,6 +177,34 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else {
     checks.push('Lighthouse Vue pre-push gate is disabled');
+  }
+
+  if (config?.unitTest.enabled) {
+    try {
+      const setup = validateUnitTestSetup(root, config.unitTest);
+      const policyPath = path.join(root, UNIT_TEST_POLICY_FILE);
+      if (
+        !existsSync(policyPath)
+        || !isUnitTestPolicyCurrent(
+          readFileSync(policyPath, 'utf8'),
+          config.unitTest,
+        )
+      ) {
+        throw new Error(
+          `${UNIT_TEST_POLICY_FILE} is missing the repo-guard unit test policy; `
+          + 'run repo-guard doctor --fix',
+        );
+      }
+      checks.push(
+        `Vitest ${setup.vitest.version} pre-push gate `
+        + `(script=${config.unitTest.script}, requireTests=${config.unitTest.requireTests}, `
+        + `coverage=${config.unitTest.coverage})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Unit test pre-push gate is disabled');
   }
 
   if (config?.preCommit.eslint.enabled) {

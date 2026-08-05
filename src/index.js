@@ -28,6 +28,13 @@ export {
 } from './max-file-lines.js';
 export { runVueLighthouse } from './lighthouse-runner.js';
 export {
+  buildUnitTestAiInstructions,
+  expectedUnitTestPath,
+  inspectUnitTestPolicy,
+  runUnitTestGate,
+  validateUnitTestSetup,
+} from './unit-test-runner.js';
+export {
   ensureLocalEnvironment,
   loadLocalEnvironment,
   resolveNotificationEnvironment,

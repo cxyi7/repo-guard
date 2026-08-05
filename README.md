@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、单文件行数限制、Vue Lighthouse 推送前质量检查、公共文件保护、
+Prettier 格式化、单文件行数限制、JS/Vue 单元测试、Vue Lighthouse 推送前质量检查、公共文件保护、
 企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.9.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.10.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -19,16 +19,19 @@ npx repo-guard doctor
 Vue Lighthouse 默认关闭，开启时业务项目还需
 安装 `@lhci/cli`、提供 `lighthouserc.*` 和 Chrome。通知功能需要在
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
+单元测试仅在新项目已经安装 Vitest 且存在 `test:unit` 脚本时由 `init` 自动开启；
+已有项目迁移后保持关闭，可准备完成后通过开关开启。
 
 `init` 会：
 
-1. 生成五个受管理的 Git Hook，包括可选 Lighthouse 门禁使用的 `pre-push`；
+1. 生成五个受管理的 Git Hook，包括单元测试和可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
 5. 在配置不存在时生成 `repo-guard.config.json`；
 6. 补充初始化、迁移、门禁启用、诊断和检查相关的 `guard:*` 脚本；
-7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`。
+7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
+8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -39,9 +42,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `maxFileLines` 和
+已有项目的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `unitTest`、`maxFileLines` 和
 `preCommit.eslint.preset` 默认关闭；可在确认存量文件情况后分别开启。
 
 `doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
@@ -49,7 +52,7 @@ repo-guard doctor --fix
 
 - 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
 - 自动解除已被 Git 跟踪的 `.env.config`；
-- 安装 ESLint、`@eslint/js`、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
+- 安装 Vitest、Vue Test Utils、ESLint、`@eslint/js`、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
 - 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
@@ -74,10 +77,13 @@ Stylelint、ESLint、Prettier 或单文件行数门禁失败时，`lint-staged` 
 本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
 文件只会在项目 ESLint 配置支持时接受普通 ESLint 检查。
 
-开启 Lighthouse 后，`git push` 的附加流程为：
+开启相关开关后，`git push` 的附加流程为：
 
 ```text
 git push
+  → 检查本次推送新增/修改的源码和测试文件
+  → 检查必需的同目录 .spec.js，以及禁止的 .skip/.only
+  → npm run test:unit
   → 执行 Vue 项目的 npm build 脚本
   → @lhci/cli collect 按 lighthouserc 访问配置页面
   → @lhci/cli assert 检查性能、可访问性、最佳实践和 SEO 阈值
@@ -94,6 +100,22 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "unitTest": {
+    "enabled": false,
+    "script": "test:unit",
+    "timeoutMs": 120000,
+    "coverage": false,
+    "requireTests": "newFiles",
+    "sourcePatterns": [
+      "src/utils/**/*.js",
+      "src/composables/**/*.js",
+      "src/stores/**/*.js",
+      "src/api/**/*.js",
+      "src/components/**/*.vue"
+    ],
+    "testPatterns": ["**/*.spec.js"],
+    "exclusions": ["src/main.js", "src/**/index.js", "src/generated/**"]
   },
   "lighthouse": {
     "enabled": false,
@@ -203,6 +225,72 @@ Vue 文件还会分别统计 `template`、`script`、`style` 的有效内容行�
   }
 }
 ```
+
+### JS/Vue 单元测试门禁
+
+repo-guard 负责测试策略、推送范围识别和流程编排，测试框架、运行环境、Mock、覆盖率阈值和
+具体用例仍由业务项目维护。纯 JavaScript 的 Vue 项目可以安装：
+
+```bash
+npm install --save-dev vitest @vue/test-utils jsdom
+```
+
+并在业务项目的 `package.json` 中提供脚本：
+
+```json
+{
+  "scripts": {
+    "test:unit": "vitest run"
+  }
+}
+```
+
+测试文件默认与源码同目录，便于 AI 通过确定性映射判断测试是否存在：
+
+```text
+src/utils/money.js                 → src/utils/money.spec.js
+src/composables/usePagination.js   → src/composables/usePagination.spec.js
+src/stores/user.js                 → src/stores/user.spec.js
+src/api/order.js                   → src/api/order.spec.js
+src/components/OrderForm.vue       → src/components/OrderForm.spec.js
+```
+
+开启功能时，repo-guard 会增量维护根目录 `AGENTS.md` 中带标记的“前端单元测试要求”。AI 修改
+目标源码时会先看到应测试的内容、文件位置和禁止绕过方式；文件原有人工内容不会被覆盖。
+门禁则提供机器可执行的兜底：根据本次推送的精确 Git 范围检查测试是否存在，扫描本次修改的
+测试文件是否使用 `describe/it/test.skip` 或 `.only`，随后自动运行完整的 `npm run test:unit`。
+
+默认 `requireTests: "newFiles"` 只强制新增或复制的目标源码必须同时有 `.spec.js`，适合已有项目
+渐进接入；`changedFiles` 会要求每个被修改的目标源码都已有对应测试，适合测试基础较完整的项目。
+即使选择 `newFiles`，本次推送仍会执行完整测试套件。静态门禁还会拒绝没有 `it/test` 用例的
+空测试文件和 `.skip/.only` 绕过；断言是否充分等更深层语义由 AI 规范、评审和覆盖率阈值共同约束。
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 检测到 Vitest 和脚本时新项目为 `true`；迁移后 `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
+| `script` | `test:unit` | 业务项目中运行 Vitest 的 npm 脚本名 |
+| `timeoutMs` | `120000` | 单元测试进程最长运行时间 |
+| `coverage` | `false` | 是否向脚本追加 `--coverage`；覆盖率 Provider 和阈值由项目提供 |
+| `requireTests` | `newFiles` | `newFiles` 仅检查新增/复制源码；`changedFiles` 检查所有变更源码 |
+| `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要同目录测试文件的源码 glob |
+| `testPatterns` | `**/*.spec.js` | 测试文件 glob，同时用于检查 `.skip/.only` |
+| `exclusions` | 入口、聚合导出、生成代码 | 不要求测试文件的源码 glob |
+
+自动开启或手动开启只需要控制开关，不需要再导入 repo-guard 配置：
+
+```bash
+repo-guard enable unitTest
+repo-guard doctor
+```
+
+也可以在不改变开关的情况下显式运行同一套检查：
+
+```bash
+repo-guard unit-test
+```
+
+缺少测试时会列出源码路径和唯一预期的测试路径，并输出可以直接交给 AI 的要求；测试失败时
+保留 Vitest 原始输出，再明确要求修复代码或用例，禁止删除测试、降低必要断言或关闭门禁。
 
 ### Vue Lighthouse 配置
 
@@ -447,7 +535,8 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines
+repo-guard enable eslint prettier stylelint maxFileLines unitTest
+repo-guard unit-test
 repo-guard lighthouse
 repo-guard enable lighthouse
 repo-guard disable lighthouse
@@ -460,14 +549,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、项目 Lighthouse CI、Stylelint、ESLint、
-Prettier、单文件行数门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
+`doctor` 会检查 Node.js、配置、Hook 版本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+Stylelint、ESLint、Prettier、单文件行数门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.9.0
+## 升级到 0.10.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.9.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.10.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -483,3 +572,7 @@ Stylelint 安装和配置后，再执行 `npx repo-guard enable stylelint`。
 0.9.0 新增单文件行数门禁和由 `preCommit.eslint.preset` 控制的自动 ESLint 规则
 基线。已有项目执行迁移时两项均保持关闭；评估存量代码后，可执行
 `repo-guard enable maxFileLines`，并在配置中把 ESLint `preset` 改为 `true`。
+
+0.10.0 新增 `unitTest` 配置、JS/Vue 同目录测试要求、受管理的 `AGENTS.md` AI 规范和
+pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目迁移后测试开关保持关闭；
+准备好 Vitest 与 `test:unit` 后执行 `repo-guard enable unitTest`，再运行 `doctor --fix`。
