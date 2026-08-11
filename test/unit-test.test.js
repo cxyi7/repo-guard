@@ -20,6 +20,7 @@ import {
 import {
   analyzeUnitTestContent,
   expectedUnitTestPath,
+  expectedUnitTestPaths,
   inspectUnitTestPolicy,
   runUnitTestGate,
 } from '../src/unit-test-runner.js';
@@ -39,6 +40,10 @@ function unitTestConfig(extra = {}) {
     ...DEFAULT_UNIT_TEST_CONFIG,
     sourcePatterns: [...DEFAULT_UNIT_TEST_CONFIG.sourcePatterns],
     testPatterns: [...DEFAULT_UNIT_TEST_CONFIG.testPatterns],
+    mappings: DEFAULT_UNIT_TEST_CONFIG.mappings.map((mapping) => ({
+      ...mapping,
+      testTemplates: [...mapping.testTemplates],
+    })),
     exclusions: [...DEFAULT_UNIT_TEST_CONFIG.exclusions],
     ...extra,
   };
@@ -78,7 +83,7 @@ function createFixture() {
   return root;
 }
 
-test('maps JavaScript and Vue source files to colocated spec files', () => {
+test('maps JavaScript, TypeScript, JSX, TSX, and Vue sources to test candidates', () => {
   assert.equal(expectedUnitTestPath('src/utils/money.js'), 'src/utils/money.spec.js');
   assert.equal(expectedUnitTestPath('src/utils/money.mjs'), 'src/utils/money.spec.js');
   assert.equal(expectedUnitTestPath('src/utils/money.cjs'), 'src/utils/money.spec.js');
@@ -87,10 +92,42 @@ test('maps JavaScript and Vue source files to colocated spec files', () => {
     expectedUnitTestPath('src/components/UserForm/UserForm.vue'),
     'src/components/UserForm/UserForm.spec.js',
   );
+  assert.equal(expectedUnitTestPath('src/utils/money.ts'), 'src/utils/money.spec.ts');
+  assert.equal(
+    expectedUnitTestPath('src/components/Money.tsx'),
+    'src/components/Money.spec.tsx',
+  );
+  assert.equal(
+    expectedUnitTestPaths('src/utils/money.ts').includes(
+      'src/utils/__tests__/money.test.ts',
+    ),
+    true,
+  );
   assert.throws(
     () => expectedUnitTestPath('src/fixtures/money.json'),
-    /source extension is not supported/,
+    /source mapping was not found/,
   );
+});
+
+test('supports custom mappings and accepts any effective candidate test', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src', 'utils', '__tests__'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'utils', 'money.ts'), 'export const money = 1;\n');
+  writeFileSync(
+    path.join(root, 'src', 'utils', '__tests__', 'money.test.ts'),
+    "it('works', () => { expect(1).toBe(1); });\n",
+  );
+
+  assert.deepEqual(inspectUnitTestPolicy({
+    root,
+    changes: [{ status: 'A', oldPath: null, path: 'src/utils/money.ts' }],
+    config: unitTestConfig(),
+  }).missingTests, []);
+  assert.deepEqual(expectedUnitTestPaths('src/services/user.service.ts', [{
+    sourcePattern: 'src/services/*.service.ts',
+    testTemplates: ['tests/{name}.test.ts'],
+  }]), ['tests/user.service.test.ts']);
 });
 
 test('ignores test-like text in comments, strings, templates, and regular expressions', () => {
@@ -137,18 +174,15 @@ test('reports missing tests for new files and supports stricter changed files mo
     }).missingTests.length,
     0,
   );
-  assert.deepEqual(
-    inspectUnitTestPolicy({
-      root,
-      changes: changed,
-      config: unitTestConfig({ requireTests: 'changedFiles' }),
-    }).missingTests,
-    [{
-      sourcePath: 'src/utils/existing.js',
-      expectedTestPath: 'src/utils/existing.spec.js',
-      reason: 'missing',
-    }],
-  );
+  const [missing] = inspectUnitTestPolicy({
+    root,
+    changes: changed,
+    config: unitTestConfig({ requireTests: 'changedFiles' }),
+  }).missingTests;
+  assert.equal(missing.sourcePath, 'src/utils/existing.js');
+  assert.equal(missing.expectedTestPath, 'src/utils/existing.spec.js');
+  assert.equal(missing.reason, 'missing');
+  assert.equal(missing.expectedTestPaths.includes('src/utils/existing.test.js'), true);
 
   writeFileSync(path.join(root, 'src', 'utils', 'existing.spec.js'), '// TODO\n');
   assert.equal(

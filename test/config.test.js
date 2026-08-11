@@ -158,6 +158,10 @@ test('validates and normalizes unit test configuration', () => {
       requireTests: 'changedFiles',
       sourcePatterns: ['  src/utils/**/*.js  '],
       testPatterns: ['**/*.spec.js'],
+      mappings: [{
+        sourcePattern: '  src/utils/**/*.js  ',
+        testTemplates: ['  {path}.spec.js  '],
+      }],
       exclusions: [],
     },
   }));
@@ -170,6 +174,10 @@ test('validates and normalizes unit test configuration', () => {
     requireTests: 'changedFiles',
     sourcePatterns: ['src/utils/**/*.js'],
     testPatterns: ['**/*.spec.js'],
+    mappings: [{
+      sourcePattern: 'src/utils/**/*.js',
+      testTemplates: ['{path}.spec.js'],
+    }],
     exclusions: [],
   });
   assert.throws(
@@ -179,6 +187,28 @@ test('validates and normalizes unit test configuration', () => {
   assert.throws(
     () => validateConfig(baseConfig({ unitTest: { sourcePatterns: [] } })),
     /sourcePatterns must be a non-empty array/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: {
+        mappings: [{
+          sourcePattern: '**/*.ts',
+          testTemplates: ['{unknown}.spec.ts'],
+        }],
+      },
+    })),
+    /unsupported placeholder/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: {
+        mappings: [{
+          sourcePattern: '**/*.ts',
+          testTemplates: ['tests/all.spec.ts'],
+        }],
+      },
+    })),
+    /must contain \{path\} or \{name\}/,
   );
 });
 

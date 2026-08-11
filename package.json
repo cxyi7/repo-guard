@@ -1,7 +1,7 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.12.2",
-  "description": "Git guard with staged code quality, TypeScript, builds, file placement, JS/Vue unit tests, Vue Lighthouse, protected files, and notifications",
+  "version": "0.12.3",
+  "description": "Git guard with staged code quality, TypeScript, builds, file placement, JS/TS/Vue unit tests, Vue Lighthouse, protected files, and notifications",
   "keywords": [
     "git-hooks",
     "repository-policy",

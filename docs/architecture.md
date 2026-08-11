@@ -8,7 +8,7 @@
 ├─ Stylelint/ESLint/Prettier + 项目配置   样式、代码及格式规则
 ├─ tsc/vue-tsc + typecheck npm 脚本       全项目 TypeScript 类型检查
 ├─ 项目 build npm 脚本                    独立生产构建
-├─ Vitest + *.spec.js                     JS/Vue 单元测试和项目断言
+├─ Vitest + *.spec/*.test                 JS/TS/Vue 单元测试和项目断言
 ├─ @lhci/cli + lighthouserc.*             Vue 页面运行质量规则
 └─ @cxyi7/repo-guard
    ├─ config management        配置迁移和功能开关
@@ -94,7 +94,7 @@ npm run typecheck                        │
   ↓
 单元测试未启用 ───────────────────────────┐
   ↓ 已启用                               │
-检查新建/变更源码的同目录 .spec.js         │
+按映射检查新建/变更源码的候选测试           │
   ↓                                      │
 扫描本次变更测试中的 .skip/.only           │
   ↓                                      │
@@ -145,7 +145,7 @@ repo-guard 可安全拥有的内容；自定义 Hook、其他 hooksPath、已跟
 - 配置格式继续使用 `version: 1`，新增字段均为可选。
 - 新项目初始化默认启用 ESLint、repo-guard ESLint 规则基线、Prettier 和单文件行数门禁，并按已有 Stylelint 配置及 Vitest 测试环境决定是否启用对应门禁；已有配置升级时新规则基线、行数门禁和单元测试保持关闭。
 - 行数门禁缺少 `mode` 和 `warnAt` 时分别使用 `strict` 和 `0.85`；默认覆盖 Vue、JS/JSX 和 TS/TSX 常见扩展名。
-- 单元测试默认使用同目录 `.spec.js` 映射和 `newFiles` 渐进策略；项目可配置目标源码、测试和排除 glob，或切换为 `changedFiles`。
+- 单元测试默认支持 JS/TS/Vue、`.spec/.test`、同目录和 `__tests__` 候选映射及 `newFiles` 渐进策略；项目可配置映射、目标源码、测试和排除 glob，或切换为 `changedFiles`。
 - 缺少 `preCommit` 时按质量门禁未启用处理，保持旧版本行为。
 - 缺少 `notification` 时按启用处理，保持旧版本的通知行为。
 - Hook 生成版本为 v4，安装器可识别并升级 v1、v2、v3。

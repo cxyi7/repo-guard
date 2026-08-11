@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.3
+
+- 新增可配置的 `unitTest.mappings`，使用 `{dir}`、`{name}`、`{path}` 和 `{ext}` 将源码映射到多个候选测试路径。
+- 默认支持 JS、MJS、CJS、JSX、TS、MTS、CTS、TSX 和 Vue 源码，以及 `.spec`、`.test`、同目录和 `__tests__` 测试布局。
+- 映射按顺序采用第一条命中规则，任一候选文件包含有效测试即可通过；缺失测试提示会列出建议路径和全部允许位置。
+
 ## 0.12.2
 
 - 新增项目自有 npm 脚本驱动的独立生产构建门禁，支持 `repo-guard build` 显式执行和受管理 `pre-push` 自动阻断。

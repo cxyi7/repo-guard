@@ -158,13 +158,13 @@
             "minLength": 1
           },
           "default": [
-            "src/utils/**/*.js",
-            "src/composables/**/*.js",
-            "src/stores/**/*.js",
-            "src/api/**/*.js",
-            "src/components/**/*.vue"
+            "src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "src/composables/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "src/stores/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "src/api/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "src/components/**/*.{js,jsx,ts,tsx,vue}"
           ],
-          "description": "Repository-relative .js, .mjs, .cjs, .jsx, and .vue source globs that require a colocated .spec.js file."
+          "description": "Repository-relative JavaScript, TypeScript, JSX, TSX, and Vue source globs that require a mapped test file."
         },
         "testPatterns": {
           "type": "array",
@@ -174,9 +174,91 @@
             "minLength": 1
           },
           "default": [
-            "**/*.spec.js"
+            "**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
           ],
           "description": "Repository-relative test globs scanned for empty tests and forbidden .skip, .skipIf, .todo, and .only calls while ignoring comments and literals."
+        },
+        "mappings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourcePattern",
+              "testTemplates"
+            ],
+            "properties": {
+              "sourcePattern": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Repository-relative source glob. The first matching mapping wins."
+              },
+              "testTemplates": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Allowed test paths using {dir}, {name}, {path}, and {ext}; each template must include {name} or {path}."
+              }
+            }
+          },
+          "default": [
+            {
+              "sourcePattern": "**/*.{js,mjs,cjs}",
+              "testTemplates": [
+                "{path}.spec.js",
+                "{path}.test.js",
+                "{dir}/__tests__/{name}.spec.js",
+                "{dir}/__tests__/{name}.test.js"
+              ]
+            },
+            {
+              "sourcePattern": "**/*.jsx",
+              "testTemplates": [
+                "{path}.spec.js",
+                "{path}.test.js",
+                "{path}.spec.jsx",
+                "{path}.test.jsx",
+                "{dir}/__tests__/{name}.spec.jsx",
+                "{dir}/__tests__/{name}.test.jsx"
+              ]
+            },
+            {
+              "sourcePattern": "**/*.{ts,mts,cts}",
+              "testTemplates": [
+                "{path}.spec.ts",
+                "{path}.test.ts",
+                "{dir}/__tests__/{name}.spec.ts",
+                "{dir}/__tests__/{name}.test.ts"
+              ]
+            },
+            {
+              "sourcePattern": "**/*.tsx",
+              "testTemplates": [
+                "{path}.spec.tsx",
+                "{path}.test.tsx",
+                "{path}.spec.ts",
+                "{path}.test.ts",
+                "{dir}/__tests__/{name}.spec.tsx",
+                "{dir}/__tests__/{name}.test.tsx"
+              ]
+            },
+            {
+              "sourcePattern": "**/*.vue",
+              "testTemplates": [
+                "{path}.spec.js",
+                "{path}.test.js",
+                "{path}.spec.ts",
+                "{path}.test.ts",
+                "{dir}/__tests__/{name}.spec.js",
+                "{dir}/__tests__/{name}.spec.ts"
+              ]
+            }
+          ],
+          "description": "Ordered source-to-test mappings. A source passes when any generated candidate contains an effective test case."
         },
         "exclusions": {
           "type": "array",
@@ -185,8 +267,8 @@
             "minLength": 1
           },
           "default": [
-            "src/main.js",
-            "src/**/index.js",
+            "src/main.{js,ts}",
+            "src/**/index.{js,ts}",
             "src/generated/**"
           ],
           "description": "Source paths excluded from the missing-test requirement, such as entry points and generated files."

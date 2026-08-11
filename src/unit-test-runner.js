@@ -5,6 +5,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import micromatch from 'micromatch';
+import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from './config.js';
 import { runGit } from './git.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 
@@ -65,15 +66,37 @@ function requiresTest(change, mode) {
   return mode === 'changedFiles' ? !isDeleted(change) : isNew(change);
 }
 
-export function expectedUnitTestPath(sourcePath) {
-  const expected = sourcePath.replace(/\.(?:[cm]?js|jsx|vue)$/i, '.spec.js');
-  if (expected === sourcePath) {
+export function expectedUnitTestPaths(
+  sourcePath,
+  mappings = DEFAULT_UNIT_TEST_CONFIG.mappings,
+) {
+  const normalizedSource = normalizeGitPath(sourcePath);
+  const mapping = mappings.find(({ sourcePattern }) => (
+    matches(normalizedSource, [sourcePattern])
+  ));
+  if (!mapping) {
     throw new Error(
-      `Unit test source extension is not supported: ${sourcePath}. `
-      + 'Supported extensions: .js, .mjs, .cjs, .jsx, and .vue.',
+      `Unit test source mapping was not found for: ${normalizedSource}.`,
     );
   }
-  return expected;
+
+  const parsed = path.posix.parse(normalizedSource);
+  const variables = {
+    dir: parsed.dir || '.',
+    ext: parsed.ext.replace(/^\./, ''),
+    name: parsed.name,
+    path: path.posix.join(parsed.dir, parsed.name),
+  };
+  return [...new Set(mapping.testTemplates.map((template) => (
+    normalizeGitPath(path.posix.normalize(template.replace(
+      /\{(dir|ext|name|path)\}/g,
+      (_, key) => variables[key],
+    )))
+  )))];
+}
+
+export function expectedUnitTestPath(sourcePath) {
+  return expectedUnitTestPaths(sourcePath)[0];
 }
 
 function previousNonWhitespace(value) {
@@ -311,18 +334,27 @@ export function inspectUnitTestPolicy({ root, changes, config }) {
     ) {
       continue;
     }
-    const expected = expectedUnitTestPath(filePath);
-    const testContent = readPolicyFile(root, expected, change.headSha);
-    if (testContent == null) {
+    const expectedPaths = expectedUnitTestPaths(filePath, config.mappings);
+    const existingTests = expectedPaths
+      .map((testPath) => ({
+        content: readPolicyFile(root, testPath, change.headSha),
+        testPath,
+      }))
+      .filter(({ content }) => content != null);
+    if (existingTests.length === 0) {
       missingTests.push({
         sourcePath: filePath,
-        expectedTestPath: expected,
+        expectedTestPath: expectedPaths[0],
+        expectedTestPaths: expectedPaths,
         reason: 'missing',
       });
-    } else if (!analyzeUnitTestContent(testContent).hasTestCase) {
+    } else if (!existingTests.some(({ content }) => (
+      analyzeUnitTestContent(content).hasTestCase
+    ))) {
       missingTests.push({
         sourcePath: filePath,
-        expectedTestPath: expected,
+        expectedTestPath: existingTests[0].testPath,
+        expectedTestPaths: expectedPaths,
         reason: 'empty',
       });
     }
@@ -370,6 +402,9 @@ export function buildUnitTestAiInstructions({
       '',
       `${index}. ${action}`,
       `   预期文件：${missing.expectedTestPath}`,
+      ...(missing.expectedTestPaths?.length > 1
+        ? [`   允许位置：${missing.expectedTestPaths.join('、')}`]
+        : []),
       '   覆盖要求：测试公开输入输出、正常路径、边界条件和失败路径；Bug 修复需包含回归用例。',
       '   Vue 组件应验证 Props、用户交互、渲染结果和 emit；API 必须 Mock 网络。',
       '   禁止绕过：不要修改门禁、加入 exclusions、创建空测试或删除必要断言。',

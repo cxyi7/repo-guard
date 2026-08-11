@@ -71,6 +71,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.equal(config.unitTest.requireTests, 'newFiles');
+  assert.equal(config.unitTest.mappings.length, 5);
   assert.equal(config.notification.enabled, true);
   assert.equal(config.rules.length, 9);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
@@ -126,6 +127,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.build.enabled, false);
   assert.equal(migrated.typeCheck.enabled, false);
   assert.equal(migrated.unitTest.enabled, false);
+  assert.equal(migrated.unitTest.mappings.length, 5);
   assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 

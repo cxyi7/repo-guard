@@ -17,6 +17,12 @@ function quotedPatterns(patterns) {
     : '无';
 }
 
+function mappingLines(mappings) {
+  return mappings.map(({ sourcePattern, testTemplates }) => (
+    `- 测试映射：\`${sourcePattern}\` → ${quotedPatterns(testTemplates)}。`
+  ));
+}
+
 function managedLines(config) {
   const scopeRule = config.requireTests === 'changedFiles'
     ? '新增或修改下列源码时，都必须存在并同步更新测试。'
@@ -28,7 +34,8 @@ function managedLines(config) {
     '',
     `- 需要测试的源码：${quotedPatterns(config.sourcePatterns)}。`,
     `- 不强制生成测试的路径：${quotedPatterns(config.exclusions)}。`,
-    '- 测试与源码放在同一目录：`name.js`/`Name.vue` 对应 `name.spec.js`/`Name.spec.js`。',
+    '- 测试映射按配置顺序匹配源码；候选路径中存在任一有效测试即可。',
+    ...mappingLines(config.mappings),
     '- 工具函数覆盖正常值、边界值和非法值。',
     '- Composable 覆盖状态变化、加载、失败、缓存和并发。',
     '- Store 覆盖 action、state 变化以及成功和失败路径。',

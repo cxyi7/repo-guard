@@ -102,16 +102,71 @@ export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
   coverage: false,
   requireTests: 'newFiles',
   sourcePatterns: Object.freeze([
-    'src/utils/**/*.js',
-    'src/composables/**/*.js',
-    'src/stores/**/*.js',
-    'src/api/**/*.js',
-    'src/components/**/*.vue',
+    'src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+    'src/composables/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+    'src/stores/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+    'src/api/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+    'src/components/**/*.{js,jsx,ts,tsx,vue}',
   ]),
-  testPatterns: Object.freeze(['**/*.spec.js']),
+  testPatterns: Object.freeze([
+    '**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  ]),
+  mappings: Object.freeze([
+    Object.freeze({
+      sourcePattern: '**/*.{js,mjs,cjs}',
+      testTemplates: Object.freeze([
+        '{path}.spec.js',
+        '{path}.test.js',
+        '{dir}/__tests__/{name}.spec.js',
+        '{dir}/__tests__/{name}.test.js',
+      ]),
+    }),
+    Object.freeze({
+      sourcePattern: '**/*.jsx',
+      testTemplates: Object.freeze([
+        '{path}.spec.js',
+        '{path}.test.js',
+        '{path}.spec.jsx',
+        '{path}.test.jsx',
+        '{dir}/__tests__/{name}.spec.jsx',
+        '{dir}/__tests__/{name}.test.jsx',
+      ]),
+    }),
+    Object.freeze({
+      sourcePattern: '**/*.{ts,mts,cts}',
+      testTemplates: Object.freeze([
+        '{path}.spec.ts',
+        '{path}.test.ts',
+        '{dir}/__tests__/{name}.spec.ts',
+        '{dir}/__tests__/{name}.test.ts',
+      ]),
+    }),
+    Object.freeze({
+      sourcePattern: '**/*.tsx',
+      testTemplates: Object.freeze([
+        '{path}.spec.tsx',
+        '{path}.test.tsx',
+        '{path}.spec.ts',
+        '{path}.test.ts',
+        '{dir}/__tests__/{name}.spec.tsx',
+        '{dir}/__tests__/{name}.test.tsx',
+      ]),
+    }),
+    Object.freeze({
+      sourcePattern: '**/*.vue',
+      testTemplates: Object.freeze([
+        '{path}.spec.js',
+        '{path}.test.js',
+        '{path}.spec.ts',
+        '{path}.test.ts',
+        '{dir}/__tests__/{name}.spec.js',
+        '{dir}/__tests__/{name}.spec.ts',
+      ]),
+    }),
+  ]),
   exclusions: Object.freeze([
-    'src/main.js',
-    'src/**/index.js',
+    'src/main.{js,ts}',
+    'src/**/index.{js,ts}',
     'src/generated/**',
   ]),
 });
@@ -344,6 +399,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       'requireTests',
       'sourcePatterns',
       'testPatterns',
+      'mappings',
       'exclusions',
     ]),
     `${configPath} unitTest`,
@@ -406,6 +462,45 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     DEFAULT_UNIT_TEST_CONFIG.exclusions,
     { allowEmpty: true },
   );
+  const unitTestMappingsValue = unitTestValue.mappings
+    ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
+  if (!Array.isArray(unitTestMappingsValue) || unitTestMappingsValue.length === 0) {
+    throw new Error(`${configPath} unitTest.mappings must be a non-empty array`);
+  }
+  const allowedTemplatePlaceholders = /\{(?:dir|ext|name|path)\}/g;
+  const unitTestMappings = unitTestMappingsValue.map((mapping, index) => {
+    const label = `${configPath} unitTest.mappings item ${index + 1}`;
+    if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(
+      mapping,
+      new Set(['sourcePattern', 'testTemplates']),
+      label,
+    );
+    const sourcePattern = normalizeRelativePattern(
+      mapping.sourcePattern,
+      `${label}.sourcePattern`,
+    );
+    const testTemplates = normalizePatternList(
+      mapping.testTemplates,
+      `${label}.testTemplates`,
+    ).map((template) => {
+      const remainingBraces = template.replace(allowedTemplatePlaceholders, '');
+      if (remainingBraces.includes('{') || remainingBraces.includes('}')) {
+        throw new Error(
+          `${label}.testTemplates contains an unsupported placeholder: ${template}`,
+        );
+      }
+      if (!template.includes('{path}') && !template.includes('{name}')) {
+        throw new Error(
+          `${label}.testTemplates must contain {path} or {name}: ${template}`,
+        );
+      }
+      return template;
+    });
+    return { sourcePattern, testTemplates };
+  });
 
   const preCommitValue = value.preCommit ?? {};
   if (!preCommitValue || typeof preCommitValue !== 'object' || Array.isArray(preCommitValue)) {
@@ -734,6 +829,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       requireTests: unitTestValue.requireTests ?? DEFAULT_UNIT_TEST_CONFIG.requireTests,
       sourcePatterns: unitTestSourcePatterns,
       testPatterns: unitTestPatterns,
+      mappings: unitTestMappings,
       exclusions: unitTestExclusions,
     },
     preCommit: {

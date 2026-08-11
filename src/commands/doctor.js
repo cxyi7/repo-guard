@@ -228,7 +228,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       checks.push(
         `Vitest ${setup.vitest.version} pre-push gate `
         + `(script=${config.unitTest.script}, requireTests=${config.unitTest.requireTests}, `
-        + `coverage=${config.unitTest.coverage})`,
+        + `coverage=${config.unitTest.coverage}, mappings=${config.unitTest.mappings.length})`,
       );
     } catch (error) {
       errors.push(error.message);

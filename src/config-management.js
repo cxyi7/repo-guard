@@ -46,6 +46,21 @@ function cloneFilePlacementConfig(value = {}) {
   };
 }
 
+function cloneUnitTestConfig(value = {}) {
+  const mappings = value.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
+  return {
+    ...DEFAULT_UNIT_TEST_CONFIG,
+    ...value,
+    sourcePatterns: [...(value.sourcePatterns ?? DEFAULT_UNIT_TEST_CONFIG.sourcePatterns)],
+    testPatterns: [...(value.testPatterns ?? DEFAULT_UNIT_TEST_CONFIG.testPatterns)],
+    mappings: mappings.map((mapping) => ({
+      ...mapping,
+      testTemplates: [...mapping.testTemplates],
+    })),
+    exclusions: [...(value.exclusions ?? DEFAULT_UNIT_TEST_CONFIG.exclusions)],
+  };
+}
+
 export function createStarterConfig({
   buildEnabled = false,
   stylelintEnabled = false,
@@ -65,13 +80,7 @@ export function createStarterConfig({
       ...DEFAULT_TYPE_CHECK_CONFIG,
       enabled: typeCheckEnabled,
     },
-    unitTest: {
-      ...DEFAULT_UNIT_TEST_CONFIG,
-      enabled: unitTestEnabled,
-      sourcePatterns: [...DEFAULT_UNIT_TEST_CONFIG.sourcePatterns],
-      testPatterns: [...DEFAULT_UNIT_TEST_CONFIG.testPatterns],
-      exclusions: [...DEFAULT_UNIT_TEST_CONFIG.exclusions],
-    },
+    unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
     preCommit: {
       filePlacement: cloneFilePlacementConfig(),
       maxFileLines: {
@@ -150,10 +159,7 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_TYPE_CHECK_CONFIG,
       ...(prepared.typeCheck ?? {}),
     },
-    unitTest: {
-      ...DEFAULT_UNIT_TEST_CONFIG,
-      ...(prepared.unitTest ?? {}),
-    },
+    unitTest: cloneUnitTestConfig(prepared.unitTest),
     preCommit: {
       ...preCommit,
       filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),

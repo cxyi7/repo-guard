@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、文件归位、单文件行数限制、JS/Vue 单元测试、独立生产构建、Vue Lighthouse 推送前质量检查、
+Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.2
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.3
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -87,7 +87,7 @@ TypeScript 类型检查不会进入 `pre-commit`。开启 `typeCheck` 后，repo
 git push
   → npm run typecheck
   → 检查本次推送新增/修改的源码和测试文件
-  → 检查必需的同目录 .spec.js，以及禁止的 .skip/.only
+  → 检查映射得到的 .spec/.test 候选测试，以及禁止的 .skip/.only
   → npm run test:unit
   → 执行项目独立 npm build 脚本
   → @lhci/cli collect 按 lighthouserc 访问配置页面
@@ -128,14 +128,67 @@ git push
     "coverage": false,
     "requireTests": "newFiles",
     "sourcePatterns": [
-      "src/utils/**/*.js",
-      "src/composables/**/*.js",
-      "src/stores/**/*.js",
-      "src/api/**/*.js",
-      "src/components/**/*.vue"
+      "src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "src/composables/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "src/stores/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "src/api/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "src/components/**/*.{js,jsx,ts,tsx,vue}"
     ],
-    "testPatterns": ["**/*.spec.js"],
-    "exclusions": ["src/main.js", "src/**/index.js", "src/generated/**"]
+    "testPatterns": ["**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
+    "mappings": [
+      {
+        "sourcePattern": "**/*.{js,mjs,cjs}",
+        "testTemplates": [
+          "{path}.spec.js",
+          "{path}.test.js",
+          "{dir}/__tests__/{name}.spec.js",
+          "{dir}/__tests__/{name}.test.js"
+        ]
+      },
+      {
+        "sourcePattern": "**/*.jsx",
+        "testTemplates": [
+          "{path}.spec.js",
+          "{path}.test.js",
+          "{path}.spec.jsx",
+          "{path}.test.jsx",
+          "{dir}/__tests__/{name}.spec.jsx",
+          "{dir}/__tests__/{name}.test.jsx"
+        ]
+      },
+      {
+        "sourcePattern": "**/*.{ts,mts,cts}",
+        "testTemplates": [
+          "{path}.spec.ts",
+          "{path}.test.ts",
+          "{dir}/__tests__/{name}.spec.ts",
+          "{dir}/__tests__/{name}.test.ts"
+        ]
+      },
+      {
+        "sourcePattern": "**/*.tsx",
+        "testTemplates": [
+          "{path}.spec.tsx",
+          "{path}.test.tsx",
+          "{path}.spec.ts",
+          "{path}.test.ts",
+          "{dir}/__tests__/{name}.spec.tsx",
+          "{dir}/__tests__/{name}.test.tsx"
+        ]
+      },
+      {
+        "sourcePattern": "**/*.vue",
+        "testTemplates": [
+          "{path}.spec.js",
+          "{path}.test.js",
+          "{path}.spec.ts",
+          "{path}.test.ts",
+          "{dir}/__tests__/{name}.spec.js",
+          "{dir}/__tests__/{name}.spec.ts"
+        ]
+      }
+    ],
+    "exclusions": ["src/main.{js,ts}", "src/**/index.{js,ts}", "src/generated/**"]
   },
   "lighthouse": {
     "enabled": false,
@@ -392,7 +445,7 @@ repo-guard typecheck
 `@ts-ignore`、`@ts-nocheck`、关闭 strict 选项或修改门禁来绕过。类型检查始终针对完整项目，
 不尝试只检查暂存文件或变更文件，因为跨文件类型关系无法安全地局部验证。
 
-### JS/Vue 单元测试门禁
+### JS/TS/Vue 单元测试门禁
 
 repo-guard 负责测试策略、推送范围识别和流程编排，测试框架、运行环境、Mock、覆盖率阈值和
 具体用例仍由业务项目维护。纯 JavaScript 的 Vue 项目可以安装：
@@ -411,14 +464,15 @@ npm install --save-dev vitest @vue/test-utils jsdom
 }
 ```
 
-测试文件默认与源码同目录，便于 AI 通过确定性映射判断测试是否存在：
+默认映射为每种源码生成多个允许的测试路径；任一候选文件包含有效测试即可通过：
 
 ```text
 src/utils/money.js                 → src/utils/money.spec.js
-src/composables/usePagination.js   → src/composables/usePagination.spec.js
-src/stores/user.js                 → src/stores/user.spec.js
-src/api/order.js                   → src/api/order.spec.js
-src/components/OrderForm.vue       → src/components/OrderForm.spec.js
+                                    或 src/utils/money.test.js
+                                    或 src/utils/__tests__/money.test.js
+src/composables/usePagination.ts   → src/composables/usePagination.spec.ts
+src/components/OrderForm.tsx       → src/components/OrderForm.spec.tsx
+src/components/OrderForm.vue       → src/components/OrderForm.spec.js 或 .spec.ts
 ```
 
 开启功能时，repo-guard 会增量维护根目录 `AGENTS.md` 中带标记的“前端单元测试要求”。AI 修改
@@ -427,7 +481,7 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js
 测试文件是否使用 `describe/it/test.skip`、`.skipIf`、`.todo` 或 `.only`，随后自动运行完整的
 `npm run test:unit`。扫描会忽略注释、字符串、模板字符串和正则表达式中的测试字样。
 
-默认 `requireTests: "newFiles"` 只强制新增或复制的目标源码必须同时有 `.spec.js`，适合已有项目
+默认 `requireTests: "newFiles"` 只强制新增或复制的目标源码必须存在映射测试，适合已有项目
 渐进接入；`changedFiles` 会要求每个被修改的目标源码都已有对应测试，适合测试基础较完整的项目。
 即使选择 `newFiles`，本次推送仍会执行完整测试套件。静态门禁还会拒绝没有 `it/test` 用例的
 空测试文件和 `.skip/.skipIf/.todo/.only` 绕过；断言是否充分等更深层语义由 AI 规范、评审和
@@ -440,9 +494,25 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js
 | `timeoutMs` | `120000` | 单元测试进程最长运行时间 |
 | `coverage` | `false` | 是否向脚本追加 `--coverage`；覆盖率 Provider 和阈值由项目提供 |
 | `requireTests` | `newFiles` | `newFiles` 仅检查新增/复制源码；`changedFiles` 检查所有变更源码 |
-| `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要同目录测试文件的源码 glob；支持 `.js/.mjs/.cjs/.jsx/.vue` |
-| `testPatterns` | `**/*.spec.js` | 测试文件 glob，同时用于检查 `.skip/.skipIf/.todo/.only` |
+| `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要测试的 JS/JSX/TS/TSX/Vue 源码 glob |
+| `testPatterns` | `**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}` | 扫描空测试和 `.skip/.skipIf/.todo/.only` 的测试 glob |
+| `mappings` | 5 组默认映射 | 按顺序匹配源码，使用 `{dir}`、`{name}`、`{path}`、`{ext}` 生成候选测试路径 |
 | `exclusions` | 入口、聚合导出、生成代码 | 不要求测试文件的源码 glob |
+
+自定义映射示例：
+
+```json
+{
+  "sourcePattern": "src/services/*.service.ts",
+  "testTemplates": [
+    "{path}.spec.ts",
+    "tests/services/{name}.test.ts"
+  ]
+}
+```
+
+映射按数组顺序匹配，第一条命中的规则生效。自定义候选扩展名时，应同步把它加入
+`testPatterns`，确保空测试和绕过扫描覆盖相同文件。
 
 自动开启或手动开启只需要控制开关，不需要再导入 repo-guard 配置：
 
@@ -725,10 +795,10 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.2
+## 升级到 0.12.3
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.2
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.3
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -763,3 +833,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.2 新增 `build` 配置、`repo-guard build` 显式命令和独立 pre-push 生产构建门禁。
 新项目存在 `build` npm 脚本时自动开启；已有配置迁移后保持关闭，可执行 `repo-guard enable build`。
 独立构建与 Lighthouse 使用同一脚本时会复用构建结果，避免一次推送重复构建。
+
+0.12.3 扩展 `unitTest.mappings`，默认支持 JS/JSX/TS/TSX/Vue、`.spec`、`.test` 和
+`__tests__` 候选位置。映射按顺序匹配，任一候选测试有效即可通过；已有项目显式配置的
+`sourcePatterns` 和 `testPatterns` 会在迁移时保留。

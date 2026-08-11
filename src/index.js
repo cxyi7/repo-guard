@@ -45,6 +45,7 @@ export {
 export {
   buildUnitTestAiInstructions,
   expectedUnitTestPath,
+  expectedUnitTestPaths,
   inspectUnitTestPolicy,
   runUnitTestGate,
   validateUnitTestSetup,
