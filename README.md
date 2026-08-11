@@ -2,12 +2,12 @@
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
 Prettier 格式化、文件归位、单文件行数限制、JS/Vue 单元测试、Vue Lighthouse 推送前质量检查、公共文件保护、
-企业微信备案和提交信息文件清单。
+TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.1
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -21,10 +21,11 @@ Vue Lighthouse 默认关闭，开启时业务项目还需
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 单元测试仅在新项目已经安装 Vitest 且存在 `test:unit` 脚本时由 `init` 自动开启；
 已有项目迁移后保持关闭，可准备完成后通过开关开启。
+TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
 
 `init` 会：
 
-1. 生成五个受管理的 Git Hook，包括单元测试和可选 Lighthouse 门禁使用的 `pre-push`；
+1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试和可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
@@ -42,9 +43,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `unitTest`、
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `typeCheck`、`unitTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
 只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
@@ -53,7 +54,7 @@ repo-guard doctor --fix
 
 - 覆盖自定义 Git Hook 或替换其他 `core.hooksPath`；
 - 自动解除已被 Git 跟踪的 `.env.config`；
-- 安装 Vitest、Vue Test Utils、ESLint、`@eslint/js`、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
+- 安装 TypeScript、vue-tsc、Vitest、Vue Test Utils、ESLint、`@eslint/js`、Prettier、Stylelint、Lighthouse CI、Chrome 或生成业务项目的规则文件；
 - 自动填写企业微信密钥或改写已有配置中的显式门禁开关。
 
 ## 提交顺序
@@ -76,13 +77,14 @@ git commit
 Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
-本工具不执行 `tsc`、`vue-tsc` 或其他 TypeScript 类型检查。`.ts`、`.tsx`
-文件只会在项目 ESLint 配置支持时接受普通 ESLint 检查。
+TypeScript 类型检查不会进入 `pre-commit`。开启 `typeCheck` 后，repo-guard 在 `pre-push`
+运行项目自有的 `typecheck` npm 脚本；未开启时 `.ts`、`.tsx` 文件只接受项目 ESLint 配置支持的普通检查。
 
 开启相关开关后，`git push` 的附加流程为：
 
 ```text
 git push
+  → npm run typecheck
   → 检查本次推送新增/修改的源码和测试文件
   → 检查必需的同目录 .spec.js，以及禁止的 .skip/.only
   → npm run test:unit
@@ -92,7 +94,7 @@ git push
   → 全部通过后继续推送
 ```
 
-启用单元测试或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
+启用 TypeScript、单元测试或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
 `repo-guard.config.json`，并要求待推送提交就是当前检出的 `HEAD`、工作区和暂存区均无改动。
 这样 Vitest、项目构建和 Lighthouse 检查的就是实际推送内容，不会被未提交的本地修复或临时关闭
 开关影响。一次推送包含多个不同提交时应拆成多次推送；纯删除远程引用不运行质量门禁。
@@ -107,6 +109,11 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "typeCheck": {
+    "enabled": false,
+    "script": "typecheck",
+    "timeoutMs": 180000
   },
   "unitTest": {
     "enabled": false,
@@ -312,6 +319,42 @@ Vue 文件还会分别统计 `template`、`script`、`style` 的有效内容行�
   }
 }
 ```
+
+### TypeScript 门禁
+
+repo-guard 不内置或替换 TypeScript 工具链，而是运行业务项目自己的 npm 脚本。Vue 项目通常使用
+`vue-tsc --noEmit`，普通 TypeScript 项目通常使用 `tsc --noEmit`：
+
+```json
+{
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit"
+  }
+}
+```
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 检测到脚本时新项目为 `true`；迁移后 `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
+| `script` | `typecheck` | 业务项目中运行 `tsc`、`vue-tsc` 或等价全项目类型检查的 npm 脚本名 |
+| `timeoutMs` | `180000` | 类型检查进程最长运行时间 |
+
+手动启用并诊断：
+
+```bash
+repo-guard enable typeCheck
+repo-guard doctor
+```
+
+即使自动门禁关闭，也可以显式运行：
+
+```bash
+repo-guard typecheck
+```
+
+类型检查失败或超时会阻止推送，并要求 AI 修复类型根因和相关调用方，禁止通过 `any`、
+`@ts-ignore`、`@ts-nocheck`、关闭 strict 选项或修改门禁来绕过。类型检查始终针对完整项目，
+不尝试只检查暂存文件或变更文件，因为跨文件类型关系无法安全地局部验证。
 
 ### JS/Vue 单元测试门禁
 
@@ -624,9 +667,10 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement unitTest
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest
 repo-guard disable filePlacement
 repo-guard file-placement
+repo-guard typecheck
 repo-guard unit-test
 repo-guard lighthouse
 repo-guard enable lighthouse
@@ -640,14 +684,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、Hook 版本、TypeScript 脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.0
+## 升级到 0.12.1
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.1
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -674,3 +718,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.0 新增默认开启的 `preCommit.filePlacement` 文件归位门禁。已有项目迁移后使用 `newFiles`
 模式，只约束新增、复制和重命名后的路径；运行 `doctor --fix` 会补充全项目专项检查脚本
 `guard:file-placement`。如需关闭日常提交检查，可执行 `repo-guard disable filePlacement`。
+
+0.12.1 新增 `typeCheck` 配置、`repo-guard typecheck` 显式命令和 pre-push TypeScript 门禁。
+新项目存在 `typecheck` npm 脚本时自动开启；已有配置迁移后保持关闭，可准备完成后执行
+`repo-guard enable typeCheck`。类型检查只运行项目脚本，不进入 pre-commit，也不内置或安装 TypeScript。

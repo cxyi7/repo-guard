@@ -7,6 +7,7 @@ import {
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
+  DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from '../src/config.js';
@@ -31,6 +32,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
 
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
+  assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
   assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
   assert.deepEqual(config.preCommit.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
   assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
@@ -92,6 +94,30 @@ test('validates and normalizes Vue Lighthouse configuration', () => {
   );
   assert.throws(
     () => validateConfig(baseConfig({ lighthouse: { timeoutMs: 0 } })),
+    /positive integer/,
+  );
+});
+
+test('validates and normalizes TypeScript gate configuration', () => {
+  const config = validateConfig(baseConfig({
+    typeCheck: {
+      enabled: true,
+      script: '  typecheck:vue  ',
+      timeoutMs: 90000,
+    },
+  }));
+
+  assert.deepEqual(config.typeCheck, {
+    enabled: true,
+    script: 'typecheck:vue',
+    timeoutMs: 90000,
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ typeCheck: { script: 'vue-tsc --noEmit' } })),
+    /must be an npm script name/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ typeCheck: { timeoutMs: 0 } })),
     /positive integer/,
   );
 });

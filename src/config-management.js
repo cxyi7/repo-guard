@@ -13,6 +13,7 @@ import {
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
+  DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from './config.js';
@@ -24,6 +25,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'filePlacement',
   'maxFileLines',
   'lighthouse',
+  'typeCheck',
   'unitTest',
   'notification',
 ]);
@@ -44,6 +46,7 @@ function cloneFilePlacementConfig(value = {}) {
 
 export function createStarterConfig({
   stylelintEnabled = false,
+  typeCheckEnabled = false,
   unitTestEnabled = false,
 } = {}) {
   return {
@@ -51,6 +54,10 @@ export function createStarterConfig({
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
+    typeCheck: {
+      ...DEFAULT_TYPE_CHECK_CONFIG,
+      enabled: typeCheckEnabled,
+    },
     unitTest: {
       ...DEFAULT_UNIT_TEST_CONFIG,
       enabled: unitTestEnabled,
@@ -128,6 +135,10 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_LIGHTHOUSE_CONFIG,
       ...(prepared.lighthouse ?? {}),
     },
+    typeCheck: {
+      ...DEFAULT_TYPE_CHECK_CONFIG,
+      ...(prepared.typeCheck ?? {}),
+    },
     unitTest: {
       ...DEFAULT_UNIT_TEST_CONFIG,
       ...(prepared.unitTest ?? {}),
@@ -164,7 +175,12 @@ export function migrateProjectConfig(root) {
 }
 
 function featureConfig(config, feature) {
-  if (feature === 'notification' || feature === 'lighthouse' || feature === 'unitTest') {
+  if (
+    feature === 'notification'
+    || feature === 'lighthouse'
+    || feature === 'typeCheck'
+    || feature === 'unitTest'
+  ) {
     return config[feature];
   }
   return config.preCommit[feature];

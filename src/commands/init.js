@@ -1,5 +1,6 @@
 import {
   CONFIG_FILE,
+  DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   loadConfig,
 } from '../config.js';
@@ -7,6 +8,7 @@ import { ensureProjectConfig } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../stylelint-project.js';
+import { detectProjectTypeCheckSetup } from '../typecheck-runner.js';
 import {
   ensureUnitTestPolicy,
   UNIT_TEST_POLICY_FILE,
@@ -16,9 +18,11 @@ import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const stylelintSetup = detectProjectStylelintSetup(root);
+  const typeCheckSetup = detectProjectTypeCheckSetup(root, DEFAULT_TYPE_CHECK_CONFIG);
   const unitTestSetup = detectProjectUnitTestSetup(root, DEFAULT_UNIT_TEST_CONFIG);
   const { created: configCreated } = ensureProjectConfig(root, {
     stylelintEnabled: stylelintSetup.ready,
+    typeCheckEnabled: typeCheckSetup.ready,
     unitTestEnabled: unitTestSetup.ready,
   });
   const result = installHooks({
@@ -55,6 +59,11 @@ export function runInit(cwd = process.cwd()) {
   }
   if (configCreated) {
     console.log('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
+    console.log(
+      typeCheckSetup.ready
+        ? `- TypeScript: enabled with npm script "${DEFAULT_TYPE_CHECK_CONFIG.script}"`
+        : '- TypeScript: disabled until the project adds a typecheck script',
+    );
     console.log(
       unitTestSetup.ready
         ? `- Unit tests: enabled with npm script "${DEFAULT_UNIT_TEST_CONFIG.script}"`

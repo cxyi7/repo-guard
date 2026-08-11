@@ -86,6 +86,8 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
   packageJson.scripts['guard:enable-lighthouse'] ||= 'repo-guard enable lighthouse';
   packageJson.scripts['guard:lighthouse'] ||= 'repo-guard lighthouse';
+  packageJson.scripts['guard:enable-typecheck'] ||= 'repo-guard enable typeCheck';
+  packageJson.scripts['guard:typecheck'] ||= 'repo-guard typecheck';
   packageJson.scripts['guard:enable-unit-test'] ||= 'repo-guard enable unitTest';
   packageJson.scripts['guard:unit-test'] ||= 'repo-guard unit-test';
   packageJson.scripts['guard:file-placement'] ||= 'repo-guard file-placement';

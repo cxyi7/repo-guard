@@ -6,6 +6,7 @@ import {
   parsePrePushUpdates,
 } from '../pre-push-changes.js';
 import { runUnitTestGate } from '../unit-test-runner.js';
+import { runTypeCheckGate } from '../typecheck-runner.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -31,7 +32,7 @@ function loadConfigAtRevision(root, revision) {
 }
 
 function usesPrePushGate(config) {
-  return config?.unitTest.enabled || config?.lighthouse.enabled;
+  return config?.typeCheck.enabled || config?.unitTest.enabled || config?.lighthouse.enabled;
 }
 
 function assertExactPushSnapshot(root, revision) {
@@ -119,6 +120,18 @@ export function runPrePush(cwd = process.cwd(), {
     return 0;
   }
   const { config } = resolved;
+
+  if (config.typeCheck.enabled) {
+    const typeCheckExitCode = runTypeCheckGate({
+      root,
+      config: config.typeCheck,
+    });
+    if (typeCheckExitCode !== 0) {
+      return typeCheckExitCode;
+    }
+  } else {
+    console.log('repo-guard pre-push: TypeScript type check is disabled.');
+  }
 
   if (config.unitTest.enabled) {
     const changes = collectPrePushChanges({ input, remoteName, root });

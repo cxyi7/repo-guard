@@ -6,6 +6,7 @@
 业务项目
 ├─ repo-guard.config.json       项目级保护和质量门禁开关
 ├─ Stylelint/ESLint/Prettier + 项目配置   样式、代码及格式规则
+├─ tsc/vue-tsc + typecheck npm 脚本       全项目 TypeScript 类型检查
 ├─ Vitest + *.spec.js                     JS/Vue 单元测试和项目断言
 ├─ @lhci/cli + lighthouserc.*             Vue 页面运行质量规则
 └─ @cxyi7/repo-guard
@@ -18,6 +19,7 @@
    ├─ eslint-config            由 JSON 开关控制的 AI 可维护性基础规则
    ├─ prettier-runner          检查、格式化
    ├─ max-file-lines          行数预警、Vue 区域分析和 strict/noRegression 门禁
+   ├─ typecheck-runner        项目 TypeScript 脚本验证和执行
    ├─ unit-test-policy        受管理的 AGENTS.md AI 测试规范
    ├─ unit-test-runner        缺失测试/绕过检查和 Vitest 执行
    ├─ pre-push-changes        精确计算本次推送的 Git 变更范围
@@ -26,7 +28,7 @@
    └─ hook installer           Hook 生命周期
 ```
 
-repo-guard 负责流程编排，不替换业务项目的 Stylelint、ESLint、Prettier、Vitest 或
+repo-guard 负责流程编排，不替换业务项目的 Stylelint、ESLint、Prettier、TypeScript、Vitest 或
 Lighthouse 安装。项目负责选择版本、插件、解析器、测试环境、Mock、页面、断言和忽略范围。
 `preCommit.eslint.preset` 开启时，`eslint-runner` 从业务项目加载 `@eslint/js`，并
 按已安装情况加载 `eslint-plugin-vue` 和 `typescript-eslint`，然后通过 ESLint
@@ -76,12 +78,17 @@ ESLint 无法自动修复时，`eslint-diagnostics` 从结构化结果中提取�
 行列、规则和原始错误。每个问题生成一段带编号、可独立复制给 AI 的完整指令，
 不输出源代码内容，也不建议关闭规则或扩大忽略范围。
 
-## Pre-push 单元测试与 Lighthouse 状态流
+## Pre-push TypeScript、单元测试与 Lighthouse 状态流
 
 ```text
 git push
   ↓
 读取 pre-push stdin，计算每个 ref 的实际提交范围
+  ↓
+TypeScript 未启用 ────────────────────────┐
+  ↓ 已启用                               │
+npm run typecheck                        │
+  └──────────────────────────────────────┘
   ↓
 单元测试未启用 ───────────────────────────┐
   ↓ 已启用                               │
@@ -117,7 +124,8 @@ Vue Router 页面由业务项目在 `lighthouserc.*` 中显式配置。LHCI 的�
 doctor --fix → 配置迁移 + 托管安装状态修复 ──────────────┘
 ```
 
-新建配置默认启用 ESLint、Prettier、单文件行数门禁、企业微信通知和 9 条通知级保护规则；只有
+新建配置默认启用 ESLint、Prettier、单文件行数门禁、企业微信通知和 9 条通知级保护规则；已有
+`typecheck` 脚本时同时启用 TypeScript 门禁；只有
 本地 Stylelint 和项目配置均存在时才自动启用 Stylelint，只有 Vitest 与 `test:unit` 脚本均存在时
 才自动启用单元测试并维护 AI 规范。通知关闭时
 `notify` 规则仍参与保护文件识别和提交信息记录，但 gate 不读取凭据、不发送请求。

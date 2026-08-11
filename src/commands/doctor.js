@@ -37,6 +37,7 @@ import {
   UNIT_TEST_POLICY_FILE,
 } from '../unit-test-policy.js';
 import { validateUnitTestSetup } from '../unit-test-runner.js';
+import { validateTypeCheckSetup } from '../typecheck-runner.js';
 
 function nodeVersionIsSupported() {
   const [major, minor] = process.versions.node.split('.').map(Number);
@@ -177,6 +178,20 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else {
     checks.push('Lighthouse Vue pre-push gate is disabled');
+  }
+
+  if (config?.typeCheck.enabled) {
+    try {
+      validateTypeCheckSetup(root, config.typeCheck);
+      checks.push(
+        `TypeScript pre-push gate (script=${config.typeCheck.script}, `
+        + `timeoutMs=${config.typeCheck.timeoutMs})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('TypeScript pre-push gate is disabled');
   }
 
   if (config?.unitTest.enabled) {

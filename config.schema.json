@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, staged quality, TypeScript, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -61,6 +61,31 @@
           "minimum": 1,
           "default": 300000,
           "description": "Timeout applied separately to the build, collect, and assert processes."
+        }
+      }
+    },
+    "typeCheck": {
+      "type": "object",
+      "description": "Project-owned TypeScript type-check script run explicitly or from the managed pre-push hook.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run the configured TypeScript type-check script automatically from the managed pre-push hook. Init enables this only when the script is already available."
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9:_-]+$",
+          "default": "typecheck",
+          "description": "Name of the consuming project's npm script that runs tsc, vue-tsc, or an equivalent full-project type check."
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 180000,
+          "description": "Maximum runtime for the TypeScript type-check process."
         }
       }
     },

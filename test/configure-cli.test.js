@@ -47,6 +47,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'prettier',
       'stylelint',
       'maxFileLines',
+      'typeCheck',
       'unitTest',
       'lighthouse',
     ],
@@ -57,6 +58,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /stylelint: enabled/);
   assert.match(enableResult.stdout, /lighthouse: enabled/);
   assert.match(enableResult.stdout, /maxFileLines: enabled/);
+  assert.match(enableResult.stdout, /typeCheck: enabled/);
   assert.match(enableResult.stdout, /unitTest: enabled/);
 
   const config = JSON.parse(
@@ -67,6 +69,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
+  assert.equal(config.typeCheck.enabled, true);
   assert.equal(config.unitTest.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
@@ -139,4 +142,28 @@ test('init enables unit tests and writes AI policy when Vitest is ready', (conte
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:unit-test-policy:start/,
   );
+});
+
+test('init enables TypeScript when the typecheck script is ready', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-typecheck-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+  assert.equal(gitResult.status, 0, gitResult.stderr);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({
+      name: 'fixture',
+      version: '1.0.0',
+      scripts: { typecheck: 'tsc --noEmit' },
+    }, null, 2)}\n`,
+  );
+
+  const initResult = run(root, ['init']);
+  assert.equal(initResult.status, 0, initResult.stderr);
+  assert.match(initResult.stdout, /TypeScript: enabled/);
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(config.typeCheck.enabled, true);
 });

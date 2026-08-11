@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.1
+
+- 新增项目自有 npm 脚本驱动的 TypeScript 类型检查门禁，支持 `repo-guard typecheck` 显式执行和受管理 `pre-push` 自动阻断。
+- 新项目存在 `typecheck` 脚本时自动开启；已有配置迁移后保持关闭，并可通过 `repo-guard enable typeCheck` 渐进启用。
+- 增加脚本存在性、超时配置、doctor 诊断和面向 AI 的失败修复要求；类型检查不进入 pre-commit，也不内置 TypeScript 工具链。
+
 ## 0.12.0
 
 - 新增默认开启的可配置文件归位门禁，内置资源文件统一进入 assets 目录、Markdown 文档统一进入 docs 等目录的规则。

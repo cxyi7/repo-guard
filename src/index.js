@@ -35,6 +35,10 @@ export {
 } from './max-file-lines.js';
 export { runVueLighthouse } from './lighthouse-runner.js';
 export {
+  runTypeCheckGate,
+  validateTypeCheckSetup,
+} from './typecheck-runner.js';
+export {
   buildUnitTestAiInstructions,
   expectedUnitTestPath,
   inspectUnitTestPolicy,

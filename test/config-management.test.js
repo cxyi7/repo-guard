@@ -67,6 +67,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
     { pattern: '**/*.{ts,tsx}', maxLines: 1000 },
   ]);
   assert.equal(config.lighthouse.enabled, false);
+  assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.equal(config.unitTest.requireTests, 'newFiles');
   assert.equal(config.notification.enabled, true);
@@ -85,6 +86,13 @@ test('starter configuration enables unit tests when project setup was detected',
 
   assert.equal(config.unitTest.enabled, true);
   assert.equal(config.unitTest.script, 'test:unit');
+});
+
+test('starter configuration enables TypeScript when its project script was detected', () => {
+  const config = createStarterConfig({ typeCheckEnabled: true });
+
+  assert.equal(config.typeCheck.enabled, true);
+  assert.equal(config.typeCheck.script, 'typecheck');
 });
 
 test('migrates sparse configuration without changing project rules', (context) => {
@@ -107,6 +115,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
   assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
+  assert.equal(migrated.typeCheck.enabled, false);
   assert.equal(migrated.unitTest.enabled, false);
   assert.equal(migrated.notification.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);

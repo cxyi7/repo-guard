@@ -85,6 +85,11 @@ export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   buildScript: 'build',
   timeoutMs: 300000,
 });
+export const DEFAULT_TYPE_CHECK_CONFIG = Object.freeze({
+  enabled: false,
+  script: 'typecheck',
+  timeoutMs: 180000,
+});
 export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
   enabled: false,
   script: 'test:unit',
@@ -191,6 +196,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       'version',
       'notification',
       'lighthouse',
+      'typeCheck',
       'unitTest',
       'preCommit',
       'rules',
@@ -260,6 +266,34 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && (!Number.isInteger(lighthouseValue.timeoutMs) || lighthouseValue.timeoutMs <= 0)
   ) {
     throw new Error(`${configPath} lighthouse.timeoutMs must be a positive integer`);
+  }
+
+  const typeCheckValue = value.typeCheck ?? {};
+  if (!typeCheckValue || typeof typeCheckValue !== 'object' || Array.isArray(typeCheckValue)) {
+    throw new Error(`${configPath} typeCheck must be an object`);
+  }
+  assertKnownProperties(
+    typeCheckValue,
+    new Set(['enabled', 'script', 'timeoutMs']),
+    `${configPath} typeCheck`,
+  );
+  if (typeCheckValue.enabled != null && typeof typeCheckValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} typeCheck.enabled must be a boolean`);
+  }
+  if (
+    typeCheckValue.script != null
+    && (
+      typeof typeCheckValue.script !== 'string'
+      || !/^[A-Za-z0-9:_-]+$/.test(typeCheckValue.script.trim())
+    )
+  ) {
+    throw new Error(`${configPath} typeCheck.script must be an npm script name`);
+  }
+  if (
+    typeCheckValue.timeoutMs != null
+    && (!Number.isInteger(typeCheckValue.timeoutMs) || typeCheckValue.timeoutMs <= 0)
+  ) {
+    throw new Error(`${configPath} typeCheck.timeoutMs must be a positive integer`);
   }
 
   const unitTestValue = value.unitTest ?? {};
@@ -647,6 +681,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         ? null
         : lighthouseValue.buildScript?.trim() || DEFAULT_LIGHTHOUSE_CONFIG.buildScript,
       timeoutMs: lighthouseValue.timeoutMs ?? DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
+    },
+    typeCheck: {
+      enabled: typeCheckValue.enabled ?? DEFAULT_TYPE_CHECK_CONFIG.enabled,
+      script: typeCheckValue.script?.trim() || DEFAULT_TYPE_CHECK_CONFIG.script,
+      timeoutMs: typeCheckValue.timeoutMs ?? DEFAULT_TYPE_CHECK_CONFIG.timeoutMs,
     },
     unitTest: {
       enabled: unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled,
