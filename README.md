@@ -7,7 +7,7 @@ Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.8
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.9
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -586,7 +586,7 @@ repo-guard target-blank
 
 ### 依赖架构门禁
 
-repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
+repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它兼容仅通过 ESM `import` 条件导出入口的 dependency-cruiser 16、17 和 18。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
 
 ```bash
 # Node 18.17+ 使用 16.x；Node 20.12+ 可使用 17.x；更高 Node 版本选择其兼容版本
@@ -600,6 +600,8 @@ repo-guard architecture
 dependency-cruiser 自身的 Node.js 要求随大版本变化；repo-guard 的可选 peer 范围是 `>=16 <19`，业务项目应选择与自身 Node.js 兼容的版本。
 
 默认三条 error 规则禁止循环依赖、无法解析的导入以及生产代码导入测试代码。`rules` 使用 dependency-cruiser 的 `from`/`to` 条件；`error` 会阻止推送，`warn` 和 `info` 只进入统一报告，`ignore` 不执行。启用时还会在 `AGENTS.md` 增量维护与当前配置一致的 AI 架构要求。
+
+架构错误会按编号输出可独立复制给 AI 的完整中文修复指令。每段包含项目根目录、规则名、依赖关系、完整循环链路、针对性修复建议、修改范围、禁止绕过要求，以及架构检查、测试和生产构建验证命令。dependency-cruiser 16 的字符串循环链路与 17/18 的对象循环链路都会格式化为可读路径。
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
@@ -991,10 +993,10 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.8
+## 升级到 0.12.9
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.8
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.9
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1054,3 +1056,6 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.12.8 新增始终启用的 Vue `target="_blank"` 安全门禁和 `repo-guard target-blank` 全项目命令。
 静态或简单绑定字面量 `_blank` 必须具有可证明的 `noopener`、`noreferrer`；动态 `rel` 不会被视为安全。
 只有精确命中当前有效 `vue/target-blank-security` 结构化例外的位置才会放行。
+
+0.12.9 修复 dependency-cruiser 16、17 和 18 仅暴露 ESM `import` 入口时被误报为未安装的问题，
+启用依赖架构门禁的 Node 18、20、22 及更高版本项目无需添加 CommonJS 兼容入口。

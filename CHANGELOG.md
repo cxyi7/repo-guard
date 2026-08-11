@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12.10
+
+- 依赖架构门禁失败时，为每条 error 违规输出可独立复制给 AI 的完整中文修复指令，包含项目根目录、规则、依赖关系、循环链路、修复建议、修改范围和验证命令。
+- AI 指令明确禁止关闭、删除、降级或忽略规则，以及缩小扫描范围、扩大排除和伪造 dependency-cruiser 结果。
+- 兼容 dependency-cruiser 17/18 的对象循环链路格式，不再把循环模块显示为 `[object Object]`。
+
+## 0.12.9
+
+- 修复 dependency-cruiser 16、17 和 18 仅通过 ESM `import` 条件导出入口时被误报为未安装的问题。
+- 依赖架构门禁现在直接解析项目本地包元数据与 CLI，不再要求 dependency-cruiser 提供 CommonJS `require` 入口。
+- 增加 ESM-only dependency-cruiser 安装形态的架构门禁和 doctor 回归测试。
+
 ## 0.12.8
 
 - 新增始终启用的 Vue `target="_blank"` 安全门禁，要求同一标签具有可静态验证的 `rel="noopener noreferrer"`，并拒绝冲突的 `opener` token。

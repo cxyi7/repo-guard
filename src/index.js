@@ -10,6 +10,7 @@ export {
   isExceptionPolicyCurrent,
 } from './exception-policy.js';
 export {
+  buildArchitectureAiRepairInstructions,
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,
   formatArchitectureReport,

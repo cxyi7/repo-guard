@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.12.8",
+  "version": "0.12.10",
   "description": "Git guard with Vue v-html and target-blank security, staged code quality, structured exceptions, architecture, TypeScript, builds, coverage, file placement, JS/TS/Vue unit tests, Vue Lighthouse, protected files, and notifications",
   "keywords": [
     "git-hooks",

@@ -11,8 +11,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
+  buildArchitectureAiRepairInstructions,
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,
+  formatArchitectureReport,
   parseArchitectureReport,
   runArchitectureGate,
   validateArchitectureSetup,
@@ -68,6 +70,7 @@ function createFixture({ enabled = true } = {}) {
       version: '17.3.2',
       type: 'module',
       main: 'index.js',
+      exports: { '.': { import: './index.js' } },
       bin: { depcruise: 'bin/dependency-cruise.mjs' },
     }, null, 2)}\n`,
   );
@@ -154,6 +157,52 @@ test('parses dependency-cruiser JSON and blocks error violations', (context) => 
     modules: [],
     summary: { totalCruised: 0, violations: [] },
   })).violations.length, 0);
+});
+
+test('builds standalone AI repair instructions and formats dependency-cruiser 17 cycles', () => {
+  const root = path.resolve('fixture');
+  const violations = [
+    {
+      type: 'cycle',
+      from: 'src/api/message.js',
+      to: 'src/lib/axios.js',
+      rule: { name: 'no-circular', severity: 'error' },
+      cycle: [
+        { name: 'src/lib/axios.js', dependencyTypes: ['import'] },
+        { name: 'src/store/user.js', dependencyTypes: ['import'] },
+        { name: 'src/api/message.js', dependencyTypes: ['import'] },
+      ],
+    },
+    {
+      type: 'dependency',
+      from: 'src/main.js',
+      to: '/@/missing.js',
+      rule: { name: 'no-unresolved', severity: 'error' },
+    },
+    {
+      type: 'dependency',
+      from: 'src/optional.js',
+      to: 'src/legacy.js',
+      rule: { name: 'legacy-review', severity: 'warn' },
+    },
+  ];
+
+  const report = formatArchitectureReport({ modulesCruised: 4, violations }, '17.4.3');
+  const instructions = buildArchitectureAiRepairInstructions({ root, violations });
+
+  assert.match(
+    report,
+    /cycle: src\/lib\/axios\.js -> src\/store\/user\.js -> src\/api\/message\.js/,
+  );
+  assert.doesNotMatch(report, /\[object Object\]/);
+  assert.match(instructions, /1\. 请修复依赖架构规则 no-circular 的违规/);
+  assert.match(instructions, /项目根目录：.+fixture/);
+  assert.match(instructions, /完整循环链路：src\/api\/message\.js -> src\/lib\/axios\.js/);
+  assert.match(instructions, /2\. 请修复依赖架构规则 no-unresolved 的违规/);
+  assert.match(instructions, /architecture\.tsConfig/);
+  assert.doesNotMatch(instructions, /legacy-review/);
+  assert.match(instructions, /npm run guard:architecture/);
+  assert.match(instructions, /不得关闭、删除、降级或忽略架构规则/);
 });
 
 test('reports warnings without weakening the hard error gate', (context) => {

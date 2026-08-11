@@ -15,6 +15,7 @@ function resolveDependencyCruiser(root) {
     root,
     'dependency-cruiser',
     'Architecture dependency gate',
+    { requireEntry: false },
   );
   const packageJson = JSON.parse(readFileSync(metadata.packagePath, 'utf8'));
   const bin = typeof packageJson.bin === 'string'
@@ -100,15 +101,67 @@ function violationSeverity(violation) {
   return violation?.rule?.severity ?? violation?.severity ?? 'warn';
 }
 
+function cycleModuleName(module) {
+  if (typeof module === 'string') return module;
+  if (typeof module?.name === 'string') return module.name;
+  return '(unknown module)';
+}
+
+function formatCycle(cycle) {
+  return Array.isArray(cycle) ? cycle.map(cycleModuleName).join(' -> ') : '';
+}
+
 function formatViolation(violation, index) {
   const severity = violationSeverity(violation);
   const ruleName = violation?.rule?.name ?? violation?.ruleName ?? 'unnamed';
   const from = violation?.from ?? violation?.module ?? '(unknown source)';
   const to = violation?.to ? ` -> ${violation.to}` : '';
   const cycle = Array.isArray(violation?.cycle) && violation.cycle.length > 0
-    ? `\n     cycle: ${violation.cycle.join(' -> ')}`
+    ? `\n     cycle: ${formatCycle(violation.cycle)}`
     : '';
   return `  ${index + 1}. [${severity}] ${ruleName}: ${from}${to}${cycle}`;
+}
+
+function architectureRepairAdvice(ruleName) {
+  if (ruleName === 'no-circular') {
+    return '梳理循环链路和模块职责，提取双方共享的低层模块，建立单向依赖，并保持现有行为与公开接口兼容。';
+  }
+  if (ruleName === 'no-unresolved') {
+    return '检查导入拼写、目标文件、包安装和路径别名；若属于别名解析配置缺失，应正确补全 architecture.tsConfig，不能用排除规则掩盖。';
+  }
+  if (ruleName === 'no-production-to-tests') {
+    return '把生产代码需要复用的实现移到非测试模块，并让生产代码和测试代码分别依赖该共享模块。';
+  }
+  return '检查规则定义、依赖方向和相关调用方，修复违规根因并保持现有功能不变。';
+}
+
+export function buildArchitectureAiRepairInstructions({ root, violations }) {
+  const blockingViolations = violations.filter((violation) => (
+    violationSeverity(violation) === 'error'
+  ));
+  const normalizedRoot = path.resolve(root).replace(/\\/g, '/');
+  const sections = blockingViolations.map((violation, index) => {
+    const ruleName = violation?.rule?.name ?? violation?.ruleName ?? 'unnamed';
+    const from = violation?.from ?? violation?.module ?? '(unknown source)';
+    const to = violation?.to ?? '(unknown target)';
+    const cycle = formatCycle(violation?.cycle);
+    return [
+      `${index + 1}. 请修复依赖架构规则 ${ruleName} 的违规。`,
+      `   项目根目录：${normalizedRoot}`,
+      `   依赖关系：${from} -> ${to}`,
+      ...(cycle ? [`   完整循环链路：${from} -> ${cycle}`] : []),
+      `   修复建议：${architectureRepairAdvice(ruleName)}`,
+      '   修改范围：只修改解决该依赖问题所必需的源码、测试和合法解析配置，不处理无关问题。',
+      '   禁止绕过：不得关闭、删除、降级或忽略架构规则，不得缩小 sourcePaths、扩大 exclude，或伪造 dependency-cruiser 结果。',
+      '   验证要求：修复后运行 npm run guard:architecture，并运行受影响模块已有的测试和生产构建。',
+    ].join('\n');
+  });
+
+  return [
+    '依赖架构门禁失败，以下完整指令可按编号分别复制给 AI 修复：',
+    '',
+    sections.join('\n\n'),
+  ].join('\n');
 }
 
 export function formatArchitectureReport(result, version = 'unknown') {
@@ -181,8 +234,8 @@ export function runArchitectureGate({ root, config }) {
     if (hasErrors) {
       console.error([
         formatted,
-        'Architecture dependency gate failed. Fix dependency direction, extract a lower-level module, or correct the import path.',
-        'Do not disable, ignore, or weaken an architecture rule to make the push pass.',
+        '',
+        buildArchitectureAiRepairInstructions({ root, violations: report.violations }),
       ].join('\n'));
       return 1;
     }

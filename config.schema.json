@@ -124,7 +124,7 @@
     },
     "architecture": {
       "type": "object",
-      "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation.",
+      "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation, with standalone AI repair instructions for blocking violations.",
       "additionalProperties": false,
       "properties": {
         "enabled": {
