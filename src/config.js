@@ -31,6 +31,37 @@ export const DEFAULT_BUILD_CONFIG = Object.freeze({
   script: 'build',
   timeoutMs: 300000,
 });
+const DEFAULT_ARCHITECTURE_TEST_PATTERN = String.raw`(?:^|/)(?:__tests__|tests?)/|\.(?:spec|test)\.[cm]?[jt]sx?$`;
+export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
+  enabled: false,
+  timeoutMs: 120000,
+  sourcePaths: Object.freeze(['src']),
+  tsConfig: null,
+  exclude: String.raw`(?:^|/)(?:node_modules|dist|coverage|\.git)/`,
+  rules: Object.freeze([
+    Object.freeze({
+      name: 'no-circular',
+      comment: 'Do not create circular dependencies.',
+      severity: 'error',
+      from: Object.freeze({ path: '^src/' }),
+      to: Object.freeze({ circular: true }),
+    }),
+    Object.freeze({
+      name: 'no-unresolved',
+      comment: 'Every project import must resolve.',
+      severity: 'error',
+      from: Object.freeze({ path: '^src/' }),
+      to: Object.freeze({ couldNotResolve: true }),
+    }),
+    Object.freeze({
+      name: 'no-production-to-tests',
+      comment: 'Production code must not import test-only modules.',
+      severity: 'error',
+      from: Object.freeze({ path: '^src/', pathNot: DEFAULT_ARCHITECTURE_TEST_PATTERN }),
+      to: Object.freeze({ path: DEFAULT_ARCHITECTURE_TEST_PATTERN }),
+    }),
+  ]),
+});
 export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
   enabled: false,
   mode: 'strict',
@@ -266,6 +297,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       '$schema',
       'version',
       'notification',
+      'architecture',
       'build',
       'lighthouse',
       'typeCheck',
@@ -305,6 +337,114 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   ) {
     throw new Error(`${configPath} notification.enabled must be a boolean`);
   }
+
+  const architectureValue = value.architecture ?? {};
+  if (!architectureValue || typeof architectureValue !== 'object'
+    || Array.isArray(architectureValue)) {
+    throw new Error(`${configPath} architecture must be an object`);
+  }
+  assertKnownProperties(
+    architectureValue,
+    new Set(['enabled', 'timeoutMs', 'sourcePaths', 'tsConfig', 'exclude', 'rules']),
+    `${configPath} architecture`,
+  );
+  if (architectureValue.enabled != null && typeof architectureValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} architecture.enabled must be a boolean`);
+  }
+  if (architectureValue.timeoutMs != null
+    && (!Number.isInteger(architectureValue.timeoutMs) || architectureValue.timeoutMs <= 0)) {
+    throw new Error(`${configPath} architecture.timeoutMs must be a positive integer`);
+  }
+  const architectureSourcePaths = normalizePatternList(
+    architectureValue.sourcePaths ?? DEFAULT_ARCHITECTURE_CONFIG.sourcePaths,
+    `${configPath} architecture.sourcePaths`,
+  );
+  let architectureTsConfig = architectureValue.tsConfig
+    ?? DEFAULT_ARCHITECTURE_CONFIG.tsConfig;
+  if (architectureTsConfig !== null) {
+    architectureTsConfig = normalizeRelativePattern(
+      architectureTsConfig,
+      `${configPath} architecture.tsConfig`,
+    );
+  }
+  const architectureExclude = architectureValue.exclude === undefined
+    ? DEFAULT_ARCHITECTURE_CONFIG.exclude
+    : architectureValue.exclude;
+  if (architectureExclude !== null
+    && (typeof architectureExclude !== 'string' || !architectureExclude.trim())) {
+    throw new Error(`${configPath} architecture.exclude must be null or a non-empty regex`);
+  }
+  if (architectureExclude !== null) {
+    try {
+      new RegExp(architectureExclude);
+    } catch (error) {
+      throw new Error(`${configPath} architecture.exclude must be a valid regex: ${error.message}`);
+    }
+  }
+  const architectureRulesValue = architectureValue.rules
+    ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
+  if (!Array.isArray(architectureRulesValue) || architectureRulesValue.length === 0) {
+    throw new Error(`${configPath} architecture.rules must be a non-empty array`);
+  }
+  const architectureRuleNames = new Set();
+  const architectureRules = architectureRulesValue.map((rule, index) => {
+    const label = `${configPath} architecture rule ${index + 1}`;
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(
+      rule,
+      new Set(['name', 'comment', 'severity', 'from', 'to']),
+      label,
+    );
+    if (typeof rule.name !== 'string' || !/^[a-z][a-z0-9-]*$/.test(rule.name)) {
+      throw new Error(`${label}.name must be a kebab-case identifier`);
+    }
+    if (architectureRuleNames.has(rule.name)) {
+      throw new Error(`${configPath} architecture rule name is duplicated: ${rule.name}`);
+    }
+    architectureRuleNames.add(rule.name);
+    if (rule.comment != null && (typeof rule.comment !== 'string' || !rule.comment.trim())) {
+      throw new Error(`${label}.comment must be a non-empty string`);
+    }
+    const severity = rule.severity ?? 'error';
+    if (!['error', 'warn', 'info', 'ignore'].includes(severity)) {
+      throw new Error(`${label}.severity must be error, warn, info, or ignore`);
+    }
+    for (const conditionName of ['from', 'to']) {
+      const condition = rule[conditionName];
+      if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
+        throw new Error(`${label}.${conditionName} must be an object`);
+      }
+      for (const regexField of ['path', 'pathNot']) {
+        if (condition[regexField] == null) continue;
+        const patterns = Array.isArray(condition[regexField])
+          ? condition[regexField]
+          : [condition[regexField]];
+        if (patterns.length === 0 || patterns.some((pattern) => (
+          typeof pattern !== 'string' || !pattern
+        ))) {
+          throw new Error(`${label}.${conditionName}.${regexField} must contain regex strings`);
+        }
+        for (const pattern of patterns) {
+          try {
+            new RegExp(pattern);
+          } catch (error) {
+            throw new Error(
+              `${label}.${conditionName}.${regexField} must be a valid regex: ${error.message}`,
+            );
+          }
+        }
+      }
+    }
+    return {
+      name: rule.name,
+      ...(rule.comment == null ? {} : { comment: rule.comment.trim() }),
+      severity,
+      from: structuredClone(rule.from),
+      to: structuredClone(rule.to),
+    };
+  });
 
   const buildValue = value.build ?? {};
   if (!buildValue || typeof buildValue !== 'object' || Array.isArray(buildValue)) {
@@ -877,6 +1017,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     version: 1,
     notification: {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+    },
+    architecture: {
+      enabled: architectureValue.enabled ?? DEFAULT_ARCHITECTURE_CONFIG.enabled,
+      timeoutMs: architectureValue.timeoutMs ?? DEFAULT_ARCHITECTURE_CONFIG.timeoutMs,
+      sourcePaths: architectureSourcePaths,
+      tsConfig: architectureTsConfig,
+      exclude: architectureExclude,
+      rules: architectureRules,
     },
     build: {
       enabled: buildValue.enabled ?? DEFAULT_BUILD_CONFIG.enabled,

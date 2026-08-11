@@ -47,6 +47,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'prettier',
       'stylelint',
       'maxFileLines',
+      'architecture',
       'build',
       'typeCheck',
       'unitTest',
@@ -60,6 +61,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /stylelint: enabled/);
   assert.match(enableResult.stdout, /lighthouse: enabled/);
   assert.match(enableResult.stdout, /maxFileLines: enabled/);
+  assert.match(enableResult.stdout, /architecture: enabled/);
   assert.match(enableResult.stdout, /build: enabled/);
   assert.match(enableResult.stdout, /typeCheck: enabled/);
   assert.match(enableResult.stdout, /unitTest: enabled/);
@@ -73,6 +75,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
+  assert.equal(config.architecture.enabled, true);
   assert.equal(config.build.enabled, true);
   assert.equal(config.typeCheck.enabled, true);
   assert.equal(config.unitTest.enabled, true);
@@ -80,6 +83,10 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:unit-test-policy:start/,
+  );
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:architecture-policy:start/,
   );
 
   const disableResult = run(root, ['disable', 'notification']);
@@ -196,4 +203,42 @@ test('init enables TypeScript when the typecheck script is ready', (context) => 
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(config.typeCheck.enabled, true);
+});
+
+test('init enables architecture and writes AI policy when dependency-cruiser is ready', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-architecture-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+  assert.equal(gitResult.status, 0, gitResult.stderr);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
+  );
+  mkdirSync(path.join(root, 'src'));
+  const dependencyRoot = path.join(root, 'node_modules', 'dependency-cruiser');
+  mkdirSync(path.join(dependencyRoot, 'bin'), { recursive: true });
+  writeFileSync(
+    path.join(dependencyRoot, 'package.json'),
+    `${JSON.stringify({
+      name: 'dependency-cruiser',
+      version: '16.10.4',
+      main: 'index.js',
+      bin: { depcruise: 'bin/dependency-cruise.mjs' },
+    }, null, 2)}\n`,
+  );
+  writeFileSync(path.join(dependencyRoot, 'index.js'), 'module.exports = {};\n');
+  writeFileSync(path.join(dependencyRoot, 'bin', 'dependency-cruise.mjs'), '\n');
+
+  const initResult = run(root, ['init']);
+  assert.equal(initResult.status, 0, initResult.stderr);
+  assert.match(initResult.stdout, /Architecture: enabled/);
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(config.architecture.enabled, true);
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:architecture-policy:start/,
+  );
 });

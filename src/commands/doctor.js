@@ -1,5 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  ARCHITECTURE_POLICY_FILE,
+  ensureArchitecturePolicy,
+  isArchitecturePolicyCurrent,
+} from '../architecture-policy.js';
+import { validateArchitectureSetup } from '../architecture-runner.js';
 import { validateBuildSetup } from '../build-runner.js';
 import { loadConfig } from '../config.js';
 import { isStructuredCoverage } from '../coverage-runner.js';
@@ -67,6 +73,14 @@ function repairRepository(root) {
           policy.changed
             ? `updated ${UNIT_TEST_POLICY_FILE} unit test policy`
             : `${UNIT_TEST_POLICY_FILE} unit test policy is already current`,
+        );
+      }
+      if (config.architecture.enabled) {
+        const policy = ensureArchitecturePolicy(root, config.architecture);
+        repairs.push(
+          policy.changed
+            ? `updated ${ARCHITECTURE_POLICY_FILE} architecture policy`
+            : `${ARCHITECTURE_POLICY_FILE} architecture policy is already current`,
         );
       }
     }
@@ -180,6 +194,32 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else {
     checks.push('Build pre-push gate is disabled');
+  }
+
+  if (config?.architecture.enabled) {
+    try {
+      const setup = validateArchitectureSetup(root, config.architecture);
+      const policyPath = path.join(root, ARCHITECTURE_POLICY_FILE);
+      if (!existsSync(policyPath)
+        || !isArchitecturePolicyCurrent(
+          readFileSync(policyPath, 'utf8'),
+          config.architecture,
+        )) {
+        throw new Error(
+          `${ARCHITECTURE_POLICY_FILE} is missing the repo-guard architecture policy; `
+          + 'run repo-guard doctor --fix',
+        );
+      }
+      checks.push(
+        `Architecture dependency gate (dependency-cruiser ${setup.dependencyCruiser.version}, `
+        + `${config.architecture.rules.length} rules, `
+        + `sources=${config.architecture.sourcePaths.join(',')})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Architecture dependency pre-push gate is disabled');
   }
 
   if (config?.lighthouse.enabled) {

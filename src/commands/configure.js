@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { ensureArchitecturePolicy } from '../architecture-policy.js';
 import { CONFIG_FILE, loadConfig } from '../config.js';
 import {
   migrateProjectConfig,
@@ -18,6 +19,12 @@ export function runMigrate(cwd = process.cwd()) {
 function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const root = findRepositoryRoot(cwd);
   const result = setFeaturesEnabled(root, requestedFeatures, enabled);
+  if (enabled && requestedFeatures.includes('architecture')) {
+    const policy = ensureArchitecturePolicy(root, loadConfig(root).architecture);
+    console.log(
+      `repo-guard architecture policy: ${policy.changed ? 'updated' : 'already current'}`,
+    );
+  }
   if (enabled && requestedFeatures.some((feature) => (
     feature === 'unitTest' || feature === 'coverage'
   ))) {

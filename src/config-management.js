@@ -6,6 +6,7 @@ import {
 import path from 'node:path';
 import {
   CONFIG_FILE,
+  DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -26,6 +27,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'filePlacement',
   'maxFileLines',
+  'architecture',
   'build',
   'lighthouse',
   'typeCheck',
@@ -33,6 +35,20 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'coverage',
   'notification',
 ]);
+
+function cloneArchitectureConfig(value = {}) {
+  const rules = value.rules ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
+  return {
+    ...DEFAULT_ARCHITECTURE_CONFIG,
+    ...value,
+    sourcePaths: [...(value.sourcePaths ?? DEFAULT_ARCHITECTURE_CONFIG.sourcePaths)],
+    rules: rules.map((rule) => ({
+      ...rule,
+      from: structuredClone(rule.from),
+      to: structuredClone(rule.to),
+    })),
+  };
+}
 
 function cloneFilePlacementConfig(value = {}) {
   const rules = value.rules ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
@@ -75,6 +91,7 @@ function cloneUnitTestConfig(value = {}) {
 }
 
 export function createStarterConfig({
+  architectureEnabled = false,
   buildEnabled = false,
   stylelintEnabled = false,
   typeCheckEnabled = false,
@@ -84,6 +101,7 @@ export function createStarterConfig({
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     build: {
       ...DEFAULT_BUILD_CONFIG,
       enabled: buildEnabled,
@@ -160,6 +178,7 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
     },
+    architecture: cloneArchitectureConfig(prepared.architecture),
     build: {
       ...DEFAULT_BUILD_CONFIG,
       ...(prepared.build ?? {}),
@@ -217,6 +236,7 @@ function featureConfig(config, feature) {
   }
   if (
     feature === 'build'
+    || feature === 'architecture'
     || feature === 'notification'
     || feature === 'lighthouse'
     || feature === 'typeCheck'

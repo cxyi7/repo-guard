@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.5
+
+- 新增基于业务项目本地 dependency-cruiser 的依赖架构门禁，由 repo-guard 统一生成配置、执行和解析 JSON 报告。
+- 默认阻止循环依赖、无法解析的导入和生产代码反向导入测试代码；支持自定义 `sourcePaths`、`tsConfig`、排除正则及 `from`/`to` 规则。
+- 新增 `repo-guard architecture`、`enable/disable architecture`、pre-push 编排、doctor 诊断和 `guard:architecture` 项目脚本。
+- 启用时增量维护 `AGENTS.md` 架构硬性要求，明确禁止降低规则、缩小扫描范围或扩大排除项绕过。
+- 旧配置迁移后架构门禁保持关闭；新项目仅在 dependency-cruiser 和源码路径均可用时自动开启。
+
 ## 0.12.4
 
 - 新增结构化 `unitTest.coverage` 门禁，强制 Vitest 生成新鲜的 `coverage-summary.json` 和 `lcov.info`，统一报告并阻断全局行、语句、函数和分支覆盖率不足。

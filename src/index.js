@@ -1,5 +1,17 @@
 export { loadConfig, matchRule, validateConfig } from './config.js';
 export {
+  createDependencyCruiserConfig,
+  detectProjectArchitectureSetup,
+  formatArchitectureReport,
+  parseArchitectureReport,
+  runArchitectureGate,
+  validateArchitectureSetup,
+} from './architecture-runner.js';
+export {
+  ensureArchitecturePolicy,
+  isArchitecturePolicyCurrent,
+} from './architecture-policy.js';
+export {
   runBuildGate,
   validateBuildSetup,
 } from './build-runner.js';

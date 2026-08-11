@@ -1,4 +1,5 @@
 import { runBuildGate } from '../build-runner.js';
+import { runArchitectureGate } from '../architecture-runner.js';
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
 import { findRepositoryRoot, gitValue, runGit } from '../git.js';
 import { runVueLighthouse } from '../lighthouse-runner.js';
@@ -35,6 +36,7 @@ function loadConfigAtRevision(root, revision) {
 function usesPrePushGate(config) {
   return config?.typeCheck.enabled
     || config?.unitTest.enabled
+    || config?.architecture.enabled
     || config?.build.enabled
     || config?.lighthouse.enabled;
 }
@@ -149,6 +151,18 @@ export function runPrePush(cwd = process.cwd(), {
     }
   } else {
     console.log('repo-guard pre-push: unit tests are disabled.');
+  }
+
+  if (config.architecture.enabled) {
+    const architectureExitCode = runArchitectureGate({
+      root,
+      config: config.architecture,
+    });
+    if (architectureExitCode !== 0) {
+      return architectureExitCode;
+    }
+  } else {
+    console.log('repo-guard pre-push: architecture dependency gate is disabled.');
   }
 
   if (config.build.enabled) {

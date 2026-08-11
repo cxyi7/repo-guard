@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { runArchitectureCommand } from './commands/architecture.js';
 import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
@@ -24,8 +25,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
@@ -33,6 +34,7 @@ Usage:
   repo-guard pre-commit
   repo-guard pre-push
   repo-guard build
+  repo-guard architecture
   repo-guard typecheck
   repo-guard unit-test
   repo-guard file-placement
@@ -91,6 +93,9 @@ export async function runCli(argumentsList) {
       case 'build':
         ensureSupportedOptions(rest, new Set());
         return runBuildCommand();
+      case 'architecture':
+        ensureSupportedOptions(rest, new Set());
+        return runArchitectureCommand();
       case 'unit-test':
         ensureSupportedOptions(rest, new Set());
         return runUnitTestCommand();

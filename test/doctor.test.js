@@ -55,6 +55,11 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
   assert.equal(packageJson.scripts.prepare, 'repo-guard install-hooks');
   assert.equal(packageJson.scripts['guard:lighthouse'], 'repo-guard lighthouse');
+  assert.equal(packageJson.scripts['guard:architecture'], 'repo-guard architecture');
+  assert.equal(
+    packageJson.scripts['guard:enable-architecture'],
+    'repo-guard enable architecture',
+  );
   assert.equal(packageJson.scripts['guard:build'], 'repo-guard build');
   assert.equal(
     packageJson.scripts['guard:enable-build'],
@@ -84,6 +89,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.preCommit.prettier.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.lighthouse.enabled, false);
+  assert.equal(config.architecture.enabled, false);
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);

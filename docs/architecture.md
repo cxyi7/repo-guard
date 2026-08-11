@@ -1,5 +1,11 @@
 # 架构说明
 
+## 依赖架构门禁
+
+业务项目提供兼容自身 Node.js 版本的 dependency-cruiser；repo-guard 的 `architecture-runner` 读取 `repo-guard.config.json`，在系统临时目录生成一次性 dependency-cruiser JSON 配置，以 `json` reporter 执行完整依赖图检查，然后统一输出 error/warn 统计和逐项依赖路径。临时配置在成功或失败后都会清理。
+
+`architecture-policy` 将实际启用的规则和禁止绕过方式写入 `AGENTS.md` 受管理区块。`pre-push` 的顺序为 TypeScript、单元测试与覆盖率、依赖架构、独立构建、Lighthouse；架构门禁不进入只处理暂存文件的 `pre-commit`。
+
 ## 职责边界
 
 ```text

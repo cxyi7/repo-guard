@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,6 +25,78 @@
           "type": "boolean",
           "default": true,
           "description": "Require WeCom delivery for notify-level rules. When false, protected changes are still recorded but no notification is sent."
+        }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run dependency architecture rules from the managed pre-push hook. Init enables this only when dependency-cruiser and the configured source paths are available."
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 120000,
+          "description": "Maximum runtime for dependency-cruiser."
+        },
+        "sourcePaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": ["src"],
+          "description": "Repository-relative files, directories, or globs passed to dependency-cruiser."
+        },
+        "tsConfig": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "default": null,
+          "description": "Repository-relative TypeScript config. Null automatically uses tsconfig.json when it exists."
+        },
+        "exclude": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "default": "(?:^|/)(?:node_modules|dist|coverage|\\.git)/",
+          "description": "dependency-cruiser exclusion regex. Null disables the repo-guard exclusion."
+        },
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "from", "to"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "comment": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "enum": ["error", "warn", "info", "ignore"],
+                "default": "error"
+              },
+              "from": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "to": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "Forbidden dependency-cruiser rules. Error violations block the gate; warn and info violations remain visible in the unified report."
         }
       }
     },

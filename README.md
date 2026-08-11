@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、独立生产构建、Vue Lighthouse 推送前质量检查、
+Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.4
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.5
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -23,17 +23,19 @@ Vue Lighthouse 默认关闭，开启时业务项目还需
 已有项目迁移后保持关闭，可准备完成后通过开关开启。
 TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
 独立构建门禁仅在新项目已经存在 `build` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
+依赖架构门禁仅在新项目已安装 dependency-cruiser 且存在默认 `src` 路径时自动开启；已有项目迁移后保持关闭。
 
 `init` 会：
 
-1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试、独立构建和可选 Lighthouse 门禁使用的 `pre-push`；
+1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试、依赖架构、独立构建和可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
 5. 在配置不存在时生成 `repo-guard.config.json`；
 6. 补充初始化、迁移、门禁启用、诊断和检查相关的 `guard:*` 脚本；
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
-8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求。
+8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
+9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -44,9 +46,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `build`、`typeCheck`、`unitTest`、
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `architecture`、`build`、`typeCheck`、`unitTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
 只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
@@ -89,13 +91,14 @@ git push
   → 检查本次推送新增/修改的源码和测试文件
   → 检查映射得到的 .spec/.test 候选测试，以及禁止的 .skip/.only
   → npm run test:unit
+  → dependency-cruiser 执行完整依赖架构规则并输出统一报告
   → 执行项目独立 npm build 脚本
   → @lhci/cli collect 按 lighthouserc 访问配置页面
   → @lhci/cli assert 检查性能、可访问性、最佳实践和 SEO 阈值
   → 全部通过后继续推送
 ```
 
-启用 TypeScript、单元测试、独立构建或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
+启用 TypeScript、单元测试、依赖架构、独立构建或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
 `repo-guard.config.json`，并要求待推送提交就是当前检出的 `HEAD`、工作区和暂存区均无改动。
 这样 Vitest、项目构建和 Lighthouse 检查的就是实际推送内容，不会被未提交的本地修复或临时关闭
 开关影响。一次推送包含多个不同提交时应拆成多次推送；纯删除远程引用不运行质量门禁。
@@ -110,6 +113,41 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "architecture": {
+    "enabled": false,
+    "timeoutMs": 120000,
+    "sourcePaths": ["src"],
+    "tsConfig": null,
+    "exclude": "(?:^|/)(?:node_modules|dist|coverage|\\.git)/",
+    "rules": [
+      {
+        "name": "no-circular",
+        "comment": "Do not create circular dependencies.",
+        "severity": "error",
+        "from": { "path": "^src/" },
+        "to": { "circular": true }
+      },
+      {
+        "name": "no-unresolved",
+        "comment": "Every project import must resolve.",
+        "severity": "error",
+        "from": { "path": "^src/" },
+        "to": { "couldNotResolve": true }
+      },
+      {
+        "name": "no-production-to-tests",
+        "comment": "Production code must not import test-only modules.",
+        "severity": "error",
+        "from": {
+          "path": "^src/",
+          "pathNot": "(?:^|/)(?:__tests__|tests?)/|\\.(?:spec|test)\\.[cm]?[jt]sx?$"
+        },
+        "to": {
+          "path": "(?:^|/)(?:__tests__|tests?)/|\\.(?:spec|test)\\.[cm]?[jt]sx?$"
+        }
+      }
+    ]
   },
   "build": {
     "enabled": false,
@@ -454,6 +492,34 @@ repo-guard typecheck
 类型检查失败或超时会阻止推送，并要求 AI 修复类型根因和相关调用方，禁止通过 `any`、
 `@ts-ignore`、`@ts-nocheck`、关闭 strict 选项或修改门禁来绕过。类型检查始终针对完整项目，
 不尝试只检查暂存文件或变更文件，因为跨文件类型关系无法安全地局部验证。
+
+### 依赖架构门禁
+
+repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
+
+```bash
+# Node 18.17+ 使用 16.x；Node 20.12+ 可使用 17.x；更高 Node 版本选择其兼容版本
+npm install --save-dev dependency-cruiser@^16
+repo-guard enable architecture
+repo-guard doctor
+repo-guard architecture
+```
+
+新项目只有在已安装 dependency-cruiser 且 `sourcePaths` 可用时，`init` 才自动开启；已有配置迁移后保持关闭。`tsConfig: null` 会在根目录存在 `tsconfig.json` 时自动传给 dependency-cruiser，因此纯 JavaScript 项目无需手动关闭 TypeScript 选项。
+dependency-cruiser 自身的 Node.js 要求随大版本变化；repo-guard 的可选 peer 范围是 `>=16 <19`，业务项目应选择与自身 Node.js 兼容的版本。
+
+默认三条 error 规则禁止循环依赖、无法解析的导入以及生产代码导入测试代码。`rules` 使用 dependency-cruiser 的 `from`/`to` 条件；`error` 会阻止推送，`warn` 和 `info` 只进入统一报告，`ignore` 不执行。启用时还会在 `AGENTS.md` 增量维护与当前配置一致的 AI 架构要求。
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 检测到依赖和源码时新项目为 `true`；迁移后 `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
+| `timeoutMs` | `120000` | dependency-cruiser 最长运行时间 |
+| `sourcePaths` | `["src"]` | 传给 dependency-cruiser 的仓库相对目录、文件或 glob |
+| `tsConfig` | `null` | 自动使用根目录 `tsconfig.json`；也可指定仓库相对路径 |
+| `exclude` | 构建、覆盖率、依赖和 Git 目录 | dependency-cruiser 排除正则；`null` 表示不注入排除项 |
+| `rules` | 3 条 error 规则 | repo-guard 生成的 dependency-cruiser forbidden 规则 |
+
+架构错误必须通过调整依赖方向、提取低层公共模块或修正导入来解决。禁止通过关闭门禁、降低 severity、缩小 `sourcePaths`、扩大 `exclude` 或修改规则绕过。
 
 ### JS/TS/Vue 单元测试门禁
 
@@ -808,10 +874,11 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest coverage build
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard build
+repo-guard architecture
 repo-guard typecheck
 repo-guard unit-test
 repo-guard lighthouse
@@ -826,14 +893,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.4
+## 升级到 0.12.5
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.4
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.5
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -877,3 +944,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 和 `lcov`，同时阻断全局行/语句/函数/分支覆盖率及精确 Git 变更行覆盖率不足。旧布尔配置保持
 原有只追加 `--coverage` 的行为，不会因升级自动启用新阈值；安装 Provider 后可执行
 `repo-guard enable coverage` 显式转换并开启结构化门禁。
+
+0.12.5 新增 `architecture` 配置、`repo-guard architecture` 显式命令、dependency-cruiser 统一报告和
+受管理的 `AGENTS.md` 架构规范。已有配置迁移后保持关闭；安装 dependency-cruiser 并确认规则后执行
+`repo-guard enable architecture`，再运行 `repo-guard doctor --fix`。

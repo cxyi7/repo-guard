@@ -1,10 +1,16 @@
 import {
   CONFIG_FILE,
+  DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   loadConfig,
 } from '../config.js';
+import { detectProjectArchitectureSetup } from '../architecture-runner.js';
+import {
+  ARCHITECTURE_POLICY_FILE,
+  ensureArchitecturePolicy,
+} from '../architecture-policy.js';
 import { ensureProjectConfig } from '../config-management.js';
 import { detectProjectBuildSetup } from '../build-runner.js';
 import { findRepositoryRoot } from '../git.js';
@@ -19,11 +25,16 @@ import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
+  const architectureSetup = detectProjectArchitectureSetup(
+    root,
+    DEFAULT_ARCHITECTURE_CONFIG,
+  );
   const buildSetup = detectProjectBuildSetup(root, DEFAULT_BUILD_CONFIG);
   const stylelintSetup = detectProjectStylelintSetup(root);
   const typeCheckSetup = detectProjectTypeCheckSetup(root, DEFAULT_TYPE_CHECK_CONFIG);
   const unitTestSetup = detectProjectUnitTestSetup(root, DEFAULT_UNIT_TEST_CONFIG);
   const { created: configCreated } = ensureProjectConfig(root, {
+    architectureEnabled: architectureSetup.ready,
     buildEnabled: buildSetup.ready,
     stylelintEnabled: stylelintSetup.ready,
     typeCheckEnabled: typeCheckSetup.ready,
@@ -34,6 +45,9 @@ export function runInit(cwd = process.cwd()) {
     updatePackageScripts: true,
   });
   const config = loadConfig(root);
+  const architecturePolicy = config.architecture.enabled
+    ? ensureArchitecturePolicy(root, config.architecture)
+    : null;
   const unitTestPolicy = config.unitTest.enabled
     ? ensureUnitTestPolicy(root, config.unitTest)
     : null;
@@ -49,6 +63,11 @@ export function runInit(cwd = process.cwd()) {
     `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
   );
   console.log(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  if (architecturePolicy) {
+    console.log(
+      `- ${ARCHITECTURE_POLICY_FILE}: ${architecturePolicy.changed ? 'updated' : 'preserved'}`,
+    );
+  }
   if (unitTestPolicy) {
     console.log(
       `- ${UNIT_TEST_POLICY_FILE}: ${unitTestPolicy.changed ? 'updated' : 'preserved'}`,
@@ -62,6 +81,11 @@ export function runInit(cwd = process.cwd()) {
     console.log('- Stylelint: disabled until the project installs Stylelint and adds a config');
   }
   if (configCreated) {
+    console.log(
+      architectureSetup.ready
+        ? `- Architecture: enabled with dependency-cruiser ${architectureSetup.setup.dependencyCruiser.version}`
+        : '- Architecture: disabled until the project installs dependency-cruiser and provides src',
+    );
     console.log(
       buildSetup.ready
         ? `- Build: enabled with npm script "${DEFAULT_BUILD_CONFIG.script}"`

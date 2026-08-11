@@ -67,6 +67,8 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
     { pattern: '**/*.{ts,tsx}', maxLines: 1000 },
   ]);
   assert.equal(config.lighthouse.enabled, false);
+  assert.equal(config.architecture.enabled, false);
+  assert.equal(config.architecture.rules.length, 3);
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
@@ -88,6 +90,13 @@ test('starter configuration enables build when its project script was detected',
 
   assert.equal(config.build.enabled, true);
   assert.equal(config.build.script, 'build');
+});
+
+test('starter configuration enables architecture when dependency-cruiser was detected', () => {
+  const config = createStarterConfig({ architectureEnabled: true });
+
+  assert.equal(config.architecture.enabled, true);
+  assert.deepEqual(config.architecture.sourcePaths, ['src']);
 });
 
 test('starter configuration enables unit tests when project setup was detected', () => {
@@ -124,6 +133,8 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
   assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
+  assert.equal(migrated.architecture.enabled, false);
+  assert.equal(migrated.architecture.rules.length, 3);
   assert.equal(migrated.build.enabled, false);
   assert.equal(migrated.typeCheck.enabled, false);
   assert.equal(migrated.unitTest.enabled, false);
@@ -206,6 +217,15 @@ test('enables the unit test pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['unitTest'], true);
   assert.deepEqual(enabled.changed, ['unitTest']);
   assert.equal(readConfig(root).unitTest.enabled, true);
+});
+
+test('enables the architecture pre-push feature', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['architecture'], true);
+  assert.deepEqual(enabled.changed, ['architecture']);
+  assert.equal(readConfig(root).architecture.enabled, true);
 });
 
 test('enables structured coverage from a legacy boolean configuration', (context) => {

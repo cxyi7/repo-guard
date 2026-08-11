@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -32,6 +33,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
+  assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
@@ -71,6 +73,57 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled must be a boolean/,
+  );
+});
+
+test('validates and normalizes architecture dependency rules', () => {
+  const config = validateConfig(baseConfig({
+    architecture: {
+      enabled: true,
+      timeoutMs: 90000,
+      sourcePaths: ['  src  ', 'packages/ui'],
+      tsConfig: '  configs/tsconfig.app.json  ',
+      exclude: null,
+      rules: [{
+        name: 'no-ui-to-api',
+        comment: ' Keep the UI independent. ',
+        severity: 'error',
+        from: { path: '^src/ui/' },
+        to: { path: '^src/api/' },
+      }],
+    },
+  }));
+
+  assert.deepEqual(config.architecture, {
+    enabled: true,
+    timeoutMs: 90000,
+    sourcePaths: ['src', 'packages/ui'],
+    tsConfig: 'configs/tsconfig.app.json',
+    exclude: null,
+    rules: [{
+      name: 'no-ui-to-api',
+      comment: 'Keep the UI independent.',
+      severity: 'error',
+      from: { path: '^src/ui/' },
+      to: { path: '^src/api/' },
+    }],
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({
+      architecture: { rules: [{ name: 'Bad Name', from: {}, to: {} }] },
+    })),
+    /kebab-case/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      architecture: {
+        rules: [
+          { name: 'duplicate', from: {}, to: {} },
+          { name: 'duplicate', from: {}, to: {} },
+        ],
+      },
+    })),
+    /duplicated/,
   );
 });
 
