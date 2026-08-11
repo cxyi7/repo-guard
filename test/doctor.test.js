@@ -49,6 +49,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
 
   assert.equal(exitCode, 0);
   assert.equal(packageJson.scripts['guard:migrate'], 'repo-guard migrate');
+  assert.equal(packageJson.scripts['guard:exceptions'], 'repo-guard exceptions');
   assert.equal(
     packageJson.scripts['guard:enable-quality'],
     'repo-guard enable eslint prettier',
@@ -84,6 +85,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard disable notification',
   );
   assert.equal(config.notification.enabled, false);
+  assert.deepEqual(config.exceptions.entries, []);
   assert.equal(config.preCommit.eslint.enabled, false);
   assert.equal(config.preCommit.eslint.preset, false);
   assert.equal(config.preCommit.prettier.enabled, false);
@@ -93,6 +95,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:exception-policy:start/,
+  );
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),

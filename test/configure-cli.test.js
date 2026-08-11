@@ -120,6 +120,10 @@ test('init enables Stylelint when the project already provides it and a config',
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:exception-policy:start/,
+  );
 });
 
 test('init enables build when the project script is ready', (context) => {

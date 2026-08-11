@@ -9,6 +9,7 @@ import {
 } from '../pre-push-changes.js';
 import { runUnitTestGate } from '../unit-test-runner.js';
 import { runTypeCheckGate } from '../typecheck-runner.js';
+import { assertExceptionRegistryCurrent } from '../exception-registry.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -30,7 +31,9 @@ function loadConfigAtRevision(root, revision) {
       + error.message,
     );
   }
-  return validateConfig(parsed, CONFIG_FILE);
+  const config = validateConfig(parsed, CONFIG_FILE);
+  assertExceptionRegistryCurrent(config.exceptions);
+  return config;
 }
 
 function usesPrePushGate(config) {

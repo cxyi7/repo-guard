@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
+面向团队 Git 仓库的本地提交门禁，提供结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
 Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.5
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.6
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -35,7 +35,8 @@ TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自
 6. 补充初始化、迁移、门禁启用、诊断和检查相关的 `guard:*` 脚本；
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
 8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
-9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求。
+9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求；
+10. 始终增量维护结构化例外的 AI 禁止绕过要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -46,7 +47,7 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
 已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `architecture`、`build`、`typeCheck`、`unitTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
@@ -113,6 +114,11 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "exceptions": {
+    "warningDays": 14,
+    "maxDays": 90,
+    "entries": []
   },
   "architecture": {
     "enabled": false,
@@ -492,6 +498,50 @@ repo-guard typecheck
 类型检查失败或超时会阻止推送，并要求 AI 修复类型根因和相关调用方，禁止通过 `any`、
 `@ts-ignore`、`@ts-nocheck`、关闭 strict 选项或修改门禁来绕过。类型检查始终针对完整项目，
 不尝试只检查暂存文件或变更文件，因为跨文件类型关系无法安全地局部验证。
+
+### 结构化例外机制
+
+规则例外统一登记在 `exceptions.entries`，不接受散落在源码中的豁免注释、普通 ignore 或关闭规则。例外不提供自动新增命令，必须由有权人员审查后手工登记；AI 发现需要例外时应停止并请求审批。
+
+```json
+{
+  "exceptions": {
+    "warningDays": 14,
+    "maxDays": 90,
+    "entries": [
+      {
+        "id": "legacy-trusted-renderer",
+        "rule": "security/no-unsafe-html",
+        "path": "src/components/LegacyPanel.vue",
+        "line": 12,
+        "column": 7,
+        "reason": "Legacy trusted renderer awaiting replacement.",
+        "owner": "frontend-team",
+        "approvedBy": "security-team",
+        "ticket": "SEC-1234",
+        "createdOn": "2026-08-01",
+        "expiresOn": "2026-08-31"
+      }
+    ]
+  }
+}
+```
+
+约束如下：
+
+- `id` 全局唯一；`rule` 必须是命名空间规则 ID。
+- `path` 必须是单个精确仓库相对文件，禁止 glob、父目录跳转和目录范围豁免。
+- `line`、`column` 必须与规则发现的位置完全一致；移动后的违规不会继承旧例外。
+- `owner` 与 `approvedBy` 必须不同；`reason`、`ticket`、创建日和到期日均必填。
+- 有效期不得超过 `maxDays`，默认 90 天；到期立即阻断普通命令，未来日期同样无效。
+- 距到期不超过 `warningDays` 时进入预警；默认提前 14 天。
+
+```bash
+repo-guard exceptions
+repo-guard doctor
+```
+
+`repo-guard exceptions` 是只读报告，不修改登记表。`init` 和 `doctor --fix` 会在 `AGENTS.md` 增量维护结构化例外硬性要求，明确禁止 AI 新增、延期或改审批信息绕过。后续安全、依赖和样式规则通过相同的规则 ID、路径、行列调用这套机制。
 
 ### 依赖架构门禁
 
@@ -874,6 +924,7 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
+repo-guard exceptions
 repo-guard enable eslint prettier stylelint maxFileLines filePlacement architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
@@ -893,14 +944,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.5
+## 升级到 0.12.6
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.5
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.6
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -948,3 +999,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.5 新增 `architecture` 配置、`repo-guard architecture` 显式命令、dependency-cruiser 统一报告和
 受管理的 `AGENTS.md` 架构规范。已有配置迁移后保持关闭；安装 dependency-cruiser 并确认规则后执行
 `repo-guard enable architecture`，再运行 `repo-guard doctor --fix`。
+
+0.12.6 新增通用 `exceptions` 结构化例外登记表、`repo-guard exceptions` 只读报告和受管理的
+`AGENTS.md` 例外策略。已有配置迁移后默认登记表为空；运行 `doctor --fix` 补齐策略。过期或未来日期
+条目会阻断正常门禁，例外必须精确到规则、文件、行列，并具备独立审批、工单和有限期限。

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.6
+
+- 新增通用 `exceptions` 结构化例外登记表，要求唯一 ID、命名空间规则、精确文件与行列、原因、责任人、独立审批人、工单和日期。
+- 默认最长有效期 90 天、提前 14 天预警；过期和未来日期条目会阻断普通 repo-guard 命令。
+- 新增只读 `repo-guard exceptions` 统一报告和 `guard:exceptions` 项目脚本，不提供自动新增或延期能力。
+- 新增精确位置例外匹配 API，供后续不安全 HTML、链接安全、依赖和样式规则复用。
+- `init` 与 `doctor --fix` 增量维护 `AGENTS.md` 结构化例外硬性要求，禁止 AI 通过新增、延期或篡改审批信息绕过。
+
 ## 0.12.5
 
 - 新增基于业务项目本地 dependency-cruiser 的依赖架构门禁，由 repo-guard 统一生成配置、执行和解析 JSON 报告。

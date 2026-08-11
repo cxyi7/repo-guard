@@ -1,5 +1,11 @@
 # 架构说明
 
+## 结构化例外
+
+`exception-registry` 将配置中的精确位置登记项分类为 active、expiring、expired 或 future，并为其他规则提供统一匹配 API。只有规则 ID、仓库相对路径、行和列全部一致且当前有效的条目才能豁免发现；过期和未来日期条目在配置加载阶段阻断普通命令。
+
+`exception-policy` 维护 `AGENTS.md` 的禁止绕过要求；`repo-guard exceptions` 只读取和报告，不提供自动创建、续期或扩大范围的写操作。配置文件继续由保护规则和既有通知流程审计。
+
 ## 依赖架构门禁
 
 业务项目提供兼容自身 Node.js 版本的 dependency-cruiser；repo-guard 的 `architecture-runner` 读取 `repo-guard.config.json`，在系统临时目录生成一次性 dependency-cruiser JSON 配置，以 `json` reporter 执行完整依赖图检查，然后统一输出 error/warn 统计和逐项依赖路径。临时配置在成功或失败后都会清理。

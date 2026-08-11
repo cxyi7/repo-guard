@@ -4,11 +4,13 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { assertExceptionRegistryCurrent } from './exception-registry.js';
 import {
   CONFIG_FILE,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_CONFIG,
+  DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -35,6 +37,14 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'coverage',
   'notification',
 ]);
+
+function cloneExceptionsConfig(value = {}) {
+  return {
+    ...DEFAULT_EXCEPTIONS_CONFIG,
+    ...value,
+    entries: (value.entries ?? DEFAULT_EXCEPTIONS_CONFIG.entries).map((entry) => ({ ...entry })),
+  };
+}
 
 function cloneArchitectureConfig(value = {}) {
   const rules = value.rules ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
@@ -101,6 +111,7 @@ export function createStarterConfig({
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    exceptions: cloneExceptionsConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     build: {
       ...DEFAULT_BUILD_CONFIG,
@@ -163,12 +174,18 @@ export function ensureProjectConfig(root, options) {
   return { created: true };
 }
 
-export function migrateProjectConfig(root) {
+export function migrateProjectConfig(root, {
+  allowExpiredExceptions = false,
+  now = new Date(),
+} = {}) {
   const current = readProjectConfig(root);
   const prepared = { ...current, version: current.version ?? 1 };
 
   // Invalid values must fail before migration can rewrite the user's file.
-  validateConfig(prepared);
+  const currentConfig = validateConfig(prepared);
+  if (!allowExpiredExceptions) {
+    assertExceptionRegistryCurrent(currentConfig.exceptions, { now });
+  }
 
   const preCommit = prepared.preCommit ?? {};
   const next = {
@@ -178,6 +195,7 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
     },
+    exceptions: cloneExceptionsConfig(prepared.exceptions),
     architecture: cloneArchitectureConfig(prepared.architecture),
     build: {
       ...DEFAULT_BUILD_CONFIG,

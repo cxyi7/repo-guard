@@ -12,6 +12,10 @@ import {
   ensureArchitecturePolicy,
 } from '../architecture-policy.js';
 import { ensureProjectConfig } from '../config-management.js';
+import {
+  ensureExceptionPolicy,
+  EXCEPTION_POLICY_FILE,
+} from '../exception-policy.js';
 import { detectProjectBuildSetup } from '../build-runner.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
@@ -45,6 +49,7 @@ export function runInit(cwd = process.cwd()) {
     updatePackageScripts: true,
   });
   const config = loadConfig(root);
+  const exceptionPolicy = ensureExceptionPolicy(root, config.exceptions);
   const architecturePolicy = config.architecture.enabled
     ? ensureArchitecturePolicy(root, config.architecture)
     : null;
@@ -63,6 +68,10 @@ export function runInit(cwd = process.cwd()) {
     `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
   );
   console.log(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  console.log(
+    `- ${EXCEPTION_POLICY_FILE}: ${exceptionPolicy.changed ? 'updated' : 'preserved'} `
+    + '(structured exception policy)',
+  );
   if (architecturePolicy) {
     console.log(
       `- ${ARCHITECTURE_POLICY_FILE}: ${architecturePolicy.changed ? 'updated' : 'preserved'}`,

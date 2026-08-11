@@ -1,5 +1,15 @@
 export { loadConfig, matchRule, validateConfig } from './config.js';
 export {
+  assertExceptionRegistryCurrent,
+  findStructuredException,
+  formatExceptionRegistryReport,
+  inspectExceptionRegistry,
+} from './exception-registry.js';
+export {
+  ensureExceptionPolicy,
+  isExceptionPolicyCurrent,
+} from './exception-policy.js';
+export {
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,
   formatArchitectureReport,

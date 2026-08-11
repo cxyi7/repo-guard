@@ -4,6 +4,7 @@ import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
+import { runExceptionsCommand } from './commands/exceptions.js';
 import { runFilePlacementCommand } from './commands/file-placement.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
@@ -28,6 +29,7 @@ Usage:
   repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
   repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
+  repo-guard exceptions
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
@@ -82,6 +84,9 @@ export async function runCli(argumentsList) {
       case 'doctor':
         ensureSupportedOptions(rest, new Set(['--fix']));
         return runDoctor(process.cwd(), { fix: rest.includes('--fix') });
+      case 'exceptions':
+        ensureSupportedOptions(rest, new Set());
+        return runExceptionsCommand();
       case 'pre-commit':
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();

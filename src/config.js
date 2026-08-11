@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { assertExceptionRegistryCurrent } from './exception-registry.js';
 
 export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
@@ -215,6 +216,11 @@ export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
 export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
   enabled: true,
 });
+export const DEFAULT_EXCEPTIONS_CONFIG = Object.freeze({
+  warningDays: 14,
+  maxDays: 90,
+  entries: Object.freeze([]),
+});
 
 export function normalizeGitPath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
@@ -229,6 +235,17 @@ function assertKnownProperties(value, allowed, label) {
   if (unknown.length > 0) {
     throw new Error(`${label} has unsupported properties: ${unknown.join(', ')}`);
   }
+}
+
+function normalizeIsoDate(value, label) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`${label} must use YYYY-MM-DD`);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error(`${label} must be a valid calendar date`);
+  }
+  return value;
 }
 
 function normalizeRelativePattern(value, label) {
@@ -297,6 +314,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       '$schema',
       'version',
       'notification',
+      'exceptions',
       'architecture',
       'build',
       'lighthouse',
@@ -337,6 +355,123 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   ) {
     throw new Error(`${configPath} notification.enabled must be a boolean`);
   }
+
+  const exceptionsValue = value.exceptions ?? {};
+  if (!exceptionsValue || typeof exceptionsValue !== 'object'
+    || Array.isArray(exceptionsValue)) {
+    throw new Error(`${configPath} exceptions must be an object`);
+  }
+  assertKnownProperties(
+    exceptionsValue,
+    new Set(['warningDays', 'maxDays', 'entries']),
+    `${configPath} exceptions`,
+  );
+  const exceptionWarningDays = exceptionsValue.warningDays
+    ?? DEFAULT_EXCEPTIONS_CONFIG.warningDays;
+  const exceptionMaxDays = exceptionsValue.maxDays ?? DEFAULT_EXCEPTIONS_CONFIG.maxDays;
+  if (!Number.isInteger(exceptionWarningDays) || exceptionWarningDays < 0) {
+    throw new Error(`${configPath} exceptions.warningDays must be a non-negative integer`);
+  }
+  if (!Number.isInteger(exceptionMaxDays) || exceptionMaxDays <= 0
+    || exceptionMaxDays > 365) {
+    throw new Error(`${configPath} exceptions.maxDays must be between 1 and 365`);
+  }
+  if (exceptionWarningDays >= exceptionMaxDays) {
+    throw new Error(`${configPath} exceptions.warningDays must be less than maxDays`);
+  }
+  const exceptionEntriesValue = exceptionsValue.entries
+    ?? DEFAULT_EXCEPTIONS_CONFIG.entries;
+  if (!Array.isArray(exceptionEntriesValue)) {
+    throw new Error(`${configPath} exceptions.entries must be an array`);
+  }
+  const exceptionIds = new Set();
+  const exceptionTargets = new Set();
+  const exceptionEntries = exceptionEntriesValue.map((entry, index) => {
+    const label = `${configPath} exception ${index + 1}`;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(
+      entry,
+      new Set([
+        'id',
+        'rule',
+        'path',
+        'line',
+        'column',
+        'reason',
+        'owner',
+        'approvedBy',
+        'ticket',
+        'createdOn',
+        'expiresOn',
+      ]),
+      label,
+    );
+    if (typeof entry.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(entry.id)) {
+      throw new Error(`${label}.id must be a kebab-case identifier`);
+    }
+    if (exceptionIds.has(entry.id)) {
+      throw new Error(`${configPath} exception id is duplicated: ${entry.id}`);
+    }
+    exceptionIds.add(entry.id);
+    if (typeof entry.rule !== 'string'
+      || !/^[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)+$/.test(entry.rule)) {
+      throw new Error(`${label}.rule must be a namespaced kebab-case rule id`);
+    }
+    const exceptionPath = normalizeRelativePattern(entry.path, `${label}.path`);
+    if (exceptionPath === '.' || /[!*?{}[\]]/.test(exceptionPath)
+      || exceptionPath.endsWith('/')) {
+      throw new Error(`${label}.path must be one exact repository-relative file`);
+    }
+    for (const position of ['line', 'column']) {
+      if (!Number.isInteger(entry[position]) || entry[position] <= 0) {
+        throw new Error(`${label}.${position} must be a positive integer`);
+      }
+    }
+    const stringFields = ['reason', 'owner', 'approvedBy', 'ticket'];
+    const strings = Object.fromEntries(stringFields.map((field) => {
+      if (typeof entry[field] !== 'string' || !entry[field].trim()) {
+        throw new Error(`${label}.${field} must be a non-empty string`);
+      }
+      return [field, entry[field].trim()];
+    }));
+    if (strings.reason.length < 10) {
+      throw new Error(`${label}.reason must contain at least 10 characters`);
+    }
+    if (strings.ticket.length < 3) {
+      throw new Error(`${label}.ticket must contain at least 3 characters`);
+    }
+    if (strings.owner.toLocaleLowerCase() === strings.approvedBy.toLocaleLowerCase()) {
+      throw new Error(`${label}.approvedBy must be different from owner`);
+    }
+    const createdOn = normalizeIsoDate(entry.createdOn, `${label}.createdOn`);
+    const expiresOn = normalizeIsoDate(entry.expiresOn, `${label}.expiresOn`);
+    const lifetimeDays = (
+      Date.parse(`${expiresOn}T00:00:00.000Z`)
+      - Date.parse(`${createdOn}T00:00:00.000Z`)
+    ) / (24 * 60 * 60 * 1000);
+    if (lifetimeDays <= 0 || lifetimeDays > exceptionMaxDays) {
+      throw new Error(
+        `${label} lifetime must be between 1 and ${exceptionMaxDays} days`,
+      );
+    }
+    const target = `${entry.rule}\0${exceptionPath}\0${entry.line}\0${entry.column}`;
+    if (exceptionTargets.has(target)) {
+      throw new Error(`${configPath} exception target is duplicated: ${entry.rule} ${exceptionPath}:${entry.line}:${entry.column}`);
+    }
+    exceptionTargets.add(target);
+    return {
+      id: entry.id,
+      rule: entry.rule,
+      path: exceptionPath,
+      line: entry.line,
+      column: entry.column,
+      ...strings,
+      createdOn,
+      expiresOn,
+    };
+  });
 
   const architectureValue = value.architecture ?? {};
   if (!architectureValue || typeof architectureValue !== 'object'
@@ -1018,6 +1153,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     notification: {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
     },
+    exceptions: {
+      warningDays: exceptionWarningDays,
+      maxDays: exceptionMaxDays,
+      entries: exceptionEntries,
+    },
     architecture: {
       enabled: architectureValue.enabled ?? DEFAULT_ARCHITECTURE_CONFIG.enabled,
       timeoutMs: architectureValue.timeoutMs ?? DEFAULT_ARCHITECTURE_CONFIG.timeoutMs,
@@ -1094,7 +1234,10 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   };
 }
 
-export function loadConfig(root) {
+export function loadConfig(root, {
+  allowExpiredExceptions = false,
+  now = new Date(),
+} = {}) {
   const configPath = path.join(root, CONFIG_FILE);
   let parsed;
 
@@ -1104,7 +1247,11 @@ export function loadConfig(root) {
     throw new Error(`Unable to read ${CONFIG_FILE}: ${error.message}`);
   }
 
-  return validateConfig(parsed, CONFIG_FILE);
+  const config = validateConfig(parsed, CONFIG_FILE);
+  if (!allowExpiredExceptions) {
+    assertExceptionRegistryCurrent(config.exceptions, { now });
+  }
+  return config;
 }
 
 export function matchRule(filePath, config) {

@@ -4,6 +4,7 @@ import {
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_PATTERN,
+  DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -33,6 +34,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
+  assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
@@ -73,6 +75,68 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled must be a boolean/,
+  );
+});
+
+test('validates exact, independently approved, time-limited exceptions', () => {
+  const validEntry = {
+    id: 'legacy-renderer',
+    rule: 'security/no-unsafe-html',
+    path: 'src/components/LegacyPanel.vue',
+    line: 12,
+    column: 7,
+    reason: 'Temporary trusted HTML renderer exception.',
+    owner: 'frontend-team',
+    approvedBy: 'security-team',
+    ticket: 'SEC-1234',
+    createdOn: '2026-08-01',
+    expiresOn: '2026-08-31',
+  };
+  const config = validateConfig(baseConfig({
+    exceptions: { warningDays: 7, maxDays: 30, entries: [validEntry] },
+  }));
+  assert.deepEqual(config.exceptions.entries, [validEntry]);
+  assert.throws(
+    () => validateConfig(baseConfig({
+      exceptions: {
+        entries: [{ ...validEntry, path: 'src/**/*.vue' }],
+      },
+    })),
+    /one exact repository-relative file/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      exceptions: {
+        entries: [{ ...validEntry, approvedBy: 'frontend-team' }],
+      },
+    })),
+    /different from owner/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      exceptions: {
+        entries: [validEntry, { ...validEntry, line: 13 }],
+      },
+    })),
+    /exception id is duplicated/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      exceptions: {
+        entries: [validEntry, { ...validEntry, id: 'second-approval' }],
+      },
+    })),
+    /exception target is duplicated/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      exceptions: {
+        warningDays: 5,
+        maxDays: 10,
+        entries: [validEntry],
+      },
+    })),
+    /lifetime must be between 1 and 10 days/,
   );
 });
 

@@ -10,6 +10,15 @@ import { validateBuildSetup } from '../build-runner.js';
 import { loadConfig } from '../config.js';
 import { isStructuredCoverage } from '../coverage-runner.js';
 import {
+  ensureExceptionPolicy,
+  EXCEPTION_POLICY_FILE,
+  isExceptionPolicyCurrent,
+} from '../exception-policy.js';
+import {
+  formatExceptionRegistryReport,
+  inspectExceptionRegistry,
+} from '../exception-registry.js';
+import {
   ensureProjectConfig,
   migrateProjectConfig,
 } from '../config-management.js';
@@ -60,12 +69,27 @@ function repairRepository(root) {
     const { created } = ensureProjectConfig(root);
     if (created) {
       repairs.push('created repo-guard.config.json');
+      const config = loadConfig(root, { allowExpiredExceptions: true });
+      const exceptionPolicy = ensureExceptionPolicy(root, config.exceptions);
+      repairs.push(
+        exceptionPolicy.changed
+          ? `updated ${EXCEPTION_POLICY_FILE} structured exception policy`
+          : `${EXCEPTION_POLICY_FILE} structured exception policy is already current`,
+      );
     } else {
-      const { changed, config } = migrateProjectConfig(root);
+      const { changed, config } = migrateProjectConfig(root, {
+        allowExpiredExceptions: true,
+      });
       repairs.push(
         changed
           ? 'migrated repo-guard.config.json'
           : 'repo-guard.config.json is already current',
+      );
+      const exceptionPolicy = ensureExceptionPolicy(root, config.exceptions);
+      repairs.push(
+        exceptionPolicy.changed
+          ? `updated ${EXCEPTION_POLICY_FILE} structured exception policy`
+          : `${EXCEPTION_POLICY_FILE} structured exception policy is already current`,
       );
       if (config.unitTest.enabled) {
         const policy = ensureUnitTestPolicy(root, config.unitTest);
@@ -100,6 +124,7 @@ function repairRepository(root) {
 
 export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   const errors = [];
+  const warnings = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
   const repairResult = fix
@@ -116,10 +141,38 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
 
   let config;
   try {
-    config = loadConfig(root);
+    config = loadConfig(root, { allowExpiredExceptions: true });
     checks.push(`configuration (${config.rules.length} rules, ${config.exclusions.length} exclusions)`);
   } catch (error) {
     errors.push(error.message);
+  }
+
+  if (config) {
+    const exceptionResult = inspectExceptionRegistry(config.exceptions);
+    const policyPath = path.join(root, EXCEPTION_POLICY_FILE);
+    if (!existsSync(policyPath)
+      || !isExceptionPolicyCurrent(readFileSync(policyPath, 'utf8'), config.exceptions)) {
+      errors.push(
+        `${EXCEPTION_POLICY_FILE} is missing the repo-guard structured exception policy; `
+        + 'run repo-guard doctor --fix',
+      );
+    } else {
+      checks.push(`${EXCEPTION_POLICY_FILE} structured exception policy`);
+    }
+    if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
+      errors.push(formatExceptionRegistryReport(exceptionResult));
+    } else {
+      checks.push(
+        `Structured exceptions (${exceptionResult.entries.length} total, `
+        + `${exceptionResult.active.length} active, `
+        + `${exceptionResult.expiring.length} expiring)`,
+      );
+    }
+    if (exceptionResult.expiring.length > 0
+      && exceptionResult.expired.length === 0
+      && exceptionResult.future.length === 0) {
+      warnings.push(formatExceptionRegistryReport(exceptionResult));
+    }
   }
 
   const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
@@ -370,6 +423,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   }
   for (const check of checks) {
     console.log(`  OK    ${check}`);
+  }
+  for (const warning of warnings) {
+    console.warn(`  WARN  ${warning}`);
   }
   for (const error of errors) {
     console.error(`  ERROR ${error}`);

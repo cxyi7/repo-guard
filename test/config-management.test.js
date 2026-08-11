@@ -75,6 +75,11 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.unitTest.requireTests, 'newFiles');
   assert.equal(config.unitTest.mappings.length, 5);
   assert.equal(config.notification.enabled, true);
+  assert.deepEqual(config.exceptions, {
+    warningDays: 14,
+    maxDays: 90,
+    entries: [],
+  });
   assert.equal(config.rules.length, 9);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
 });
@@ -140,6 +145,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.unitTest.enabled, false);
   assert.equal(migrated.unitTest.mappings.length, 5);
   assert.equal(migrated.notification.enabled, true);
+  assert.deepEqual(migrated.exceptions.entries, []);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
   const second = migrateProjectConfig(root);
@@ -276,5 +282,39 @@ test('rejects invalid values before migration can rewrite the file', (context) =
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
   assert.throws(() => migrateProjectConfig(root), /non-negative integer/);
+  assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
+});
+
+test('migration and feature toggles cannot proceed while a structured exception is expired', (context) => {
+  const root = createFixture(sparseConfig({
+    exceptions: {
+      warningDays: 14,
+      maxDays: 90,
+      entries: [{
+        id: 'expired-exception',
+        rule: 'security/no-unsafe-html',
+        path: 'src/Legacy.vue',
+        line: 1,
+        column: 1,
+        reason: 'Legacy exception that must be reviewed.',
+        owner: 'frontend-team',
+        approvedBy: 'security-team',
+        ticket: 'SEC-1000',
+        createdOn: '2020-01-01',
+        expiresOn: '2020-01-31',
+      }],
+    },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
+
+  assert.throws(
+    () => migrateProjectConfig(root),
+    /Expired exceptions/,
+  );
+  assert.throws(
+    () => setFeaturesEnabled(root, ['notification'], false),
+    /Expired exceptions/,
+  );
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, structured-exception, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,6 +25,100 @@
           "type": "boolean",
           "default": true,
           "description": "Require WeCom delivery for notify-level rules. When false, protected changes are still recorded but no notification is sent."
+        }
+      }
+    },
+    "exceptions": {
+      "type": "object",
+      "description": "Human-reviewed, exact-location exceptions shared by repo-guard rules. Expired entries block normal commands.",
+      "additionalProperties": false,
+      "properties": {
+        "warningDays": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 14,
+          "description": "Number of days before expiry when an active exception enters warning state. Must be less than maxDays."
+        },
+        "maxDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 90,
+          "description": "Maximum allowed number of days between createdOn and expiresOn."
+        },
+        "entries": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "rule",
+              "path",
+              "line",
+              "column",
+              "reason",
+              "owner",
+              "approvedBy",
+              "ticket",
+              "createdOn",
+              "expiresOn"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "description": "Unique kebab-case exception identifier."
+              },
+              "rule": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)+$",
+                "description": "Namespaced repo-guard rule id, for example security/no-unsafe-html."
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "One exact repository-relative file; globs and parent traversal are forbidden."
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 10,
+                "description": "Concrete technical and business justification."
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Person or team responsible for removing the exception."
+              },
+              "approvedBy": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Independent human approver; runtime validation rejects the owner."
+              },
+              "ticket": {
+                "type": "string",
+                "minLength": 3,
+                "description": "Reviewable issue, risk-acceptance, or remediation ticket."
+              },
+              "createdOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "expiresOn": {
+                "type": "string",
+                "format": "date"
+              }
+            }
+          }
         }
       }
     },

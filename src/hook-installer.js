@@ -86,6 +86,7 @@ function ensurePackageScripts(root) {
   packageJson.scripts ||= {};
   packageJson.scripts['guard:init'] ||= 'repo-guard init';
   packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
+  packageJson.scripts['guard:exceptions'] ||= 'repo-guard exceptions';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
   packageJson.scripts['guard:architecture'] ||= 'repo-guard architecture';
