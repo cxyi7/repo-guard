@@ -335,6 +335,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     checks.push('Unit test pre-push gate is disabled');
   }
 
+  if (config) {
+    checks.push('Vue v-html staged gate (hard requirement, rule=vue/no-v-html)');
+  }
+
   if (config?.preCommit.eslint.enabled) {
     try {
       const eslint = resolveProjectEslintMetadata(root);

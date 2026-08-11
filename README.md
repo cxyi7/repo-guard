@@ -1,18 +1,18 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
+面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
 Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.6
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.7
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
+Vue `v-html` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
@@ -36,7 +36,7 @@ TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
 8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
 9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求；
-10. 始终增量维护结构化例外的 AI 禁止绕过要求。
+10. 始终增量维护结构化例外和 Vue `v-html` 的 AI 禁止绕过要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -71,6 +71,7 @@ git commit
   → Prettier 检查或格式化
   → Stylelint 最终只读复检
   → ESLint 最终只读复检
+  → 检查 Vue 模板中的 v-html 及精确结构化例外
   → 检查最终暂存文件的完整行数
   → 检查新增、复制或重命名文件的存放位置
   → 质量结果写回暂存区并恢复未暂存内容
@@ -78,7 +79,7 @@ git commit
   → 提交信息文件清单
 ```
 
-Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Vue `v-html`、Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 TypeScript 类型检查不会进入 `pre-commit`。开启 `typeCheck` 后，repo-guard 在 `pre-push`
@@ -511,7 +512,7 @@ repo-guard typecheck
     "entries": [
       {
         "id": "legacy-trusted-renderer",
-        "rule": "security/no-unsafe-html",
+        "rule": "vue/no-v-html",
         "path": "src/components/LegacyPanel.vue",
         "line": 12,
         "column": 7,
@@ -542,6 +543,22 @@ repo-guard doctor
 ```
 
 `repo-guard exceptions` 是只读报告，不修改登记表。`init` 和 `doctor --fix` 会在 `AGENTS.md` 增量维护结构化例外硬性要求，明确禁止 AI 新增、延期或改审批信息绕过。后续安全、依赖和样式规则通过相同的规则 ID、路径、行列调用这套机制。
+
+### Vue v-html 安全门禁
+
+repo-guard 始终检查暂存 `.vue` 文件根 `<template>` 中的 `v-html`。该门禁不依赖业务项目的 ESLint、`eslint-plugin-vue` 或配置开关；即使所有可选质量门禁关闭，未经批准的 `v-html` 仍会阻止提交。
+
+扫描器只分析 Vue 模板标签属性，跳过 `<script>`、HTML 注释和 `{{ }}` 插值中的字符串，并支持嵌套 `<template>` 和跨行属性。发现位置以 `v-html` 属性名的首字符为准，统一使用规则 ID `vue/no-v-html`。
+
+首选修复方式是 Vue 模板、组件、插值或文本渲染。如果确实需要受信任富文本，必须建立可信来源和严格消毒边界，再由有权人员在 `exceptions.entries` 手工登记精确规则、文件、行、列和到期日。移动属性后旧例外不会继续生效，AI 不得自行新增或调整例外。
+
+可以显式执行全项目检查：
+
+```bash
+repo-guard unsafe-html
+```
+
+命令会检查 Git 已跟踪和未忽略的未跟踪 `.vue` 文件，报告未经批准的发现，以及已批准例外的 ID 和到期日。项目初始化或 `doctor --fix` 还会补充 `guard:unsafe-html` 脚本。该硬性门禁没有对应的 `enable` 或 `disable` 命令。
 
 ### 依赖架构门禁
 
@@ -925,6 +942,7 @@ repo-guard init
 repo-guard install-hooks
 repo-guard migrate
 repo-guard exceptions
+repo-guard unsafe-html
 repo-guard enable eslint prettier stylelint maxFileLines filePlacement architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
@@ -944,14 +962,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 门禁、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.6
+## 升级到 0.12.7
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.6
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.7
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1003,3 +1021,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.6 新增通用 `exceptions` 结构化例外登记表、`repo-guard exceptions` 只读报告和受管理的
 `AGENTS.md` 例外策略。已有配置迁移后默认登记表为空；运行 `doctor --fix` 补齐策略。过期或未来日期
 条目会阻断正常门禁，例外必须精确到规则、文件、行列，并具备独立审批、工单和有限期限。
+
+0.12.7 新增始终启用的 Vue `v-html` 安全门禁和 `repo-guard unsafe-html` 全项目命令。门禁只扫描
+Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现阻止提交，只有精确命中当前有效
+`vue/no-v-html` 结构化例外的属性才会放行。该硬性要求不提供关闭开关。

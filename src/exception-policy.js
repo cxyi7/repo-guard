@@ -17,6 +17,7 @@ function managedLines(config) {
     '',
     '- 代码规则例外只能登记在 `repo-guard.config.json#exceptions.entries`，禁止使用散落注释、普通 ignore 或关闭规则代替。',
     '- 每条例外必须精确匹配规则、文件、行和列，并包含原因、责任人、独立审批人、工单及创建/到期日期。',
+    '- Vue 模板禁止使用 `v-html`；只有精确命中当前有效 `vue/no-v-html` 结构化例外的位置才能放行。',
     `- 例外最长有效 ${config.maxDays} 天；到期立即失效，提前 ${config.warningDays} 天进入预警。`,
     '- AI 不得自行新增例外，不得延期、改位置、改审批人或修改例外策略来绕过门禁。',
     '- 发现违规时应优先修复代码；确需例外时停止工作并请求有权人员完成审查和登记。',

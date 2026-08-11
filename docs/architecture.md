@@ -1,5 +1,11 @@
 # 架构说明
 
+## Vue v-html 安全门禁
+
+`vue-unsafe-html` 直接扫描 Vue SFC 的根 `<template>`，跳过顶层脚本、自定义块、HTML 注释和模板插值字符串，并记录 `v-html` 属性名的精确行列。它不依赖业务项目是否安装 ESLint 或 `eslint-plugin-vue`，也没有关闭开关；暂存检查由 `quality-runner` 在格式化和只读 lint 复检之后执行，全项目检查由 `repo-guard unsafe-html` 执行。
+
+每个发现使用固定规则 ID `vue/no-v-html` 调用结构化例外登记表。只有规则、路径、行、列和有效期全部匹配才会放行；报告同时列出批准例外的 ID 和到期日，未经批准的发现输出独立 AI 修复指令并阻止提交。
+
 ## 结构化例外
 
 `exception-registry` 将配置中的精确位置登记项分类为 active、expiring、expired 或 future，并为其他规则提供统一匹配 API。只有规则 ID、仓库相对路径、行和列全部一致且当前有效的条目才能豁免发现；过期和未来日期条目在配置加载阶段阻断普通命令。

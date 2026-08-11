@@ -41,6 +41,14 @@ export { runStylelintFiles } from './stylelint-runner.js';
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export {
+  buildUnsafeVueHtmlAiInstructions,
+  findVueVHtml,
+  inspectUnsafeVueHtml,
+  runUnsafeVueHtmlFiles,
+  runUnsafeVueHtmlProject,
+  VUE_NO_V_HTML_RULE,
+} from './vue-unsafe-html.js';
+export {
   buildFilePlacementAiInstructions,
   collectProjectFiles,
   inspectFilePlacement,

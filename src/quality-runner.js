@@ -8,6 +8,7 @@ import { runFilePlacementFiles } from './file-placement.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
+import { runUnsafeVueHtmlFiles } from './vue-unsafe-html.js';
 import {
   runMaxFileLinesFiles,
   selectMaxFileLineFiles,
@@ -33,6 +34,9 @@ export async function runQualityFiles({ root, files, config }) {
   const stylelintConfig = config.preCommit.stylelint;
   const maxFileLinesConfig = config.preCommit.maxFileLines;
   const filePlacementConfig = config.preCommit.filePlacement;
+  const unsafeVueHtmlFiles = normalizedFiles
+    .filter(({ relative }) => relative.toLowerCase().endsWith('.vue'))
+    .map(({ absolute }) => absolute);
   const eslintFiles = eslintConfig.enabled
     ? selectFiles(normalizedFiles, eslintConfig.pattern)
     : [];
@@ -50,6 +54,7 @@ export async function runQualityFiles({ root, files, config }) {
     eslintFiles,
     prettierFiles,
     maxFileLineFiles,
+    unsafeVueHtmlFiles,
   );
 
   if (relevantFiles.length === 0 && !filePlacementConfig.enabled) {
@@ -127,6 +132,17 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (eslintVerifyExitCode !== 0) {
         return fail(eslintVerifyExitCode);
+      }
+    }
+
+    if (unsafeVueHtmlFiles.length > 0) {
+      const unsafeHtmlExitCode = runUnsafeVueHtmlFiles({
+        root,
+        files: normalizedFiles,
+        exceptions: config.exceptions,
+      });
+      if (unsafeHtmlExitCode !== 0) {
+        return fail(unsafeHtmlExitCode);
       }
     }
 

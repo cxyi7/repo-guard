@@ -13,6 +13,7 @@ import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
 import { runTypeCheckCommand } from './commands/typecheck.js';
 import { runUnitTestCommand } from './commands/unit-test.js';
+import { runUnsafeHtmlCommand } from './commands/unsafe-html.js';
 import {
   runLintFiles,
   runPreCommit,
@@ -39,6 +40,7 @@ Usage:
   repo-guard architecture
   repo-guard typecheck
   repo-guard unit-test
+  repo-guard unsafe-html
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
@@ -107,6 +109,9 @@ export async function runCli(argumentsList) {
       case 'typecheck':
         ensureSupportedOptions(rest, new Set());
         return runTypeCheckCommand();
+      case 'unsafe-html':
+        ensureSupportedOptions(rest, new Set());
+        return runUnsafeHtmlCommand();
       case 'file-placement':
         ensureSupportedOptions(rest, new Set());
         return runFilePlacementCommand();

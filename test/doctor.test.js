@@ -50,6 +50,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(exitCode, 0);
   assert.equal(packageJson.scripts['guard:migrate'], 'repo-guard migrate');
   assert.equal(packageJson.scripts['guard:exceptions'], 'repo-guard exceptions');
+  assert.equal(packageJson.scripts['guard:unsafe-html'], 'repo-guard unsafe-html');
   assert.equal(
     packageJson.scripts['guard:enable-quality'],
     'repo-guard enable eslint prettier',
