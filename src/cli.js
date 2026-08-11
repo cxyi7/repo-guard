@@ -24,8 +24,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|build|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]

@@ -15,6 +15,7 @@ import {
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
+  DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from './config.js';
@@ -29,6 +30,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'lighthouse',
   'typeCheck',
   'unitTest',
+  'coverage',
   'notification',
 ]);
 
@@ -48,9 +50,20 @@ function cloneFilePlacementConfig(value = {}) {
 
 function cloneUnitTestConfig(value = {}) {
   const mappings = value.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
+  const coverage = value.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
   return {
     ...DEFAULT_UNIT_TEST_CONFIG,
     ...value,
+    coverage: typeof coverage === 'boolean'
+      ? coverage
+      : {
+        ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
+        ...coverage,
+        thresholds: {
+          ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds,
+          ...(coverage.thresholds ?? {}),
+        },
+      },
     sourcePatterns: [...(value.sourcePatterns ?? DEFAULT_UNIT_TEST_CONFIG.sourcePatterns)],
     testPatterns: [...(value.testPatterns ?? DEFAULT_UNIT_TEST_CONFIG.testPatterns)],
     mappings: mappings.map((mapping) => ({
@@ -192,6 +205,16 @@ export function migrateProjectConfig(root) {
 }
 
 function featureConfig(config, feature) {
+  if (feature === 'coverage') {
+    if (typeof config.unitTest.coverage === 'boolean') {
+      config.unitTest.coverage = {
+        ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
+        enabled: config.unitTest.coverage,
+        thresholds: { ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds },
+      };
+    }
+    return config.unitTest.coverage;
+  }
   if (
     feature === 'build'
     || feature === 'notification'
@@ -219,13 +242,16 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (unsupported.length > 0) {
     throw new Error(`Unsupported feature(s): ${unsupported.join(', ')}`);
   }
+  const effectiveFeatures = enabled && uniqueFeatures.includes('coverage')
+    ? [...new Set(['unitTest', ...uniqueFeatures])]
+    : uniqueFeatures;
 
   const migration = migrateProjectConfig(root);
   const next = migration.config;
   const changed = [];
   const unchanged = [];
 
-  for (const feature of uniqueFeatures) {
+  for (const feature of effectiveFeatures) {
     const target = featureConfig(next, feature);
     if (target.enabled === enabled) {
       unchanged.push(feature);

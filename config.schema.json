@@ -116,7 +116,7 @@
     },
     "unitTest": {
       "type": "object",
-      "description": "JavaScript/Vue unit-test policy and pre-push Vitest gate. The consuming project owns Vitest, Vue Test Utils, its test environment, configuration, and tests.",
+      "description": "JavaScript/TypeScript/Vue unit-test, coverage, and pre-push Vitest gate. The consuming project owns Vitest, its coverage provider, test environment, configuration, and tests.",
       "additionalProperties": false,
       "properties": {
         "enabled": {
@@ -137,9 +137,78 @@
           "description": "Maximum runtime for the unit-test process."
         },
         "coverage": {
-          "type": "boolean",
-          "default": false,
-          "description": "Append --coverage to the configured npm script. The project must provide a compatible Vitest coverage provider and thresholds."
+          "oneOf": [
+            {
+              "type": "boolean",
+              "description": "Legacy compatibility mode: only append --coverage without repo-guard threshold enforcement."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Generate fresh json-summary and lcov reports and enforce all configured thresholds."
+                },
+                "reportsDirectory": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "(^|/)[^/]*[Cc][Oo][Vv][Ee][Rr][Aa][Gg][Ee][^/]*$",
+                  "default": "coverage",
+                  "description": "Dedicated repository-relative coverage directory where Vitest writes coverage-summary.json and lcov.info; the final path segment must contain coverage because Vitest cleans this directory."
+                },
+                "thresholds": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "lines": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 80
+                    },
+                    "statements": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 80
+                    },
+                    "functions": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 80
+                    },
+                    "branches": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 80
+                    },
+                    "changedLines": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 90
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "default": {
+            "enabled": false,
+            "reportsDirectory": "coverage",
+            "thresholds": {
+              "lines": 80,
+              "statements": 80,
+              "functions": 80,
+              "branches": 80,
+              "changedLines": 90
+            }
+          },
+          "description": "Vitest coverage execution plus optional repo-guard global and changed-line hard thresholds."
         },
         "requireTests": {
           "type": "string",

@@ -5,6 +5,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { DEFAULT_UNIT_TEST_CONFIG } from './config.js';
+import { isStructuredCoverage } from './coverage-runner.js';
 import { buildManagedTextBlock } from './managed-text-block.js';
 
 export const UNIT_TEST_POLICY_FILE = 'AGENTS.md';
@@ -36,6 +37,13 @@ function managedLines(config) {
     `- 不强制生成测试的路径：${quotedPatterns(config.exclusions)}。`,
     '- 测试映射按配置顺序匹配源码；候选路径中存在任一有效测试即可。',
     ...mappingLines(config.mappings),
+    ...(isStructuredCoverage(config.coverage) ? [
+      `- 覆盖率硬门禁：行/语句/函数/分支不得低于 ${config.coverage.thresholds.lines}%/`
+      + `${config.coverage.thresholds.statements}%/${config.coverage.thresholds.functions}%/`
+      + `${config.coverage.thresholds.branches}%，变更行覆盖率不得低于 `
+      + `${config.coverage.thresholds.changedLines}%。`,
+      '- 覆盖率不足时必须补充有效测试；禁止降低阈值、排除生产源码或复用旧报告绕过。',
+    ] : []),
     '- 工具函数覆盖正常值、边界值和非法值。',
     '- Composable 覆盖状态变化、加载、失败、缓存和并发。',
     '- Store 覆盖 action、state 变化以及成功和失败路径。',

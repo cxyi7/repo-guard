@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { validateBuildSetup } from '../build-runner.js';
 import { loadConfig } from '../config.js';
+import { isStructuredCoverage } from '../coverage-runner.js';
 import {
   ensureProjectConfig,
   migrateProjectConfig,
@@ -228,7 +229,11 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       checks.push(
         `Vitest ${setup.vitest.version} pre-push gate `
         + `(script=${config.unitTest.script}, requireTests=${config.unitTest.requireTests}, `
-        + `coverage=${config.unitTest.coverage}, mappings=${config.unitTest.mappings.length})`,
+        + `coverage=${isStructuredCoverage(config.unitTest.coverage)
+          ? `global=${config.unitTest.coverage.thresholds.lines}%/changed=${config.unitTest.coverage.thresholds.changedLines}%`
+          : (typeof config.unitTest.coverage === 'boolean'
+            ? config.unitTest.coverage
+            : 'disabled')}, mappings=${config.unitTest.mappings.length})`,
       );
     } catch (error) {
       errors.push(error.message);

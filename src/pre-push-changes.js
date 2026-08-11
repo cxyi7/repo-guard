@@ -29,6 +29,7 @@ function diffRange(root, base, head) {
   ], { cwd: root }).stdout;
   return parseNameStatus(output).map((change) => ({
     ...change,
+    baseSha: base,
     headSha: head,
   }));
 }

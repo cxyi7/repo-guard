@@ -24,6 +24,7 @@
    ├─ typecheck-runner        项目 TypeScript 脚本验证和执行
    ├─ unit-test-policy        受管理的 AGENTS.md AI 测试规范
    ├─ unit-test-runner        缺失测试/绕过检查和 Vitest 执行
+   ├─ coverage-runner         全局覆盖率、Git 变更行覆盖率和统一报告
    ├─ pre-push-changes        精确计算本次推送的 Git 变更范围
    ├─ lighthouse-runner       Vue 构建、LHCI 收集和断言
    ├─ protected-file gate      规则、指纹和通知
@@ -99,6 +100,10 @@ npm run typecheck                        │
 扫描本次变更测试中的 .skip/.only           │
   ↓                                      │
 npm run test:unit                         │
+  ↓ 结构化 coverage 已启用               │
+解析新生成的 json-summary/lcov            │
+  ↓                                      │
+检查全局四项和精确 Git 变更行覆盖率         │
   └──────────────────────────────────────┘
   ↓
 独立构建未启用 ───────────────────────────┐
@@ -146,6 +151,7 @@ repo-guard 可安全拥有的内容；自定义 Hook、其他 hooksPath、已跟
 - 新项目初始化默认启用 ESLint、repo-guard ESLint 规则基线、Prettier 和单文件行数门禁，并按已有 Stylelint 配置及 Vitest 测试环境决定是否启用对应门禁；已有配置升级时新规则基线、行数门禁和单元测试保持关闭。
 - 行数门禁缺少 `mode` 和 `warnAt` 时分别使用 `strict` 和 `0.85`；默认覆盖 Vue、JS/JSX 和 TS/TSX 常见扩展名。
 - 单元测试默认支持 JS/TS/Vue、`.spec/.test`、同目录和 `__tests__` 候选映射及 `newFiles` 渐进策略；项目可配置映射、目标源码、测试和排除 glob，或切换为 `changedFiles`。
+- 结构化覆盖率默认关闭；启用后强制生成 `json-summary` 和 `lcov`，全局行/语句/函数/分支默认阈值为 80%，精确 Git 变更行默认阈值为 90%。旧布尔覆盖率配置保持只向 Vitest 追加参数的兼容行为。
 - 缺少 `preCommit` 时按质量门禁未启用处理，保持旧版本行为。
 - 缺少 `notification` 时按启用处理，保持旧版本的通知行为。
 - Hook 生成版本为 v4，安装器可识别并升级 v1、v2、v3。

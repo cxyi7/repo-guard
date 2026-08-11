@@ -7,6 +7,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
+  loadConfig,
+} from './config.js';
 import { ensureGitAttributes } from './git-attributes.js';
 import { findRepositoryRoot, gitValue, runGit } from './git.js';
 import { ensureLocalEnvironment } from './local-env.js';
@@ -150,7 +154,16 @@ export function installHooks({
 
   const gitAttributes = ensureGitAttributes(root);
   const localEnvironment = ensureLocalEnvironment(root);
-  const lighthouseIgnore = ensureLighthouseIgnore(root);
+  let coverageDirectory = DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory;
+  try {
+    const coverage = loadConfig(root).unitTest.coverage;
+    if (coverage && typeof coverage === 'object') {
+      coverageDirectory = coverage.reportsDirectory;
+    }
+  } catch {
+    // Hook installation also supports repositories before repo-guard config exists.
+  }
+  const lighthouseIgnore = ensureLighthouseIgnore(root, coverageDirectory);
   if (updatePackageScripts) {
     ensurePackageScripts(root);
   }

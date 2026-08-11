@@ -14,6 +14,7 @@ import {
   isCurrentManagedHook,
   isManagedHook,
 } from '../src/hook-installer.js';
+import { createStarterConfig } from '../src/config-management.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -55,9 +56,27 @@ test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
   assert.match(hook, /repo-guard-managed:v4/);
   assert.match(hook, /repo_guard_cli" pre-commit/);
   assert.doesNotMatch(hook, /repo_guard_cli" gate/);
+  assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /coverage\//);
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8'),
     /repo_guard_cli" pre-push "\$@"/,
+  );
+});
+
+test('ignores the configured coverage report directory', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = createStarterConfig();
+  config.unitTest.coverage.reportsDirectory = 'reports/coverage';
+  writeFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    `${JSON.stringify(config, null, 2)}\n`,
+  );
+
+  installHooks({ cwd: root });
+  assert.match(
+    readFileSync(path.join(root, '.gitignore'), 'utf8'),
+    /reports\/coverage\//,
   );
 });
 

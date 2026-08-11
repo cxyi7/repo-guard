@@ -18,7 +18,9 @@ export function runMigrate(cwd = process.cwd()) {
 function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const root = findRepositoryRoot(cwd);
   const result = setFeaturesEnabled(root, requestedFeatures, enabled);
-  if (enabled && requestedFeatures.includes('unitTest')) {
+  if (enabled && requestedFeatures.some((feature) => (
+    feature === 'unitTest' || feature === 'coverage'
+  ))) {
     const policy = ensureUnitTestPolicy(root, loadConfig(root).unitTest);
     console.log(
       `repo-guard unit test policy: ${policy.changed ? 'updated' : 'already current'}`,

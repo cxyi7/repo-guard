@@ -188,6 +188,44 @@ test('validates and normalizes unit test configuration', () => {
     () => validateConfig(baseConfig({ unitTest: { sourcePatterns: [] } })),
     /sourcePatterns must be a non-empty array/,
   );
+  const structuredCoverage = validateConfig(baseConfig({
+    unitTest: {
+      coverage: {
+        enabled: true,
+        reportsDirectory: 'reports/coverage',
+        thresholds: { lines: 85, changedLines: 95 },
+      },
+    },
+  })).unitTest.coverage;
+  assert.deepEqual(structuredCoverage, {
+    enabled: true,
+    reportsDirectory: 'reports/coverage',
+    thresholds: {
+      lines: 85,
+      statements: 80,
+      functions: 80,
+      branches: 80,
+      changedLines: 95,
+    },
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: { coverage: { thresholds: { changedLines: 101 } } },
+    })),
+    /changedLines must be between 0 and 100/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: { coverage: { reportsDirectory: '../coverage' } },
+    })),
+    /must stay inside the repository/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: { coverage: { reportsDirectory: 'src' } },
+    })),
+    /must be a dedicated coverage directory/,
+  );
   assert.throws(
     () => validateConfig(baseConfig({
       unitTest: {

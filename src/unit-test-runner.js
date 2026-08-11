@@ -6,6 +6,14 @@ import {
 import path from 'node:path';
 import micromatch from 'micromatch';
 import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from './config.js';
+import {
+  buildCoverageArguments,
+  formatCoverageReport,
+  inspectCoverageReports,
+  isCoverageEnabled,
+  isStructuredCoverage,
+  prepareCoverageReports,
+} from './coverage-runner.js';
 import { runGit } from './git.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 
@@ -427,14 +435,17 @@ export function buildUnitTestAiInstructions({
 
 function runNpmScript(root, config) {
   const scriptArgs = ['run', config.script];
-  if (config.coverage) {
-    scriptArgs.push('--', '--coverage');
+  const coverageArgs = buildCoverageArguments(config);
+  if (coverageArgs.length > 0) {
+    scriptArgs.push('--', ...coverageArgs);
   }
   const command = process.platform === 'win32'
     ? process.env.ComSpec || 'cmd.exe'
     : 'npm';
   const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', `npm ${scriptArgs.join(' ')}`]
+    ? ['/d', '/s', '/c', `npm ${scriptArgs.map((argument) => (
+      /[\s&|<>^()]/.test(argument) ? `"${argument.replaceAll('"', '""')}"` : argument
+    )).join(' ')}`]
     : scriptArgs;
   return spawnSync(command, args, {
     cwd: root,
@@ -458,8 +469,10 @@ export function runUnitTestGate({ root, config, changes = [] }) {
 
   console.log(
     `repo-guard unit tests: Vitest ${setup.vitest.version}, `
-    + `running npm script "${config.script}"${config.coverage ? ' with coverage' : ''}...`,
+    + `running npm script "${config.script}"`
+    + `${isCoverageEnabled(config.coverage) ? ' with coverage' : ''}...`,
   );
+  prepareCoverageReports(root, config.coverage);
   const result = runNpmScript(root, config);
   if (result.error) {
     if (result.error.code === 'ETIMEDOUT') {
@@ -476,6 +489,29 @@ export function runUnitTestGate({ root, config, changes = [] }) {
       `修复后重新运行 npm run ${config.script}。`,
     ].join('\n'));
     return result.status ?? 1;
+  }
+  if (isStructuredCoverage(config.coverage)) {
+    let coverageResult;
+    try {
+      coverageResult = inspectCoverageReports({ root, config, changes });
+    } catch (error) {
+      console.error([
+        `Coverage gate failed: ${error.message}`,
+        'Ensure the configured Vitest coverage provider can generate json-summary and lcov reports.',
+        'Do not reuse stale reports, disable the gate, or reduce thresholds to bypass the failure.',
+      ].join('\n'));
+      return 1;
+    }
+    const report = formatCoverageReport(coverageResult, root);
+    console.log(report);
+    if (!coverageResult.passed) {
+      console.error([
+        'Coverage or changed-line coverage is below the configured hard threshold.',
+        'Add effective tests for the uncovered behavior and changed lines, then run the unit-test gate again.',
+        'Do not exclude production files or reduce thresholds to bypass the gate.',
+      ].join('\n'));
+      return 1;
+    }
   }
   console.log('repo-guard unit tests passed.');
   return 0;

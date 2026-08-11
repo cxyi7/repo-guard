@@ -74,9 +74,19 @@ function createFixture() {
   writeFileSync(
     path.join(root, 'test-unit.mjs'),
     [
-      "import { appendFileSync, existsSync } from 'node:fs';",
+      "import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';",
       "appendFileSync('test-calls.log', `${process.argv.slice(2).join(' ')}\\n`);",
       "if (existsSync('fail-tests')) process.exitCode = 7;",
+      "if (existsSync('write-coverage')) {",
+      "  mkdirSync('coverage', { recursive: true });",
+      "  writeFileSync('coverage/coverage-summary.json', JSON.stringify({ total: {",
+      "    lines: { total: 1, covered: 1, pct: 100 },",
+      "    statements: { total: 1, covered: 1, pct: 100 },",
+      "    functions: { total: 1, covered: 1, pct: 100 },",
+      "    branches: { total: 1, covered: 1, pct: 100 },",
+      "  } }));",
+      "  writeFileSync('coverage/lcov.info', 'SF:src/utils/money.js\\nDA:1,1\\nend_of_record\\n');",
+      "}",
       '',
     ].join('\n'),
   );
@@ -258,6 +268,49 @@ test('runs the consuming project script and forwards the coverage switch', (cont
   }), 7);
 });
 
+test('enforces structured global and changed-line coverage after tests pass', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src', 'utils'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'utils', 'money.js'), 'export const money = 1;\n');
+  writeFileSync(
+    path.join(root, 'src', 'utils', 'money.spec.js'),
+    "it('works', () => { expect(1).toBe(1); });\n",
+  );
+  writeFileSync(path.join(root, 'write-coverage'), 'yes\n');
+
+  const coverage = {
+    enabled: true,
+    reportsDirectory: 'coverage',
+    thresholds: {
+      lines: 80,
+      statements: 80,
+      functions: 80,
+      branches: 80,
+      changedLines: 90,
+    },
+  };
+  assert.equal(runUnitTestGate({
+    root,
+    config: unitTestConfig({ coverage }),
+    changes: [
+      { status: 'A', oldPath: null, path: 'src/utils/money.js' },
+      { status: 'A', oldPath: null, path: 'src/utils/money.spec.js' },
+    ],
+  }), 0);
+  const args = readFileSync(path.join(root, 'test-calls.log'), 'utf8');
+  assert.match(args, /--coverage\.reporter=json-summary/);
+  assert.match(args, /--coverage\.reporter=lcov/);
+  assert.match(args, /--coverage\.include=src\/utils/);
+
+  rmSync(path.join(root, 'write-coverage'));
+  assert.equal(runUnitTestGate({
+    root,
+    config: unitTestConfig({ coverage }),
+    changes: [],
+  }), 1);
+});
+
 test('maintains an idempotent AGENTS unit test policy without replacing project text', (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -277,6 +330,29 @@ test('maintains an idempotent AGENTS unit test policy without replacing project 
     isUnitTestPolicyCurrent(content, unitTestConfig({ script: 'test:changed' })),
     false,
   );
+});
+
+test('adds hard coverage thresholds to the managed AI policy', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = unitTestConfig({
+    coverage: {
+      enabled: true,
+      reportsDirectory: 'coverage',
+      thresholds: {
+        lines: 80,
+        statements: 80,
+        functions: 80,
+        branches: 80,
+        changedLines: 90,
+      },
+    },
+  });
+
+  ensureUnitTestPolicy(root, config);
+  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(content, /变更行覆盖率不得低于 90%/);
+  assert.equal(isUnitTestPolicyCurrent(content, config), true);
 });
 
 test('preserves matching human-authored lines when adding a managed text block', () => {

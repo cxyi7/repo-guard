@@ -7,7 +7,7 @@ Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.3
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.4
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -125,7 +125,17 @@ git push
     "enabled": false,
     "script": "test:unit",
     "timeoutMs": 120000,
-    "coverage": false,
+    "coverage": {
+      "enabled": false,
+      "reportsDirectory": "coverage",
+      "thresholds": {
+        "lines": 80,
+        "statements": 80,
+        "functions": 80,
+        "branches": 80,
+        "changedLines": 90
+      }
+    },
     "requireTests": "newFiles",
     "sourcePatterns": [
       "src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
@@ -447,8 +457,8 @@ repo-guard typecheck
 
 ### JS/TS/Vue 单元测试门禁
 
-repo-guard 负责测试策略、推送范围识别和流程编排，测试框架、运行环境、Mock、覆盖率阈值和
-具体用例仍由业务项目维护。纯 JavaScript 的 Vue 项目可以安装：
+repo-guard 负责测试策略、推送范围识别、覆盖率阈值判定和流程编排，测试框架、覆盖率 Provider、
+运行环境、Mock 和具体用例仍由业务项目维护。纯 JavaScript 的 Vue 项目可以安装：
 
 ```bash
 npm install --save-dev vitest @vue/test-utils jsdom
@@ -492,7 +502,9 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js 或 .spe
 | `enabled` | 检测到 Vitest 和脚本时新项目为 `true`；迁移后 `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
 | `script` | `test:unit` | 业务项目中运行 Vitest 的 npm 脚本名 |
 | `timeoutMs` | `120000` | 单元测试进程最长运行时间 |
-| `coverage` | `false` | 是否向脚本追加 `--coverage`；覆盖率 Provider 和阈值由项目提供 |
+| `coverage.enabled` | `false` | 是否生成新报告并启用全局覆盖率及变更行覆盖率硬门禁 |
+| `coverage.reportsDirectory` | `coverage` | `coverage-summary.json` 和 `lcov.info` 的项目相对目录 |
+| `coverage.thresholds` | 全局四项 `80`、变更行 `90` | 行、语句、函数、分支及本次 Git 变更可执行行的最低百分比 |
 | `requireTests` | `newFiles` | `newFiles` 仅检查新增/复制源码；`changedFiles` 检查所有变更源码 |
 | `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要测试的 JS/JSX/TS/TSX/Vue 源码 glob |
 | `testPatterns` | `**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}` | 扫描空测试和 `.skip/.skipIf/.todo/.only` 的测试 glob |
@@ -514,12 +526,35 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js 或 .spe
 映射按数组顺序匹配，第一条命中的规则生效。自定义候选扩展名时，应同步把它加入
 `testPatterns`，确保空测试和绕过扫描覆盖相同文件。
 
+结构化覆盖率门禁启用后，repo-guard 会向 Vitest 强制传入 `json-summary`、`lcov`、报告目录、
+源码 include 以及测试/排除路径 exclude。测试成功后统一读取新生成的报告：全局行、语句、函数、
+分支分别判定；变更覆盖率依据本次推送的精确 Git diff，仅统计 LCOV 中可执行的新增或修改行。
+目标源码完全没有 LCOV 记录时会直接失败，防止未导入文件逃逸；LCOV 中没有对应可执行条目的
+注释、空行或类型声明不进入变更行分母。报告会列出每项比例、阈值、缺失文件和未覆盖的 `file:line`。
+`init` 和 `doctor --fix` 会把当前 `reportsDirectory` 增量加入受管理 `.gitignore` 区块，避免报告污染
+工作区；不会删除报告或覆盖项目已有忽略规则。由于 Vitest 默认会清理报告目录，目录最后一级名称
+必须包含 `coverage`（例如 `coverage`、`reports/coverage`），禁止指向 `.`、`src` 等项目内容目录。
+
+业务项目必须提供与 Vitest 兼容的覆盖率 Provider，例如：
+
+```bash
+npm install --save-dev @vitest/coverage-v8
+```
+
+旧配置中的 `coverage: true/false` 继续兼容：`true` 只追加 `--coverage`，不会自动启用 repo-guard
+阈值判定。要使用硬门禁，应改为上方结构化对象。覆盖不足必须补充有效测试，不得通过降低阈值、
+扩大 `exclusions`、排除生产源码或复用旧报告绕过。
+
 自动开启或手动开启只需要控制开关，不需要再导入 repo-guard 配置：
 
 ```bash
 repo-guard enable unitTest
+repo-guard enable coverage
 repo-guard doctor
 ```
+
+`repo-guard enable coverage` 会同时启用 `unitTest`，因为覆盖率只能在完整单元测试执行后判定；
+单独执行 `disable coverage` 不会关闭单元测试门禁。
 
 也可以在不改变开关的情况下显式运行同一套检查：
 
@@ -527,7 +562,7 @@ repo-guard doctor
 repo-guard unit-test
 ```
 
-缺少测试时会列出源码路径和唯一预期的测试路径，并输出可以直接交给 AI 的要求；测试失败时
+缺少测试时会列出源码路径、建议测试路径和全部允许位置，并输出可以直接交给 AI 的要求；测试失败时
 保留 Vitest 原始输出，再明确要求修复代码或用例，禁止删除测试、降低必要断言或关闭门禁。
 
 ### Vue Lighthouse 配置
@@ -773,7 +808,7 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest build
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard build
@@ -795,10 +830,10 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.3
+## 升级到 0.12.4
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.3
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.4
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -837,3 +872,8 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.3 扩展 `unitTest.mappings`，默认支持 JS/JSX/TS/TSX/Vue、`.spec`、`.test` 和
 `__tests__` 候选位置。映射按顺序匹配，任一候选测试有效即可通过；已有项目显式配置的
 `sourcePatterns` 和 `testPatterns` 会在迁移时保留。
+
+0.12.4 新增结构化 `unitTest.coverage` 门禁。启用后由 repo-guard 强制生成并解析 `json-summary`
+和 `lcov`，同时阻断全局行/语句/函数/分支覆盖率及精确 Git 变更行覆盖率不足。旧布尔配置保持
+原有只追加 `--coverage` 的行为，不会因升级自动启用新阈值；安装 Provider 后可执行
+`repo-guard enable coverage` 显式转换并开启结构化门禁。

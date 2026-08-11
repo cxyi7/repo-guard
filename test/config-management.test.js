@@ -135,6 +135,16 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(second.changed, false);
 });
 
+test('preserves the legacy boolean coverage switch during migration', (context) => {
+  const root = createFixture(sparseConfig({
+    unitTest: { coverage: true },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  migrateProjectConfig(root);
+  assert.equal(readConfig(root).unitTest.coverage, true);
+});
+
 test('enables selected quality gates and preserves explicit settings', (context) => {
   const root = createFixture(sparseConfig({
     preCommit: {
@@ -196,6 +206,20 @@ test('enables the unit test pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['unitTest'], true);
   assert.deepEqual(enabled.changed, ['unitTest']);
   assert.equal(readConfig(root).unitTest.enabled, true);
+});
+
+test('enables structured coverage from a legacy boolean configuration', (context) => {
+  const root = createFixture(sparseConfig({
+    unitTest: { coverage: false },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['coverage'], true);
+  const coverage = readConfig(root).unitTest.coverage;
+  assert.deepEqual(enabled.changed, ['unitTest', 'coverage']);
+  assert.equal(readConfig(root).unitTest.enabled, true);
+  assert.equal(coverage.enabled, true);
+  assert.equal(coverage.thresholds.changedLines, 90);
 });
 
 test('enables the maximum file lines pre-commit feature', (context) => {

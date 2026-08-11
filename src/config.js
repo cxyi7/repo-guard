@@ -95,11 +95,22 @@ export const DEFAULT_TYPE_CHECK_CONFIG = Object.freeze({
   script: 'typecheck',
   timeoutMs: 180000,
 });
+export const DEFAULT_UNIT_TEST_COVERAGE_CONFIG = Object.freeze({
+  enabled: false,
+  reportsDirectory: 'coverage',
+  thresholds: Object.freeze({
+    lines: 80,
+    statements: 80,
+    functions: 80,
+    branches: 80,
+    changedLines: 90,
+  }),
+});
 export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
   enabled: false,
   script: 'test:unit',
   timeoutMs: 120000,
-  coverage: false,
+  coverage: DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   requireTests: 'newFiles',
   sourcePatterns: Object.freeze([
     'src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
@@ -404,7 +415,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     ]),
     `${configPath} unitTest`,
   );
-  for (const field of ['enabled', 'coverage']) {
+  for (const field of ['enabled']) {
     if (unitTestValue[field] != null && typeof unitTestValue[field] !== 'boolean') {
       throw new Error(`${configPath} unitTest.${field} must be a boolean`);
     }
@@ -423,6 +434,70 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && (!Number.isInteger(unitTestValue.timeoutMs) || unitTestValue.timeoutMs <= 0)
   ) {
     throw new Error(`${configPath} unitTest.timeoutMs must be a positive integer`);
+  }
+  const coverageValue = unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
+  let unitTestCoverage;
+  if (typeof coverageValue === 'boolean') {
+    unitTestCoverage = coverageValue;
+  } else {
+    if (!coverageValue || typeof coverageValue !== 'object' || Array.isArray(coverageValue)) {
+      throw new Error(`${configPath} unitTest.coverage must be a boolean or object`);
+    }
+    assertKnownProperties(
+      coverageValue,
+      new Set(['enabled', 'reportsDirectory', 'thresholds']),
+      `${configPath} unitTest.coverage`,
+    );
+    if (coverageValue.enabled != null && typeof coverageValue.enabled !== 'boolean') {
+      throw new Error(`${configPath} unitTest.coverage.enabled must be a boolean`);
+    }
+    const reportsDirectory = normalizeRelativePattern(
+      coverageValue.reportsDirectory
+        ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory,
+      `${configPath} unitTest.coverage.reportsDirectory`,
+    );
+    if (
+      /[*?{}[\]]/.test(reportsDirectory)
+      || reportsDirectory === '.'
+      || !/coverage/i.test(path.posix.basename(reportsDirectory))
+    ) {
+      throw new Error(
+        `${configPath} unitTest.coverage.reportsDirectory must be a dedicated coverage directory`,
+      );
+    }
+    const thresholdsValue = coverageValue.thresholds
+      ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds;
+    if (!thresholdsValue || typeof thresholdsValue !== 'object' || Array.isArray(thresholdsValue)) {
+      throw new Error(`${configPath} unitTest.coverage.thresholds must be an object`);
+    }
+    const thresholdNames = [
+      'lines',
+      'statements',
+      'functions',
+      'branches',
+      'changedLines',
+    ];
+    assertKnownProperties(
+      thresholdsValue,
+      new Set(thresholdNames),
+      `${configPath} unitTest.coverage.thresholds`,
+    );
+    const thresholds = Object.fromEntries(thresholdNames.map((name) => {
+      const threshold = thresholdsValue[name]
+        ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds[name];
+      if (typeof threshold !== 'number' || !Number.isFinite(threshold)
+        || threshold < 0 || threshold > 100) {
+        throw new Error(
+          `${configPath} unitTest.coverage.thresholds.${name} must be between 0 and 100`,
+        );
+      }
+      return [name, threshold];
+    }));
+    unitTestCoverage = {
+      enabled: coverageValue.enabled ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.enabled,
+      reportsDirectory,
+      thresholds,
+    };
   }
   if (
     unitTestValue.requireTests != null
@@ -825,7 +900,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       enabled: unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled,
       script: unitTestValue.script?.trim() || DEFAULT_UNIT_TEST_CONFIG.script,
       timeoutMs: unitTestValue.timeoutMs ?? DEFAULT_UNIT_TEST_CONFIG.timeoutMs,
-      coverage: unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage,
+      coverage: unitTestCoverage,
       requireTests: unitTestValue.requireTests ?? DEFAULT_UNIT_TEST_CONFIG.requireTests,
       sourcePatterns: unitTestSourcePatterns,
       testPatterns: unitTestPatterns,

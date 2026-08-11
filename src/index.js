@@ -43,6 +43,16 @@ export {
   validateTypeCheckSetup,
 } from './typecheck-runner.js';
 export {
+  buildCoverageArguments,
+  formatCoverageReport,
+  inspectCoverageReports,
+  isCoverageEnabled,
+  isStructuredCoverage,
+  parseChangedLineNumbers,
+  parseCoverageSummary,
+  parseLcov,
+} from './coverage-runner.js';
+export {
   buildUnitTestAiInstructions,
   expectedUnitTestPath,
   expectedUnitTestPaths,

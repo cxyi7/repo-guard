@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.4
+
+- 新增结构化 `unitTest.coverage` 门禁，强制 Vitest 生成新鲜的 `coverage-summary.json` 和 `lcov.info`，统一报告并阻断全局行、语句、函数和分支覆盖率不足。
+- 新增基于本次推送精确 Git diff 的变更行覆盖率，列出缺少 LCOV 数据的源码和未覆盖的 `file:line`；默认全局阈值为 80%，变更行阈值为 90%。
+- 保留 `coverage: true/false` 兼容模式，已有项目不会因升级自动启用新阈值；结构化门禁会强制源码 include 和测试/生成路径 exclude，避免未导入源码逃逸。
+
 ## 0.12.3
 
 - 新增可配置的 `unitTest.mappings`，使用 `{dir}`、`{name}`、`{path}` 和 `{ext}` 将源码映射到多个候选测试路径。
