@@ -6,6 +6,7 @@ import {
 import path from 'node:path';
 import {
   CONFIG_FILE,
+  DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
@@ -24,6 +25,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'filePlacement',
   'maxFileLines',
+  'build',
   'lighthouse',
   'typeCheck',
   'unitTest',
@@ -45,6 +47,7 @@ function cloneFilePlacementConfig(value = {}) {
 }
 
 export function createStarterConfig({
+  buildEnabled = false,
   stylelintEnabled = false,
   typeCheckEnabled = false,
   unitTestEnabled = false,
@@ -53,6 +56,10 @@ export function createStarterConfig({
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    build: {
+      ...DEFAULT_BUILD_CONFIG,
+      enabled: buildEnabled,
+    },
     lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
     typeCheck: {
       ...DEFAULT_TYPE_CHECK_CONFIG,
@@ -131,6 +138,10 @@ export function migrateProjectConfig(root) {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
     },
+    build: {
+      ...DEFAULT_BUILD_CONFIG,
+      ...(prepared.build ?? {}),
+    },
     lighthouse: {
       ...DEFAULT_LIGHTHOUSE_CONFIG,
       ...(prepared.lighthouse ?? {}),
@@ -176,7 +187,8 @@ export function migrateProjectConfig(root) {
 
 function featureConfig(config, feature) {
   if (
-    feature === 'notification'
+    feature === 'build'
+    || feature === 'notification'
     || feature === 'lighthouse'
     || feature === 'typeCheck'
     || feature === 'unitTest'

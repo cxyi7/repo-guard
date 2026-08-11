@@ -1,5 +1,9 @@
 export { loadConfig, matchRule, validateConfig } from './config.js';
 export {
+  runBuildGate,
+  validateBuildSetup,
+} from './build-runner.js';
+export {
   createStarterConfig,
   enableQualityGates,
   ensureProjectConfig,

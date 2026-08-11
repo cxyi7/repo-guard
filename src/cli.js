@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
@@ -23,14 +24,15 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|typeCheck|unitTest|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
   repo-guard pre-commit
   repo-guard pre-push
+  repo-guard build
   repo-guard typecheck
   repo-guard unit-test
   repo-guard file-placement
@@ -86,6 +88,9 @@ export async function runCli(argumentsList) {
           input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
           remoteName: rest[0] || 'origin',
         });
+      case 'build':
+        ensureSupportedOptions(rest, new Set());
+        return runBuildCommand();
       case 'unit-test':
         ensureSupportedOptions(rest, new Set());
         return runUnitTestCommand();

@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、文件归位、单文件行数限制、JS/Vue 单元测试、Vue Lighthouse 推送前质量检查、公共文件保护、
-TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
+Prettier 格式化、文件归位、单文件行数限制、JS/Vue 单元测试、独立生产构建、Vue Lighthouse 推送前质量检查、
+公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.2
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -22,10 +22,11 @@ Vue Lighthouse 默认关闭，开启时业务项目还需
 单元测试仅在新项目已经安装 Vitest 且存在 `test:unit` 脚本时由 `init` 自动开启；
 已有项目迁移后保持关闭，可准备完成后通过开关开启。
 TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
+独立构建门禁仅在新项目已经存在 `build` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
 
 `init` 会：
 
-1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试和可选 Lighthouse 门禁使用的 `pre-push`；
+1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试、独立构建和可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
@@ -43,9 +44,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `typeCheck`、`unitTest`、
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `build`、`typeCheck`、`unitTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
 只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
@@ -88,13 +89,13 @@ git push
   → 检查本次推送新增/修改的源码和测试文件
   → 检查必需的同目录 .spec.js，以及禁止的 .skip/.only
   → npm run test:unit
-  → 执行 Vue 项目的 npm build 脚本
+  → 执行项目独立 npm build 脚本
   → @lhci/cli collect 按 lighthouserc 访问配置页面
   → @lhci/cli assert 检查性能、可访问性、最佳实践和 SEO 阈值
   → 全部通过后继续推送
 ```
 
-启用 TypeScript、单元测试或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
+启用 TypeScript、单元测试、独立构建或 Lighthouse 门禁后，受管理的 `pre-push` 会读取待推送提交中的
 `repo-guard.config.json`，并要求待推送提交就是当前检出的 `HEAD`、工作区和暂存区均无改动。
 这样 Vitest、项目构建和 Lighthouse 检查的就是实际推送内容，不会被未提交的本地修复或临时关闭
 开关影响。一次推送包含多个不同提交时应拆成多次推送；纯删除远程引用不运行质量门禁。
@@ -109,6 +110,11 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "build": {
+    "enabled": false,
+    "script": "build",
+    "timeoutMs": 300000
   },
   "typeCheck": {
     "enabled": false,
@@ -319,6 +325,36 @@ Vue 文件还会分别统计 `template`、`script`、`style` 的有效内容行�
   }
 }
 ```
+
+### 独立构建门禁
+
+repo-guard 运行项目自己的生产构建 npm 脚本，不内置 Vite、Webpack、Vue CLI 或其他构建工具：
+
+```json
+{
+  "scripts": {
+    "build": "vite build"
+  }
+}
+```
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 检测到脚本时新项目为 `true`；迁移后 `false` | 是否在受管理的 `pre-push` Hook 自动执行 |
+| `script` | `build` | 业务项目的生产构建 npm 脚本名 |
+| `timeoutMs` | `300000` | 构建进程最长运行时间 |
+
+手动启用和检查：
+
+```bash
+repo-guard enable build
+repo-guard doctor
+repo-guard build
+```
+
+构建失败或超时会阻止推送，并要求 AI 修复源码、配置、依赖或资源根因，禁止把脚本改为空操作、
+忽略错误、关闭生产优化或修改门禁绕过。当独立构建和 Lighthouse 配置使用同一个 npm 脚本时，
+pre-push 只构建一次，Lighthouse 随后直接执行 collect/assert；脚本不同时分别执行各自构建。
 
 ### TypeScript 门禁
 
@@ -667,9 +703,10 @@ REPO_GUARD_MENTION_MOBILES=
 repo-guard init
 repo-guard install-hooks
 repo-guard migrate
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement typeCheck unitTest build
 repo-guard disable filePlacement
 repo-guard file-placement
+repo-guard build
 repo-guard typecheck
 repo-guard unit-test
 repo-guard lighthouse
@@ -684,14 +721,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、Hook 版本、TypeScript 脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、Hook 版本、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.1
+## 升级到 0.12.2
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.2
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -722,3 +759,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.1 新增 `typeCheck` 配置、`repo-guard typecheck` 显式命令和 pre-push TypeScript 门禁。
 新项目存在 `typecheck` npm 脚本时自动开启；已有配置迁移后保持关闭，可准备完成后执行
 `repo-guard enable typeCheck`。类型检查只运行项目脚本，不进入 pre-commit，也不内置或安装 TypeScript。
+
+0.12.2 新增 `build` 配置、`repo-guard build` 显式命令和独立 pre-push 生产构建门禁。
+新项目存在 `build` npm 脚本时自动开启；已有配置迁移后保持关闭，可执行 `repo-guard enable build`。
+独立构建与 Lighthouse 使用同一脚本时会复用构建结果，避免一次推送重复构建。

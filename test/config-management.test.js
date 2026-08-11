@@ -67,6 +67,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
     { pattern: '**/*.{ts,tsx}', maxLines: 1000 },
   ]);
   assert.equal(config.lighthouse.enabled, false);
+  assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.equal(config.unitTest.requireTests, 'newFiles');
@@ -79,6 +80,13 @@ test('starter configuration enables Stylelint when project setup was detected', 
   const config = createStarterConfig({ stylelintEnabled: true });
 
   assert.equal(config.preCommit.stylelint.enabled, true);
+});
+
+test('starter configuration enables build when its project script was detected', () => {
+  const config = createStarterConfig({ buildEnabled: true });
+
+  assert.equal(config.build.enabled, true);
+  assert.equal(config.build.script, 'build');
 });
 
 test('starter configuration enables unit tests when project setup was detected', () => {
@@ -115,6 +123,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
   assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
+  assert.equal(migrated.build.enabled, false);
   assert.equal(migrated.typeCheck.enabled, false);
   assert.equal(migrated.unitTest.enabled, false);
   assert.equal(migrated.notification.enabled, true);

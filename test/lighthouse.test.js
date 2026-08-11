@@ -31,7 +31,7 @@ function commitFixture(root, message = 'fixture') {
   return git(root, ['rev-parse', 'HEAD']);
 }
 
-function createFixture({ enabled = false, vue = true } = {}) {
+function createFixture({ buildEnabled = false, enabled = false, vue = true } = {}) {
   const root = mkdtempSync(path.join(TEST_ROOT, 'lighthouse-'));
   git(root, ['init']);
   mkdirSync(path.join(root, 'node_modules', '@lhci', 'cli', 'src'), { recursive: true });
@@ -86,6 +86,7 @@ function createFixture({ enabled = false, vue = true } = {}) {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
+      build: { enabled: buildEnabled },
       lighthouse: { enabled },
       notification: { enabled: false },
       rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
@@ -180,6 +181,17 @@ test('pre-push only runs Lighthouse when enabled', (context) => {
   assert.equal(runPrePush(enabledRoot), 0);
   assert.equal(
     readFileSync(path.join(enabledRoot, 'calls.log'), 'utf8'),
+    'build\ncollect\nassert\n',
+  );
+});
+
+test('pre-push reuses an enabled independent build for Lighthouse', (context) => {
+  const root = createFixture({ buildEnabled: true, enabled: true });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  assert.equal(runPrePush(root), 0);
+  assert.equal(
+    readFileSync(path.join(root, 'calls.log'), 'utf8'),
     'build\ncollect\nassert\n',
   );
 });

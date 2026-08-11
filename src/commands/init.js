@@ -1,10 +1,12 @@
 import {
   CONFIG_FILE,
+  DEFAULT_BUILD_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   loadConfig,
 } from '../config.js';
 import { ensureProjectConfig } from '../config-management.js';
+import { detectProjectBuildSetup } from '../build-runner.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../stylelint-project.js';
@@ -17,10 +19,12 @@ import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
+  const buildSetup = detectProjectBuildSetup(root, DEFAULT_BUILD_CONFIG);
   const stylelintSetup = detectProjectStylelintSetup(root);
   const typeCheckSetup = detectProjectTypeCheckSetup(root, DEFAULT_TYPE_CHECK_CONFIG);
   const unitTestSetup = detectProjectUnitTestSetup(root, DEFAULT_UNIT_TEST_CONFIG);
   const { created: configCreated } = ensureProjectConfig(root, {
+    buildEnabled: buildSetup.ready,
     stylelintEnabled: stylelintSetup.ready,
     typeCheckEnabled: typeCheckSetup.ready,
     unitTestEnabled: unitTestSetup.ready,
@@ -58,6 +62,11 @@ export function runInit(cwd = process.cwd()) {
     console.log('- Stylelint: disabled until the project installs Stylelint and adds a config');
   }
   if (configCreated) {
+    console.log(
+      buildSetup.ready
+        ? `- Build: enabled with npm script "${DEFAULT_BUILD_CONFIG.script}"`
+        : '- Build: disabled until the project adds a build script',
+    );
     console.log('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
     console.log(
       typeCheckSetup.ready

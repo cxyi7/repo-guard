@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.2
+
+- 新增项目自有 npm 脚本驱动的独立生产构建门禁，支持 `repo-guard build` 显式执行和受管理 `pre-push` 自动阻断。
+- 新项目存在 `build` 脚本时自动开启；已有配置迁移后保持关闭，并可通过 `repo-guard enable build` 渐进启用。
+- 增加脚本存在性、超时配置、doctor 诊断和面向 AI 的失败修复要求；独立构建与 Lighthouse 使用同一脚本时只构建一次。
+
 ## 0.12.1
 
 - 新增项目自有 npm 脚本驱动的 TypeScript 类型检查门禁，支持 `repo-guard typecheck` 显式执行和受管理 `pre-push` 自动阻断。

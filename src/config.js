@@ -26,6 +26,11 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   maxWarnings: 0,
   requireConfig: true,
 });
+export const DEFAULT_BUILD_CONFIG = Object.freeze({
+  enabled: false,
+  script: 'build',
+  timeoutMs: 300000,
+});
 export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
   enabled: false,
   mode: 'strict',
@@ -195,6 +200,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       '$schema',
       'version',
       'notification',
+      'build',
       'lighthouse',
       'typeCheck',
       'unitTest',
@@ -232,6 +238,34 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && typeof notificationValue.enabled !== 'boolean'
   ) {
     throw new Error(`${configPath} notification.enabled must be a boolean`);
+  }
+
+  const buildValue = value.build ?? {};
+  if (!buildValue || typeof buildValue !== 'object' || Array.isArray(buildValue)) {
+    throw new Error(`${configPath} build must be an object`);
+  }
+  assertKnownProperties(
+    buildValue,
+    new Set(['enabled', 'script', 'timeoutMs']),
+    `${configPath} build`,
+  );
+  if (buildValue.enabled != null && typeof buildValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} build.enabled must be a boolean`);
+  }
+  if (
+    buildValue.script != null
+    && (
+      typeof buildValue.script !== 'string'
+      || !/^[A-Za-z0-9:_-]+$/.test(buildValue.script.trim())
+    )
+  ) {
+    throw new Error(`${configPath} build.script must be an npm script name`);
+  }
+  if (
+    buildValue.timeoutMs != null
+    && (!Number.isInteger(buildValue.timeoutMs) || buildValue.timeoutMs <= 0)
+  ) {
+    throw new Error(`${configPath} build.timeoutMs must be a positive integer`);
   }
 
   const lighthouseValue = value.lighthouse ?? {};
@@ -673,6 +707,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     version: 1,
     notification: {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+    },
+    build: {
+      enabled: buildValue.enabled ?? DEFAULT_BUILD_CONFIG.enabled,
+      script: buildValue.script?.trim() || DEFAULT_BUILD_CONFIG.script,
+      timeoutMs: buildValue.timeoutMs ?? DEFAULT_BUILD_CONFIG.timeoutMs,
     },
     lighthouse: {
       enabled: lighthouseValue.enabled ?? DEFAULT_LIGHTHOUSE_CONFIG.enabled,

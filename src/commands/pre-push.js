@@ -1,3 +1,4 @@
+import { runBuildGate } from '../build-runner.js';
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
 import { findRepositoryRoot, gitValue, runGit } from '../git.js';
 import { runVueLighthouse } from '../lighthouse-runner.js';
@@ -32,7 +33,10 @@ function loadConfigAtRevision(root, revision) {
 }
 
 function usesPrePushGate(config) {
-  return config?.typeCheck.enabled || config?.unitTest.enabled || config?.lighthouse.enabled;
+  return config?.typeCheck.enabled
+    || config?.unitTest.enabled
+    || config?.build.enabled
+    || config?.lighthouse.enabled;
 }
 
 function assertExactPushSnapshot(root, revision) {
@@ -147,9 +151,24 @@ export function runPrePush(cwd = process.cwd(), {
     console.log('repo-guard pre-push: unit tests are disabled.');
   }
 
+  if (config.build.enabled) {
+    const buildExitCode = runBuildGate({ root, config: config.build });
+    if (buildExitCode !== 0) {
+      return buildExitCode;
+    }
+  } else {
+    console.log('repo-guard pre-push: project build is disabled.');
+  }
+
   if (!config.lighthouse.enabled) {
     console.log('repo-guard pre-push: Lighthouse is disabled.');
     return 0;
   }
-  return runVueLighthouse({ root, config: config.lighthouse });
+  const buildAlreadyRan = config.build.enabled
+    && config.lighthouse.buildScript === config.build.script;
+  return runVueLighthouse({
+    root,
+    config: config.lighthouse,
+    skipBuild: buildAlreadyRan,
+  });
 }

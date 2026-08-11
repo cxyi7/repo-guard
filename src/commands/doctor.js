@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { validateBuildSetup } from '../build-runner.js';
 import { loadConfig } from '../config.js';
 import {
   ensureProjectConfig,
@@ -164,6 +165,20 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else if (config) {
     checks.push('WeCom notification is not required because no notify rules are configured');
+  }
+
+  if (config?.build.enabled) {
+    try {
+      validateBuildSetup(root, config.build);
+      checks.push(
+        `Build pre-push gate (script=${config.build.script}, `
+        + `timeoutMs=${config.build.timeoutMs})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('Build pre-push gate is disabled');
   }
 
   if (config?.lighthouse.enabled) {

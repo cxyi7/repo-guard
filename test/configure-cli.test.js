@@ -47,6 +47,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'prettier',
       'stylelint',
       'maxFileLines',
+      'build',
       'typeCheck',
       'unitTest',
       'lighthouse',
@@ -58,6 +59,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /stylelint: enabled/);
   assert.match(enableResult.stdout, /lighthouse: enabled/);
   assert.match(enableResult.stdout, /maxFileLines: enabled/);
+  assert.match(enableResult.stdout, /build: enabled/);
   assert.match(enableResult.stdout, /typeCheck: enabled/);
   assert.match(enableResult.stdout, /unitTest: enabled/);
 
@@ -69,6 +71,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
+  assert.equal(config.build.enabled, true);
   assert.equal(config.typeCheck.enabled, true);
   assert.equal(config.unitTest.enabled, true);
   assert.match(
@@ -107,6 +110,30 @@ test('init enables Stylelint when the project already provides it and a config',
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
   assert.equal(config.preCommit.stylelint.enabled, true);
+});
+
+test('init enables build when the project script is ready', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-build-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+  assert.equal(gitResult.status, 0, gitResult.stderr);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({
+      name: 'fixture',
+      version: '1.0.0',
+      scripts: { build: 'vite build' },
+    }, null, 2)}\n`,
+  );
+
+  const initResult = run(root, ['init']);
+  assert.equal(initResult.status, 0, initResult.stderr);
+  assert.match(initResult.stdout, /Build: enabled/);
+
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
+  );
+  assert.equal(config.build.enabled, true);
 });
 
 test('init enables unit tests and writes AI policy when Vitest is ready', (context) => {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DEFAULT_BUILD_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
@@ -31,6 +32,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
+  assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
   assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
@@ -69,6 +71,30 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled must be a boolean/,
+  );
+});
+
+test('validates and normalizes build gate configuration', () => {
+  const config = validateConfig(baseConfig({
+    build: {
+      enabled: true,
+      script: '  build:prod  ',
+      timeoutMs: 240000,
+    },
+  }));
+
+  assert.deepEqual(config.build, {
+    enabled: true,
+    script: 'build:prod',
+    timeoutMs: 240000,
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ build: { script: 'vite build' } })),
+    /must be an npm script name/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ build: { timeoutMs: 0 } })),
+    /positive integer/,
   );
 });
 

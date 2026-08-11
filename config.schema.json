@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, staged quality, TypeScript, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level protected-file, staged quality, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,6 +25,31 @@
           "type": "boolean",
           "default": true,
           "description": "Require WeCom delivery for notify-level rules. When false, protected changes are still recorded but no notification is sent."
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "description": "Project-owned production build script run explicitly or from the managed pre-push hook.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run the configured production build automatically from the managed pre-push hook. Init enables this only when the script is already available."
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9:_-]+$",
+          "default": "build",
+          "description": "Name of the consuming project's npm production-build script."
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 300000,
+          "description": "Maximum runtime for the project build process."
         }
       }
     },
