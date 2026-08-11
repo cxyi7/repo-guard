@@ -1,18 +1,18 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
+面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 与 `target="_blank"` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
 Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.7
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.8
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-Vue `v-html` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
+Vue `v-html` 和 `target="_blank"` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
@@ -36,7 +36,7 @@ TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
 8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
 9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求；
-10. 始终增量维护结构化例外和 Vue `v-html` 的 AI 禁止绕过要求。
+10. 始终增量维护结构化例外、Vue `v-html` 和新窗口链接安全的 AI 禁止绕过要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -72,6 +72,7 @@ git commit
   → Stylelint 最终只读复检
   → ESLint 最终只读复检
   → 检查 Vue 模板中的 v-html 及精确结构化例外
+  → 检查 target="_blank" 的 noopener、noreferrer 及精确结构化例外
   → 检查最终暂存文件的完整行数
   → 检查新增、复制或重命名文件的存放位置
   → 质量结果写回暂存区并恢复未暂存内容
@@ -79,7 +80,7 @@ git commit
   → 提交信息文件清单
 ```
 
-Vue `v-html`、Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Vue `v-html`、`target="_blank"`、Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 TypeScript 类型检查不会进入 `pre-commit`。开启 `typeCheck` 后，repo-guard 在 `pre-push`
@@ -560,6 +561,29 @@ repo-guard unsafe-html
 
 命令会检查 Git 已跟踪和未忽略的未跟踪 `.vue` 文件，报告未经批准的发现，以及已批准例外的 ID 和到期日。项目初始化或 `doctor --fix` 还会补充 `guard:unsafe-html` 脚本。该硬性门禁没有对应的 `enable` 或 `disable` 命令。
 
+### Vue target="_blank" 安全门禁
+
+Vue 模板中可静态判定为 `target="_blank"` 的标签，必须在同一标签包含 `rel="noopener noreferrer"`。已有的 `external`、`nofollow` 等其他 `rel` token 可以保留，token 顺序和大小写不影响检查；与安全目标冲突的 `opener` token 会被拒绝。
+
+门禁支持以下安全写法：
+
+```vue
+<a href="https://example.com" target="_blank" rel="noopener noreferrer">文档</a>
+<a :href="url" :target="'_blank'" :rel="'external noreferrer noopener'">文档</a>
+```
+
+静态 `target`、简单的 `:target="'_blank'"` 和 `v-bind:target` 字面量都会检查。动态 `rel` 无法静态证明包含两个安全 token，因此不会被当作安全写法；应改成静态值或可分析的绑定字面量。完全动态且无法确定是否为 `_blank` 的 `target` 不在本规则的静态判定范围内，应由项目类型、测试和代码审查约束。
+
+未经批准的问题使用规则 ID `vue/target-blank-security`，例外精确匹配 `target` 属性名的文件、行、列。AI 应优先补齐安全属性，不得把静态属性改成动态表达式绕过分析，也不得自行登记例外。
+
+全项目检查命令为：
+
+```bash
+repo-guard target-blank
+```
+
+`init` 或 `doctor --fix` 会补充 `guard:target-blank`；该硬性门禁没有关闭命令。
+
 ### 依赖架构门禁
 
 repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
@@ -943,6 +967,7 @@ repo-guard install-hooks
 repo-guard migrate
 repo-guard exceptions
 repo-guard unsafe-html
+repo-guard target-blank
 repo-guard enable eslint prettier stylelint maxFileLines filePlacement architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
@@ -962,14 +987,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 门禁、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 与 `target="_blank"` 门禁、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.7
+## 升级到 0.12.8
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.7
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.8
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1025,3 +1050,7 @@ pre-push 自动 Vitest 门禁，同时把托管 Hook 升级为 v4。已有项目
 0.12.7 新增始终启用的 Vue `v-html` 安全门禁和 `repo-guard unsafe-html` 全项目命令。门禁只扫描
 Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现阻止提交，只有精确命中当前有效
 `vue/no-v-html` 结构化例外的属性才会放行。该硬性要求不提供关闭开关。
+
+0.12.8 新增始终启用的 Vue `target="_blank"` 安全门禁和 `repo-guard target-blank` 全项目命令。
+静态或简单绑定字面量 `_blank` 必须具有可证明的 `noopener`、`noreferrer`；动态 `rel` 不会被视为安全。
+只有精确命中当前有效 `vue/target-blank-security` 结构化例外的位置才会放行。

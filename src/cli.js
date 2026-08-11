@@ -11,6 +11,7 @@ import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
 import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
+import { runTargetBlankCommand } from './commands/target-blank.js';
 import { runTypeCheckCommand } from './commands/typecheck.js';
 import { runUnitTestCommand } from './commands/unit-test.js';
 import { runUnsafeHtmlCommand } from './commands/unsafe-html.js';
@@ -41,6 +42,7 @@ Usage:
   repo-guard typecheck
   repo-guard unit-test
   repo-guard unsafe-html
+  repo-guard target-blank
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
@@ -112,6 +114,9 @@ export async function runCli(argumentsList) {
       case 'unsafe-html':
         ensureSupportedOptions(rest, new Set());
         return runUnsafeHtmlCommand();
+      case 'target-blank':
+        ensureSupportedOptions(rest, new Set());
+        return runTargetBlankCommand();
       case 'file-placement':
         ensureSupportedOptions(rest, new Set());
         return runFilePlacementCommand();

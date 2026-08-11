@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.8
+
+- 新增始终启用的 Vue `target="_blank"` 安全门禁，要求同一标签具有可静态验证的 `rel="noopener noreferrer"`，并拒绝冲突的 `opener` token。
+- 支持静态属性以及简单的 `:target="'_blank'"`、`v-bind:target` 和字面量 `:rel`，动态 `rel` 不会被错误判定为安全。
+- 新增 `repo-guard target-blank` 与 `guard:target-blank` 全项目检查，输出缺失 token、精确位置和统一 AI 修复指令。
+- 新增 `vue/target-blank-security` 精确结构化例外，并报告批准例外的 ID 和到期日。
+- 将 Vue SFC 模板扫描提取为复用模块，`v-html` 与链接安全规则共享相同的标签、属性和位置解析。
+
 ## 0.12.7
 
 - 新增始终启用的 Vue `v-html` 安全门禁，检查暂存 `.vue` 文件的根模板区域，不依赖业务项目 ESLint 配置或可选开关。

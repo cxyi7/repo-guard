@@ -41,6 +41,18 @@ export { runStylelintFiles } from './stylelint-runner.js';
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export {
+  findVueTemplateAttributes,
+  sourceLocation as resolveVueSourceLocation,
+} from './vue-template-parser.js';
+export {
+  buildVueTargetBlankAiInstructions,
+  findVueTargetBlankIssues,
+  inspectVueTargetBlank,
+  runVueTargetBlankFiles,
+  runVueTargetBlankProject,
+  VUE_TARGET_BLANK_RULE,
+} from './vue-target-blank.js';
+export {
   buildUnsafeVueHtmlAiInstructions,
   findVueVHtml,
   inspectUnsafeVueHtml,

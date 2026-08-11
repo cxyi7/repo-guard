@@ -155,4 +155,5 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
   assert.equal(isExceptionPolicyCurrent(content, config), true);
   assert.match(content, /AI 不得自行新增例外/);
   assert.match(content, /Vue 模板禁止使用 `v-html`/);
+  assert.match(content, /target="_blank"/);
 });

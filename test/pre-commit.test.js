@@ -590,6 +590,23 @@ test('blocks staged Vue v-html even when optional quality gates are disabled', a
   assert.equal(normalizeEol(git(root, ['show', ':App.vue'])), content);
 });
 
+test('blocks unsafe staged Vue target blank links when optional gates are disabled', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = '<template><a target="_blank">docs</a></template>\n';
+  writeFileSync(path.join(root, 'Links.vue'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':Links.vue'])), content);
+});
+
 test('allows deleting a Vue file when optional quality gates are disabled', async (context) => {
   const root = createRepository({
     enabled: false,

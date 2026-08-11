@@ -1,5 +1,11 @@
 # 架构说明
 
+## Vue target=_blank 安全门禁
+
+`vue-template-parser` 统一解析 Vue SFC 根模板的标签、属性和值位置，供 `v-html` 和链接安全规则复用。`vue-target-blank` 识别静态 `_blank` 以及可解析为 `_blank` 的简单 `v-bind:target` 字面量，并要求同一标签的静态或绑定字面量 `rel` 同时包含 `noopener`、`noreferrer`；动态 `rel` 无法证明安全，因此阻止提交。
+
+每个问题以 `target` 属性名的精确行列和固定规则 ID `vue/target-blank-security` 匹配结构化例外。暂存门禁在 `v-html` 检查之后运行，全项目命令为 `repo-guard target-blank`，报告会区分缺失 token 与动态 `rel`。
+
 ## Vue v-html 安全门禁
 
 `vue-unsafe-html` 直接扫描 Vue SFC 的根 `<template>`，跳过顶层脚本、自定义块、HTML 注释和模板插值字符串，并记录 `v-html` 属性名的精确行列。它不依赖业务项目是否安装 ESLint 或 `eslint-plugin-vue`，也没有关闭开关；暂存检查由 `quality-runner` 在格式化和只读 lint 复检之后执行，全项目检查由 `repo-guard unsafe-html` 执行。

@@ -337,6 +337,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
 
   if (config) {
     checks.push('Vue v-html staged gate (hard requirement, rule=vue/no-v-html)');
+    checks.push(
+      'Vue target=_blank staged gate '
+      + '(hard requirement, rel=noopener+noreferrer, rule=vue/target-blank-security)',
+    );
   }
 
   if (config?.preCommit.eslint.enabled) {
