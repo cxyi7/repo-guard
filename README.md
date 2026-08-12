@@ -1,20 +1,20 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 与 `target="_blank"` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
+Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.11
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.12
 npx repo-guard init
 npx repo-guard doctor
 ```
 
 Vue `v-html` 和 `target="_blank"` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、依赖治理、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
-`init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
+`init` 才会同时启用 Stylelint 及默认的选择器与嵌套复杂度门禁；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
 Vue Lighthouse 默认关闭，开启时业务项目还需
 安装 `@lhci/cli`、提供 `lighthouserc.*` 和 Chrome。通知功能需要在
@@ -309,7 +309,12 @@ git push
       "pattern": "**/*.{css,scss,sass,less,vue}",
       "fix": true,
       "maxWarnings": 0,
-      "requireConfig": true
+      "requireConfig": true,
+      "complexity": {
+        "enabled": false,
+        "maxCompoundSelectors": 3,
+        "maxNestingDepth": 3
+      }
     },
     "prettier": {
       "enabled": true,
@@ -851,15 +856,29 @@ repo-guard 只执行 `collect` 和 `assert`，不会执行 LHCI upload，也不�
 | `fix` | `true` | 是否应用 Stylelint 自动修复 |
 | `maxWarnings` | `0` | 提交允许的最大警告数 |
 | `requireConfig` | `true` | 是否要求项目根目录存在 Stylelint 配置 |
+| `complexity.enabled` | Stylelint 就绪的新项目为 `true`；迁移后 `false` | 是否强制选择器与嵌套复杂度规则 |
+| `complexity.maxCompoundSelectors` | `3` | 单个解析后选择器允许的最大复合选择器段数 |
+| `complexity.maxNestingDepth` | `3` | 样式规则允许的最大嵌套深度 |
 
-Stylelint 必须由业务项目自行安装和配置，支持 `>=16 <18`。repo-guard 只加载项目
-本地的 Stylelint、插件、自定义语法和规则，不会内置规则预设、自动安装依赖、探测
+Stylelint 必须由业务项目自行安装和配置，支持 `>=16 <18`。除启用时强制执行的两条复杂度规则外，repo-guard 只加载项目
+本地的 Stylelint、插件、自定义语法和规则，不会内置其他规则预设、自动安装依赖、探测
 CSS/SCSS/Less/Vue 语言组合或生成 `stylelint.config.*`。准备完成后可执行：
 
 ```bash
 repo-guard enable stylelint
+repo-guard enable styleComplexity
 repo-guard doctor
+repo-guard style-complexity
 ```
+
+复杂度门禁由 repo-guard 强制执行 Stylelint 核心规则 `selector-max-compound-selectors` 和
+`max-nesting-depth`，但复用项目解析后的 `customSyntax`，因此适用于项目已正确配置的 Vue、
+SCSS 和 Less。项目同名规则、override、`.stylelintignore` 和源码 `stylelint-disable` 不会关闭这两条硬规则；
+普通 Stylelint 规则仍完全遵循项目配置。专项命令始终执行，可在正式启用前审计全仓样式。
+
+复杂度违规使用 `style/selector-max-compound-selectors` 或 `style/max-nesting-depth` 规则 ID，
+按文件、行、列精确匹配结构化例外。AI 应通过语义化 class、拆分选择器或降低嵌套修复，不得新增
+disable 注释、覆盖规则、扩大 ignore 或自行登记例外。
 
 同一个 Vue 文件可以包含多个相同语言的 `<style>` 块，但不能混用不同语言；例如
 同时出现 `<style>` 和 `<style lang="scss">` 时，提交会在调用 Stylelint 前直接失败。
@@ -1000,10 +1019,11 @@ repo-guard migrate
 repo-guard exceptions
 repo-guard unsafe-html
 repo-guard target-blank
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
+repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard dependencies
+repo-guard style-complexity
 repo-guard build
 repo-guard architecture
 repo-guard typecheck
@@ -1024,10 +1044,10 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.11
+## 升级到 0.12.12
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.11
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.12
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1097,3 +1117,7 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.12.11 新增 `dependencyPolicy`、`repo-guard dependencies` 和暂存依赖治理门禁，覆盖精确版本、
 批准来源、分组唯一、npm 锁文件同步和项目禁用包。新项目默认开启；已有配置迁移后保持关闭，可先运行
 `repo-guard dependencies` 审计，再执行 `repo-guard enable dependencies`。
+
+0.12.12 新增 `preCommit.stylelint.complexity` 和 `repo-guard style-complexity`，默认限制复合选择器段数
+与样式嵌套深度为 3。Stylelint 就绪的新项目默认开启；已有配置迁移后保持关闭，可先专项审计再执行
+`repo-guard enable styleComplexity`。硬规则不能被项目配置、ignore 或 disable 注释覆盖。

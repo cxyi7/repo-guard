@@ -55,6 +55,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.prettier.fix, true);
   assert.equal(config.preCommit.stylelint.enabled, false);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.preCommit.filePlacement.mode, 'newFiles');
   assert.equal(config.preCommit.filePlacement.rules.length, 2);
@@ -92,6 +93,7 @@ test('starter configuration enables Stylelint when project setup was detected', 
   const config = createStarterConfig({ stylelintEnabled: true });
 
   assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
 });
 
 test('starter configuration enables build when its project script was detected', () => {
@@ -246,6 +248,35 @@ test('enables the dependency governance pre-commit feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['dependencies'], true);
   assert.deepEqual(enabled.changed, ['dependencies']);
   assert.equal(readConfig(root).dependencyPolicy.enabled, true);
+});
+
+test('enables Stylelint together with the style complexity gate', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['styleComplexity'], true);
+  assert.deepEqual(enabled.changed, ['stylelint', 'styleComplexity']);
+  const config = readConfig(root);
+  assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
+});
+
+test('disables style complexity together with Stylelint', (context) => {
+  const root = createFixture(sparseConfig({
+    preCommit: {
+      stylelint: {
+        enabled: true,
+        complexity: { enabled: true },
+      },
+    },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const disabled = setFeaturesEnabled(root, ['stylelint'], false);
+  assert.deepEqual(disabled.changed, ['styleComplexity', 'stylelint']);
+  const config = readConfig(root);
+  assert.equal(config.preCommit.stylelint.enabled, false);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, false);
 });
 
 test('enables structured coverage from a legacy boolean configuration', (context) => {

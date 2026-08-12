@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.12
+
+- 新增 `preCommit.stylelint.complexity` 配置和 `repo-guard style-complexity` 全项目命令，默认限制复合选择器段数与样式嵌套深度为 3。
+- Stylelint 就绪的新项目默认启用复杂度规则；已有配置迁移后保持关闭，`enable styleComplexity` 会同步启用 Stylelint。
+- 复杂度规则复用业务项目的 Vue/SCSS/Less 自定义语法，但不能被同名项目规则、override、ignore 或源码 disable 注释关闭。
+- 新增 `style/*` 精确结构化例外和针对选择器拆分、语义化 class、降低嵌套的统一 AI 修复指令。
+
 ## 0.12.11
 
 - 新增 `dependencyPolicy` 配置、`repo-guard dependencies` 显式命令和可开关的 `pre-commit` 依赖治理；新项目默认开启，已有配置迁移后保持关闭。

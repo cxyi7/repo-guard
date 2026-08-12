@@ -791,6 +791,30 @@
               "type": "boolean",
               "default": true,
               "description": "Require a project Stylelint configuration when the staged gate is enabled."
+            },
+            "complexity": {
+              "type": "object",
+              "description": "Repo-owned selector and nesting limits executed with the consuming project's Stylelint and syntax configuration.",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enforce selector-max-compound-selectors and max-nesting-depth on staged style files. New projects with a ready Stylelint setup enable this; migrated projects stay disabled."
+                },
+                "maxCompoundSelectors": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 3,
+                  "description": "Maximum compound selector count in one resolved selector."
+                },
+                "maxNestingDepth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 3,
+                  "description": "Maximum nested rule depth."
+                }
+              }
             }
           }
         },

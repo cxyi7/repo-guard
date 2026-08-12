@@ -9,19 +9,26 @@ function relativePath(root, filePath) {
 }
 
 function repairAdvice(rule) {
-  if (rule === 'property-no-unknown') {
+  const normalizedRule = rule.replace(/^style\//, '');
+  if (normalizedRule === 'property-no-unknown') {
     return '请检查属性拼写，并确认它是标准属性或项目允许的自定义属性。';
   }
-  if (rule === 'declaration-block-no-duplicate-properties') {
+  if (normalizedRule === 'declaration-block-no-duplicate-properties') {
     return '请删除无效的重复属性，或确认级联覆盖是否应改为更明确的写法。';
   }
-  if (rule === 'selector-pseudo-class-no-unknown') {
+  if (normalizedRule === 'selector-pseudo-class-no-unknown') {
     return '请检查伪类名称和当前样式语法是否正确。';
   }
-  if (rule === 'invalid-option') {
+  if (normalizedRule === 'selector-max-compound-selectors') {
+    return '请拆分过长选择器，优先给目标元素增加语义化 class，并减少对 DOM 层级的耦合。';
+  }
+  if (normalizedRule === 'max-nesting-depth') {
+    return '请降低样式嵌套深度，提取同级规则或语义化 class，保持选择器作用域清晰。';
+  }
+  if (normalizedRule === 'invalid-option') {
     return '请修复项目 Stylelint 配置中的无效规则选项，并保留原有规则意图。';
   }
-  if (!rule || rule === 'CssSyntaxError') {
+  if (!normalizedRule || normalizedRule === 'CssSyntaxError') {
     return '请判断是样式语法错误还是项目 Stylelint 解析配置不匹配，并修复根因。';
   }
   return '请结合该规则、样式语言和项目上下文修复根因。';

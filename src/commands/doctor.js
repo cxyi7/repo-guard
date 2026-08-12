@@ -403,7 +403,11 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       checks.push(
         `Stylelint ${stylelint.version} staged gate `
         + `(${config.preCommit.stylelint.pattern}, fix=${config.preCommit.stylelint.fix}, `
-        + `config=${stylelintConfigFile || 'project config optional'})`,
+        + `config=${stylelintConfigFile || 'project config optional'}, `
+        + `complexity=${config.preCommit.stylelint.complexity.enabled
+          ? `compound<=${config.preCommit.stylelint.complexity.maxCompoundSelectors}, `
+            + `nesting<=${config.preCommit.stylelint.complexity.maxNestingDepth}`
+          : 'disabled'})`,
       );
     } catch (error) {
       errors.push(error.message);

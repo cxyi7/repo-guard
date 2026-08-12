@@ -44,6 +44,7 @@
    ├─ config management        配置迁移和功能开关
    ├─ lint-staged              暂存内容隔离、写回和失败恢复
    ├─ stylelint-runner         样式检查、修复、复检
+   ├─ style complexity        强制选择器复合段与样式嵌套深度
    ├─ stylelint-diagnostics    编号化 AI 修复指令
    ├─ eslint-runner            检查、修复、复检
    ├─ eslint-diagnostics       编号化 AI 修复指令
@@ -69,6 +70,11 @@ Lighthouse 安装。项目负责选择版本、插件、解析器、测试环境
 `baseConfig` 注入 repo-guard 规则。项目的 `eslint.config.*` 随后正常加载，因此
 项目同名规则、忽略范围和 `eslint-config-prettier` 拥有最终优先级。Lighthouse
 仅运行 `collect` 和 `assert`，不会隐式上传报告。
+
+Stylelint 复杂度采用独立的只读检查通道：先解析业务项目针对每个文件的配置以取得 `customSyntax`，
+再只注入 repo-guard 拥有的 `selector-max-compound-selectors` 与 `max-nesting-depth`。该通道直接读取
+暂存隔离后的文件内容，不使用项目 ignore 或 disable 注释；普通 Stylelint 修复和复检仍使用完整项目配置。
+两路结果合并后统一应用结构化例外并生成 AI 修复指令。
 
 ## Pre-commit 状态流
 

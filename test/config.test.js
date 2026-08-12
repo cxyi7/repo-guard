@@ -56,6 +56,11 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
     fix: true,
     maxWarnings: 0,
     requireConfig: true,
+    complexity: {
+      enabled: false,
+      maxCompoundSelectors: 3,
+      maxNestingDepth: 3,
+    },
   });
   assert.deepEqual(config.preCommit.eslint, {
     enabled: false,
@@ -420,6 +425,11 @@ test('validates and normalizes staged Stylelint configuration', () => {
         fix: false,
         maxWarnings: 3,
         requireConfig: false,
+        complexity: {
+          enabled: true,
+          maxCompoundSelectors: 2,
+          maxNestingDepth: 4,
+        },
       },
     },
   }));
@@ -430,6 +440,11 @@ test('validates and normalizes staged Stylelint configuration', () => {
     fix: false,
     maxWarnings: 3,
     requireConfig: false,
+    complexity: {
+      enabled: true,
+      maxCompoundSelectors: 2,
+      maxNestingDepth: 4,
+    },
   });
 });
 
@@ -636,6 +651,27 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
       },
     })),
     /non-negative integer/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          complexity: { maxNestingDepth: -1 },
+        },
+      },
+    })),
+    /maxNestingDepth must be a non-negative integer/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          enabled: false,
+          complexity: { enabled: true },
+        },
+      },
+    })),
+    /complexity.enabled requires preCommit.stylelint.enabled/,
   );
 });
 

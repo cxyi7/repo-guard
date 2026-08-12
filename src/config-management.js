@@ -18,6 +18,7 @@ import {
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
+  DEFAULT_STYLE_COMPLEXITY_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
@@ -30,6 +31,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'filePlacement',
   'maxFileLines',
+  'styleComplexity',
   'dependencies',
   'architecture',
   'build',
@@ -115,6 +117,17 @@ function cloneUnitTestConfig(value = {}) {
   };
 }
 
+function cloneStylelintConfig(value = {}) {
+  return {
+    ...DEFAULT_STYLELINT_CONFIG,
+    ...value,
+    complexity: {
+      ...DEFAULT_STYLE_COMPLEXITY_CONFIG,
+      ...(value.complexity ?? {}),
+    },
+  };
+}
+
 export function createStarterConfig({
   architectureEnabled = false,
   buildEnabled = false,
@@ -147,7 +160,10 @@ export function createStarterConfig({
         rules: DEFAULT_MAX_FILE_LINES_CONFIG.rules.map((rule) => ({ ...rule })),
         exclusions: [...DEFAULT_MAX_FILE_LINES_CONFIG.exclusions],
       },
-      stylelint: { ...DEFAULT_STYLELINT_CONFIG, enabled: stylelintEnabled },
+      stylelint: cloneStylelintConfig({
+        enabled: stylelintEnabled,
+        complexity: { enabled: stylelintEnabled },
+      }),
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
       eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true, preset: true },
     },
@@ -234,10 +250,7 @@ export function migrateProjectConfig(root, {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
         ...(preCommit.maxFileLines ?? {}),
       },
-      stylelint: {
-        ...DEFAULT_STYLELINT_CONFIG,
-        ...(preCommit.stylelint ?? {}),
-      },
+      stylelint: cloneStylelintConfig(preCommit.stylelint),
       prettier: {
         ...DEFAULT_PRETTIER_CONFIG,
         ...(preCommit.prettier ?? {}),
@@ -272,6 +285,9 @@ function featureConfig(config, feature) {
   if (feature === 'dependencies') {
     return config.dependencyPolicy;
   }
+  if (feature === 'styleComplexity') {
+    return config.preCommit.stylelint.complexity;
+  }
   if (
     feature === 'build'
     || feature === 'architecture'
@@ -300,9 +316,11 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (unsupported.length > 0) {
     throw new Error(`Unsupported feature(s): ${unsupported.join(', ')}`);
   }
-  const effectiveFeatures = enabled && uniqueFeatures.includes('coverage')
-    ? [...new Set(['unitTest', ...uniqueFeatures])]
-    : uniqueFeatures;
+  const requiredFeatures = [];
+  if (enabled && uniqueFeatures.includes('coverage')) requiredFeatures.push('unitTest');
+  if (enabled && uniqueFeatures.includes('styleComplexity')) requiredFeatures.push('stylelint');
+  if (!enabled && uniqueFeatures.includes('stylelint')) requiredFeatures.push('styleComplexity');
+  const effectiveFeatures = [...new Set([...requiredFeatures, ...uniqueFeatures])];
 
   const migration = migrateProjectConfig(root);
   const next = migration.config;

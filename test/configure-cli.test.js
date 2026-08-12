@@ -46,6 +46,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'eslint',
       'prettier',
       'stylelint',
+      'styleComplexity',
       'maxFileLines',
       'architecture',
       'build',
@@ -59,6 +60,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /eslint: enabled/);
   assert.match(enableResult.stdout, /prettier: enabled/);
   assert.match(enableResult.stdout, /stylelint: enabled/);
+  assert.match(enableResult.stdout, /styleComplexity: enabled/);
   assert.match(enableResult.stdout, /lighthouse: enabled/);
   assert.match(enableResult.stdout, /maxFileLines: enabled/);
   assert.match(enableResult.stdout, /architecture: enabled/);
@@ -73,6 +75,8 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.eslint.enabled, true);
   assert.equal(config.preCommit.prettier.enabled, true);
   assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
+  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
   assert.equal(config.architecture.enabled, true);

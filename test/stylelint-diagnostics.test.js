@@ -51,3 +51,24 @@ test('includes invalid Stylelint rule options in AI repair instructions', () => 
   assert.match(output, /invalid-option/);
   assert.match(output, /selector-max-id/);
 });
+
+test('gives targeted repairs for repo-owned style complexity rules', () => {
+  const root = path.resolve('fixture');
+  const output = buildStylelintAiRepairInstructions({
+    root,
+    maxWarnings: 0,
+    results: [{
+      source: path.join(root, 'src', 'App.vue'),
+      warnings: [{
+        line: 10,
+        column: 3,
+        severity: 'error',
+        rule: 'style/max-nesting-depth',
+        text: 'Expected nesting depth to be no more than 3',
+      }],
+    }],
+  });
+
+  assert.match(output, /降低样式嵌套深度/);
+  assert.match(output, /style\/max-nesting-depth/);
+});

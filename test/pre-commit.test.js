@@ -39,6 +39,9 @@ function writeConfig(root, {
   stylelintFix = true,
   stylelintPattern = '**/*.{css,scss,sass,less,vue}',
   stylelintRequireConfig = true,
+  styleComplexityEnabled = false,
+  styleMaxCompoundSelectors = 3,
+  styleMaxNestingDepth = 3,
   dependencyPolicyEnabled = false,
   maxFileLinesEnabled = false,
   filePlacementEnabled = false,
@@ -83,6 +86,11 @@ function writeConfig(root, {
           fix: stylelintFix,
           maxWarnings: 0,
           requireConfig: stylelintRequireConfig,
+          complexity: {
+            enabled: styleComplexityEnabled,
+            maxCompoundSelectors: styleMaxCompoundSelectors,
+            maxNestingDepth: styleMaxNestingDepth,
+          },
         },
         prettier: {
           enabled: prettierEnabled,
@@ -472,6 +480,53 @@ test('runs the project Stylelint auto-fix and final verification', async (contex
     normalizeEol(git(root, ['show', ':style.css'])),
     '.sample { color: #fff; }\n',
   );
+});
+
+test('enforces repo-owned selector complexity despite project overrides and disable comments', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleComplexityEnabled: true,
+    styleMaxCompoundSelectors: 2,
+    styleMaxNestingDepth: 2,
+    stylelintConfig: {
+      rules: {
+        'selector-max-compound-selectors': null,
+      },
+    },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = [
+    '/* stylelint-disable selector-max-compound-selectors */',
+    '.page .panel .action { color: red; }',
+    '',
+  ].join('\n');
+  writeFileSync(path.join(root, 'style.css'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':style.css'])), content);
+});
+
+test('enforces repo-owned nesting depth', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleComplexityEnabled: true,
+    styleMaxCompoundSelectors: 4,
+    styleMaxNestingDepth: 1,
+    stylelintConfig: { rules: {} },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = '.page { .panel { .action { color: red; } } }\n';
+  writeFileSync(path.join(root, 'style.css'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
 });
 
 test('auto-fixes only staged Stylelint content and restores unstaged edits', async (context) => {

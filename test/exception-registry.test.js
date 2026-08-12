@@ -157,4 +157,5 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
   assert.match(content, /Vue 模板禁止使用 `v-html`/);
   assert.match(content, /target="_blank"/);
   assert.match(content, /依赖必须遵守精确版本/);
+  assert.match(content, /样式复杂度门禁/);
 });

@@ -44,7 +44,11 @@ export { ensureGitAttributes } from './git-attributes.js';
 export { installHooks } from './hook-installer.js';
 export { runEslintFiles } from './eslint-runner.js';
 export { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
-export { runStylelintFiles } from './stylelint-runner.js';
+export {
+  runStyleComplexityProject,
+  runStylelintFiles,
+  STYLE_COMPLEXITY_RULES,
+} from './stylelint-runner.js';
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export {

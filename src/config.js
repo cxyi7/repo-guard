@@ -7,6 +7,11 @@ export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
 export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
 export const DEFAULT_STYLELINT_PATTERN = '**/*.{css,scss,sass,less,vue}';
+export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
+  enabled: false,
+  maxCompoundSelectors: 3,
+  maxNestingDepth: 3,
+});
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
   enabled: false,
   preset: false,
@@ -26,6 +31,7 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   fix: true,
   maxWarnings: 0,
   requireConfig: true,
+  complexity: DEFAULT_STYLE_COMPLEXITY_CONFIG,
 });
 export const DEFAULT_BUILD_CONFIG = Object.freeze({
   enabled: false,
@@ -1101,7 +1107,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     stylelintValue,
-    new Set(['enabled', 'pattern', 'fix', 'maxWarnings', 'requireConfig']),
+    new Set(['enabled', 'pattern', 'fix', 'maxWarnings', 'requireConfig', 'complexity']),
     `${configPath} preCommit.stylelint`,
   );
   if (stylelintValue.enabled != null && typeof stylelintValue.enabled !== 'boolean') {
@@ -1127,6 +1133,37 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && typeof stylelintValue.requireConfig !== 'boolean'
   ) {
     throw new Error(`${configPath} preCommit.stylelint.requireConfig must be a boolean`);
+  }
+  const styleComplexityValue = stylelintValue.complexity ?? {};
+  if (!styleComplexityValue || typeof styleComplexityValue !== 'object'
+    || Array.isArray(styleComplexityValue)) {
+    throw new Error(`${configPath} preCommit.stylelint.complexity must be an object`);
+  }
+  assertKnownProperties(
+    styleComplexityValue,
+    new Set(['enabled', 'maxCompoundSelectors', 'maxNestingDepth']),
+    `${configPath} preCommit.stylelint.complexity`,
+  );
+  if (styleComplexityValue.enabled != null
+    && typeof styleComplexityValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} preCommit.stylelint.complexity.enabled must be a boolean`);
+  }
+  for (const property of ['maxCompoundSelectors', 'maxNestingDepth']) {
+    if (styleComplexityValue[property] != null
+      && (!Number.isInteger(styleComplexityValue[property])
+        || styleComplexityValue[property] < 0)) {
+      throw new Error(
+        `${configPath} preCommit.stylelint.complexity.${property} `
+        + 'must be a non-negative integer',
+      );
+    }
+  }
+  if ((styleComplexityValue.enabled ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.enabled)
+    && !(stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled)) {
+    throw new Error(
+      `${configPath} preCommit.stylelint.complexity.enabled requires `
+      + 'preCommit.stylelint.enabled',
+    );
   }
 
   const prettierValue = preCommitValue.prettier ?? {};
@@ -1305,6 +1342,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         fix: stylelintValue.fix ?? DEFAULT_STYLELINT_CONFIG.fix,
         maxWarnings: stylelintValue.maxWarnings ?? DEFAULT_STYLELINT_CONFIG.maxWarnings,
         requireConfig: stylelintValue.requireConfig ?? DEFAULT_STYLELINT_CONFIG.requireConfig,
+        complexity: {
+          enabled: styleComplexityValue.enabled
+            ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.enabled,
+          maxCompoundSelectors: styleComplexityValue.maxCompoundSelectors
+            ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.maxCompoundSelectors,
+          maxNestingDepth: styleComplexityValue.maxNestingDepth
+            ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.maxNestingDepth,
+        },
       },
       prettier: {
         enabled: prettierValue.enabled ?? DEFAULT_PRETTIER_CONFIG.enabled,

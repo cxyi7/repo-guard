@@ -95,6 +95,8 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
   packageJson.scripts['guard:architecture'] ||= 'repo-guard architecture';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
+  packageJson.scripts['guard:style-complexity'] ||= 'repo-guard style-complexity';
+  packageJson.scripts['guard:enable-style-complexity'] ||= 'repo-guard enable styleComplexity';
   packageJson.scripts['guard:enable-build'] ||= 'repo-guard enable build';
   packageJson.scripts['guard:build'] ||= 'repo-guard build';
   packageJson.scripts['guard:enable-lighthouse'] ||= 'repo-guard enable lighthouse';
