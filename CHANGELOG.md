@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.0
+
+- 将最低运行环境从 Node.js 18.12.0 提升到 Node.js 22.23.2，并同步包元数据、锁文件、README、配置 Schema 与架构文档。
+- `doctor` 现在直接读取 `package.json` 的 `engines.node` 并进行完整主、次、补丁版本比较，避免运行时诊断与发布元数据不一致。
+
 ## 0.13.3
 
 - 新增 `preCommit.stylelint.governance` 样式治理增强，强制执行 `selector-max-specificity`、`selector-max-id` 和 `declaration-no-important`；默认最大权重为 `0,3,0`、禁止 ID 选择器和 `!important`。

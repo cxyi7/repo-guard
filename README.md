@@ -7,10 +7,12 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.13.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.14.0
 npx repo-guard init
 npx repo-guard doctor
 ```
+
+需要 Node.js `22.23.2` 或更高版本；建议使用最新的 Node.js 22 LTS 补丁版本。
 
 Vue 表单 label、`v-html` 和 `target="_blank"` 门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、依赖治理、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
@@ -720,8 +722,8 @@ repo-guard doctor
 repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它兼容仅通过 ESM `import` 条件导出入口的 dependency-cruiser 16、17 和 18。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
 
 ```bash
-# Node 18.17+ 使用 16.x；Node 20.12+ 可使用 17.x；更高 Node 版本选择其兼容版本
-npm install --save-dev dependency-cruiser@^16
+# Node.js 22.23.2+ 选择与项目兼容的 dependency-cruiser 版本
+npm install --save-dev dependency-cruiser@^18
 repo-guard enable architecture
 repo-guard doctor
 repo-guard architecture
@@ -1203,13 +1205,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.13.0
+## 升级到 0.14.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.13.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.14.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.14.0 将最低运行环境从 Node.js 18.12.0 提升到 Node.js 22.23.2。升级前先将开发机、CI 和消费项目统一到最新 Node.js 22 LTS 补丁版本；`doctor` 会按包元数据中的同一版本约束进行诊断。
 
 0.7.0 继续使用 `version: 1` 配置和 v2 托管 Hook。升级已有配置时，迁移只会补充
 默认关闭的 `preCommit.stylelint`，不会因为仓库中存在样式文件而自动开启。项目完成

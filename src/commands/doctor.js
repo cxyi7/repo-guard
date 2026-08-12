@@ -62,9 +62,28 @@ import {
 import { validateUnitTestSetup } from '../unit-test-runner.js';
 import { validateTypeCheckSetup } from '../typecheck-runner.js';
 
-function nodeVersionIsSupported() {
-  const [major, minor] = process.versions.node.split('.').map(Number);
-  return major > 18 || (major === 18 && minor >= 12);
+const PACKAGE_JSON = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+);
+export const REQUIRED_NODE_RANGE = PACKAGE_JSON.engines.node;
+
+function parseNodeVersion(value) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(String(value));
+  return match ? match.slice(1).map(Number) : null;
+}
+
+export function nodeVersionIsSupported(
+  version = process.versions.node,
+  requiredRange = REQUIRED_NODE_RANGE,
+) {
+  const current = parseNodeVersion(version);
+  const minimum = parseNodeVersion(String(requiredRange).replace(/^>=/, ''));
+  if (!current || !minimum || !String(requiredRange).startsWith('>=')) return false;
+
+  for (let index = 0; index < minimum.length; index += 1) {
+    if (current[index] !== minimum[index]) return current[index] > minimum[index];
+  }
+  return true;
 }
 
 function repairRepository(root) {
@@ -150,7 +169,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   if (nodeVersionIsSupported()) {
     checks.push(`Node.js ${process.versions.node}`);
   } else {
-    errors.push(`Node.js ${process.versions.node} is unsupported; expected >=18.12.0`);
+    errors.push(
+      `Node.js ${process.versions.node} is unsupported; expected ${REQUIRED_NODE_RANGE}`,
+    );
   }
 
   let config;

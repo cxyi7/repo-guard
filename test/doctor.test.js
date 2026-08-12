@@ -9,7 +9,11 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { runDoctor } from '../src/commands/doctor.js';
+import {
+  nodeVersionIsSupported,
+  REQUIRED_NODE_RANGE,
+  runDoctor,
+} from '../src/commands/doctor.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -36,6 +40,16 @@ function createRepository() {
   );
   return root;
 }
+
+test('uses the package Node.js 22.23.2 runtime floor', () => {
+  assert.equal(REQUIRED_NODE_RANGE, '>=22.23.2');
+  assert.equal(nodeVersionIsSupported('22.23.1'), false);
+  assert.equal(nodeVersionIsSupported('22.23.2'), true);
+  assert.equal(nodeVersionIsSupported('22.24.0'), true);
+  assert.equal(nodeVersionIsSupported('23.0.0'), true);
+  assert.equal(nodeVersionIsSupported('21.99.99'), false);
+  assert.equal(nodeVersionIsSupported('invalid'), false);
+});
 
 test('doctor --fix reconciles safe managed repository state', async (context) => {
   const root = createRepository();

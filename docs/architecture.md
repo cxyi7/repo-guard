@@ -199,7 +199,7 @@ repo-guard 可安全拥有的内容；自定义 Hook、其他 hooksPath、已跟
 - 缺少 `preCommit` 时按质量门禁未启用处理，保持旧版本行为。
 - 缺少 `notification` 时按启用处理，保持旧版本的通知行为。
 - Hook 生成版本为 v4，安装器可识别并升级 v1、v2、v3。
-- Node.js 最低版本为 18.12.0，与 `lint-staged@15.5.2` 一致。
+- Node.js 最低版本为 22.23.2；开发机、CI 和消费项目应使用最新的 Node.js 22 LTS 补丁版本。`doctor` 直接读取包元数据中的 `engines.node`，避免诊断要求漂移。
 - Stylelint、ESLint、Prettier 和 Vitest 是可选 peer dependency；启用门禁时必须由业务项目安装。
 - 自动 ESLint 基线要求业务项目提供 ESLint `>=9.19` 和 `@eslint/js`；`eslint-plugin-vue` 和 `typescript-eslint` 是按项目安装情况自动启用的可选 peer dependency。
 - repo-guard ESLint 基线只启用无需类型信息的 TypeScript 规则；类型感知配置和 `tsc`/`vue-tsc` 留在项目独立 CI，不进入 pre-commit。

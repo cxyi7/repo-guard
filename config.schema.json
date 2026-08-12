@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level dependency governance, protected-file, structured-exception, hard Vue security and accessibility, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level dependency governance, protected-file, structured-exception, hard Vue security and accessibility, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard on Node.js 22.23.2 or newer.",
   "type": "object",
   "additionalProperties": false,
   "required": [
