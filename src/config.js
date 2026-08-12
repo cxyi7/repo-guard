@@ -262,6 +262,12 @@ export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
 export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
   enabled: true,
 });
+export const DEFAULT_CI_CONFIG = Object.freeze({
+  enabled: false,
+  profile: 'policy',
+  reportPath: 'reports/repo-guard.json',
+  protectedFiles: Object.freeze({ action: 'report' }),
+});
 export const DEFAULT_EXCEPTIONS_CONFIG = Object.freeze({
   warningDays: 14,
   maxDays: 90,
@@ -309,6 +315,14 @@ function normalizeRelativePattern(value, label) {
     throw new Error(`${label} must stay inside the repository`);
   }
   return pattern;
+}
+
+export function validateCiReportPath(value, label = 'CI report path') {
+  const reportPath = normalizeRelativePattern(value, label);
+  if (!/^reports\/.+\.json$/.test(reportPath)) {
+    throw new Error(`${label} must be a JSON file inside reports/`);
+  }
+  return reportPath;
 }
 
 function normalizePatternList(value, label, { allowEmpty = false } = {}) {
@@ -360,6 +374,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       '$schema',
       'version',
       'notification',
+      'ci',
       'exceptions',
       'dependencyPolicy',
       'architecture',
@@ -402,6 +417,41 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && typeof notificationValue.enabled !== 'boolean'
   ) {
     throw new Error(`${configPath} notification.enabled must be a boolean`);
+  }
+
+  const ciValue = value.ci ?? {};
+  if (!ciValue || typeof ciValue !== 'object' || Array.isArray(ciValue)) {
+    throw new Error(`${configPath} ci must be an object`);
+  }
+  assertKnownProperties(
+    ciValue,
+    new Set(['enabled', 'profile', 'reportPath', 'protectedFiles']),
+    `${configPath} ci`,
+  );
+  if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} ci.enabled must be a boolean`);
+  }
+  if (ciValue.profile != null && !['policy', 'full'].includes(ciValue.profile)) {
+    throw new Error(`${configPath} ci.profile must be policy or full`);
+  }
+  const ciReportPath = validateCiReportPath(
+    ciValue.reportPath ?? DEFAULT_CI_CONFIG.reportPath,
+    `${configPath} ci.reportPath`,
+  );
+  const ciProtectedFilesValue = ciValue.protectedFiles ?? {};
+  if (!ciProtectedFilesValue || typeof ciProtectedFilesValue !== 'object'
+    || Array.isArray(ciProtectedFilesValue)) {
+    throw new Error(`${configPath} ci.protectedFiles must be an object`);
+  }
+  assertKnownProperties(
+    ciProtectedFilesValue,
+    new Set(['action']),
+    `${configPath} ci.protectedFiles`,
+  );
+  const ciProtectedFilesAction = ciProtectedFilesValue.action
+    ?? DEFAULT_CI_CONFIG.protectedFiles.action;
+  if (!['report', 'fail'].includes(ciProtectedFilesAction)) {
+    throw new Error(`${configPath} ci.protectedFiles.action must be report or fail`);
   }
 
   const exceptionsValue = value.exceptions ?? {};
@@ -1438,6 +1488,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     version: 1,
     notification: {
       enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
+    },
+    ci: {
+      enabled: ciValue.enabled ?? DEFAULT_CI_CONFIG.enabled,
+      profile: ciValue.profile ?? DEFAULT_CI_CONFIG.profile,
+      reportPath: ciReportPath,
+      protectedFiles: { action: ciProtectedFilesAction },
     },
     exceptions: {
       warningDays: exceptionWarningDays,

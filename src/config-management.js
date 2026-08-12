@@ -7,6 +7,7 @@ import path from 'node:path';
 import { assertExceptionRegistryCurrent } from './exception-registry.js';
 import {
   CONFIG_FILE,
+  DEFAULT_CI_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
@@ -46,6 +47,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'componentInteraction',
   'coverage',
   'notification',
+  'ci',
 ]);
 
 function cloneExceptionsConfig(value = {}) {
@@ -162,6 +164,10 @@ export function createStarterConfig({
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    ci: {
+      ...DEFAULT_CI_CONFIG,
+      protectedFiles: { ...DEFAULT_CI_CONFIG.protectedFiles },
+    },
     exceptions: cloneExceptionsConfig(),
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
@@ -256,6 +262,14 @@ export function migrateProjectConfig(root, {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
     },
+    ci: {
+      ...DEFAULT_CI_CONFIG,
+      ...(prepared.ci ?? {}),
+      protectedFiles: {
+        ...DEFAULT_CI_CONFIG.protectedFiles,
+        ...(prepared.ci?.protectedFiles ?? {}),
+      },
+    },
     exceptions: cloneExceptionsConfig(prepared.exceptions),
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
     architecture: cloneArchitectureConfig(prepared.architecture),
@@ -333,6 +347,7 @@ function featureConfig(config, feature) {
   }
   if (
     feature === 'build'
+    || feature === 'ci'
     || feature === 'architecture'
     || feature === 'accessibilityTest'
     || feature === 'notification'
@@ -409,4 +424,17 @@ export function enableQualityGates(root, requestedGates) {
     enabled: result.changed,
     migrated: result.migrated,
   };
+}
+
+export function configureCi(root, { profile = 'policy' } = {}) {
+  if (!['policy', 'full'].includes(profile)) {
+    throw new Error('CI profile must be policy or full');
+  }
+  const migration = migrateProjectConfig(root);
+  const config = migration.config;
+  const changed = !config.ci.enabled || config.ci.profile !== profile;
+  config.ci.enabled = true;
+  config.ci.profile = profile;
+  if (changed) writeProjectConfig(root, config);
+  return { changed, config, migrated: migration.changed };
 }

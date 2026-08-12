@@ -36,6 +36,12 @@
 
 暂存门禁在 lint-staged 完成格式化、只读复检、单文件行数和文件归位检查，并将结果写回 index 后运行。`runStagedDependencyPolicy` 从 Git index 读取清单和锁文件并写入系统临时目录分析，确保部分暂存和删除场景使用实际提交内容；临时目录始终清理。依赖治理通过后才进入保护文件门禁。违规使用 `dependencies/*` 精确结构化例外，失败报告包含可独立交给 AI 的修复与验证指令。
 
+## GitLab CI 门禁
+
+`ci-runner` 是平台无关的只读编排器，使用显式 base/head 或 GitLab 的 `CI_MERGE_REQUEST_DIFF_BASE_SHA`、`CI_COMMIT_BEFORE_SHA` 和 `CI_COMMIT_SHA` 计算多提交变更范围。它不要求工作区干净，不复用 pre-push stdin，也不运行 fix、Hook 安装、企业微信通知或 Lighthouse。`policy` 只补充现有 CI 通常缺少的 repo-guard 策略；`full` 再调用消费项目已启用的质量、类型、测试、axe、架构和构建 runner，且 lint/format runner 固定只读。
+
+`gitlab-ci` 生成并升级带 v1 标记的 `.gitlab/ci/repo-guard.yml`。简单根流水线通过受管理区块接入本地 `include` 和隐藏模板；已有复杂 include、同名 Job 或无法安全选择 stage 时保留根文件并返回人工片段。GitLab 在依赖安装前解析 include，因此模板必须提交到仓库，不能从 `node_modules` include。CI JSON 报告是唯一允许写入的产物，路径由 `ci.reportPath` 控制并限制在仓库内。
+
 ## 职责边界
 
 ```text
@@ -65,6 +71,9 @@
    ├─ coverage-runner         全局覆盖率、Git 变更行覆盖率和统一报告
    ├─ dependency-policy       依赖版本、来源、分组、禁用包和 npm 锁文件治理
    ├─ pre-push-changes        精确计算本次推送的 Git 变更范围
+   ├─ ci-changes              解析 GitLab 或显式的 base/head 变更范围
+   ├─ ci-runner               policy/full 只读远程门禁与 JSON 报告
+   ├─ gitlab-ci               受管理模板和安全 include/extends 集成
    ├─ lighthouse-runner       Vue 构建、LHCI 收集和断言
    ├─ protected-file gate      规则、指纹和通知
    └─ hook installer           Hook 生命周期

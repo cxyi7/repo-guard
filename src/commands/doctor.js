@@ -37,6 +37,7 @@ import {
   resolveProjectPrettierMetadata,
 } from '../prettier-runner.js';
 import { findRepositoryRoot, gitValue } from '../git.js';
+import { inspectGitLabCi } from '../gitlab-ci.js';
 import {
   isCurrentManagedHook,
   isManagedHook,
@@ -155,11 +156,12 @@ function repairRepository(root) {
   return { repairErrors, repairs };
 }
 
-export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
+export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false } = {}) {
   const errors = [];
   const warnings = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
+  if (fix && ci) throw new Error('doctor --fix and --ci cannot be combined');
   const repairResult = fix
     ? repairRepository(root)
     : { repairErrors: [], repairs: [] };
@@ -210,64 +212,73 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   }
 
-  const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
-  if (hooksPath === '.githooks') {
-    checks.push('core.hooksPath=.githooks');
-  } else {
-    errors.push(`core.hooksPath is "${hooksPath || 'not configured'}"`);
-  }
+  if (!ci) {
+    const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
+    if (hooksPath === '.githooks') {
+      checks.push('core.hooksPath=.githooks');
+    } else {
+      errors.push(`core.hooksPath is "${hooksPath || 'not configured'}"`);
+    }
 
-  for (const hookName of managedHookNames) {
-    const target = path.join(root, '.githooks', hookName);
-    if (!existsSync(target)) {
-      errors.push(`missing Git hook: .githooks/${hookName}`);
-      continue;
+    for (const hookName of managedHookNames) {
+      const target = path.join(root, '.githooks', hookName);
+      if (!existsSync(target)) {
+        errors.push(`missing Git hook: .githooks/${hookName}`);
+        continue;
+      }
+      if (!isManagedHook(readFileSync(target, 'utf8'))) {
+        errors.push(`Git hook is not managed by repo-guard: .githooks/${hookName}`);
+        continue;
+      }
+      if (!isCurrentManagedHook(readFileSync(target, 'utf8'))) {
+        errors.push(`Git hook is outdated: .githooks/${hookName}; run repo-guard install-hooks`);
+      }
     }
-    if (!isManagedHook(readFileSync(target, 'utf8'))) {
-      errors.push(`Git hook is not managed by repo-guard: .githooks/${hookName}`);
-      continue;
+    if (errors.every((message) => !message.includes('Git hook'))) {
+      checks.push(`${managedHookNames.length} managed Git hooks`);
     }
-    if (!isCurrentManagedHook(readFileSync(target, 'utf8'))) {
-      errors.push(`Git hook is outdated: .githooks/${hookName}; run repo-guard install-hooks`);
-    }
-  }
-  if (errors.every((message) => !message.includes('Git hook'))) {
-    checks.push(`${managedHookNames.length} managed Git hooks`);
   }
 
   const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
   const notificationRequired = config?.notification.enabled && hasNotifyRules;
-  const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
-  if (!existsSync(localEnvironmentPath)) {
-    if (notificationRequired) {
-      errors.push(`missing local notification template: ${LOCAL_ENV_FILE}; run repo-guard init`);
+  if (!ci) {
+    const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
+    if (!existsSync(localEnvironmentPath)) {
+      if (notificationRequired) {
+        errors.push(`missing local notification template: ${LOCAL_ENV_FILE}; run repo-guard init`);
+      } else {
+        checks.push(`${LOCAL_ENV_FILE} is not required by the current notification settings`);
+      }
     } else {
-      checks.push(`${LOCAL_ENV_FILE} is not required by the current notification settings`);
+      const { ignored, tracked } = getLocalEnvironmentGitStatus(root);
+      if (tracked) {
+        errors.push(
+          `${LOCAL_ENV_FILE} is tracked by Git; run "git rm --cached -- ${LOCAL_ENV_FILE}"`,
+        );
+      } else if (!ignored) {
+        errors.push(`${LOCAL_ENV_FILE} is not ignored by Git; run repo-guard init`);
+      } else {
+        checks.push(`${LOCAL_ENV_FILE} is local and ignored`);
+      }
     }
-  } else {
-    const { ignored, tracked } = getLocalEnvironmentGitStatus(root);
-    if (tracked) {
-      errors.push(
-        `${LOCAL_ENV_FILE} is tracked by Git; run "git rm --cached -- ${LOCAL_ENV_FILE}"`,
-      );
-    } else if (!ignored) {
-      errors.push(`${LOCAL_ENV_FILE} is not ignored by Git; run repo-guard init`);
-    } else {
-      checks.push(`${LOCAL_ENV_FILE} is local and ignored`);
-    }
-  }
 
-  if (config && !config.notification.enabled) {
-    checks.push('WeCom notification is disabled');
-  } else if (notificationRequired) {
-    try {
-      loadNotificationConfig(resolveNotificationEnvironment(root));
-      checks.push('WeCom notification configuration');
-    } catch (error) {
-      errors.push(error.message);
+    if (config && !config.notification.enabled) {
+      checks.push('WeCom notification is disabled');
+    } else if (notificationRequired) {
+      try {
+        loadNotificationConfig(resolveNotificationEnvironment(root));
+        checks.push('WeCom notification configuration');
+      } catch (error) {
+        errors.push(error.message);
+      }
+    } else if (config) {
+      checks.push('WeCom notification is not required because no notify rules are configured');
     }
   } else if (config) {
-    checks.push('WeCom notification is not required because no notify rules are configured');
+    checks.push('CI mode does not require local Git hooks or WeCom credentials');
+    const ciInspection = inspectGitLabCi(root, config);
+    if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
+    else checks.push(`GitLab CI integration (${config.ci.profile} profile)`);
   }
 
   if (config?.build.enabled) {

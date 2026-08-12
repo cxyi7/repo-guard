@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+
+- 新增平台无关的 `repo-guard ci` 只读远程门禁，支持 GitLab MR/分支 SHA、`policy`/`full` profile、全仓硬规则、变更测试策略、保护文件 report/fail 和始终落盘的 JSON 报告。
+- 新增 `repo-guard install-ci --provider gitlab`，生成受管理的本地 GitLab CI 模板；简单现有流水线通过 `include + extends` 幂等接入，复杂 include 或 stage 冲突时保留根 CI 并输出人工审查片段。
+- 新增 `repo-guard doctor --ci`，CI 环境不要求本地 Hook 或企业微信密钥，并验证模板、根 include、非手动/非 allow_failure Job 与 Node.js 22.23.2；配置、Schema、公共 API、项目脚本和文档同步更新。
+
 ## 0.14.0
 
 - 将最低运行环境从 Node.js 18.12.0 提升到 Node.js 22.23.2，并同步包元数据、锁文件、README、配置 Schema 与架构文档。
@@ -221,3 +227,5 @@
 ## 0.1.0
 
 - 提供受保护文件规则、企业微信通知、暂存指纹和 Git Hook 安装。
+- CI JSON 输出限制在未跟踪、非符号链接的 `reports/**/*.json`，避免报告参数覆盖业务文件。
+- GitLab 自动集成采用保守 YAML 识别，并对托管模板和根 Job 执行完整防篡改诊断。

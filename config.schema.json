@@ -28,6 +28,40 @@
         }
       }
     },
+    "ci": {
+      "type": "object",
+      "description": "Read-only remote CI gate and report settings. GitLab integration is installed as a managed local include without replacing the project's root pipeline.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "profile": {
+          "type": "string",
+          "enum": ["policy", "full"],
+          "default": "policy",
+          "description": "policy integrates with existing lint/test/build jobs; full also runs enabled project quality, test, architecture, and build gates."
+        },
+        "reportPath": {
+          "type": "string",
+          "pattern": "^reports/.+\\.json$",
+          "default": "reports/repo-guard.json",
+          "description": "Repository-relative JSON report path retained as a CI artifact."
+        },
+        "protectedFiles": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["report", "fail"],
+              "default": "report"
+            }
+          }
+        }
+      }
+    },
     "exceptions": {
       "type": "object",
       "description": "Human-reviewed, exact-location exceptions shared by repo-guard rules. Expired entries block normal commands.",

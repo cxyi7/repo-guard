@@ -7,7 +7,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.14.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.15.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -122,6 +122,12 @@ git push
   "version": 1,
   "notification": {
     "enabled": true
+  },
+  "ci": {
+    "enabled": false,
+    "profile": "policy",
+    "reportPath": "reports/repo-guard.json",
+    "protectedFiles": { "action": "report" }
   },
   "exceptions": {
     "warningDays": 14,
@@ -374,6 +380,39 @@ git push
   "exclusions": []
 }
 ```
+
+### GitLab CI 远程门禁
+
+repo-guard 可以接入已经存在的 GitLab CI。它不会覆盖业务项目的 `.gitlab-ci.yml`，而是生成受管理的 `.gitlab/ci/repo-guard.yml`，并在能够安全判断现有结构时向根 CI 增加 `include + extends`：
+
+```bash
+repo-guard install-ci --provider gitlab --profile policy --dry-run
+repo-guard install-ci --provider gitlab --profile policy
+repo-guard doctor --ci
+```
+
+`policy` 适合已有 ESLint、测试和构建 Job 的项目，只运行 repo-guard 自有的全仓硬性安全/Vue 可访问性、结构化例外、依赖、文件归位、行数、测试语义和保护文件策略；`full` 还会以只读方式运行已启用的 Stylelint、ESLint、Prettier、类型检查、单元测试与覆盖率、axe、架构和构建。两种 profile 都不会执行 fix、安装 Hook、读取本地企业微信密钥、发送通知或运行 Lighthouse。模板设置 `REPO_GUARD_SKIP_HOOKS=1`，因此业务项目的 `prepare: repo-guard install-hooks` 即使被 `npm ci` 触发，也不会在 Runner 中写 Hook 或 Git 配置。
+
+已有根 CI 包含复杂 `include`、已有 `repo_guard` Job、无法无歧义识别的 YAML 结构，或没有可安全选择的 `verify/test/quality` stage 时，安装器只生成受管理模板并打印需要人工审查加入的片段，不修改根 CI。块式和简单内联数组形式的 `stages` 均可自动识别；可以用 `--stage <name>` 明确选择已声明的 stage。
+
+GitLab 模板使用 Node.js 22.23.2、完整 Git 历史（`GIT_DEPTH: "0"`）、`npm ci`、npm 下载缓存，并在 MR 和默认分支流水线中执行：
+
+```yaml
+include:
+  - local: /.gitlab/ci/repo-guard.yml
+
+repo_guard:
+  extends: .repo_guard_policy
+  stage: verify
+```
+
+CI 优先读取 `CI_MERGE_REQUEST_DIFF_BASE_SHA` 和 `CI_COMMIT_SHA`，普通分支流水线使用 `CI_COMMIT_BEFORE_SHA`。基准提交不在浅克隆中时退出码为 `3` 并提示补充 Git 历史，不能静默跳过变更测试或变更行覆盖率。也可显式运行：
+
+```bash
+repo-guard ci --profile policy --base <sha> --head <sha>
+```
+
+退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
 ### 文件归位门禁
 
@@ -1172,6 +1211,9 @@ REPO_GUARD_MENTION_MOBILES=
 ```bash
 repo-guard init
 repo-guard install-hooks
+repo-guard install-ci --provider gitlab --profile policy
+repo-guard doctor --ci
+repo-guard ci --profile policy
 repo-guard migrate
 repo-guard exceptions
 repo-guard dynamic-code
@@ -1180,7 +1222,7 @@ repo-guard target-blank
 repo-guard form-labels
 repo-guard image-alt
 repo-guard accessibility-test
-repo-guard enable eslint prettier stylelint styleComplexity styleGovernance maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build
+repo-guard enable eslint prettier stylelint styleComplexity styleGovernance maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build ci
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard dependencies
@@ -1205,13 +1247,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.14.0
+## 升级到 0.15.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.14.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.15.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.15.0 新增 GitLab CI 远程门禁。升级不会自动修改已有 `.gitlab-ci.yml` 或开启 CI；先运行 `repo-guard install-ci --provider gitlab --profile policy --dry-run` 审查变更，再执行安装和 `repo-guard doctor --ci`。已有成熟 lint/test/build Job 的项目使用 `policy`，需要 repo-guard 统一编排时使用 `full`。
 
 0.14.0 将最低运行环境从 Node.js 18.12.0 提升到 Node.js 22.23.2。升级前先将开发机、CI 和消费项目统一到最新 Node.js 22 LTS 补丁版本；`doctor` 会按包元数据中的同一版本约束进行诊断。
 

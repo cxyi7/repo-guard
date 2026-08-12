@@ -4,6 +4,7 @@ import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_CI_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
@@ -37,6 +38,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
+  assert.deepEqual(config.ci, DEFAULT_CI_CONFIG);
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
@@ -86,6 +88,43 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled must be a boolean/,
+  );
+});
+
+test('validates read-only CI profiles, reports, and protected-file actions', () => {
+  const config = validateConfig(baseConfig({
+    ci: {
+      enabled: true,
+      profile: 'full',
+      reportPath: 'reports/custom.json',
+      protectedFiles: { action: 'fail' },
+    },
+  }));
+  assert.deepEqual(config.ci, {
+    enabled: true,
+    profile: 'full',
+    reportPath: 'reports/custom.json',
+    protectedFiles: { action: 'fail' },
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ ci: { profile: 'partial' } })),
+    /ci.profile must be policy or full/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ ci: { reportPath: '../report.json' } })),
+    /must stay inside the repository/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ ci: { reportPath: 'ci-report.json' } })),
+    /must be a JSON file inside reports\//,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ ci: { reportPath: 'reports/output.txt' } })),
+    /must be a JSON file inside reports\//,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ ci: { protectedFiles: { action: 'approve' } } })),
+    /must be report or fail/,
   );
 });
 

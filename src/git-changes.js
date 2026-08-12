@@ -59,6 +59,14 @@ function diffChanges(root, args) {
   return parseNameStatus(output);
 }
 
+export function collectRevisionChanges(root, base, head = 'HEAD') {
+  return diffChanges(root, [base, head]).map((change) => ({
+    ...change,
+    baseSha: base,
+    headSha: head,
+  }));
+}
+
 export function collectStagedChanges(root, base = null) {
   const args = ['--cached'];
   if (base) {

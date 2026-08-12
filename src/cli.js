@@ -3,6 +3,7 @@ import { runAccessibilityTestCommand } from './commands/accessibility-test.js';
 import { runArchitectureCommand } from './commands/architecture.js';
 import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
+import { runCiCommand } from './commands/ci.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { runDynamicCodeCommand } from './commands/dynamic-code.js';
@@ -14,6 +15,7 @@ import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runImageAltCommand } from './commands/image-alt.js';
 import { runInit, runInstallHooks } from './commands/init.js';
+import { runInstallCiCommand } from './commands/install-ci.js';
 import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
 import { runTargetBlankCommand } from './commands/target-blank.js';
@@ -35,9 +37,11 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
-  repo-guard doctor [--fix]
+  repo-guard enable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification|ci> [...]
+  repo-guard disable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification|ci> [...]
+  repo-guard doctor [--fix|--ci]
+  repo-guard install-ci --provider gitlab [--profile policy|full] [--stage <name>] [--dry-run]
+  repo-guard ci [--profile policy|full] [--base <sha>] [--head <sha>] [--report-json <path>]
   repo-guard exceptions
   repo-guard dependencies
   repo-guard check
@@ -64,7 +68,8 @@ Usage:
 Exit codes:
   0  success
   1  configuration or execution failure
-  2  protected working tree changes found by "check"
+  2  policy violation or protected working tree changes
+  3  CI revision range cannot be trusted
 `.trim();
 
 function ensureSupportedOptions(argumentsList, supported) {
@@ -72,6 +77,26 @@ function ensureSupportedOptions(argumentsList, supported) {
   if (unknown.length > 0) {
     throw new Error(`Unsupported option(s): ${unknown.join(', ')}`);
   }
+}
+
+function parseValuedOptions(argumentsList, { flags, values }) {
+  const parsed = { flags: new Set(), values: {} };
+  for (let index = 0; index < argumentsList.length; index += 1) {
+    const argument = argumentsList[index];
+    if (flags.has(argument)) {
+      parsed.flags.add(argument);
+      continue;
+    }
+    if (values.has(argument)) {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('-')) throw new Error(`${argument} requires a value`);
+      parsed.values[argument] = value;
+      index += 1;
+      continue;
+    }
+    throw new Error(`Unsupported option or argument: ${argument}`);
+  }
+  return parsed;
 }
 
 export async function runCli(argumentsList) {
@@ -100,8 +125,35 @@ export async function runCli(argumentsList) {
         ensureSupportedOptions(rest, new Set());
         return runDisable(rest);
       case 'doctor':
-        ensureSupportedOptions(rest, new Set(['--fix']));
-        return runDoctor(process.cwd(), { fix: rest.includes('--fix') });
+        ensureSupportedOptions(rest, new Set(['--fix', '--ci']));
+        return runDoctor(process.cwd(), {
+          fix: rest.includes('--fix'),
+          ci: rest.includes('--ci'),
+        });
+      case 'install-ci': {
+        const options = parseValuedOptions(rest, {
+          flags: new Set(['--dry-run']),
+          values: new Set(['--provider', '--profile', '--stage']),
+        });
+        return runInstallCiCommand(process.cwd(), {
+          provider: options.values['--provider'],
+          profile: options.values['--profile'] || 'policy',
+          stage: options.values['--stage'] || null,
+          dryRun: options.flags.has('--dry-run'),
+        });
+      }
+      case 'ci': {
+        const options = parseValuedOptions(rest, {
+          flags: new Set(),
+          values: new Set(['--profile', '--base', '--head', '--report-json']),
+        });
+        return await runCiCommand(process.cwd(), {
+          profile: options.values['--profile'],
+          base: options.values['--base'] || null,
+          head: options.values['--head'] || null,
+          reportPath: options.values['--report-json'],
+        });
+      }
       case 'exceptions':
         ensureSupportedOptions(rest, new Set());
         return runExceptionsCommand();

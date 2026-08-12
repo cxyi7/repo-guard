@@ -53,13 +53,26 @@ export {
   validateBuildSetup,
 } from './build-runner.js';
 export {
+  configureCi,
   createStarterConfig,
   enableQualityGates,
   ensureProjectConfig,
   migrateProjectConfig,
   setFeaturesEnabled,
 } from './config-management.js';
-export { collectStagedChanges, collectWorkingTreeChanges } from './git-changes.js';
+export {
+  collectRevisionChanges,
+  collectStagedChanges,
+  collectWorkingTreeChanges,
+} from './git-changes.js';
+export { resolveCiRange } from './ci-changes.js';
+export { runCiGate } from './ci-runner.js';
+export {
+  GITLAB_CI_FILE,
+  GITLAB_TEMPLATE_FILE,
+  inspectGitLabCi,
+  installGitLabCi,
+} from './gitlab-ci.js';
 export { ensureGitAttributes } from './git-attributes.js';
 export { installHooks } from './hook-installer.js';
 export { runEslintFiles } from './eslint-runner.js';

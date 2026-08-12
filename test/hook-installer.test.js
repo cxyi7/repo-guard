@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -37,6 +38,19 @@ function createRepository() {
   );
   return root;
 }
+
+test('skips hook installation when the CI environment requests it', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const result = installHooks({
+    cwd: root,
+    env: { REPO_GUARD_SKIP_HOOKS: '1' },
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.root, null);
+  assert.equal(existsSync(path.join(root, '.githooks')), false);
+});
 
 test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
   const root = createRepository();

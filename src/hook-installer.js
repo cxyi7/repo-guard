@@ -118,6 +118,9 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';
   packageJson.scripts['guard:check'] ||= 'repo-guard check';
   packageJson.scripts['guard:dry-run'] ||= 'repo-guard dry-run';
+  packageJson.scripts['guard:ci'] ||= 'repo-guard ci';
+  packageJson.scripts['guard:doctor-ci'] ||= 'repo-guard doctor --ci';
+  packageJson.scripts['guard:install-ci'] ||= 'repo-guard install-ci --provider gitlab';
 
   if (!packageJson.scripts.prepare) {
     packageJson.scripts.prepare = 'repo-guard install-hooks';
@@ -135,7 +138,12 @@ export function installHooks({
   cwd = process.cwd(),
   updatePackageScripts = false,
   allowMissingGit = false,
+  env = process.env,
 } = {}) {
+  if (env.REPO_GUARD_SKIP_HOOKS === '1') {
+    console.log('repo-guard: hook installation skipped by REPO_GUARD_SKIP_HOOKS=1.');
+    return { skipped: true, root: null };
+  }
   const root = findRepositoryRoot(cwd, { allowMissing: allowMissingGit });
   if (!root) {
     console.log('repo-guard: no Git repository detected; hook installation skipped.');

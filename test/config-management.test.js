@@ -80,6 +80,9 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.unitTest.componentInteraction.enabled, false);
   assert.equal(config.unitTest.mappings.length, 5);
   assert.equal(config.notification.enabled, true);
+  assert.equal(config.ci.enabled, false);
+  assert.equal(config.ci.profile, 'policy');
+  assert.equal(config.ci.reportPath, 'reports/repo-guard.json');
   assert.deepEqual(config.exceptions, {
     warningDays: 14,
     maxDays: 90,

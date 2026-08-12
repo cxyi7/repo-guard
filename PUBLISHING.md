@@ -27,6 +27,7 @@ npm run pack:check
 - 配置迁移、通知开关、Stylelint/ESLint AI 提示、诊断修复和 Hook 安全预检测试通过；
 - Stylelint/ESLint/Prettier 暂存自动修复、部分暂存恢复和失败回滚测试通过；
 - Vue Lighthouse 构建、collect/assert、禁用跳过、失败阻断和 v3 pre-push Hook 测试通过；
+- GitLab CI policy/full 只读执行、可信变更范围、JSON 报告、已有流水线安全集成和 `doctor --ci` 测试通过；
 
 ## npm 登录与 2FA
 

@@ -59,16 +59,16 @@ export function selectMaxFileLineFiles(files, config) {
     .map(({ absolute }) => absolute);
 }
 
-function readHeadContent(root, relativePath) {
-  const result = runGit(['show', `HEAD:${relativePath}`], {
+function readRevisionContent(root, revision, relativePath) {
+  const result = runGit(['show', `${revision}:${relativePath}`], {
     allowFailure: true,
     cwd: root,
   });
   return result.status === 0 ? result.stdout : null;
 }
 
-function readBaseline(root, relativePath, stagedChanges) {
-  const currentContent = readHeadContent(root, relativePath);
+function readBaseline(root, relativePath, stagedChanges, baselineRef = 'HEAD') {
+  const currentContent = readRevisionContent(root, baselineRef, relativePath);
   if (currentContent != null) {
     return {
       lineCount: countPhysicalLines(currentContent),
@@ -83,7 +83,7 @@ function readBaseline(root, relativePath, stagedChanges) {
     return null;
   }
 
-  const renamedContent = readHeadContent(root, rename.oldPath);
+  const renamedContent = readRevisionContent(root, baselineRef, rename.oldPath);
   return renamedContent == null
     ? null
     : {
@@ -104,7 +104,7 @@ function fileDetails(relative, content, rule) {
   };
 }
 
-export function evaluateMaxFileLines({ root, files, config }) {
+export function evaluateMaxFileLines({ root, files, config, baselineRef = 'HEAD', changes = null }) {
   const normalizedFiles = normalizeStagedFiles(root, files, 'Maximum file lines gate');
   const mode = config.mode ?? DEFAULT_MODE;
   const warnAt = config.warnAt ?? DEFAULT_WARN_AT;
@@ -122,8 +122,8 @@ export function evaluateMaxFileLines({ root, files, config }) {
     const details = fileDetails(relative, content, rule);
     if (details.lineCount > rule.maxLines) {
       if (mode === 'noRegression') {
-        stagedChanges ??= collectStagedChanges(root);
-        const baseline = readBaseline(root, relative, stagedChanges);
+        stagedChanges ??= changes ?? collectStagedChanges(root);
+        const baseline = readBaseline(root, relative, stagedChanges, baselineRef);
         if (baseline && baseline.lineCount > rule.maxLines) {
           if (details.lineCount <= baseline.lineCount) {
             warnings.push({
@@ -272,8 +272,14 @@ export function buildMaxFileLinesWarnings(warnings) {
   ].join('\n');
 }
 
-export function runMaxFileLinesFiles({ root, files, config }) {
-  const { violations, warnings } = evaluateMaxFileLines({ root, files, config });
+export function runMaxFileLinesFiles({ root, files, config, baselineRef, changes }) {
+  const { violations, warnings } = evaluateMaxFileLines({
+    root,
+    files,
+    config,
+    baselineRef,
+    changes,
+  });
   if (warnings.length > 0) {
     console.warn(buildMaxFileLinesWarnings(warnings));
   }
