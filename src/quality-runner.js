@@ -87,6 +87,7 @@ export async function runQualityFiles({ root, files, config }) {
         maxWarnings: stylelintConfig.maxWarnings,
         requireConfig: stylelintConfig.requireConfig,
         complexity: stylelintConfig.complexity,
+        governance: stylelintConfig.governance,
         exceptions: config.exceptions,
       });
       if (stylelintExitCode !== 0) {
@@ -127,6 +128,7 @@ export async function runQualityFiles({ root, files, config }) {
         maxWarnings: stylelintConfig.maxWarnings,
         requireConfig: stylelintConfig.requireConfig,
         complexity: stylelintConfig.complexity,
+        governance: stylelintConfig.governance,
         exceptions: config.exceptions,
       });
       if (stylelintVerifyExitCode !== 0) {

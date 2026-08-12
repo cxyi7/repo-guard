@@ -330,6 +330,22 @@ git push
         "enabled": false,
         "maxCompoundSelectors": 3,
         "maxNestingDepth": 3
+      },
+      "governance": {
+        "enabled": false,
+        "maxSpecificity": "0,3,0",
+        "maxIdSelectors": 0,
+        "disallowImportant": true,
+        "allowedGlobalStylePatterns": [
+          "src/styles/**",
+          "src/assets/styles/**",
+          "src/assets/css/**",
+          "src/assets/main.{css,scss,sass,less}",
+          "src/main.{css,scss,sass,less}",
+          "src/index.{css,scss,sass,less}",
+          "src/style.{css,scss,sass,less}",
+          "src/App.vue"
+        ]
       }
     },
     "prettier": {
@@ -982,16 +998,23 @@ repo-guard 只执行 `collect` 和 `assert`，不会执行 LHCI upload，也不�
 | `complexity.enabled` | Stylelint 就绪的新项目为 `true`；迁移后 `false` | 是否强制选择器与嵌套复杂度规则 |
 | `complexity.maxCompoundSelectors` | `3` | 单个解析后选择器允许的最大复合选择器段数 |
 | `complexity.maxNestingDepth` | `3` | 样式规则允许的最大嵌套深度 |
+| `governance.enabled` | Stylelint 就绪的新项目为 `true`；迁移后 `false` | 是否启用选择器优先级与样式作用域治理 |
+| `governance.maxSpecificity` | `0,3,0` | `ID,class,type` 格式的最大选择器权重 |
+| `governance.maxIdSelectors` | `0` | 单个选择器允许的 ID 数量；默认禁止 ID 选择器 |
+| `governance.disallowImportant` | `true` | 是否禁止 `!important` |
+| `governance.allowedGlobalStylePatterns` | `src/styles/**` 等 | 允许承载显式全局样式的仓库相对 glob |
 
-Stylelint 必须由业务项目自行安装和配置，支持 `>=16 <18`。除启用时强制执行的两条复杂度规则外，repo-guard 只加载项目
+Stylelint 必须由业务项目自行安装和配置，支持 `>=16 <18`。除启用时由 repo-guard 强制执行的复杂度与治理规则外，repo-guard 只加载项目
 本地的 Stylelint、插件、自定义语法和规则，不会内置其他规则预设、自动安装依赖、探测
 CSS/SCSS/Less/Vue 语言组合或生成 `stylelint.config.*`。准备完成后可执行：
 
 ```bash
 repo-guard enable stylelint
 repo-guard enable styleComplexity
+repo-guard enable styleGovernance
 repo-guard doctor
 repo-guard style-complexity
+repo-guard style-governance
 ```
 
 复杂度门禁由 repo-guard 强制执行 Stylelint 核心规则 `selector-max-compound-selectors` 和
@@ -1002,6 +1025,15 @@ SCSS 和 Less。项目同名规则、override、`.stylelintignore` 和源码 `st
 复杂度违规使用 `style/selector-max-compound-selectors` 或 `style/max-nesting-depth` 规则 ID，
 按文件、行、列精确匹配结构化例外。AI 应通过语义化 class、拆分选择器或降低嵌套修复，不得新增
 disable 注释、覆盖规则、扩大 ignore 或自行登记例外。
+
+样式治理门禁强制执行 Stylelint 核心规则 `selector-max-specificity`、`selector-max-id` 和
+`declaration-no-important`，并由 repo-guard 检查样式作用域。Vue 组件的 `<style>` 必须使用
+`scoped` 或 `module`；局部样式不得通过 `:global()` 逃逸。普通 CSS/SCSS/Less 文件必须位于
+`allowedGlobalStylePatterns` 中，或使用 `.module.css/.module.scss/.module.sass/.module.less`。
+`src/App.vue` 默认允许承载应用级全局样式，但仍会执行选择器权重、ID 和 `!important` 规则。
+这些规则与复杂度规则一样，不会被项目同名配置、`.stylelintignore` 或 disable 注释关闭；
+违规使用 `style/selector-max-specificity`、`style/selector-max-id`、
+`style/declaration-no-important` 和 `style/no-unexpected-global-style` 精确结构化例外规则 ID。
 
 同一个 Vue 文件可以包含多个相同语言的 `<style>` 块，但不能混用不同语言；例如
 同时出现 `<style>` 和 `<style lang="scss">` 时，提交会在调用 Stylelint 前直接失败。
@@ -1146,7 +1178,7 @@ repo-guard target-blank
 repo-guard form-labels
 repo-guard image-alt
 repo-guard accessibility-test
-repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build
+repo-guard enable eslint prettier stylelint styleComplexity styleGovernance maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard dependencies
@@ -1268,3 +1300,8 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.13.2 新增 `unitTest.componentInteraction` Vue 组件交互测试语义门禁，复用现有测试映射、Vitest
 执行和覆盖率流程。交互型组件必须在同一用例中完成直接导入、mount、wrapper 交互和结果断言；已有
 项目迁移后保持关闭，可执行 `repo-guard enable componentInteraction` 显式启用。
+
+0.13.3 新增 `preCommit.stylelint.governance` 和 `repo-guard style-governance`，默认限制选择器权重为
+`0,3,0`、禁止 ID 选择器与 `!important`，并要求 Vue 组件样式使用 `scoped/module`、普通样式文件
+位于显式全局目录或采用 CSS Modules。Stylelint 就绪的新项目默认启用；已有项目迁移后保持关闭，
+可执行 `repo-guard enable styleGovernance` 显式启用。

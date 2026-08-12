@@ -25,6 +25,18 @@ function repairAdvice(rule) {
   if (normalizedRule === 'max-nesting-depth') {
     return '请降低样式嵌套深度，提取同级规则或语义化 class，保持选择器作用域清晰。';
   }
+  if (normalizedRule === 'selector-max-specificity') {
+    return '请降低选择器权重：减少层级与状态叠加，优先使用扁平、语义明确的 class；不要通过增加更高权重选择器覆盖。';
+  }
+  if (normalizedRule === 'selector-max-id') {
+    return '请把 ID 选择器替换为语义化 class、组件状态 class 或 data 属性，并同步必要的模板与测试定位。';
+  }
+  if (normalizedRule === 'declaration-no-important') {
+    return '请移除 !important，并通过正确的组件作用域、样式顺序或更清晰的 class 解决级联关系。';
+  }
+  if (normalizedRule === 'no-unexpected-global-style') {
+    return 'Vue 组件样式请使用 scoped 或 module；共享全局样式请移入 allowedGlobalStylePatterns 明确允许的目录，局部样式不要使用 :global() 逃逸作用域。';
+  }
   if (normalizedRule === 'invalid-option') {
     return '请修复项目 Stylelint 配置中的无效规则选项，并保留原有规则意图。';
   }
@@ -32,6 +44,25 @@ function repairAdvice(rule) {
     return '请判断是样式语法错误还是项目 Stylelint 解析配置不匹配，并修复根因。';
   }
   return '请结合该规则、样式语言和项目上下文修复根因。';
+}
+
+function verificationAdvice(rule) {
+  const normalizedRule = rule.replace(/^style\//, '');
+  if (new Set([
+    'selector-max-specificity',
+    'selector-max-id',
+    'declaration-no-important',
+    'no-unexpected-global-style',
+  ]).has(normalizedRule)) {
+    return '修复后重新暂存文件，运行 repo-guard style-governance，并执行受影响组件的测试和生产构建。';
+  }
+  if (new Set([
+    'selector-max-compound-selectors',
+    'max-nesting-depth',
+  ]).has(normalizedRule)) {
+    return '修复后重新暂存文件，运行 repo-guard style-complexity，并执行受影响组件的测试和生产构建。';
+  }
+  return '修复后运行项目 Stylelint 命令，重新暂存文件并提交；同时执行受影响组件的测试和生产构建。';
 }
 
 function collectBlockingWarnings(results, maxWarnings) {
@@ -81,8 +112,9 @@ export function buildStylelintAiRepairInstructions({
       `   规则：${rule}`,
       `   错误：${message}`,
       `   ${repairAdvice(rule)}`,
-      '   不要关闭 Stylelint 规则，不要修改无关文件。',
-      '   修复后重新执行暂存和提交。',
+      '   修改范围：只修改解决该样式问题所需的组件模板、样式和相关测试，不处理无关文件。',
+      '   禁止绕过：不得关闭或降级规则，不得新增 stylelint-disable、扩大 ignore/全局样式白名单，AI 也不得新增、延期或修改结构化例外。',
+      `   验证要求：${verificationAdvice(rule)}`,
     ].join('\n');
   });
 

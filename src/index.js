@@ -66,9 +66,12 @@ export { runEslintFiles } from './eslint-runner.js';
 export { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
 export {
   runStyleComplexityProject,
+  runStyleGovernanceProject,
   runStylelintFiles,
   STYLE_COMPLEXITY_RULES,
+  STYLE_GOVERNANCE_RULES,
 } from './stylelint-runner.js';
+export { inspectUnexpectedGlobalStyles } from './style-governance.js';
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export {

@@ -464,6 +464,14 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
         + `complexity=${config.preCommit.stylelint.complexity.enabled
           ? `compound<=${config.preCommit.stylelint.complexity.maxCompoundSelectors}, `
             + `nesting<=${config.preCommit.stylelint.complexity.maxNestingDepth}`
+          : 'disabled'}, `
+        + `governance=${config.preCommit.stylelint.governance.enabled
+          ? `specificity<=${config.preCommit.stylelint.governance.maxSpecificity}, `
+            + `ids<=${config.preCommit.stylelint.governance.maxIdSelectors}, `
+            + `important=${config.preCommit.stylelint.governance.disallowImportant
+              ? 'blocked'
+              : 'allowed'}, global-patterns=`
+            + config.preCommit.stylelint.governance.allowedGlobalStylePatterns.length
           : 'disabled'})`,
       );
     } catch (error) {

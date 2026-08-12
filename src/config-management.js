@@ -21,6 +21,7 @@ import {
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
   DEFAULT_STYLE_COMPLEXITY_CONFIG,
+  DEFAULT_STYLE_GOVERNANCE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
@@ -34,6 +35,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'filePlacement',
   'maxFileLines',
   'styleComplexity',
+  'styleGovernance',
   'dependencies',
   'architecture',
   'accessibilityTest',
@@ -137,6 +139,14 @@ function cloneStylelintConfig(value = {}) {
       ...DEFAULT_STYLE_COMPLEXITY_CONFIG,
       ...(value.complexity ?? {}),
     },
+    governance: {
+      ...DEFAULT_STYLE_GOVERNANCE_CONFIG,
+      ...(value.governance ?? {}),
+      allowedGlobalStylePatterns: [
+        ...(value.governance?.allowedGlobalStylePatterns
+          ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.allowedGlobalStylePatterns),
+      ],
+    },
   };
 }
 
@@ -181,6 +191,7 @@ export function createStarterConfig({
       stylelint: cloneStylelintConfig({
         enabled: stylelintEnabled,
         complexity: { enabled: stylelintEnabled },
+        governance: { enabled: stylelintEnabled },
       }),
       prettier: { ...DEFAULT_PRETTIER_CONFIG, enabled: true },
       eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true, preset: true },
@@ -317,6 +328,9 @@ function featureConfig(config, feature) {
   if (feature === 'styleComplexity') {
     return config.preCommit.stylelint.complexity;
   }
+  if (feature === 'styleGovernance') {
+    return config.preCommit.stylelint.governance;
+  }
   if (
     feature === 'build'
     || feature === 'architecture'
@@ -351,7 +365,10 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (enabled && uniqueFeatures.includes('componentInteraction')) requiredFeatures.push('unitTest');
   if (!enabled && uniqueFeatures.includes('unitTest')) requiredFeatures.push('componentInteraction');
   if (enabled && uniqueFeatures.includes('styleComplexity')) requiredFeatures.push('stylelint');
-  if (!enabled && uniqueFeatures.includes('stylelint')) requiredFeatures.push('styleComplexity');
+  if (enabled && uniqueFeatures.includes('styleGovernance')) requiredFeatures.push('stylelint');
+  if (!enabled && uniqueFeatures.includes('stylelint')) {
+    requiredFeatures.push('styleComplexity', 'styleGovernance');
+  }
   const effectiveFeatures = [...new Set([...requiredFeatures, ...uniqueFeatures])];
 
   const migration = migrateProjectConfig(root);

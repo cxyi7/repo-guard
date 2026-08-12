@@ -12,6 +12,7 @@ import {
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
+  DEFAULT_STYLE_GOVERNANCE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
@@ -63,6 +64,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
       maxCompoundSelectors: 3,
       maxNestingDepth: 3,
     },
+    governance: DEFAULT_STYLE_GOVERNANCE_CONFIG,
   });
   assert.deepEqual(config.preCommit.eslint, {
     enabled: false,
@@ -476,6 +478,13 @@ test('validates and normalizes staged Stylelint configuration', () => {
           maxCompoundSelectors: 2,
           maxNestingDepth: 4,
         },
+        governance: {
+          enabled: true,
+          maxSpecificity: '0,2,1',
+          maxIdSelectors: 0,
+          disallowImportant: true,
+          allowedGlobalStylePatterns: ['  src/styles/**  ', 'src/App.vue'],
+        },
       },
     },
   }));
@@ -490,6 +499,13 @@ test('validates and normalizes staged Stylelint configuration', () => {
       enabled: true,
       maxCompoundSelectors: 2,
       maxNestingDepth: 4,
+    },
+    governance: {
+      enabled: true,
+      maxSpecificity: '0,2,1',
+      maxIdSelectors: 0,
+      disallowImportant: true,
+      allowedGlobalStylePatterns: ['src/styles/**', 'src/App.vue'],
     },
   });
 });
@@ -718,6 +734,37 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
       },
     })),
     /complexity.enabled requires preCommit.stylelint.enabled/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          governance: { maxSpecificity: 'high' },
+        },
+      },
+    })),
+    /maxSpecificity must use the "id,class,type" format/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          governance: { maxIdSelectors: -1 },
+        },
+      },
+    })),
+    /maxIdSelectors must be a non-negative integer/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      preCommit: {
+        stylelint: {
+          enabled: false,
+          governance: { enabled: true },
+        },
+      },
+    })),
+    /governance.enabled requires preCommit.stylelint.enabled/,
   );
 });
 

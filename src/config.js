@@ -12,6 +12,22 @@ export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   maxCompoundSelectors: 3,
   maxNestingDepth: 3,
 });
+export const DEFAULT_STYLE_GOVERNANCE_CONFIG = Object.freeze({
+  enabled: false,
+  maxSpecificity: '0,3,0',
+  maxIdSelectors: 0,
+  disallowImportant: true,
+  allowedGlobalStylePatterns: Object.freeze([
+    'src/styles/**',
+    'src/assets/styles/**',
+    'src/assets/css/**',
+    'src/assets/main.{css,scss,sass,less}',
+    'src/main.{css,scss,sass,less}',
+    'src/index.{css,scss,sass,less}',
+    'src/style.{css,scss,sass,less}',
+    'src/App.vue',
+  ]),
+});
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
   enabled: false,
   preset: false,
@@ -32,6 +48,7 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   maxWarnings: 0,
   requireConfig: true,
   complexity: DEFAULT_STYLE_COMPLEXITY_CONFIG,
+  governance: DEFAULT_STYLE_GOVERNANCE_CONFIG,
 });
 export const DEFAULT_BUILD_CONFIG = Object.freeze({
   enabled: false,
@@ -1196,7 +1213,15 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   assertKnownProperties(
     stylelintValue,
-    new Set(['enabled', 'pattern', 'fix', 'maxWarnings', 'requireConfig', 'complexity']),
+    new Set([
+      'enabled',
+      'pattern',
+      'fix',
+      'maxWarnings',
+      'requireConfig',
+      'complexity',
+      'governance',
+    ]),
     `${configPath} preCommit.stylelint`,
   );
   if (stylelintValue.enabled != null && typeof stylelintValue.enabled !== 'boolean') {
@@ -1251,6 +1276,60 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     && !(stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled)) {
     throw new Error(
       `${configPath} preCommit.stylelint.complexity.enabled requires `
+      + 'preCommit.stylelint.enabled',
+    );
+  }
+  const styleGovernanceValue = stylelintValue.governance ?? {};
+  if (!styleGovernanceValue || typeof styleGovernanceValue !== 'object'
+    || Array.isArray(styleGovernanceValue)) {
+    throw new Error(`${configPath} preCommit.stylelint.governance must be an object`);
+  }
+  assertKnownProperties(
+    styleGovernanceValue,
+    new Set([
+      'enabled',
+      'maxSpecificity',
+      'maxIdSelectors',
+      'disallowImportant',
+      'allowedGlobalStylePatterns',
+    ]),
+    `${configPath} preCommit.stylelint.governance`,
+  );
+  if (styleGovernanceValue.enabled != null
+    && typeof styleGovernanceValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} preCommit.stylelint.governance.enabled must be a boolean`);
+  }
+  if (styleGovernanceValue.maxSpecificity != null
+    && (typeof styleGovernanceValue.maxSpecificity !== 'string'
+      || !/^\d+,\d+,\d+$/.test(styleGovernanceValue.maxSpecificity.trim()))) {
+    throw new Error(
+      `${configPath} preCommit.stylelint.governance.maxSpecificity `
+      + 'must use the "id,class,type" format, for example "0,3,0"',
+    );
+  }
+  if (styleGovernanceValue.maxIdSelectors != null
+    && (!Number.isInteger(styleGovernanceValue.maxIdSelectors)
+      || styleGovernanceValue.maxIdSelectors < 0)) {
+    throw new Error(
+      `${configPath} preCommit.stylelint.governance.maxIdSelectors `
+      + 'must be a non-negative integer',
+    );
+  }
+  if (styleGovernanceValue.disallowImportant != null
+    && typeof styleGovernanceValue.disallowImportant !== 'boolean') {
+    throw new Error(
+      `${configPath} preCommit.stylelint.governance.disallowImportant must be a boolean`,
+    );
+  }
+  const allowedGlobalStylePatterns = normalizePatternList(
+    styleGovernanceValue.allowedGlobalStylePatterns
+      ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.allowedGlobalStylePatterns,
+    `${configPath} preCommit.stylelint.governance.allowedGlobalStylePatterns`,
+  );
+  if ((styleGovernanceValue.enabled ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.enabled)
+    && !(stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled)) {
+    throw new Error(
+      `${configPath} preCommit.stylelint.governance.enabled requires `
       + 'preCommit.stylelint.enabled',
     );
   }
@@ -1451,6 +1530,17 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
             ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.maxCompoundSelectors,
           maxNestingDepth: styleComplexityValue.maxNestingDepth
             ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.maxNestingDepth,
+        },
+        governance: {
+          enabled: styleGovernanceValue.enabled
+            ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.enabled,
+          maxSpecificity: styleGovernanceValue.maxSpecificity?.trim()
+            || DEFAULT_STYLE_GOVERNANCE_CONFIG.maxSpecificity,
+          maxIdSelectors: styleGovernanceValue.maxIdSelectors
+            ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.maxIdSelectors,
+          disallowImportant: styleGovernanceValue.disallowImportant
+            ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.disallowImportant,
+          allowedGlobalStylePatterns,
         },
       },
       prettier: {

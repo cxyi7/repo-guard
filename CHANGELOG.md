@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.3
+
+- 新增 `preCommit.stylelint.governance` 样式治理增强，强制执行 `selector-max-specificity`、`selector-max-id` 和 `declaration-no-important`；默认最大权重为 `0,3,0`、禁止 ID 选择器和 `!important`。
+- 新增非预期全局样式检查：Vue 组件样式必须使用 `scoped/module` 且不得通过 `:global()` 逃逸，普通样式文件必须位于明确白名单或采用 CSS Modules。
+- 新增 `repo-guard style-governance`、CLI 开关、doctor、Schema、精确结构化例外及面向 AI 的修复指令。规则不可被项目配置、ignore 或 disable 注释关闭；已有项目迁移后默认关闭。
+
 ## 0.13.2
 
 - 新增 `unitTest.componentInteraction` Vue 组件交互测试语义门禁，复用现有测试映射、变更范围、Vitest 脚本和覆盖率流程，不重复执行测试。

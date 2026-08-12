@@ -30,7 +30,7 @@ test('builds one numbered AI repair instruction for each Stylelint problem', () 
   );
   assert.match(output, /规则：property-no-unknown/);
   assert.match(output, /请检查属性拼写/);
-  assert.match(output, /不要关闭 Stylelint 规则，不要修改无关文件。/);
+  assert.match(output, /不得关闭或降级规则/);
 });
 
 test('includes invalid Stylelint rule options in AI repair instructions', () => {
@@ -71,4 +71,28 @@ test('gives targeted repairs for repo-owned style complexity rules', () => {
 
   assert.match(output, /降低样式嵌套深度/);
   assert.match(output, /style\/max-nesting-depth/);
+  assert.match(output, /repo-guard style-complexity/);
+});
+
+test('gives AI concrete style governance repair guidance', () => {
+  const root = path.resolve('fixture');
+  const output = buildStylelintAiRepairInstructions({
+    root,
+    maxWarnings: 0,
+    results: [{
+      source: path.join(root, 'src', 'components', 'Panel.vue'),
+      warnings: [{
+        line: 8,
+        column: 1,
+        severity: 'error',
+        rule: 'style/no-unexpected-global-style',
+        text: 'unexpected global style',
+      }],
+    }],
+  });
+
+  assert.match(output, /scoped 或 module/);
+  assert.match(output, /allowedGlobalStylePatterns/);
+  assert.match(output, /不得新增 stylelint-disable/);
+  assert.match(output, /repo-guard style-governance/);
 });

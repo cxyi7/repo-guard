@@ -18,6 +18,7 @@ import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
 import { runTargetBlankCommand } from './commands/target-blank.js';
 import { runStyleComplexityCommand } from './commands/style-complexity.js';
+import { runStyleGovernanceCommand } from './commands/style-governance.js';
 import { runTypeCheckCommand } from './commands/typecheck.js';
 import { runUnitTestCommand } from './commands/unit-test.js';
 import { runUnsafeHtmlCommand } from './commands/unsafe-html.js';
@@ -34,8 +35,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard exceptions
   repo-guard dependencies
@@ -55,6 +56,7 @@ Usage:
   repo-guard image-alt
   repo-guard accessibility-test
   repo-guard style-complexity
+  repo-guard style-governance
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
@@ -147,6 +149,9 @@ export async function runCli(argumentsList) {
       case 'style-complexity':
         ensureSupportedOptions(rest, new Set());
         return await runStyleComplexityCommand();
+      case 'style-governance':
+        ensureSupportedOptions(rest, new Set());
+        return await runStyleGovernanceCommand();
       case 'file-placement':
         ensureSupportedOptions(rest, new Set());
         return runFilePlacementCommand();

@@ -42,6 +42,14 @@ function writeConfig(root, {
   styleComplexityEnabled = false,
   styleMaxCompoundSelectors = 3,
   styleMaxNestingDepth = 3,
+  styleGovernanceEnabled = false,
+  styleMaxSpecificity = '0,3,0',
+  styleMaxIdSelectors = 0,
+  styleDisallowImportant = true,
+  styleAllowedGlobalPatterns = [
+    'src/styles/**',
+    'src/App.vue',
+  ],
   dependencyPolicyEnabled = false,
   maxFileLinesEnabled = false,
   filePlacementEnabled = false,
@@ -90,6 +98,13 @@ function writeConfig(root, {
             enabled: styleComplexityEnabled,
             maxCompoundSelectors: styleMaxCompoundSelectors,
             maxNestingDepth: styleMaxNestingDepth,
+          },
+          governance: {
+            enabled: styleGovernanceEnabled,
+            maxSpecificity: styleMaxSpecificity,
+            maxIdSelectors: styleMaxIdSelectors,
+            disallowImportant: styleDisallowImportant,
+            allowedGlobalStylePatterns: styleAllowedGlobalPatterns,
           },
         },
         prettier: {
@@ -539,6 +554,102 @@ test('enforces repo-owned nesting depth', async (context) => {
   writeFileSync(path.join(root, 'style.css'), content);
   git(root, ['add', '.']);
 
+  assert.equal(await runPreCommit(root), 1);
+});
+
+test('enforces selector specificity, ID, and important governance despite bypasses', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleGovernanceEnabled: true,
+    styleMaxSpecificity: '0,2,0',
+    stylelintConfig: {
+      rules: {
+        'selector-max-specificity': null,
+        'selector-max-id': null,
+        'declaration-no-important': null,
+      },
+    },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = [
+    '/* stylelint-disable */',
+    '#app .page .panel { color: red !important; }',
+    '',
+  ].join('\n');
+  writeFileSync(path.join(root, 'sample.module.css'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':sample.module.css'])), content);
+});
+
+test('preserves the project declaration-no-important rule when repo governance allows it', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleGovernanceEnabled: true,
+    styleDisallowImportant: false,
+    stylelintConfig: {
+      rules: {
+        'declaration-no-important': true,
+      },
+    },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = '.sample { color: red !important; }\n';
+  writeFileSync(path.join(root, 'sample.module.css'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':sample.module.css'])), content);
+});
+
+test('allows CSS Module styles but blocks unexpected globals', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleGovernanceEnabled: true,
+    stylelintConfig: { rules: {} },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src'), { recursive: true });
+
+  writeFileSync(path.join(root, 'src', 'safe.module.css'), '.safe { color: green; }\n');
+  git(root, ['add', '.']);
+  assert.equal(await runPreCommit(root), 0);
+
+  const unsafe = '.unsafe { color: red; }\n';
+  writeFileSync(path.join(root, 'src', 'unsafe.css'), unsafe);
+  git(root, ['add', 'src/unsafe.css']);
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':src/unsafe.css'])), unsafe);
+});
+
+test('allows intentional global styles only in configured locations', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: true,
+    styleGovernanceEnabled: true,
+    stylelintConfig: { rules: {} },
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src', 'styles'), { recursive: true });
+  mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
+
+  writeFileSync(path.join(root, 'src', 'styles', 'reset.css'), 'html { color: black; }\n');
+  git(root, ['add', '.']);
+  assert.equal(await runPreCommit(root), 0);
+
+  const unexpected = '.button { color: red; }\n';
+  writeFileSync(path.join(root, 'src', 'components', 'button.css'), unexpected);
+  git(root, ['add', 'src/components/button.css']);
   assert.equal(await runPreCommit(root), 1);
 });
 

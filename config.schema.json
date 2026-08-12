@@ -877,6 +877,55 @@
                   "description": "Maximum nested rule depth."
                 }
               }
+            },
+            "governance": {
+              "type": "object",
+              "description": "Repo-owned selector priority and style-scope rules executed with the consuming project's Stylelint syntax configuration.",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enforce selector specificity, ID, !important, and unexpected global style rules. New projects with a ready Stylelint setup enable this; migrated projects stay disabled."
+                },
+                "maxSpecificity": {
+                  "type": "string",
+                  "pattern": "^[0-9]+,[0-9]+,[0-9]+$",
+                  "default": "0,3,0",
+                  "description": "Maximum selector specificity in id,class,type notation."
+                },
+                "maxIdSelectors": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 0,
+                  "description": "Maximum ID selectors per resolved selector; zero forbids ID selectors."
+                },
+                "disallowImportant": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Reject !important declarations when true."
+                },
+                "allowedGlobalStylePatterns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "default": [
+                    "src/styles/**",
+                    "src/assets/styles/**",
+                    "src/assets/css/**",
+                    "src/assets/main.{css,scss,sass,less}",
+                    "src/main.{css,scss,sass,less}",
+                    "src/index.{css,scss,sass,less}",
+                    "src/style.{css,scss,sass,less}",
+                    "src/App.vue"
+                  ],
+                  "description": "Repository-relative globs allowed to contain intentional global styles; CSS Module files are isolated automatically.",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
             }
           }
         },

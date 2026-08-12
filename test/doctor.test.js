@@ -77,6 +77,14 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard enable styleComplexity',
   );
   assert.equal(
+    packageJson.scripts['guard:style-governance'],
+    'repo-guard style-governance',
+  );
+  assert.equal(
+    packageJson.scripts['guard:enable-style-governance'],
+    'repo-guard enable styleGovernance',
+  );
+  assert.equal(
     packageJson.scripts['guard:enable-quality'],
     'repo-guard enable eslint prettier',
   );
@@ -117,6 +125,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.preCommit.eslint.preset, false);
   assert.equal(config.preCommit.prettier.enabled, false);
   assert.equal(config.preCommit.stylelint.complexity.enabled, false);
+  assert.equal(config.preCommit.stylelint.governance.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.architecture.enabled, false);

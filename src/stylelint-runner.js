@@ -15,10 +15,17 @@ import {
   resolveProjectStylelintMetadata,
 } from './stylelint-project.js';
 import { assertVueStyleLanguages } from './vue-style-languages.js';
+import { inspectUnexpectedGlobalStyles } from './style-governance.js';
 
 export const STYLE_COMPLEXITY_RULES = Object.freeze({
   maxCompoundSelectors: 'selector-max-compound-selectors',
   maxNestingDepth: 'max-nesting-depth',
+});
+export const STYLE_GOVERNANCE_RULES = Object.freeze({
+  maxSpecificity: 'selector-max-specificity',
+  maxIdSelectors: 'selector-max-id',
+  disallowImportant: 'declaration-no-important',
+  unexpectedGlobalStyle: 'no-unexpected-global-style',
 });
 
 async function loadProjectStylelint(root) {
@@ -80,6 +87,20 @@ function complexityConfig(projectConfig, complexity) {
   };
 }
 
+function governanceConfig(projectConfig, governance) {
+  const customSyntax = projectConfig?.customSyntax;
+  return {
+    ...(customSyntax ? { customSyntax } : {}),
+    rules: {
+      [STYLE_GOVERNANCE_RULES.maxSpecificity]: governance.maxSpecificity,
+      [STYLE_GOVERNANCE_RULES.maxIdSelectors]: governance.maxIdSelectors,
+      ...(governance.disallowImportant
+        ? { [STYLE_GOVERNANCE_RULES.disallowImportant]: true }
+        : {}),
+    },
+  };
+}
+
 async function lint(stylelint, root, files, fix) {
   return await stylelint.lint({
     cwd: root,
@@ -113,6 +134,38 @@ async function lintComplexity(stylelint, root, files, complexity) {
   };
 }
 
+async function lintGovernance(stylelint, root, files, governance) {
+  if (!governance?.enabled) return { results: [] };
+  const results = await Promise.all(files.map(async (file) => {
+    const projectConfig = await stylelint.resolveConfig(file, { cwd: root });
+    if (!projectConfig) {
+      throw new Error(`Stylelint could not resolve project configuration for ${file}`);
+    }
+    return await stylelint.lint({
+      code: readFileSync(file, 'utf8'),
+      codeFilename: file,
+      config: governanceConfig(projectConfig, governance),
+      configBasedir: root,
+      cwd: root,
+      ...(projectConfig?.customSyntax
+        ? { customSyntax: projectConfig.customSyntax }
+        : {}),
+      ignoreDisables: true,
+      ignorePath: path.join(tmpdir(), `repo-guard-stylelint-${randomUUID()}`),
+    });
+  }));
+  return {
+    results: [
+      ...results.flatMap((result) => result.results),
+      ...inspectUnexpectedGlobalStyles({
+        root,
+        files,
+        allowedPatterns: governance.allowedGlobalStylePatterns,
+      }),
+    ],
+  };
+}
+
 function mergeLintResults(...reports) {
   return { results: reports.flatMap((report) => report.results) };
 }
@@ -129,12 +182,38 @@ function withoutProjectComplexityWarnings(report, complexity) {
   };
 }
 
-function applyComplexityExceptions(root, report, exceptions) {
+function withoutProjectGovernanceWarnings(report, governance) {
+  if (!governance?.enabled) return report;
+  const activeRules = new Set([
+    STYLE_GOVERNANCE_RULES.maxSpecificity,
+    STYLE_GOVERNANCE_RULES.maxIdSelectors,
+    ...(governance.disallowImportant ? [STYLE_GOVERNANCE_RULES.disallowImportant] : []),
+  ]);
+  return {
+    results: report.results.map((result) => ({
+      ...result,
+      warnings: (result.warnings ?? []).filter(
+        ({ rule }) => !activeRules.has(rule),
+      ),
+    })),
+  };
+}
+
+function applyOwnedRuleExceptions(root, report, exceptions, complexity, governance) {
+  const ownedRules = new Set([
+    ...(complexity?.enabled ? Object.values(STYLE_COMPLEXITY_RULES) : []),
+    ...(governance?.enabled ? [
+      STYLE_GOVERNANCE_RULES.maxSpecificity,
+      STYLE_GOVERNANCE_RULES.maxIdSelectors,
+      STYLE_GOVERNANCE_RULES.unexpectedGlobalStyle,
+      ...(governance.disallowImportant ? [STYLE_GOVERNANCE_RULES.disallowImportant] : []),
+    ] : []),
+  ]);
   const approved = [];
   const results = report.results.map((result) => ({
     ...result,
     warnings: (result.warnings ?? []).filter((warning) => {
-      if (!Object.values(STYLE_COMPLEXITY_RULES).includes(warning.rule)) return true;
+      if (!ownedRules.has(warning.rule)) return true;
       const finding = {
         path: path.relative(root, result.source).replace(/\\/g, '/'),
         line: warning.line,
@@ -153,10 +232,10 @@ function applyComplexityExceptions(root, report, exceptions) {
   return { approved, results };
 }
 
-function reportApprovedComplexity(approved) {
+function reportApprovedOwnedRules(approved) {
   for (const finding of approved) {
     console.warn(
-      `Style complexity approved exception: ${finding.path}:${finding.line}:${finding.column} `
+      `Style governance approved exception: ${finding.path}:${finding.line}:${finding.column} `
       + `${finding.rule} (${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
     );
   }
@@ -169,8 +248,10 @@ export async function runStylelintFiles({
   maxWarnings,
   requireConfig,
   complexity,
+  governance,
   exceptions = { entries: [] },
   complexityOnly = false,
+  governanceOnly = false,
 }) {
   if (files.length === 0) {
     return 0;
@@ -192,20 +273,34 @@ export async function runStylelintFiles({
     normalizedFiles,
     complexity,
   );
-  const initial = applyComplexityExceptions(
+  const initialGovernance = await lintGovernance(
+    stylelint,
+    root,
+    normalizedFiles,
+    governance,
+  );
+  const initial = applyOwnedRuleExceptions(
     root,
     complexityOnly
       ? initialComplexity
-      : mergeLintResults(
-        withoutProjectComplexityWarnings(
-          await lint(stylelint, root, normalizedFiles, false),
-          complexity,
+      : governanceOnly
+        ? initialGovernance
+        : mergeLintResults(
+        withoutProjectGovernanceWarnings(
+          withoutProjectComplexityWarnings(
+            await lint(stylelint, root, normalizedFiles, false),
+            complexity,
+          ),
+          governance,
         ),
         initialComplexity,
+        initialGovernance,
       ),
     exceptions,
+    complexity,
+    governance,
   );
-  reportApprovedComplexity(initial.approved);
+  reportApprovedOwnedRules(initial.approved);
   const initialSummary = summarize(initial.results);
   const lintedCount = activeFileCount(initial.results);
   const ignoredCount = normalizedFiles.length - lintedCount;
@@ -228,18 +323,24 @@ export async function runStylelintFiles({
   let final;
   try {
     await lint(stylelint, root, normalizedFiles, true);
-    final = applyComplexityExceptions(
+    final = applyOwnedRuleExceptions(
       root,
       mergeLintResults(
-        withoutProjectComplexityWarnings(
-          await lint(stylelint, root, normalizedFiles, false),
-          complexity,
+        withoutProjectGovernanceWarnings(
+          withoutProjectComplexityWarnings(
+            await lint(stylelint, root, normalizedFiles, false),
+            complexity,
+          ),
+          governance,
         ),
         await lintComplexity(stylelint, root, normalizedFiles, complexity),
+        await lintGovernance(stylelint, root, normalizedFiles, governance),
       ),
       exceptions,
+      complexity,
+      governance,
     );
-    reportApprovedComplexity(final.approved);
+    reportApprovedOwnedRules(final.approved);
   } catch (error) {
     restoreFileContents(originalContents);
     throw error;
@@ -271,6 +372,19 @@ export async function runStyleComplexityProject({ root, files, config, exception
     requireConfig: true,
     complexity: config,
     complexityOnly: true,
+    exceptions,
+  });
+}
+
+export async function runStyleGovernanceProject({ root, files, config, exceptions }) {
+  return await runStylelintFiles({
+    root,
+    files,
+    fix: false,
+    maxWarnings: 0,
+    requireConfig: true,
+    governance: config,
+    governanceOnly: true,
     exceptions,
   });
 }
