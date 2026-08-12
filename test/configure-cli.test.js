@@ -52,6 +52,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'build',
       'typeCheck',
       'unitTest',
+      'componentInteraction',
       'accessibilityTest',
       'coverage',
       'lighthouse',
@@ -68,6 +69,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /build: enabled/);
   assert.match(enableResult.stdout, /typeCheck: enabled/);
   assert.match(enableResult.stdout, /unitTest: enabled/);
+  assert.match(enableResult.stdout, /componentInteraction: enabled/);
   assert.match(enableResult.stdout, /accessibilityTest: enabled/);
   assert.match(enableResult.stdout, /coverage: enabled/);
 
@@ -85,6 +87,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.build.enabled, true);
   assert.equal(config.typeCheck.enabled, true);
   assert.equal(config.unitTest.enabled, true);
+  assert.equal(config.unitTest.componentInteraction.enabled, true);
   assert.equal(config.accessibilityTest.enabled, true);
   assert.equal(config.unitTest.coverage.enabled, true);
   assert.match(

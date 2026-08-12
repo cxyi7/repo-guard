@@ -325,6 +325,10 @@ test('validates and normalizes unit test configuration', () => {
     script: 'test:unit',
     timeoutMs: 60000,
     coverage: true,
+    componentInteraction: {
+      enabled: false,
+      componentPatterns: ['src/components/**/*.vue'],
+    },
     requireTests: 'changedFiles',
     sourcePatterns: ['src/utils/**/*.js'],
     testPatterns: ['**/*.spec.js'],
@@ -401,6 +405,18 @@ test('validates and normalizes unit test configuration', () => {
       },
     })),
     /must contain \{path\} or \{name\}/,
+  );
+});
+
+test('requires unit tests when component interaction semantics are enabled', () => {
+  assert.throws(
+    () => validateConfig(baseConfig({
+      unitTest: {
+        enabled: false,
+        componentInteraction: { enabled: true },
+      },
+    })),
+    /componentInteraction\.enabled requires unitTest\.enabled/,
   );
 });
 

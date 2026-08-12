@@ -10,6 +10,7 @@ import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_COMPONENT_INTERACTION_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
@@ -40,6 +41,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'lighthouse',
   'typeCheck',
   'unitTest',
+  'componentInteraction',
   'coverage',
   'notification',
 ]);
@@ -109,6 +111,14 @@ function cloneUnitTestConfig(value = {}) {
           ...(coverage.thresholds ?? {}),
         },
       },
+    componentInteraction: {
+      ...DEFAULT_COMPONENT_INTERACTION_CONFIG,
+      ...(value.componentInteraction ?? {}),
+      componentPatterns: [
+        ...(value.componentInteraction?.componentPatterns
+          ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.componentPatterns),
+      ],
+    },
     sourcePatterns: [...(value.sourcePatterns ?? DEFAULT_UNIT_TEST_CONFIG.sourcePatterns)],
     testPatterns: [...(value.testPatterns ?? DEFAULT_UNIT_TEST_CONFIG.testPatterns)],
     mappings: mappings.map((mapping) => ({
@@ -298,6 +308,9 @@ function featureConfig(config, feature) {
     }
     return config.unitTest.coverage;
   }
+  if (feature === 'componentInteraction') {
+    return config.unitTest.componentInteraction;
+  }
   if (feature === 'dependencies') {
     return config.dependencyPolicy;
   }
@@ -335,6 +348,8 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   }
   const requiredFeatures = [];
   if (enabled && uniqueFeatures.includes('coverage')) requiredFeatures.push('unitTest');
+  if (enabled && uniqueFeatures.includes('componentInteraction')) requiredFeatures.push('unitTest');
+  if (!enabled && uniqueFeatures.includes('unitTest')) requiredFeatures.push('componentInteraction');
   if (enabled && uniqueFeatures.includes('styleComplexity')) requiredFeatures.push('stylelint');
   if (!enabled && uniqueFeatures.includes('stylelint')) requiredFeatures.push('styleComplexity');
   const effectiveFeatures = [...new Set([...requiredFeatures, ...uniqueFeatures])];

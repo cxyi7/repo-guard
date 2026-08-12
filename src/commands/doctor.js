@@ -336,6 +336,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       checks.push(
         `Vitest ${setup.vitest.version} pre-push gate `
         + `(script=${config.unitTest.script}, requireTests=${config.unitTest.requireTests}, `
+        + `componentInteraction=${setup.vueTestUtils
+          ? `Vue Test Utils ${setup.vueTestUtils.version}`
+          : 'disabled'}, `
         + `coverage=${isStructuredCoverage(config.unitTest.coverage)
           ? `global=${config.unitTest.coverage.thresholds.lines}%/changed=${config.unitTest.coverage.thresholds.changedLines}%`
           : (typeof config.unitTest.coverage === 'boolean'

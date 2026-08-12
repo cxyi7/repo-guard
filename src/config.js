@@ -160,11 +160,18 @@ export const DEFAULT_UNIT_TEST_COVERAGE_CONFIG = Object.freeze({
     changedLines: 90,
   }),
 });
+export const DEFAULT_COMPONENT_INTERACTION_CONFIG = Object.freeze({
+  enabled: false,
+  componentPatterns: Object.freeze([
+    'src/components/**/*.vue',
+  ]),
+});
 export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
   enabled: false,
   script: 'test:unit',
   timeoutMs: 120000,
   coverage: DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
+  componentInteraction: DEFAULT_COMPONENT_INTERACTION_CONFIG,
   requireTests: 'newFiles',
   sourcePatterns: Object.freeze([
     'src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
@@ -821,6 +828,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       'script',
       'timeoutMs',
       'coverage',
+      'componentInteraction',
       'requireTests',
       'sourcePatterns',
       'testPatterns',
@@ -912,6 +920,35 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       reportsDirectory,
       thresholds,
     };
+  }
+  const componentInteractionValue = unitTestValue.componentInteraction
+    ?? DEFAULT_UNIT_TEST_CONFIG.componentInteraction;
+  if (!componentInteractionValue
+    || typeof componentInteractionValue !== 'object'
+    || Array.isArray(componentInteractionValue)) {
+    throw new Error(`${configPath} unitTest.componentInteraction must be an object`);
+  }
+  assertKnownProperties(
+    componentInteractionValue,
+    new Set(['enabled', 'componentPatterns']),
+    `${configPath} unitTest.componentInteraction`,
+  );
+  if (componentInteractionValue.enabled != null
+    && typeof componentInteractionValue.enabled !== 'boolean') {
+    throw new Error(`${configPath} unitTest.componentInteraction.enabled must be a boolean`);
+  }
+  const componentInteractionPatterns = normalizePatternList(
+    componentInteractionValue.componentPatterns
+      ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.componentPatterns,
+    `${configPath} unitTest.componentInteraction.componentPatterns`,
+  );
+  const unitTestEnabled = unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled;
+  const componentInteractionEnabled = componentInteractionValue.enabled
+    ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.enabled;
+  if (componentInteractionEnabled && !unitTestEnabled) {
+    throw new Error(
+      `${configPath} unitTest.componentInteraction.enabled requires unitTest.enabled`,
+    );
   }
   if (
     unitTestValue.requireTests != null
@@ -1374,10 +1411,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       testPatterns: accessibilityTestPatterns,
     },
     unitTest: {
-      enabled: unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled,
+      enabled: unitTestEnabled,
       script: unitTestValue.script?.trim() || DEFAULT_UNIT_TEST_CONFIG.script,
       timeoutMs: unitTestValue.timeoutMs ?? DEFAULT_UNIT_TEST_CONFIG.timeoutMs,
       coverage: unitTestCoverage,
+      componentInteraction: {
+        enabled: componentInteractionEnabled,
+        componentPatterns: componentInteractionPatterns,
+      },
       requireTests: unitTestValue.requireTests ?? DEFAULT_UNIT_TEST_CONFIG.requireTests,
       sourcePatterns: unitTestSourcePatterns,
       testPatterns: unitTestPatterns,

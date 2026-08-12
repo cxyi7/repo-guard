@@ -76,6 +76,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.equal(config.unitTest.requireTests, 'newFiles');
+  assert.equal(config.unitTest.componentInteraction.enabled, false);
   assert.equal(config.unitTest.mappings.length, 5);
   assert.equal(config.notification.enabled, true);
   assert.deepEqual(config.exceptions, {
@@ -115,6 +116,7 @@ test('starter configuration enables unit tests when project setup was detected',
   const config = createStarterConfig({ unitTestEnabled: true });
 
   assert.equal(config.unitTest.enabled, true);
+  assert.equal(config.unitTest.componentInteraction.enabled, false);
   assert.equal(config.unitTest.script, 'test:unit');
 });
 
@@ -159,6 +161,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.build.enabled, false);
   assert.equal(migrated.typeCheck.enabled, false);
   assert.equal(migrated.unitTest.enabled, false);
+  assert.equal(migrated.unitTest.componentInteraction.enabled, false);
   assert.equal(migrated.unitTest.mappings.length, 5);
   assert.equal(migrated.notification.enabled, true);
   assert.deepEqual(migrated.exceptions.entries, []);
@@ -240,6 +243,23 @@ test('enables the unit test pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['unitTest'], true);
   assert.deepEqual(enabled.changed, ['unitTest']);
   assert.equal(readConfig(root).unitTest.enabled, true);
+});
+
+test('enables component interaction with unit tests and disables both consistently', (context) => {
+  const root = createFixture(sparseConfig({ unitTest: { enabled: false } }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['componentInteraction'], true);
+  assert.deepEqual(enabled.changed, ['unitTest', 'componentInteraction']);
+  let config = readConfig(root);
+  assert.equal(config.unitTest.enabled, true);
+  assert.equal(config.unitTest.componentInteraction.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['unitTest'], false);
+  assert.deepEqual(disabled.changed, ['componentInteraction', 'unitTest']);
+  config = readConfig(root);
+  assert.equal(config.unitTest.enabled, false);
+  assert.equal(config.unitTest.componentInteraction.enabled, false);
 });
 
 test('enables the axe accessibility test pre-push feature', (context) => {

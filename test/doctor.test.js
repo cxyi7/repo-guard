@@ -123,6 +123,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
+  assert.equal(config.unitTest.componentInteraction.enabled, false);
   assert.equal(config.accessibilityTest.enabled, false);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),

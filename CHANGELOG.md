@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.2
+
+- 新增 `unitTest.componentInteraction` Vue 组件交互测试语义门禁，复用现有测试映射、变更范围、Vitest 脚本和覆盖率流程，不重复执行测试。
+- 对范围内含 `v-on/@事件` 或 `v-model` 的组件，要求同一正常用例直接导入组件、使用 Vue Test Utils `mount`、触发 wrapper 交互并在其后断言可见结果、emit、路由、Store 或 Mock 调用。
+- 拒绝仅检查组件定义、`wrapper.exists()`、无异常挂载、快照或交互前状态等弱测试；新增配置迁移、Schema、doctor 和面向 AI 的逐项补全指令。已有项目迁移后默认关闭。
+
 ## 0.13.1
 
 - 新增始终启用的动态代码执行安全门禁，覆盖 JavaScript、TypeScript、JSX、TSX 和 Vue `<script>` 中的 `eval` 与 `Function` 构造器。

@@ -23,6 +23,7 @@ import {
   expectedUnitTestPaths,
   inspectUnitTestPolicy,
   runUnitTestGate,
+  validateUnitTestSetup,
 } from '../src/unit-test-runner.js';
 import { buildManagedTextBlock } from '../src/managed-text-block.js';
 
@@ -45,8 +46,27 @@ function unitTestConfig(extra = {}) {
       testTemplates: [...mapping.testTemplates],
     })),
     exclusions: [...DEFAULT_UNIT_TEST_CONFIG.exclusions],
+    componentInteraction: {
+      ...DEFAULT_UNIT_TEST_CONFIG.componentInteraction,
+      componentPatterns: [
+        ...DEFAULT_UNIT_TEST_CONFIG.componentInteraction.componentPatterns,
+      ],
+    },
     ...extra,
   };
+}
+
+function interactiveComponentFixture(root, testSource, componentSource = [
+  '<template>',
+  '  <input v-model="name">',
+  '  <button @click="submit">Save</button>',
+  '</template>',
+  '<script setup lang="ts">const name = defineModel<string>(); const submit = () => {};</script>',
+  '',
+].join('\n')) {
+  mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'components', 'Editor.vue'), componentSource);
+  writeFileSync(path.join(root, 'src', 'components', 'Editor.spec.ts'), testSource);
 }
 
 function createFixture() {
@@ -91,6 +111,23 @@ function createFixture() {
     ].join('\n'),
   );
   return root;
+}
+
+function installVueTestUtilsFixture(root) {
+  mkdirSync(path.join(root, 'node_modules', '@vue', 'test-utils'), { recursive: true });
+  writeFileSync(
+    path.join(root, 'node_modules', '@vue', 'test-utils', 'package.json'),
+    `${JSON.stringify({
+      name: '@vue/test-utils',
+      version: '2.4.11',
+      type: 'module',
+      main: './index.js',
+    }, null, 2)}\n`,
+  );
+  writeFileSync(
+    path.join(root, 'node_modules', '@vue', 'test-utils', 'index.js'),
+    'export const mount = () => {};\n',
+  );
 }
 
 test('maps JavaScript, TypeScript, JSX, TSX, and Vue sources to test candidates', () => {
@@ -241,6 +278,164 @@ test('rejects a changed empty spec even without a matching source change', (cont
   }]);
 });
 
+test('requires mount, wrapper interaction, and a later outcome assertion for interactive Vue components', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = unitTestConfig({
+    componentInteraction: {
+      enabled: true,
+      componentPatterns: ['src/components/**/*.vue'],
+    },
+  });
+  const changes = [{ status: 'A', oldPath: null, path: 'src/components/Editor.vue' }];
+
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor.vue';",
+    "it('is present', () => { const wrapper = mount(Editor); expect(wrapper.exists()).toBe(true); });",
+    '',
+  ].join('\n'));
+  let [issue] = inspectUnitTestPolicy({ root, changes, config }).componentInteractions;
+  assert.equal(issue.analyses[0].mount, true);
+  assert.equal(issue.analyses[0].interaction, false);
+  assert.equal(issue.analyses[0].assertion, false);
+
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor.vue';",
+    "it('submits', async () => {",
+    '  const wrapper = mount(Editor);',
+    "  await wrapper.get('input').setValue('Ada');",
+    "  await wrapper.get('button').trigger('click');",
+    "  expect(wrapper.emitted('submit')).toBeTruthy();",
+    '});',
+    '',
+  ].join('\n'));
+  assert.deepEqual(inspectUnitTestPolicy({ root, changes, config }).componentInteractions, []);
+
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor';",
+    "it('updates through an element wrapper', async () => {",
+    '  const wrapper = mount(Editor);',
+    "  const input = wrapper.get('input');",
+    "  await input.setValue('Ada');",
+    "  expect(input.attributes('value')).toBe('Ada');",
+    '});',
+    '',
+  ].join('\n'));
+  assert.deepEqual(inspectUnitTestPolicy({ root, changes, config }).componentInteractions, []);
+
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor.vue';",
+    "it('shows confirmation', async () => {",
+    '  const wrapper = mount(Editor);',
+    "  await wrapper.get('button').trigger('click');",
+    "  expect(wrapper.find('[role=status]').exists()).toBe(true);",
+    '});',
+    '',
+  ].join('\n'));
+  assert.deepEqual(inspectUnitTestPolicy({ root, changes, config }).componentInteractions, []);
+});
+
+test('does not require interaction semantics for presentational Vue components', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  interactiveComponentFixture(
+    root,
+    "it('renders', () => { expect('hello').toContain('hello'); });\n",
+    '<template><p>Hello</p></template>\n',
+  );
+  const result = inspectUnitTestPolicy({
+    root,
+    changes: [{ status: 'A', oldPath: null, path: 'src/components/Editor.vue' }],
+    config: unitTestConfig({
+      componentInteraction: {
+        enabled: true,
+        componentPatterns: ['src/components/**/*.vue'],
+      },
+    }),
+  });
+  assert.deepEqual(result.componentInteractions, []);
+});
+
+test('accepts test.each and extensionless Vue component aliases', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  interactiveComponentFixture(
+    root,
+    `import { mount } from '@vue/test-utils';
+import Editor from '@/components/Editor';
+
+test.each(['Save'])('emits %s', async () => {
+  const wrapper = mount(Editor);
+  await wrapper.get('button').trigger('click');
+  expect(wrapper.emitted('save')).toHaveLength(1);
+});
+`,
+  );
+  const result = inspectUnitTestPolicy({
+    root,
+    changes: [{ status: 'M', oldPath: null, path: 'src/components/Editor.vue' }],
+    config: unitTestConfig({
+      componentInteraction: {
+        enabled: true,
+        componentPatterns: ['src/components/**/*.vue'],
+      },
+    }),
+  });
+  assert.deepEqual(result.componentInteractions, []);
+});
+
+test('rechecks changed interactive components even in newFiles mode', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor.vue';",
+    "it('exists', () => { expect(mount(Editor).exists()).toBe(true); });",
+    '',
+  ].join('\n'));
+  const result = inspectUnitTestPolicy({
+    root,
+    changes: [{ status: 'M', oldPath: null, path: 'src/components/Editor.vue' }],
+    config: unitTestConfig({
+      requireTests: 'newFiles',
+      componentInteraction: {
+        enabled: true,
+        componentPatterns: ['src/components/**/*.vue'],
+      },
+    }),
+  });
+  assert.equal(result.missingTests.length, 0);
+  assert.equal(result.componentInteractions.length, 1);
+});
+
+test('rechecks the mapped component when only its interaction test changes', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  git(root, ['init']);
+  interactiveComponentFixture(root, [
+    "import { mount } from '@vue/test-utils';",
+    "import Editor from './Editor.vue';",
+    "it('exists', () => { expect(mount(Editor).exists()).toBe(true); });",
+    '',
+  ].join('\n'));
+  const result = inspectUnitTestPolicy({
+    root,
+    changes: [{ status: 'M', oldPath: null, path: 'src/components/Editor.spec.ts' }],
+    config: unitTestConfig({
+      componentInteraction: {
+        enabled: true,
+        componentPatterns: ['src/components/**/*.vue'],
+      },
+    }),
+  });
+  assert.equal(result.componentInteractions.length, 1);
+  assert.equal(result.componentInteractions[0].sourcePath, 'src/components/Editor.vue');
+});
+
 test('runs the consuming project script and forwards the coverage switch', (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -266,6 +461,23 @@ test('runs the consuming project script and forwards the coverage switch', (cont
     root,
     config: unitTestConfig(),
   }), 7);
+});
+
+test('requires Vue Test Utils only when component interaction semantics are enabled', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = unitTestConfig({
+    componentInteraction: {
+      enabled: true,
+      componentPatterns: ['src/components/**/*.vue'],
+    },
+  });
+  assert.throws(
+    () => validateUnitTestSetup(root, config),
+    /Vue Test Utils is enabled but is not installed/,
+  );
+  installVueTestUtilsFixture(root);
+  assert.equal(validateUnitTestSetup(root, config).vueTestUtils.version, '2.4.11');
 });
 
 test('enforces structured global and changed-line coverage after tests pass', (context) => {

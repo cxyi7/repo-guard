@@ -15,7 +15,12 @@ import {
   prepareCoverageReports,
 } from './coverage-runner.js';
 import { runGit } from './git.js';
+import { collectProjectFiles } from './file-placement.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
+import {
+  analyzeVueComponentInteractionTest,
+  findVueInteractionEntries,
+} from './vue-component-interaction.js';
 
 const TEST_API_BASE_PATTERN = /(?<![\w$.])\b(describe|it|test)\b/g;
 const DISABLED_TEST_PROPERTIES = new Set(['only', 'skip', 'skipIf', 'todo']);
@@ -45,7 +50,10 @@ export function validateUnitTestSetup(root, config) {
     );
   }
   const vitest = resolveProjectPackageMetadata(root, 'vitest', 'Vitest');
-  return { command: command.trim(), vitest };
+  const vueTestUtils = config.componentInteraction.enabled
+    ? resolveProjectPackageMetadata(root, '@vue/test-utils', 'Vue Test Utils')
+    : null;
+  return { command: command.trim(), vitest, vueTestUtils };
 }
 
 export function detectProjectUnitTestSetup(root, config) {
@@ -327,6 +335,79 @@ function readPolicyFile(root, filePath, headSha) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : null;
 }
 
+function interactionSourceChanges(root, changes, config) {
+  if (!config.componentInteraction.enabled) return [];
+  const sourceChanges = new Map();
+  for (const change of changes) {
+    if (!isDeleted(change)
+      && change.path.toLowerCase().endsWith('.vue')
+      && matches(change.path, config.componentInteraction.componentPatterns)
+      && matches(change.path, config.sourcePatterns)
+      && !matches(change.path, config.exclusions)) {
+      sourceChanges.set(`${change.headSha ?? ''}\0${change.path}`, change);
+    }
+  }
+  for (const change of changes) {
+    if (isDeleted(change) || !matches(change.path, config.testPatterns)) continue;
+    const projectFiles = change.headSha
+      ? runGit(
+        ['ls-tree', '-r', '--name-only', change.headSha],
+        { cwd: root },
+      ).stdout.split(/\r?\n/).filter(Boolean)
+      : collectProjectFiles(root);
+    for (const sourcePath of projectFiles) {
+      if (!sourcePath.toLowerCase().endsWith('.vue')
+        || !matches(sourcePath, config.componentInteraction.componentPatterns)
+        || !matches(sourcePath, config.sourcePatterns)
+        || matches(sourcePath, config.exclusions)
+        || !expectedUnitTestPaths(sourcePath, config.mappings).includes(change.path)) {
+        continue;
+      }
+      sourceChanges.set(`${change.headSha ?? ''}\0${sourcePath}`, {
+        ...change,
+        path: sourcePath,
+      });
+    }
+  }
+  return [...sourceChanges.values()];
+}
+
+function inspectComponentInteractions({ root, changes, config }) {
+  const issues = [];
+  for (const change of interactionSourceChanges(root, changes, config)) {
+    const sourcePath = change.path;
+    const componentSource = readPolicyFile(root, sourcePath, change.headSha);
+    const entries = componentSource == null
+      ? []
+      : findVueInteractionEntries(componentSource, sourcePath);
+    if (entries.length === 0) continue;
+    const tests = expectedUnitTestPaths(sourcePath, config.mappings)
+      .map((testPath) => ({
+        content: readPolicyFile(root, testPath, change.headSha),
+        testPath,
+      }))
+      .filter(({ content }) => content != null && analyzeUnitTestContent(content).hasTestCase);
+    if (tests.length === 0) continue;
+    const analyses = tests.map(({ content, testPath }) => ({
+      ...analyzeVueComponentInteractionTest({
+        componentSourcePath: sourcePath,
+        testPath,
+        testSource: content,
+      }),
+      testPath,
+    }));
+    if (!analyses.some(({ valid }) => valid)) {
+      issues.push({
+        analyses,
+        entries,
+        sourcePath,
+        testPaths: tests.map(({ testPath }) => testPath),
+      });
+    }
+  }
+  return issues;
+}
+
 export function inspectUnitTestPolicy({ root, changes, config }) {
   const missingTests = [];
   const bypasses = [];
@@ -349,6 +430,9 @@ export function inspectUnitTestPolicy({ root, changes, config }) {
         testPath,
       }))
       .filter(({ content }) => content != null);
+    const effectiveTests = existingTests.filter(({ content }) => (
+      analyzeUnitTestContent(content).hasTestCase
+    ));
     if (existingTests.length === 0) {
       missingTests.push({
         sourcePath: filePath,
@@ -356,9 +440,7 @@ export function inspectUnitTestPolicy({ root, changes, config }) {
         expectedTestPaths: expectedPaths,
         reason: 'missing',
       });
-    } else if (!existingTests.some(({ content }) => (
-      analyzeUnitTestContent(content).hasTestCase
-    ))) {
+    } else if (effectiveTests.length === 0) {
       missingTests.push({
         sourcePath: filePath,
         expectedTestPath: existingTests[0].testPath,
@@ -392,11 +474,16 @@ export function inspectUnitTestPolicy({ root, changes, config }) {
     }
   }
 
-  return { bypasses, missingTests };
+  return {
+    bypasses,
+    componentInteractions: inspectComponentInteractions({ root, changes, config }),
+    missingTests,
+  };
 }
 
 export function buildUnitTestAiInstructions({
   bypasses,
+  componentInteractions = [],
   missingTests,
   script = 'test:unit',
 }) {
@@ -426,6 +513,34 @@ export function buildUnitTestAiInstructions({
       `${index}. 请移除 ${bypass.filePath} 第 ${bypass.line} 行的测试绕过：${bypass.expression}`,
       '   修复或补全该测试，使其正常参与执行；不得改用其他 skip/only 形式规避。',
       `   完成后运行 npm run ${script}。`,
+    );
+    index += 1;
+  }
+  for (const issue of componentInteractions) {
+    const best = issue.analyses.reduce((current, candidate) => {
+      const score = Number(candidate.componentImport)
+        + Number(candidate.mount)
+        + Number(candidate.interaction)
+        + Number(candidate.assertion);
+      return !current || score > current.score ? { ...candidate, score } : current;
+    }, null);
+    const missing = [
+      ...(!best?.componentImport ? ['直接导入被测 Vue 组件'] : []),
+      ...(!best?.mount ? ['使用 @vue/test-utils 的 mount 真实挂载该组件'] : []),
+      ...(!best?.interaction ? ['通过 wrapper.trigger/setValue/setChecked/setSelected 执行用户交互'] : []),
+      ...(!best?.assertion ? ['在交互后断言 DOM、可见状态、emit、Props、路由、Store 或 Mock 调用结果'] : []),
+    ];
+    lines.push(
+      '',
+      `${index}. 请为 ${issue.sourcePath} 补全 Vue 组件交互测试。`,
+      `   交互入口：${issue.entries.map(({ name }) => name).join('、')}。`,
+      `   当前测试：${issue.testPaths.join('、')}。`,
+      `   缺少步骤：${missing.join('；')}。`,
+      '   测试要求：在同一个正常执行的 it/test 用例中，依次完成组件导入、mount、真实用户交互和交互结果断言。',
+      '   结果断言：优先验证用户可见 DOM/状态或组件 emit；涉及路由、Store、定时器或外部回调时，验证对应状态或 Mock 调用参数。',
+      '   禁止弱测试：仅断言组件已定义、wrapper.exists()、mount 不抛错、快照或交互前初始状态不能替代交互结果断言。',
+      '   禁止绕过：不得删除模板交互、改成动态写法、关闭 componentInteraction、扩大 componentPatterns/exclusions，或使用 skip/only/todo。',
+      `   完成后运行 npm run ${script}，并确认组件交互、普通单元测试和覆盖率门禁全部通过。`,
     );
     index += 1;
   }
@@ -459,7 +574,9 @@ function runNpmScript(root, config) {
 export function runUnitTestGate({ root, config, changes = [] }) {
   const setup = validateUnitTestSetup(root, config);
   const policy = inspectUnitTestPolicy({ root, changes, config });
-  if (policy.missingTests.length > 0 || policy.bypasses.length > 0) {
+  if (policy.missingTests.length > 0
+    || policy.bypasses.length > 0
+    || policy.componentInteractions.length > 0) {
     console.error(buildUnitTestAiInstructions({
       ...policy,
       script: config.script,

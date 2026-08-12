@@ -151,6 +151,10 @@ export {
   validateUnitTestSetup,
 } from './unit-test-runner.js';
 export {
+  analyzeVueComponentInteractionTest,
+  findVueInteractionEntries,
+} from './vue-component-interaction.js';
+export {
   ensureLocalEnvironment,
   loadLocalEnvironment,
   resolveNotificationEnvironment,

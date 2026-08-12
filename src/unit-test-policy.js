@@ -49,6 +49,11 @@ function managedLines(config) {
     '- Store 覆盖 action、state 变化以及成功和失败路径。',
     '- API 必须 Mock 网络，并验证参数、响应转换和错误处理。',
     '- Vue 组件验证 Props、用户交互、渲染结果、emit、加载、空数据和错误状态。',
+    ...(config.componentInteraction.enabled ? [
+      `- Vue 组件交互硬门禁范围：${quotedPatterns(config.componentInteraction.componentPatterns)}。`,
+      '- 范围内包含 v-on/@事件或 v-model 的组件，必须在同一正常执行用例中直接导入组件、使用 @vue/test-utils mount、触发真实交互，并在交互后断言 DOM、状态、emit、路由、Store 或 Mock 调用结果。',
+      '- 仅断言组件已定义、wrapper.exists()、mount 不抛错、快照或交互前状态不算交互测试；禁止关闭规则或扩大排除绕过。',
+    ] : []),
     '- Bug 修复必须增加能够复现原问题的回归测试。',
     '- 禁止空测试，禁止删除已有测试或断言，禁止使用 `.skip`、`.skipIf`、`.todo`、`.only` 或无理由更新快照绕过。',
     `- 完成修改后运行 \`npm run ${config.script}\`。`,

@@ -36,7 +36,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
     );
   }
   if (enabled && requestedFeatures.some((feature) => (
-    feature === 'unitTest' || feature === 'coverage'
+    feature === 'unitTest' || feature === 'coverage' || feature === 'componentInteraction'
   ))) {
     const policy = ensureUnitTestPolicy(root, loadConfig(root).unitTest);
     console.log(

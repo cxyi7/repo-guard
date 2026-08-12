@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "Git guard with Vue accessibility and security, style complexity, dependency governance, staged code quality, structured exceptions, architecture, builds, coverage, and tests",
   "keywords": [
     "git-hooks",
@@ -46,7 +46,7 @@
     "test": "node --test",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
-    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/accessibility-test-policy.js && node --check src/accessibility-test-runner.js && node --check src/architecture-policy.js && node --check src/architecture-runner.js && node --check src/build-runner.js && node --check src/cli.js && node --check src/config-management.js && node --check src/coverage-runner.js && node --check src/dependency-policy.js && node --check src/dynamic-code-ast.js && node --check src/dynamic-code.js && node --check src/exception-policy.js && node --check src/exception-registry.js && node --check src/commands/accessibility-test.js && node --check src/commands/architecture.js && node --check src/commands/build.js && node --check src/commands/dependencies.js && node --check src/commands/doctor.js && node --check src/commands/dynamic-code.js && node --check src/commands/exceptions.js && node --check src/commands/file-placement.js && node --check src/commands/form-labels.js && node --check src/commands/image-alt.js && node --check src/commands/lighthouse.js && node --check src/commands/pre-push.js && node --check src/commands/style-complexity.js && node --check src/commands/target-blank.js && node --check src/commands/typecheck.js && node --check src/commands/unit-test.js && node --check src/commands/unsafe-html.js && node --check src/eslint-config.js && node --check src/eslint-diagnostics.js && node --check src/eslint-runner.js && node --check src/file-placement.js && node --check src/lighthouse-project.js && node --check src/lighthouse-runner.js && node --check src/max-file-lines.js && node --check src/pre-push-changes.js && node --check src/prettier-runner.js && node --check src/quality-runner.js && node --check src/stylelint-diagnostics.js && node --check src/stylelint-runner.js && node --check src/typecheck-runner.js && node --check src/unit-test-policy.js && node --check src/unit-test-runner.js && node --check src/vue-form-label.js && node --check src/vue-image-alt.js && node --check src/vue-style-languages.js && node --check src/vue-target-blank.js && node --check src/vue-template-parser.js && node --check src/vue-unsafe-html.js",
+    "check": "npm run lint && node --check bin/repo-guard.js && node --check src/accessibility-test-policy.js && node --check src/accessibility-test-runner.js && node --check src/architecture-policy.js && node --check src/architecture-runner.js && node --check src/build-runner.js && node --check src/cli.js && node --check src/config-management.js && node --check src/coverage-runner.js && node --check src/dependency-policy.js && node --check src/dynamic-code-ast.js && node --check src/dynamic-code.js && node --check src/exception-policy.js && node --check src/exception-registry.js && node --check src/commands/accessibility-test.js && node --check src/commands/architecture.js && node --check src/commands/build.js && node --check src/commands/dependencies.js && node --check src/commands/doctor.js && node --check src/commands/dynamic-code.js && node --check src/commands/exceptions.js && node --check src/commands/file-placement.js && node --check src/commands/form-labels.js && node --check src/commands/image-alt.js && node --check src/commands/lighthouse.js && node --check src/commands/pre-push.js && node --check src/commands/style-complexity.js && node --check src/commands/target-blank.js && node --check src/commands/typecheck.js && node --check src/commands/unit-test.js && node --check src/commands/unsafe-html.js && node --check src/eslint-config.js && node --check src/eslint-diagnostics.js && node --check src/eslint-runner.js && node --check src/file-placement.js && node --check src/lighthouse-project.js && node --check src/lighthouse-runner.js && node --check src/max-file-lines.js && node --check src/pre-push-changes.js && node --check src/prettier-runner.js && node --check src/quality-runner.js && node --check src/stylelint-diagnostics.js && node --check src/stylelint-runner.js && node --check src/typecheck-runner.js && node --check src/unit-test-policy.js && node --check src/unit-test-runner.js && node --check src/vue-component-interaction.js && node --check src/vue-form-label.js && node --check src/vue-image-alt.js && node --check src/vue-style-languages.js && node --check src/vue-target-blank.js && node --check src/vue-template-parser.js && node --check src/vue-unsafe-html.js",
     "pack:check": "npm pack --dry-run --json",
     "prepublishOnly": "npm run check && npm test"
   },
@@ -60,6 +60,7 @@
     "@axe-core/playwright": ">=4 <5",
     "@eslint/js": ">=8.57",
     "@lhci/cli": ">=0.13 <0.16",
+    "@vue/test-utils": ">=2 <3",
     "axe-core": ">=4 <5",
     "cypress-axe": ">=1 <2",
     "dependency-cruiser": ">=16 <19",
@@ -80,6 +81,9 @@
       "optional": true
     },
     "@lhci/cli": {
+      "optional": true
+    },
+    "@vue/test-utils": {
       "optional": true
     },
     "dependency-cruiser": {

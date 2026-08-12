@@ -202,6 +202,10 @@ git push
         "changedLines": 90
       }
     },
+    "componentInteraction": {
+      "enabled": false,
+      "componentPatterns": ["src/components/**/*.vue"]
+    },
     "requireTests": "newFiles",
     "sourcePatterns": [
       "src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
@@ -775,6 +779,8 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js 或 .spe
 | `coverage.enabled` | `false` | 是否生成新报告并启用全局覆盖率及变更行覆盖率硬门禁 |
 | `coverage.reportsDirectory` | `coverage` | `coverage-summary.json` 和 `lcov.info` 的项目相对目录 |
 | `coverage.thresholds` | 全局四项 `80`、变更行 `90` | 行、语句、函数、分支及本次 Git 变更可执行行的最低百分比 |
+| `componentInteraction.enabled` | `false` | 对交互型 Vue 组件启用挂载、真实交互和结果断言语义门禁 |
+| `componentInteraction.componentPatterns` | `src/components/**/*.vue` | 需要识别模板交互入口的 Vue 组件 glob |
 | `requireTests` | `newFiles` | `newFiles` 仅检查新增/复制源码；`changedFiles` 检查所有变更源码 |
 | `sourcePatterns` | 工具、Composable、Store、API、组件 | 需要测试的 JS/JSX/TS/TSX/Vue 源码 glob |
 | `testPatterns` | `**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}` | 扫描空测试和 `.skip/.skipIf/.todo/.only` 的测试 glob |
@@ -795,6 +801,13 @@ src/components/OrderForm.vue       → src/components/OrderForm.spec.js 或 .spe
 
 映射按数组顺序匹配，第一条命中的规则生效。自定义候选扩展名时，应同步把它加入
 `testPatterns`，确保空测试和绕过扫描覆盖相同文件。
+
+启用 `componentInteraction` 后，repo-guard 只对 `componentPatterns` 范围内且模板包含 `v-on`、
+`@事件` 或 `v-model` 的 Vue 组件增加交互语义校验，纯展示组件不受影响。有效用例必须在同一个正常
+执行的 `it/test` 中直接导入被测组件，使用 `@vue/test-utils` 的 `mount` 挂载，通过
+`trigger`、`setValue`、`setChecked` 或 `setSelected` 模拟用户操作，并在交互之后断言 DOM、可见状态、
+emit、Props、路由、Store 或 Mock 调用结果。仅检查组件已定义、`wrapper.exists()`、mount 不抛错、
+快照或初始状态不算交互测试。
 
 结构化覆盖率门禁启用后，repo-guard 会向 Vitest 强制传入 `json-summary`、`lcov`、报告目录、
 源码 include 以及测试/排除路径 exclude。测试成功后统一读取新生成的报告：全局行、语句、函数、
@@ -819,12 +832,15 @@ npm install --save-dev @vitest/coverage-v8
 
 ```bash
 repo-guard enable unitTest
+repo-guard enable componentInteraction
 repo-guard enable coverage
 repo-guard doctor
 ```
 
 `repo-guard enable coverage` 会同时启用 `unitTest`，因为覆盖率只能在完整单元测试执行后判定；
-单独执行 `disable coverage` 不会关闭单元测试门禁。
+`repo-guard enable componentInteraction` 同样会启用 `unitTest`，但仍只运行一次测试脚本。单独执行
+`disable coverage` 或 `disable componentInteraction` 不会关闭普通单元测试门禁；关闭 `unitTest` 会同步
+关闭组件交互增强，避免留下无法执行的配置。
 
 也可以在不改变开关的情况下显式运行同一套检查：
 
@@ -1248,3 +1264,7 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 
 0.13.1 新增始终启用的动态代码执行门禁，覆盖 JavaScript、TypeScript、JSX、TSX 和 Vue 脚本中的
 `eval` 与 `Function` 构造器，识别常见间接访问方式并提供精确结构化例外和面向 AI 的安全改写指令。
+
+0.13.2 新增 `unitTest.componentInteraction` Vue 组件交互测试语义门禁，复用现有测试映射、Vitest
+执行和覆盖率流程。交互型组件必须在同一用例中完成直接导入、mount、wrapper 交互和结果断言；已有
+项目迁移后保持关闭，可执行 `repo-guard enable componentInteraction` 显式启用。
