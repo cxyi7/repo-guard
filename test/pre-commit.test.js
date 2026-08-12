@@ -39,6 +39,7 @@ function writeConfig(root, {
   stylelintFix = true,
   stylelintPattern = '**/*.{css,scss,sass,less,vue}',
   stylelintRequireConfig = true,
+  dependencyPolicyEnabled = false,
   maxFileLinesEnabled = false,
   filePlacementEnabled = false,
   filePlacementMode = 'newFiles',
@@ -58,6 +59,13 @@ function writeConfig(root, {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
+      dependencyPolicy: {
+        enabled: dependencyPolicyEnabled,
+        requireExactVersions: true,
+        requireLockfile: true,
+        allowedProtocols: ['npm', 'workspace'],
+        bannedPackages: [],
+      },
       preCommit: {
         filePlacement: {
           enabled: filePlacementEnabled,
@@ -605,6 +613,58 @@ test('blocks unsafe staged Vue target blank links when optional gates are disabl
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':Links.vue'])), content);
+});
+
+test('blocks staged dependency declarations when dependency governance is enabled', async (context) => {
+  const root = createRepository({
+    dependencyPolicyEnabled: true,
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const packageJson = `${JSON.stringify({
+    name: 'fixture',
+    version: '1.0.0',
+    type: 'module',
+    dependencies: { axios: '^1.7.0' },
+  }, null, 2)}\n`;
+  writeFileSync(path.join(root, 'package.json'), packageJson);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':package.json'])), packageJson);
+});
+
+test('blocks staged deletion of a required dependency lockfile', async (context) => {
+  const root = createRepository({
+    dependencyPolicyEnabled: true,
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  writeFileSync(
+    path.join(root, 'package-lock.json'),
+    `${JSON.stringify({
+      name: packageJson.name,
+      version: packageJson.version,
+      lockfileVersion: 3,
+      requires: true,
+      packages: { '': packageJson },
+    }, null, 2)}\n`,
+  );
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'test: baseline']);
+  rmSync(path.join(root, 'package-lock.json'));
+  git(root, ['add', '-u']);
+
+  assert.equal(await runPreCommit(root), 1);
 });
 
 test('allows deleting a Vue file when optional quality gates are disabled', async (context) => {

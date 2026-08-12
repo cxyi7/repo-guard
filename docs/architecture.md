@@ -24,6 +24,12 @@
 
 `architecture-policy` 将实际启用的规则和禁止绕过方式写入 `AGENTS.md` 受管理区块。`pre-push` 的顺序为 TypeScript、单元测试与覆盖率、依赖架构、独立构建、Lighthouse；架构门禁不进入只处理暂存文件的 `pre-commit`。
 
+## 依赖声明治理
+
+`dependency-policy` 静态解析根 `package.json` 和 npm lockfile v2+，检查非 peer 精确版本、批准来源、非 peer 分组唯一、根锁声明同步和项目禁用包。它不依赖业务项目额外安装工具；`repo-guard dependencies` 执行全项目审计，启用后的 `pre-commit` 只在根清单或锁文件变化时执行。
+
+暂存门禁在 lint-staged 完成格式化、只读复检、单文件行数和文件归位检查，并将结果写回 index 后运行。`runStagedDependencyPolicy` 从 Git index 读取清单和锁文件并写入系统临时目录分析，确保部分暂存和删除场景使用实际提交内容；临时目录始终清理。依赖治理通过后才进入保护文件门禁。违规使用 `dependencies/*` 精确结构化例外，失败报告包含可独立交给 AI 的修复与验证指令。
+
 ## 职责边界
 
 ```text
@@ -49,6 +55,7 @@
    ├─ unit-test-policy        受管理的 AGENTS.md AI 测试规范
    ├─ unit-test-runner        缺失测试/绕过检查和 Vitest 执行
    ├─ coverage-runner         全局覆盖率、Git 变更行覆盖率和统一报告
+   ├─ dependency-policy       依赖版本、来源、分组、禁用包和 npm 锁文件治理
    ├─ pre-push-changes        精确计算本次推送的 Git 变更范围
    ├─ lighthouse-runner       Vue 构建、LHCI 收集和断言
    ├─ protected-file gate      规则、指纹和通知

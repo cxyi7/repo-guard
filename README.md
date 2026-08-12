@@ -1,18 +1,18 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 与 `target="_blank"` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
+Prettier 格式化、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.9
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.11
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-Vue `v-html` 和 `target="_blank"` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、文件归位、Vue/JS/TS 单文件行数门禁、
+Vue `v-html` 和 `target="_blank"` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、依赖治理、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
@@ -47,9 +47,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `architecture`、`build`、`typeCheck`、`unitTest`、
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
 只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
@@ -76,6 +76,7 @@ git commit
   → 检查最终暂存文件的完整行数
   → 检查新增、复制或重命名文件的存放位置
   → 质量结果写回暂存区并恢复未暂存内容
+  → package.json/package-lock.json 变更时按最终 Git 暂存快照检查依赖声明与锁文件
   → 保护文件识别、指纹和企业微信通知
   → 提交信息文件清单
 ```
@@ -121,6 +122,13 @@ git push
     "warningDays": 14,
     "maxDays": 90,
     "entries": []
+  },
+  "dependencyPolicy": {
+    "enabled": true,
+    "requireExactVersions": true,
+    "requireLockfile": true,
+    "allowedProtocols": ["npm", "workspace"],
+    "bannedPackages": []
   },
   "architecture": {
     "enabled": false,
@@ -584,6 +592,28 @@ repo-guard target-blank
 
 `init` 或 `doctor --fix` 会补充 `guard:target-blank`；该硬性门禁没有关闭命令。
 
+### 依赖治理门禁
+
+依赖治理检查根目录 `package.json` 与 npm `package-lock.json`。新项目由 `init` 默认开启；已有项目迁移后保持关闭，评估存量依赖后再启用。只有根清单或锁文件被暂存时才进入 `pre-commit`，并直接读取 Git 暂存快照，因此不会混入未暂存内容，也不能通过只删除锁文件绕过。显式命令不受开关限制，可用于启用前审计：
+
+```bash
+repo-guard dependencies
+repo-guard enable dependencies
+repo-guard doctor
+```
+
+默认规则包括：
+
+- `dependencies`、`devDependencies`、`optionalDependencies` 使用精确 SemVer；`peerDependencies` 可保留兼容范围；
+- 默认只批准普通 registry 版本、精确 `npm:` alias 和 `workspace:`；Git、HTTP、GitHub shorthand、本地路径等来源必须在 `allowedProtocols` 明确批准；
+- 同一个包不得重复出现在多个非 peer 分组；peer 与开发依赖并存不视为冲突；
+- 要求 lockfile v2+，并逐项核对根 `dependencies`、`devDependencies` 和 `optionalDependencies`；
+- `bannedPackages` 可记录禁用包、至少 10 个字符的原因和可选替代包。
+
+`requireExactVersions: false` 只关闭精确版本要求，不会关闭来源、分组、禁用包或锁文件治理。`allowedProtocols` 填协议名且不带冒号，例如显式批准 `file` 或 `git+https`；扩大来源属于策略变更，必须代码审查。该门禁不替代 `npm audit`、许可证扫描或供应链漏洞平台。
+
+违规按 `dependencies/*` 规则 ID、文件、行、列精确匹配 `exceptions.entries`。例外必须遵守统一审批与到期机制；AI 不得自行登记例外、关闭开关、扩大协议列表或手工伪造 lockfile。
+
 ### 依赖架构门禁
 
 repo-guard 使用业务项目本地安装的 dependency-cruiser，但统一拥有规则配置、执行顺序和报告格式。它兼容仅通过 ESM `import` 条件导出入口的 dependency-cruiser 16、17 和 18。它不会把架构检查塞进 ESLint 或 `pre-commit`；启用后在完整单元测试之后、生产构建之前执行全项目依赖图检查。
@@ -970,9 +1000,10 @@ repo-guard migrate
 repo-guard exceptions
 repo-guard unsafe-html
 repo-guard target-blank
-repo-guard enable eslint prettier stylelint maxFileLines filePlacement architecture typeCheck unitTest coverage build
+repo-guard enable eslint prettier stylelint maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
+repo-guard dependencies
 repo-guard build
 repo-guard architecture
 repo-guard typecheck
@@ -989,14 +1020,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 与 `target="_blank"` 门禁、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.9
+## 升级到 0.12.11
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.9
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.11
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1059,3 +1090,10 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 
 0.12.9 修复 dependency-cruiser 16、17 和 18 仅暴露 ESM `import` 入口时被误报为未安装的问题，
 启用依赖架构门禁的 Node 18、20、22 及更高版本项目无需添加 CommonJS 兼容入口。
+
+0.12.10 为依赖架构 error 违规增加可独立复制给 AI 的完整修复指令，并兼容 dependency-cruiser
+17/18 的对象循环链路格式。
+
+0.12.11 新增 `dependencyPolicy`、`repo-guard dependencies` 和暂存依赖治理门禁，覆盖精确版本、
+批准来源、分组唯一、npm 锁文件同步和项目禁用包。新项目默认开启；已有配置迁移后保持关闭，可先运行
+`repo-guard dependencies` 审计，再执行 `repo-guard enable dependencies`。

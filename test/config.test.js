@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -35,6 +36,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
 
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
+  assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
@@ -634,5 +636,38 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
       },
     })),
     /non-negative integer/,
+  );
+});
+
+test('validates and normalizes dependency governance configuration', () => {
+  const config = validateConfig(baseConfig({
+    dependencyPolicy: {
+      enabled: true,
+      requireExactVersions: false,
+      requireLockfile: false,
+      allowedProtocols: ['NPM', 'workspace', 'npm'],
+      bannedPackages: [{
+        name: 'request',
+        reason: 'This package is no longer maintained.',
+        replacement: 'undici',
+      }],
+    },
+  }));
+  assert.deepEqual(config.dependencyPolicy.allowedProtocols, ['npm', 'workspace']);
+  assert.equal(config.dependencyPolicy.bannedPackages[0].replacement, 'undici');
+
+  assert.throws(
+    () => validateConfig(baseConfig({
+      dependencyPolicy: { allowedProtocols: ['https:'] },
+    })),
+    /protocol name without a colon/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      dependencyPolicy: {
+        bannedPackages: [{ name: 'request', reason: 'too short' }],
+      },
+    })),
+    /at least 10 characters/,
   );
 });

@@ -10,6 +10,12 @@ export {
   isExceptionPolicyCurrent,
 } from './exception-policy.js';
 export {
+  buildDependencyPolicyAiInstructions,
+  inspectDependencyPolicy,
+  runDependencyPolicy,
+  runStagedDependencyPolicy,
+} from './dependency-policy.js';
+export {
   buildArchitectureAiRepairInstructions,
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,

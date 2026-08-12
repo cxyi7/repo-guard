@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level protected-file, structured-exception, hard Vue v-html and target-blank security, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level dependency governance, protected-file, structured-exception, hard Vue security, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -119,6 +119,62 @@
               }
             }
           }
+        }
+      }
+    },
+    "dependencyPolicy": {
+      "type": "object",
+      "description": "Govern package.json declarations and npm package-lock root metadata.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run dependency governance when root package.json or package-lock.json is staged. New init configurations set this to true; migrated configurations stay false."
+        },
+        "requireExactVersions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require exact versions outside peerDependencies; approved npm aliases and workspace protocols remain supported."
+        },
+        "requireLockfile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require package-lock.json v2+ and exact agreement between its root declaration and package.json."
+        },
+        "allowedProtocols": {
+          "type": "array",
+          "default": ["npm", "workspace"],
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9+.-]*$"
+          },
+          "description": "Explicit dependency source protocols allowed outside normal registry versions. Use protocol names without colons."
+        },
+        "bannedPackages": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 10
+              },
+              "replacement": {
+                "type": ["string", "null"],
+                "minLength": 1
+              }
+            }
+          },
+          "description": "Project-owned denylist with reviewable reasons and optional replacements."
         }
       }
     },

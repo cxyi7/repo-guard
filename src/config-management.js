@@ -9,6 +9,7 @@ import {
   CONFIG_FILE,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -29,6 +30,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...QUALITY_GATES,
   'filePlacement',
   'maxFileLines',
+  'dependencies',
   'architecture',
   'build',
   'lighthouse',
@@ -43,6 +45,19 @@ function cloneExceptionsConfig(value = {}) {
     ...DEFAULT_EXCEPTIONS_CONFIG,
     ...value,
     entries: (value.entries ?? DEFAULT_EXCEPTIONS_CONFIG.entries).map((entry) => ({ ...entry })),
+  };
+}
+
+function cloneDependencyPolicyConfig(value = {}) {
+  return {
+    ...DEFAULT_DEPENDENCY_POLICY_CONFIG,
+    ...value,
+    allowedProtocols: [
+      ...(value.allowedProtocols ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.allowedProtocols),
+    ],
+    bannedPackages: (
+      value.bannedPackages ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages
+    ).map((item) => ({ ...item })),
   };
 }
 
@@ -112,6 +127,7 @@ export function createStarterConfig({
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
     exceptions: cloneExceptionsConfig(),
+    dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     build: {
       ...DEFAULT_BUILD_CONFIG,
@@ -196,6 +212,7 @@ export function migrateProjectConfig(root, {
       ...(prepared.notification ?? {}),
     },
     exceptions: cloneExceptionsConfig(prepared.exceptions),
+    dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
     architecture: cloneArchitectureConfig(prepared.architecture),
     build: {
       ...DEFAULT_BUILD_CONFIG,
@@ -251,6 +268,9 @@ function featureConfig(config, feature) {
       };
     }
     return config.unitTest.coverage;
+  }
+  if (feature === 'dependencies') {
+    return config.dependencyPolicy;
   }
   if (
     feature === 'build'

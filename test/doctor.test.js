@@ -50,6 +50,11 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(exitCode, 0);
   assert.equal(packageJson.scripts['guard:migrate'], 'repo-guard migrate');
   assert.equal(packageJson.scripts['guard:exceptions'], 'repo-guard exceptions');
+  assert.equal(packageJson.scripts['guard:dependencies'], 'repo-guard dependencies');
+  assert.equal(
+    packageJson.scripts['guard:enable-dependencies'],
+    'repo-guard enable dependencies',
+  );
   assert.equal(packageJson.scripts['guard:unsafe-html'], 'repo-guard unsafe-html');
   assert.equal(packageJson.scripts['guard:target-blank'], 'repo-guard target-blank');
   assert.equal(
@@ -88,6 +93,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
   assert.equal(config.notification.enabled, false);
   assert.deepEqual(config.exceptions.entries, []);
+  assert.equal(config.dependencyPolicy.enabled, false);
   assert.equal(config.preCommit.eslint.enabled, false);
   assert.equal(config.preCommit.eslint.preset, false);
   assert.equal(config.preCommit.prettier.enabled, false);

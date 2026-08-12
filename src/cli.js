@@ -4,6 +4,7 @@ import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
+import { runDependenciesCommand } from './commands/dependencies.js';
 import { runExceptionsCommand } from './commands/exceptions.js';
 import { runFilePlacementCommand } from './commands/file-placement.js';
 import { runGate } from './commands/gate.js';
@@ -28,10 +29,11 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard exceptions
+  repo-guard dependencies
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
@@ -91,6 +93,9 @@ export async function runCli(argumentsList) {
       case 'exceptions':
         ensureSupportedOptions(rest, new Set());
         return runExceptionsCommand();
+      case 'dependencies':
+        ensureSupportedOptions(rest, new Set());
+        return runDependenciesCommand();
       case 'pre-commit':
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();

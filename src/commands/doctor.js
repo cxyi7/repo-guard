@@ -341,6 +341,16 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       'Vue target=_blank staged gate '
       + '(hard requirement, rel=noopener+noreferrer, rule=vue/target-blank-security)',
     );
+    if (config.dependencyPolicy.enabled) {
+      checks.push(
+        `Dependency policy (exact=${config.dependencyPolicy.requireExactVersions}, `
+        + `lockfile=${config.dependencyPolicy.requireLockfile}, `
+        + `protocols=${config.dependencyPolicy.allowedProtocols.join(',') || 'none'}, `
+        + `banned=${config.dependencyPolicy.bannedPackages.length})`,
+      );
+    } else {
+      checks.push('Dependency policy staged gate is disabled');
+    }
   }
 
   if (config?.preCommit.eslint.enabled) {

@@ -1,14 +1,44 @@
-import { loadConfig } from '../config.js';
+import {
+  CONFIG_FILE,
+  loadConfig,
+  validateConfig,
+} from '../config.js';
+import { runStagedDependencyPolicy } from '../dependency-policy.js';
 import { runEslintFiles } from '../eslint-runner.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot, runGit } from '../git.js';
 import { runQualityGate } from '../quality-gate.js';
 import { runQualityFiles } from '../quality-runner.js';
 import { runGate } from './gate.js';
 
+function loadStagedConfig(root) {
+  const result = runGit(['show', `:${CONFIG_FILE}`], {
+    allowFailure: true,
+    cwd: root,
+  });
+  if (result.status !== 0) return loadConfig(root);
+  try {
+    return validateConfig(JSON.parse(result.stdout), `${CONFIG_FILE} (staged)`);
+  } catch (error) {
+    throw new Error(`Invalid staged ${CONFIG_FILE}: ${error.message}`);
+  }
+}
+
 export async function runPreCommit(cwd = process.cwd()) {
+  const root = findRepositoryRoot(cwd);
   const qualityExitCode = await runQualityGate({ cwd });
   if (qualityExitCode !== 0) {
     return qualityExitCode;
+  }
+  const config = loadStagedConfig(root);
+  if (config.dependencyPolicy.enabled) {
+    const dependencyExitCode = runStagedDependencyPolicy({
+      root,
+      config: config.dependencyPolicy,
+      exceptions: config.exceptions,
+    });
+    if (dependencyExitCode !== 0) {
+      return dependencyExitCode;
+    }
   }
   return await runGate({ cwd });
 }
