@@ -1,4 +1,5 @@
 import { runBuildGate } from '../build-runner.js';
+import { runAccessibilityTestGate } from '../accessibility-test-runner.js';
 import { runArchitectureGate } from '../architecture-runner.js';
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
 import { findRepositoryRoot, gitValue, runGit } from '../git.js';
@@ -37,7 +38,8 @@ function loadConfigAtRevision(root, revision) {
 }
 
 function usesPrePushGate(config) {
-  return config?.typeCheck.enabled
+  return config?.accessibilityTest.enabled
+    || config?.typeCheck.enabled
     || config?.unitTest.enabled
     || config?.architecture.enabled
     || config?.build.enabled
@@ -154,6 +156,18 @@ export function runPrePush(cwd = process.cwd(), {
     }
   } else {
     console.log('repo-guard pre-push: unit tests are disabled.');
+  }
+
+  if (config.accessibilityTest.enabled) {
+    const accessibilityExitCode = runAccessibilityTestGate({
+      root,
+      config: config.accessibilityTest,
+    });
+    if (accessibilityExitCode !== 0) {
+      return accessibilityExitCode;
+    }
+  } else {
+    console.log('repo-guard pre-push: accessibility tests are disabled.');
   }
 
   if (config.architecture.enabled) {

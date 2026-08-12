@@ -1,6 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  ACCESSIBILITY_TEST_POLICY_FILE,
+  ensureAccessibilityTestPolicy,
+  isAccessibilityTestPolicyCurrent,
+} from '../accessibility-test-policy.js';
+import { validateAccessibilityTestSetup } from '../accessibility-test-runner.js';
+import {
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
   isArchitecturePolicyCurrent,
@@ -97,6 +103,14 @@ function repairRepository(root) {
           policy.changed
             ? `updated ${UNIT_TEST_POLICY_FILE} unit test policy`
             : `${UNIT_TEST_POLICY_FILE} unit test policy is already current`,
+        );
+      }
+      if (config.accessibilityTest.enabled) {
+        const policy = ensureAccessibilityTestPolicy(root, config.accessibilityTest);
+        repairs.push(
+          policy.changed
+            ? `updated ${ACCESSIBILITY_TEST_POLICY_FILE} accessibility test policy`
+            : `${ACCESSIBILITY_TEST_POLICY_FILE} accessibility test policy is already current`,
         );
       }
       if (config.architecture.enabled) {
@@ -333,6 +347,34 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
     }
   } else {
     checks.push('Unit test pre-push gate is disabled');
+  }
+
+  if (config?.accessibilityTest.enabled) {
+    try {
+      const setup = validateAccessibilityTestSetup(root, config.accessibilityTest);
+      const policyPath = path.join(root, ACCESSIBILITY_TEST_POLICY_FILE);
+      if (
+        !existsSync(policyPath)
+        || !isAccessibilityTestPolicyCurrent(
+          readFileSync(policyPath, 'utf8'),
+          config.accessibilityTest,
+        )
+      ) {
+        throw new Error(
+          `${ACCESSIBILITY_TEST_POLICY_FILE} is missing the repo-guard accessibility test policy; `
+          + 'run repo-guard doctor --fix',
+        );
+      }
+      checks.push(
+        `axe accessibility test pre-push gate (script=${config.accessibilityTest.script}, `
+        + `files=${setup.files.length}, integrations=`
+        + `${setup.integrations.map(({ name, version }) => `${name}@${version}`).join(',')})`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    checks.push('axe accessibility test pre-push gate is disabled');
   }
 
   if (config) {

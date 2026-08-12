@@ -140,6 +140,15 @@ export const DEFAULT_TYPE_CHECK_CONFIG = Object.freeze({
   script: 'typecheck',
   timeoutMs: 180000,
 });
+export const DEFAULT_ACCESSIBILITY_TEST_CONFIG = Object.freeze({
+  enabled: false,
+  script: 'test:a11y',
+  timeoutMs: 180000,
+  testPatterns: Object.freeze([
+    '**/*.a11y.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+    '**/accessibility/**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  ]),
+});
 export const DEFAULT_UNIT_TEST_COVERAGE_CONFIG = Object.freeze({
   enabled: false,
   reportsDirectory: 'coverage',
@@ -330,6 +339,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       'exceptions',
       'dependencyPolicy',
       'architecture',
+      'accessibilityTest',
       'build',
       'lighthouse',
       'typeCheck',
@@ -757,6 +767,48 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   ) {
     throw new Error(`${configPath} typeCheck.timeoutMs must be a positive integer`);
   }
+
+  const accessibilityTestValue = value.accessibilityTest ?? {};
+  if (
+    !accessibilityTestValue
+    || typeof accessibilityTestValue !== 'object'
+    || Array.isArray(accessibilityTestValue)
+  ) {
+    throw new Error(`${configPath} accessibilityTest must be an object`);
+  }
+  assertKnownProperties(
+    accessibilityTestValue,
+    new Set(['enabled', 'script', 'timeoutMs', 'testPatterns']),
+    `${configPath} accessibilityTest`,
+  );
+  if (
+    accessibilityTestValue.enabled != null
+    && typeof accessibilityTestValue.enabled !== 'boolean'
+  ) {
+    throw new Error(`${configPath} accessibilityTest.enabled must be a boolean`);
+  }
+  if (
+    accessibilityTestValue.script != null
+    && (
+      typeof accessibilityTestValue.script !== 'string'
+      || !/^[A-Za-z0-9:_-]+$/.test(accessibilityTestValue.script.trim())
+    )
+  ) {
+    throw new Error(`${configPath} accessibilityTest.script must be an npm script name`);
+  }
+  if (
+    accessibilityTestValue.timeoutMs != null
+    && (
+      !Number.isInteger(accessibilityTestValue.timeoutMs)
+      || accessibilityTestValue.timeoutMs <= 0
+    )
+  ) {
+    throw new Error(`${configPath} accessibilityTest.timeoutMs must be a positive integer`);
+  }
+  const accessibilityTestPatterns = normalizePatternList(
+    accessibilityTestValue.testPatterns ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns,
+    `${configPath} accessibilityTest.testPatterns`,
+  );
 
   const unitTestValue = value.unitTest ?? {};
   if (!unitTestValue || typeof unitTestValue !== 'object' || Array.isArray(unitTestValue)) {
@@ -1311,6 +1363,15 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       enabled: typeCheckValue.enabled ?? DEFAULT_TYPE_CHECK_CONFIG.enabled,
       script: typeCheckValue.script?.trim() || DEFAULT_TYPE_CHECK_CONFIG.script,
       timeoutMs: typeCheckValue.timeoutMs ?? DEFAULT_TYPE_CHECK_CONFIG.timeoutMs,
+    },
+    accessibilityTest: {
+      enabled: accessibilityTestValue.enabled
+        ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.enabled,
+      script: accessibilityTestValue.script?.trim()
+        || DEFAULT_ACCESSIBILITY_TEST_CONFIG.script,
+      timeoutMs: accessibilityTestValue.timeoutMs
+        ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.timeoutMs,
+      testPatterns: accessibilityTestPatterns,
     },
     unitTest: {
       enabled: unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled,

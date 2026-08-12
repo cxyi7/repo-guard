@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+
+- 新增 `accessibilityTest` axe 组件/E2E 可访问性测试门禁，支持 vitest-axe、jest-axe、@axe-core/playwright、cypress-axe 和 axe-core。
+- 静态要求每个匹配文件包含真实测试用例、axe 扫描和零违规断言，并拒绝禁用或筛选规则、排除节点、影响级别过滤、空脚本和 skip/only/todo 绕过。
+- 新增 `repo-guard accessibility-test`、pre-push 编排、项目能力检测、doctor 诊断修复、受管理 AGENTS.md AI 规范和配置 Schema；已有项目迁移后保持关闭。
+
 ## 0.12.14
 
 - 新增始终启用的 Vue 原生图片 alt 门禁，要求内容图片提供可静态验证且符合用途的替代文本，纯装饰图片同时使用空 alt 与静态 none/presentation 角色。

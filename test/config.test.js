@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
@@ -38,6 +39,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
+  assert.deepEqual(config.accessibilityTest, DEFAULT_ACCESSIBILITY_TEST_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
@@ -269,6 +271,34 @@ test('validates and normalizes TypeScript gate configuration', () => {
   assert.throws(
     () => validateConfig(baseConfig({ typeCheck: { timeoutMs: 0 } })),
     /positive integer/,
+  );
+});
+
+test('validates and normalizes axe accessibility test configuration', () => {
+  const config = validateConfig(baseConfig({
+    accessibilityTest: {
+      enabled: true,
+      script: '  test:a11y:e2e  ',
+      timeoutMs: 90000,
+      testPatterns: ['  e2e/accessibility/**/*.spec.ts  '],
+    },
+  }));
+
+  assert.deepEqual(config.accessibilityTest, {
+    enabled: true,
+    script: 'test:a11y:e2e',
+    timeoutMs: 90000,
+    testPatterns: ['e2e/accessibility/**/*.spec.ts'],
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({
+      accessibilityTest: { script: 'playwright test' },
+    })),
+    /must be an npm script name/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ accessibilityTest: { testPatterns: [] } })),
+    /must be a non-empty array/,
   );
 });
 

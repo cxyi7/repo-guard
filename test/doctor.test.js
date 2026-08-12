@@ -60,6 +60,14 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(packageJson.scripts['guard:form-labels'], 'repo-guard form-labels');
   assert.equal(packageJson.scripts['guard:image-alt'], 'repo-guard image-alt');
   assert.equal(
+    packageJson.scripts['guard:accessibility-test'],
+    'repo-guard accessibility-test',
+  );
+  assert.equal(
+    packageJson.scripts['guard:enable-accessibility-test'],
+    'repo-guard enable accessibilityTest',
+  );
+  assert.equal(
     packageJson.scripts['guard:style-complexity'],
     'repo-guard style-complexity',
   );
@@ -114,6 +122,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
+  assert.equal(config.accessibilityTest.enabled, false);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:exception-policy:start/,

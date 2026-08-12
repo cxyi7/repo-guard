@@ -1,13 +1,13 @@
 # @cxyi7/repo-guard
 
 面向团队 Git 仓库的本地提交门禁，提供 Vue 表单 label、`v-html` 与 `target="_blank"` 硬性检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
-Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
+Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、axe 可访问性测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.14
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.13.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -21,13 +21,14 @@ Vue Lighthouse 默认关闭，开启时业务项目还需
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 单元测试仅在新项目已经安装 Vitest 且存在 `test:unit` 脚本时由 `init` 自动开启；
 已有项目迁移后保持关闭，可准备完成后通过开关开启。
+axe 可访问性测试仅在新项目已有 `test:a11y`、匹配测试文件、受支持集成、真实扫描和零违规断言时自动开启；已有项目迁移后保持关闭。
 TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
 独立构建门禁仅在新项目已经存在 `build` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
 依赖架构门禁仅在新项目已安装 dependency-cruiser 且存在默认 `src` 路径时自动开启；已有项目迁移后保持关闭。
 
 `init` 会：
 
-1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试、依赖架构、独立构建和可选 Lighthouse 门禁使用的 `pre-push`；
+1. 生成五个受管理的 Git Hook，包括 TypeScript、单元测试、axe 可访问性测试、依赖架构、独立构建和可选 Lighthouse 门禁使用的 `pre-push`；
 2. 设置当前仓库的 `core.hooksPath=.githooks`；
 3. 增量维护 `.gitattributes` 和 `.gitignore`；
 4. 创建本地且被忽略的 `.env.config`；
@@ -36,7 +37,8 @@ TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
 8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
 9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求；
-10. 始终增量维护结构化例外、Vue 表单 label、`v-html` 和新窗口链接安全的 AI 禁止绕过要求。
+10. axe 门禁自动开启时，写入受管理的可访问性测试要求；
+11. 始终增量维护结构化例外、Vue 表单 label、图片 alt、`v-html` 和新窗口链接安全的 AI 禁止绕过要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -47,9 +49,9 @@ repo-guard migrate
 repo-guard doctor --fix
 ```
 
-`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`lighthouse`、`preCommit` 和默认
+`migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`accessibilityTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、
+已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`accessibilityTest`、
 `maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
 只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
 
@@ -175,6 +177,15 @@ git push
     "enabled": false,
     "script": "typecheck",
     "timeoutMs": 180000
+  },
+  "accessibilityTest": {
+    "enabled": false,
+    "script": "test:a11y",
+    "timeoutMs": 180000,
+    "testPatterns": [
+      "**/*.a11y.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/accessibility/**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+    ]
   },
   "unitTest": {
     "enabled": false,
@@ -808,6 +819,37 @@ repo-guard unit-test
 缺少测试时会列出源码路径、建议测试路径和全部允许位置，并输出可以直接交给 AI 的要求；测试失败时
 保留 Vitest 原始输出，再明确要求修复代码或用例，禁止删除测试、降低必要断言或关闭门禁。
 
+### axe 组件与 E2E 可访问性测试门禁
+
+`accessibilityTest` 是独立的 pre-push 硬门禁，支持 Vue 组件测试和 Playwright/Cypress E2E。业务项目拥有测试框架、浏览器环境、页面启动和具体用例；repo-guard 负责验证测试不是空壳、执行项目脚本并统一输出 AI 修复要求。
+
+支持直接使用 `vitest-axe`、`jest-axe`、`@axe-core/playwright`、`cypress-axe` 或 `axe-core`。项目应提供独立脚本，例如：
+
+```json
+{
+  "scripts": {
+    "test:a11y": "vitest run --project accessibility"
+  }
+}
+```
+
+每个匹配的测试文件都必须包含正常执行的 `test`/`it`、直接导入 axe 集成、实际 DOM 扫描和零违规断言。Playwright/axe-core 必须断言 `results.violations` 为空；Cypress 必须先 `cy.injectAxe()` 再 `cy.checkA11y()`。门禁拒绝 `.skip/.skipIf/.todo/.only`、`disableRules`、`exclude`、`withRules`、`withTags`、`runOnly`、`includedImpacts` 和 `enabled: false`，避免通过跳过规则、节点、标准标签或低影响违规制造假通过。
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | 完整 axe 设置的新项目为 `true`；迁移后 `false` | 是否在 pre-push 自动执行 |
+| `script` | `test:a11y` | 业务项目的独立 axe 测试脚本 |
+| `timeoutMs` | `180000` | 可访问性测试进程最长运行时间 |
+| `testPatterns` | `.a11y.spec/test` 与 `accessibility/` 目录 | 必须静态验证并由脚本执行的测试文件 glob |
+
+```bash
+repo-guard enable accessibilityTest
+repo-guard accessibility-test
+repo-guard doctor --fix
+```
+
+启用时会增量维护 `AGENTS.md` 中的 axe 测试硬性要求。AI 应覆盖关键组件默认、交互、加载、空数据和错误状态，或关键页面与弹窗、菜单、表单校验等 E2E 状态。axe 自动化不能发现所有可访问性问题，键盘流程、焦点顺序和屏幕阅读器体验仍需交互测试与人工审查。
+
 ### Vue Lighthouse 配置
 
 Lighthouse 当前只支持根目录 `package.json` 声明了 `vue` 的项目。业务项目自行安装：
@@ -1070,7 +1112,8 @@ repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels
 repo-guard image-alt
-repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
+repo-guard accessibility-test
+repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
 repo-guard dependencies
@@ -1095,10 +1138,10 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.14
+## 升级到 0.13.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.14
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.13.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1181,3 +1224,7 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.12.14 新增始终启用的 Vue 原生图片 alt 门禁和 `repo-guard image-alt` 全项目命令。内容图片必须
 提供可静态验证且符合用途的非空 alt；纯装饰图片必须同时使用空 alt 与静态 none/presentation 角色。
 门禁拒绝泛化占位词、文件名、不可证明的动态值及冲突装饰语义；精确例外规则为 `vue/img-alt`。
+
+0.13.0 新增 `accessibilityTest` 完整门禁体系、`repo-guard accessibility-test` 和 pre-push axe 测试。
+门禁支持组件及 Playwright/Cypress E2E，验证受支持集成、真实扫描、零违规断言与测试脚本执行，并拒绝
+禁用规则、排除节点、影响级别过滤及 skip/only/todo。已有项目迁移后保持关闭。

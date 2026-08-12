@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { runAccessibilityTestCommand } from './commands/accessibility-test.js';
 import { runArchitectureCommand } from './commands/architecture.js';
 import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
@@ -32,8 +33,8 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
-  repo-guard disable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|coverage|build|lighthouse|notification> [...]
+  repo-guard enable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|accessibilityTest|coverage|build|lighthouse|notification> [...]
+  repo-guard disable <eslint|prettier|stylelint|styleComplexity|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|accessibilityTest|coverage|build|lighthouse|notification> [...]
   repo-guard doctor [--fix]
   repo-guard exceptions
   repo-guard dependencies
@@ -50,6 +51,7 @@ Usage:
   repo-guard target-blank
   repo-guard form-labels
   repo-guard image-alt
+  repo-guard accessibility-test
   repo-guard style-complexity
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
@@ -134,6 +136,9 @@ export async function runCli(argumentsList) {
       case 'image-alt':
         ensureSupportedOptions(rest, new Set());
         return runImageAltCommand();
+      case 'accessibility-test':
+        ensureSupportedOptions(rest, new Set());
+        return runAccessibilityTestCommand();
       case 'style-complexity':
         ensureSupportedOptions(rest, new Set());
         return await runStyleComplexityCommand();

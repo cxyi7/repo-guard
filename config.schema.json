@@ -336,6 +336,44 @@
         }
       }
     },
+    "accessibilityTest": {
+      "type": "object",
+      "description": "Project-owned axe component or E2E accessibility tests run explicitly or from the managed pre-push hook.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run static axe test policy checks followed by the configured accessibility test script from pre-push. Init enables this only for a complete supported axe setup."
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9:_-]+$",
+          "default": "test:a11y",
+          "description": "Name of the consuming project's npm script dedicated to axe accessibility tests."
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 180000,
+          "description": "Maximum runtime for the accessibility test process."
+        },
+        "testPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [
+            "**/*.a11y.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "**/accessibility/**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+          ],
+          "description": "Repository-relative globs for files that must directly execute axe and assert zero violations."
+        }
+      }
+    },
     "unitTest": {
       "type": "object",
       "description": "JavaScript/TypeScript/Vue unit-test, coverage, and pre-push Vitest gate. The consuming project owns Vitest, its coverage provider, test environment, configuration, and tests.",

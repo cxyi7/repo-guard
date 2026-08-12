@@ -70,6 +70,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.dependencyPolicy.enabled, true);
   assert.equal(config.architecture.enabled, false);
+  assert.equal(config.accessibilityTest.enabled, false);
   assert.equal(config.architecture.rules.length, 3);
   assert.equal(config.build.enabled, false);
   assert.equal(config.typeCheck.enabled, false);
@@ -117,6 +118,14 @@ test('starter configuration enables unit tests when project setup was detected',
   assert.equal(config.unitTest.script, 'test:unit');
 });
 
+test('starter configuration enables axe accessibility tests when setup was detected', () => {
+  const config = createStarterConfig({ accessibilityTestEnabled: true });
+
+  assert.equal(config.accessibilityTest.enabled, true);
+  assert.equal(config.accessibilityTest.script, 'test:a11y');
+  assert.equal(config.accessibilityTest.testPatterns.length, 2);
+});
+
 test('starter configuration enables TypeScript when its project script was detected', () => {
   const config = createStarterConfig({ typeCheckEnabled: true });
 
@@ -145,6 +154,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
   assert.equal(migrated.architecture.enabled, false);
+  assert.equal(migrated.accessibilityTest.enabled, false);
   assert.equal(migrated.architecture.rules.length, 3);
   assert.equal(migrated.build.enabled, false);
   assert.equal(migrated.typeCheck.enabled, false);
@@ -230,6 +240,15 @@ test('enables the unit test pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['unitTest'], true);
   assert.deepEqual(enabled.changed, ['unitTest']);
   assert.equal(readConfig(root).unitTest.enabled, true);
+});
+
+test('enables the axe accessibility test pre-push feature', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['accessibilityTest'], true);
+  assert.deepEqual(enabled.changed, ['accessibilityTest']);
+  assert.equal(readConfig(root).accessibilityTest.enabled, true);
 });
 
 test('enables the architecture pre-push feature', (context) => {

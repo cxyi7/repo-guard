@@ -1,5 +1,16 @@
 export { loadConfig, matchRule, validateConfig } from './config.js';
 export {
+  buildAccessibilityTestAiInstructions,
+  detectProjectAccessibilityTestSetup,
+  inspectAccessibilityTestSetup,
+  runAccessibilityTestGate,
+  validateAccessibilityTestSetup,
+} from './accessibility-test-runner.js';
+export {
+  ensureAccessibilityTestPolicy,
+  isAccessibilityTestPolicyCurrent,
+} from './accessibility-test-policy.js';
+export {
   assertExceptionRegistryCurrent,
   findStructuredException,
   formatExceptionRegistryReport,

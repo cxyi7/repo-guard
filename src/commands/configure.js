@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { ensureAccessibilityTestPolicy } from '../accessibility-test-policy.js';
 import { ensureArchitecturePolicy } from '../architecture-policy.js';
 import { CONFIG_FILE, loadConfig } from '../config.js';
 import {
@@ -23,6 +24,15 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
     const policy = ensureArchitecturePolicy(root, loadConfig(root).architecture);
     console.log(
       `repo-guard architecture policy: ${policy.changed ? 'updated' : 'already current'}`,
+    );
+  }
+  if (enabled && requestedFeatures.includes('accessibilityTest')) {
+    const policy = ensureAccessibilityTestPolicy(
+      root,
+      loadConfig(root).accessibilityTest,
+    );
+    console.log(
+      `repo-guard accessibility test policy: ${policy.changed ? 'updated' : 'already current'}`,
     );
   }
   if (enabled && requestedFeatures.some((feature) => (

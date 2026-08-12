@@ -1,4 +1,5 @@
 import {
+  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   CONFIG_FILE,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
@@ -7,6 +8,13 @@ import {
   loadConfig,
 } from '../config.js';
 import { detectProjectArchitectureSetup } from '../architecture-runner.js';
+import {
+  detectProjectAccessibilityTestSetup,
+} from '../accessibility-test-runner.js';
+import {
+  ACCESSIBILITY_TEST_POLICY_FILE,
+  ensureAccessibilityTestPolicy,
+} from '../accessibility-test-policy.js';
 import {
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
@@ -33,11 +41,16 @@ export function runInit(cwd = process.cwd()) {
     root,
     DEFAULT_ARCHITECTURE_CONFIG,
   );
+  const accessibilityTestSetup = detectProjectAccessibilityTestSetup(
+    root,
+    DEFAULT_ACCESSIBILITY_TEST_CONFIG,
+  );
   const buildSetup = detectProjectBuildSetup(root, DEFAULT_BUILD_CONFIG);
   const stylelintSetup = detectProjectStylelintSetup(root);
   const typeCheckSetup = detectProjectTypeCheckSetup(root, DEFAULT_TYPE_CHECK_CONFIG);
   const unitTestSetup = detectProjectUnitTestSetup(root, DEFAULT_UNIT_TEST_CONFIG);
   const { created: configCreated } = ensureProjectConfig(root, {
+    accessibilityTestEnabled: accessibilityTestSetup.ready,
     architectureEnabled: architectureSetup.ready,
     buildEnabled: buildSetup.ready,
     stylelintEnabled: stylelintSetup.ready,
@@ -52,6 +65,9 @@ export function runInit(cwd = process.cwd()) {
   const exceptionPolicy = ensureExceptionPolicy(root, config.exceptions);
   const architecturePolicy = config.architecture.enabled
     ? ensureArchitecturePolicy(root, config.architecture)
+    : null;
+  const accessibilityTestPolicy = config.accessibilityTest.enabled
+    ? ensureAccessibilityTestPolicy(root, config.accessibilityTest)
     : null;
   const unitTestPolicy = config.unitTest.enabled
     ? ensureUnitTestPolicy(root, config.unitTest)
@@ -75,6 +91,13 @@ export function runInit(cwd = process.cwd()) {
   if (architecturePolicy) {
     console.log(
       `- ${ARCHITECTURE_POLICY_FILE}: ${architecturePolicy.changed ? 'updated' : 'preserved'}`,
+    );
+  }
+  if (accessibilityTestPolicy) {
+    console.log(
+      `- ${ACCESSIBILITY_TEST_POLICY_FILE}: `
+      + `${accessibilityTestPolicy.changed ? 'updated' : 'preserved'} `
+      + '(axe accessibility test policy)',
     );
   }
   if (unitTestPolicy) {
@@ -110,6 +133,11 @@ export function runInit(cwd = process.cwd()) {
       unitTestSetup.ready
         ? `- Unit tests: enabled with npm script "${DEFAULT_UNIT_TEST_CONFIG.script}"`
         : '- Unit tests: disabled until the project installs Vitest and adds test:unit',
+    );
+    console.log(
+      accessibilityTestSetup.ready
+        ? `- Accessibility tests: enabled with npm script "${DEFAULT_ACCESSIBILITY_TEST_CONFIG.script}"`
+        : '- Accessibility tests: disabled until the project adds a complete axe test:a11y setup',
     );
   }
   console.log('- run "repo-guard doctor" after configuring notification environment variables');

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { assertExceptionRegistryCurrent } from './exception-registry.js';
 import {
   CONFIG_FILE,
+  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
@@ -34,6 +35,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'styleComplexity',
   'dependencies',
   'architecture',
+  'accessibilityTest',
   'build',
   'lighthouse',
   'typeCheck',
@@ -129,6 +131,7 @@ function cloneStylelintConfig(value = {}) {
 }
 
 export function createStarterConfig({
+  accessibilityTestEnabled = false,
   architectureEnabled = false,
   buildEnabled = false,
   stylelintEnabled = false,
@@ -142,6 +145,11 @@ export function createStarterConfig({
     exceptions: cloneExceptionsConfig(),
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
+    accessibilityTest: {
+      ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
+      enabled: accessibilityTestEnabled,
+      testPatterns: [...DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns],
+    },
     build: {
       ...DEFAULT_BUILD_CONFIG,
       enabled: buildEnabled,
@@ -230,6 +238,14 @@ export function migrateProjectConfig(root, {
     exceptions: cloneExceptionsConfig(prepared.exceptions),
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
     architecture: cloneArchitectureConfig(prepared.architecture),
+    accessibilityTest: {
+      ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
+      ...(prepared.accessibilityTest ?? {}),
+      testPatterns: [
+        ...(prepared.accessibilityTest?.testPatterns
+          ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns),
+      ],
+    },
     build: {
       ...DEFAULT_BUILD_CONFIG,
       ...(prepared.build ?? {}),
@@ -291,6 +307,7 @@ function featureConfig(config, feature) {
   if (
     feature === 'build'
     || feature === 'architecture'
+    || feature === 'accessibilityTest'
     || feature === 'notification'
     || feature === 'lighthouse'
     || feature === 'typeCheck'

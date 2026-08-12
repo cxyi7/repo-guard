@@ -52,6 +52,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'build',
       'typeCheck',
       'unitTest',
+      'accessibilityTest',
       'coverage',
       'lighthouse',
     ],
@@ -67,6 +68,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /build: enabled/);
   assert.match(enableResult.stdout, /typeCheck: enabled/);
   assert.match(enableResult.stdout, /unitTest: enabled/);
+  assert.match(enableResult.stdout, /accessibilityTest: enabled/);
   assert.match(enableResult.stdout, /coverage: enabled/);
 
   const config = JSON.parse(
@@ -83,6 +85,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.build.enabled, true);
   assert.equal(config.typeCheck.enabled, true);
   assert.equal(config.unitTest.enabled, true);
+  assert.equal(config.accessibilityTest.enabled, true);
   assert.equal(config.unitTest.coverage.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
@@ -91,6 +94,10 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:architecture-policy:start/,
+  );
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /repo-guard:accessibility-test-policy:start/,
   );
 
   const disableResult = run(root, ['disable', 'notification']);
