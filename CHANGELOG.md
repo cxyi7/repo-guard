@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.14
+
+- 新增始终启用的 Vue 原生图片 alt 门禁，要求内容图片提供可静态验证且符合用途的替代文本，纯装饰图片同时使用空 alt 与静态 none/presentation 角色。
+- 拒绝缺失或不可证明的动态 alt、未明确装饰语义的空 alt、冲突装饰角色、泛化占位词、图片文件名、重复语义属性和可能覆盖语义的对象批量绑定。
+- 新增 `repo-guard image-alt`、`guard:image-alt`、doctor 诊断、统一 AI 修复报告和 `vue/img-alt` 精确结构化例外。
+
 ## 0.12.13
 
 - 新增始终启用的 Vue 原生表单控件 label 门禁，覆盖 `input`、`select` 和 `textarea`。

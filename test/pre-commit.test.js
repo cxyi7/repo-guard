@@ -739,6 +739,23 @@ test('blocks staged unlabeled Vue form controls when optional gates are disabled
   assert.equal(normalizeEol(git(root, ['show', ':Form.vue'])), content);
 });
 
+test('blocks staged Vue images without alt when optional gates are disabled', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = '<template><img src="status.png"></template>\n';
+  writeFileSync(path.join(root, 'Status.vue'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':Status.vue'])), content);
+});
+
 test('allows deleting a Vue file when optional quality gates are disabled', async (context) => {
   const root = createRepository({
     enabled: false,

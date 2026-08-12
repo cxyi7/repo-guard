@@ -7,7 +7,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.13
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.14
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -624,6 +624,28 @@ repo-guard form-labels
 
 `init` 或 `doctor --fix` 会补充 `guard:form-labels`；该硬性门禁没有关闭命令，也不依赖项目是否安装 ESLint 或可访问性插件。
 
+### Vue 图片 alt 门禁
+
+repo-guard 始终检查 Vue 根模板中的原生 `<img>`，要求图片具有可静态验证且符合页面用途的 `alt`。内容图片必须使用简洁、准确的非空说明；纯装饰图片必须同时使用空 `alt` 与静态装饰角色：
+
+```vue
+<img src="release-chart.png" alt="本周发布成功率为 98% 的趋势图">
+<img src="divider.svg" alt="" role="presentation">
+<img src="background-shape.svg" :alt="''" :role="'none'">
+```
+
+门禁会拒绝缺少 `alt`、无法静态证明的动态 `alt`、没有明确装饰角色的空 `alt`、与非空 `alt` 冲突的 `none`/`presentation` 角色，以及 `图片`、`icon`、`image`、`photo.jpg` 或空白字符引用等无意义文本。重复 `alt`/`role` 和无参数 `v-bind="attrs"` 也会失败，避免运行时对象覆盖已检查的语义。简单绑定字面量可以解析；运行时表达式若确实无法改为静态语义，必须由负责人登记精确、限期的结构化例外。
+
+未经批准的问题使用规则 ID `vue/img-alt`，发现位置指向原生 `img` 标签名。AI 报告会同时给出失败原因、针对性修复、兼容边界、禁止绕过项和验证要求；不得用 `title`、`aria-label` 或动态绑定代替合适的 `alt`。
+
+全项目检查命令为：
+
+```bash
+repo-guard image-alt
+```
+
+`init` 或 `doctor --fix` 会补充 `guard:image-alt`；该硬性门禁没有关闭命令，也不依赖项目是否安装 ESLint 或可访问性插件。
+
 ### 依赖治理门禁
 
 依赖治理检查根目录 `package.json` 与 npm `package-lock.json`。新项目由 `init` 默认开启；已有项目迁移后保持关闭，评估存量依赖后再启用。只有根清单或锁文件被暂存时才进入 `pre-commit`，并直接读取 Git 暂存快照，因此不会混入未暂存内容，也不能通过只删除锁文件绕过。显式命令不受开关限制，可用于启用前审计：
@@ -1047,6 +1069,7 @@ repo-guard exceptions
 repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels
+repo-guard image-alt
 repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
@@ -1068,14 +1091,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.13
+## 升级到 0.12.14
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.13
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.14
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1154,3 +1177,7 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 `input`、`select`、`textarea` 必须具有静态 `for/id`、外层 `label`、非空 `aria-label` 或指向现有 id 的
 `aria-labelledby`；`placeholder`、`title` 和不可证明的动态绑定不能绕过。精确例外规则为
 `vue/form-control-label`。
+
+0.12.14 新增始终启用的 Vue 原生图片 alt 门禁和 `repo-guard image-alt` 全项目命令。内容图片必须
+提供可静态验证且符合用途的非空 alt；纯装饰图片必须同时使用空 alt 与静态 none/presentation 角色。
+门禁拒绝泛化占位词、文件名、不可证明的动态值及冲突装饰语义；精确例外规则为 `vue/img-alt`。

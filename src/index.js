@@ -65,6 +65,14 @@ export {
   VUE_FORM_CONTROL_LABEL_RULE,
 } from './vue-form-label.js';
 export {
+  buildVueImageAltAiInstructions,
+  findVueImageAltIssues,
+  inspectVueImageAlts,
+  runVueImageAltFiles,
+  runVueImageAltProject,
+  VUE_IMAGE_ALT_RULE,
+} from './vue-image-alt.js';
+export {
   buildVueTargetBlankAiInstructions,
   findVueTargetBlankIssues,
   inspectVueTargetBlank,

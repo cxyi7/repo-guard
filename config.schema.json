@@ -74,7 +74,7 @@
               "rule": {
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)+$",
-                "description": "Namespaced repo-guard rule id, for example vue/no-v-html or vue/form-control-label."
+                "description": "Namespaced repo-guard rule id, for example vue/no-v-html, vue/form-control-label, or vue/img-alt."
               },
               "path": {
                 "type": "string",

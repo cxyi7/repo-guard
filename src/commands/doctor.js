@@ -345,6 +345,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       'Vue form control label staged gate '
       + '(hard requirement, rule=vue/form-control-label)',
     );
+    checks.push(
+      'Vue image alt staged gate '
+      + '(hard requirement, rule=vue/img-alt)',
+    );
     if (config.dependencyPolicy.enabled) {
       checks.push(
         `Dependency policy (exact=${config.dependencyPolicy.requireExactVersions}, `

@@ -10,6 +10,7 @@ import { runFilePlacementCommand } from './commands/file-placement.js';
 import { runFormLabelsCommand } from './commands/form-labels.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
+import { runImageAltCommand } from './commands/image-alt.js';
 import { runInit, runInstallHooks } from './commands/init.js';
 import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
@@ -48,6 +49,7 @@ Usage:
   repo-guard unsafe-html
   repo-guard target-blank
   repo-guard form-labels
+  repo-guard image-alt
   repo-guard style-complexity
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
@@ -129,6 +131,9 @@ export async function runCli(argumentsList) {
       case 'form-labels':
         ensureSupportedOptions(rest, new Set());
         return runFormLabelsCommand();
+      case 'image-alt':
+        ensureSupportedOptions(rest, new Set());
+        return runImageAltCommand();
       case 'style-complexity':
         ensureSupportedOptions(rest, new Set());
         return await runStyleComplexityCommand();

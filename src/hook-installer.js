@@ -92,6 +92,7 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:unsafe-html'] ||= 'repo-guard unsafe-html';
   packageJson.scripts['guard:target-blank'] ||= 'repo-guard target-blank';
   packageJson.scripts['guard:form-labels'] ||= 'repo-guard form-labels';
+  packageJson.scripts['guard:image-alt'] ||= 'repo-guard image-alt';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
   packageJson.scripts['guard:architecture'] ||= 'repo-guard architecture';

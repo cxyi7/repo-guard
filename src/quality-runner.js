@@ -9,6 +9,7 @@ import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
 import { runVueFormLabelFiles } from './vue-form-label.js';
+import { runVueImageAltFiles } from './vue-image-alt.js';
 import { runVueTargetBlankFiles } from './vue-target-blank.js';
 import { runUnsafeVueHtmlFiles } from './vue-unsafe-html.js';
 import {
@@ -165,6 +166,14 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (formLabelExitCode !== 0) {
         return fail(formLabelExitCode);
+      }
+      const imageAltExitCode = runVueImageAltFiles({
+        root,
+        files: normalizedFiles,
+        exceptions: config.exceptions,
+      });
+      if (imageAltExitCode !== 0) {
+        return fail(imageAltExitCode);
       }
     }
 
