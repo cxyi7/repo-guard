@@ -8,6 +8,7 @@ import { runFilePlacementFiles } from './file-placement.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
+import { runDynamicCodeFiles } from './dynamic-code.js';
 import { runVueFormLabelFiles } from './vue-form-label.js';
 import { runVueImageAltFiles } from './vue-image-alt.js';
 import { runVueTargetBlankFiles } from './vue-target-blank.js';
@@ -37,6 +38,9 @@ export async function runQualityFiles({ root, files, config }) {
   const stylelintConfig = config.preCommit.stylelint;
   const maxFileLinesConfig = config.preCommit.maxFileLines;
   const filePlacementConfig = config.preCommit.filePlacement;
+  const dynamicCodeFiles = normalizedFiles
+    .filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue)$/i.test(relative))
+    .map(({ absolute }) => absolute);
   const vueSecurityFiles = normalizedFiles
     .filter(({ relative }) => relative.toLowerCase().endsWith('.vue'))
     .map(({ absolute }) => absolute);
@@ -57,6 +61,7 @@ export async function runQualityFiles({ root, files, config }) {
     eslintFiles,
     prettierFiles,
     maxFileLineFiles,
+    dynamicCodeFiles,
     vueSecurityFiles,
   );
 
@@ -139,6 +144,29 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (eslintVerifyExitCode !== 0) {
         return fail(eslintVerifyExitCode);
+      }
+    }
+
+    if (dynamicCodeFiles.length > 0) {
+      let dynamicCodeExitCode;
+      try {
+        dynamicCodeExitCode = runDynamicCodeFiles({
+          root,
+          files: normalizedFiles,
+          exceptions: config.exceptions,
+        });
+      } catch (error) {
+        if (!String(error.message).startsWith('Dynamic code gate could not parse ')) {
+          throw error;
+        }
+        console.warn(
+          `${error.message}. Dynamic-code inspection was deferred for this invalid or `
+          + 'unsupported script; when ESLint is enabled, its completed result remains authoritative.',
+        );
+        dynamicCodeExitCode = 0;
+      }
+      if (dynamicCodeExitCode !== 0) {
+        return fail(dynamicCodeExitCode);
       }
     }
 

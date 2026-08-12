@@ -378,6 +378,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
   }
 
   if (config) {
+    checks.push(
+      'Dynamic code staged gate '
+      + '(hard requirement, rules=security/no-eval+security/no-function-constructor)',
+    );
     checks.push('Vue v-html staged gate (hard requirement, rule=vue/no-v-html)');
     checks.push(
       'Vue target=_blank staged gate '

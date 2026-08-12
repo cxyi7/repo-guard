@@ -5,6 +5,7 @@ import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
+import { runDynamicCodeCommand } from './commands/dynamic-code.js';
 import { runDependenciesCommand } from './commands/dependencies.js';
 import { runExceptionsCommand } from './commands/exceptions.js';
 import { runFilePlacementCommand } from './commands/file-placement.js';
@@ -47,6 +48,7 @@ Usage:
   repo-guard architecture
   repo-guard typecheck
   repo-guard unit-test
+  repo-guard dynamic-code
   repo-guard unsafe-html
   repo-guard target-blank
   repo-guard form-labels
@@ -124,6 +126,9 @@ export async function runCli(argumentsList) {
       case 'typecheck':
         ensureSupportedOptions(rest, new Set());
         return runTypeCheckCommand();
+      case 'dynamic-code':
+        ensureSupportedOptions(rest, new Set());
+        return runDynamicCodeCommand();
       case 'unsafe-html':
         ensureSupportedOptions(rest, new Set());
         return runUnsafeHtmlCommand();

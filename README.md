@@ -570,6 +570,22 @@ repo-guard doctor
 
 `repo-guard exceptions` 是只读报告，不修改登记表。`init` 和 `doctor --fix` 会在 `AGENTS.md` 增量维护结构化例外硬性要求，明确禁止 AI 新增、延期或改审批信息绕过。后续安全、依赖和样式规则通过相同的规则 ID、路径、行列调用这套机制。
 
+### 动态代码执行安全门禁
+
+repo-guard 始终检查 JavaScript、TypeScript、JSX、TSX 和 Vue `<script>` 中的 `eval` 与 `Function` 构造器。该门禁不依赖 ESLint 或业务项目配置，即使所有可选质量门禁关闭，发现仍会阻止提交。
+
+门禁覆盖 `eval(value)`、`(0, eval)(value)`、`window.eval`、`globalThis['eval']`、`new Function(...)`、直接 `Function(...)` 以及从 `window`、`globalThis`、`self`、`global` 获取这些能力后再调用的简单别名。扫描器跳过注释、普通字符串、正则字面量和模板字符串文本，但会继续分析模板表达式 `${...}`；Vue 只扫描 `<script>` 和 `<script setup>`，不把模板或样式中的文本当作脚本。
+
+规则 ID 分别为 `security/no-eval` 和 `security/no-function-constructor`。应将字符串输入改为明确的数据解析（优先 `JSON.parse`）、白名单分支或预先声明的函数映射，并保持原有合法输入、错误处理和接口兼容。AI 不得改用间接调用、全局对象、可选链或方括号属性绕过；确有遗留场景只能由有权人员手工登记精确、限时的结构化例外。
+
+可以显式执行全项目检查：
+
+```bash
+repo-guard dynamic-code
+```
+
+`init` 或 `doctor --fix` 会补充 `guard:dynamic-code` 项目脚本和 AGENTS.md 硬性要求。该门禁没有 `enable` 或 `disable` 命令。
+
 ### Vue v-html 安全门禁
 
 repo-guard 始终检查暂存 `.vue` 文件根 `<template>` 中的 `v-html`。该门禁不依赖业务项目的 ESLint、`eslint-plugin-vue` 或配置开关；即使所有可选质量门禁关闭，未经批准的 `v-html` 仍会阻止提交。
@@ -1108,6 +1124,7 @@ repo-guard init
 repo-guard install-hooks
 repo-guard migrate
 repo-guard exceptions
+repo-guard dynamic-code
 repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels
@@ -1228,3 +1245,6 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.13.0 新增 `accessibilityTest` 完整门禁体系、`repo-guard accessibility-test` 和 pre-push axe 测试。
 门禁支持组件及 Playwright/Cypress E2E，验证受支持集成、真实扫描、零违规断言与测试脚本执行，并拒绝
 禁用规则、排除节点、影响级别过滤及 skip/only/todo。已有项目迁移后保持关闭。
+
+0.13.1 新增始终启用的动态代码执行门禁，覆盖 JavaScript、TypeScript、JSX、TSX 和 Vue 脚本中的
+`eval` 与 `Function` 构造器，识别常见间接访问方式并提供精确结构化例外和面向 AI 的安全改写指令。

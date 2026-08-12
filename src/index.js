@@ -27,6 +27,15 @@ export {
   runStagedDependencyPolicy,
 } from './dependency-policy.js';
 export {
+  buildDynamicCodeAiInstructions,
+  findDynamicCodeExecution,
+  inspectDynamicCode,
+  NO_EVAL_RULE,
+  NO_FUNCTION_CONSTRUCTOR_RULE,
+  runDynamicCodeFiles,
+  runDynamicCodeProject,
+} from './dynamic-code.js';
+export {
   buildArchitectureAiRepairInstructions,
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,

@@ -89,6 +89,7 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:exceptions'] ||= 'repo-guard exceptions';
   packageJson.scripts['guard:dependencies'] ||= 'repo-guard dependencies';
   packageJson.scripts['guard:enable-dependencies'] ||= 'repo-guard enable dependencies';
+  packageJson.scripts['guard:dynamic-code'] ||= 'repo-guard dynamic-code';
   packageJson.scripts['guard:unsafe-html'] ||= 'repo-guard unsafe-html';
   packageJson.scripts['guard:target-blank'] ||= 'repo-guard target-blank';
   packageJson.scripts['guard:form-labels'] ||= 'repo-guard form-labels';

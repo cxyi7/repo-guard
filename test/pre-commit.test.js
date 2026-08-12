@@ -243,6 +243,19 @@ test('lets the project disable the ESLint gate explicitly', async (context) => {
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), invalid);
 });
 
+test('still blocks parseable eval when the project disables ESLint', async (context) => {
+  const root = createRepository({ enabled: false });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+
+  const unsafe = 'export const run = (source) => eval(source);\n';
+  writeFileSync(path.join(root, 'runtime.js'), unsafe);
+  git(root, ['add', 'runtime.js']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':runtime.js'])), unsafe);
+});
+
 test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {
   const root = createRepository({ eslintPreset: true });
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -651,6 +664,23 @@ test('blocks staged Vue v-html even when optional quality gates are disabled', a
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':App.vue'])), content);
+});
+
+test('blocks staged dynamic code execution when optional gates are disabled', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = 'export const execute = (source) => new Function(source)();\n';
+  writeFileSync(path.join(root, 'runtime.ts'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':runtime.ts'])), content);
 });
 
 test('blocks unsafe staged Vue target blank links when optional gates are disabled', async (context) => {

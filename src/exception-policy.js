@@ -17,6 +17,7 @@ function managedLines(config) {
     '',
     '- 代码规则例外只能登记在 `repo-guard.config.json#exceptions.entries`，禁止使用散落注释、普通 ignore 或关闭规则代替。',
     '- 每条例外必须精确匹配规则、文件、行和列，并包含原因、责任人、独立审批人、工单及创建/到期日期。',
+    '- JavaScript、TypeScript 和 Vue 脚本禁止使用 `eval` 或 `Function` 构造器动态执行字符串；例外规则为 `security/no-eval` 和 `security/no-function-constructor`。',
     '- Vue 模板禁止使用 `v-html`；只有精确命中当前有效 `vue/no-v-html` 结构化例外的位置才能放行。',
     '- Vue 模板的 `target="_blank"` 必须同时包含 `rel="noopener noreferrer"`；例外规则为 `vue/target-blank-security`。',
     '- Vue 原生表单控件必须具有可静态验证的关联 label 或无障碍名称；例外规则为 `vue/form-control-label`。',

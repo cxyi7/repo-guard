@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.1
+
+- 新增始终启用的动态代码执行安全门禁，覆盖 JavaScript、TypeScript、JSX、TSX 和 Vue `<script>` 中的 `eval` 与 `Function` 构造器。
+- 识别直接、间接、全局对象、可选链、方括号访问和简单别名获取，同时跳过注释、普通字符串、正则、模板文本与 Vue 非脚本区域。
+- 新增 `repo-guard dynamic-code`、`guard:dynamic-code`、doctor 诊断、结构化例外规则和可直接交给 AI 的风险说明、替代方案与验证要求。
+
 ## 0.13.0
 
 - 新增 `accessibilityTest` axe 组件/E2E 可访问性测试门禁，支持 vitest-axe、jest-axe、@axe-core/playwright、cypress-axe 和 axe-core。
