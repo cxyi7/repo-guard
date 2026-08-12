@@ -1,18 +1,18 @@
 # @cxyi7/repo-guard
 
-面向团队 Git 仓库的本地提交门禁，提供 Vue `v-html` 与 `target="_blank"` 安全检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
+面向团队 Git 仓库的本地提交门禁，提供 Vue 表单 label、`v-html` 与 `target="_blank"` 硬性检查、结构化限时例外、暂存文件 Stylelint/ESLint 自动修复、
 Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、文件归位、单文件行数限制、JS/TS/Vue 单元测试、依赖架构、独立生产构建、Vue Lighthouse 推送前质量检查、
 公共文件保护、TypeScript 推送前类型检查、企业微信备案和提交信息文件清单。
 
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.12
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.13
 npx repo-guard init
 npx repo-guard doctor
 ```
 
-Vue `v-html` 和 `target="_blank"` 安全门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、依赖治理、文件归位、Vue/JS/TS 单文件行数门禁、
+Vue 表单 label、`v-html` 和 `target="_blank"` 门禁始终启用且没有关闭开关。新生成的配置默认启用 ESLint 自动修复、Prettier 自动格式化、依赖治理、文件归位、Vue/JS/TS 单文件行数门禁、
 企业微信通知和 9 条通知级保护规则。只有检测到业务项目已安装 Stylelint 且已有 Stylelint 配置时，
 `init` 才会同时启用 Stylelint 及默认的选择器与嵌套复杂度门禁；否则保留为关闭状态。业务项目必须自行安装并配置
 所启用的 ESLint、Prettier、Stylelint；默认 ESLint 规则基线还需要 `@eslint/js`。
@@ -36,7 +36,7 @@ TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自
 7. 在项目没有 `prepare` 脚本时添加 `repo-guard install-hooks`；
 8. 单元测试自动开启时，在根目录 `AGENTS.md` 写入受管理的 AI 测试要求；
 9. 依赖架构门禁自动开启时，在同一文件写入受管理的 AI 架构硬性要求；
-10. 始终增量维护结构化例外、Vue `v-html` 和新窗口链接安全的 AI 禁止绕过要求。
+10. 始终增量维护结构化例外、Vue 表单 label、`v-html` 和新窗口链接安全的 AI 禁止绕过要求。
 
 已有的非托管 Hook 不会被覆盖。重复执行 `init` 不会生成重复配置。
 
@@ -73,6 +73,7 @@ git commit
   → ESLint 最终只读复检
   → 检查 Vue 模板中的 v-html 及精确结构化例外
   → 检查 target="_blank" 的 noopener、noreferrer 及精确结构化例外
+  → 检查 Vue 原生表单控件的 label 及精确结构化例外
   → 检查最终暂存文件的完整行数
   → 检查新增、复制或重命名文件的存放位置
   → 质量结果写回暂存区并恢复未暂存内容
@@ -81,7 +82,7 @@ git commit
   → 提交信息文件清单
 ```
 
-Vue `v-html`、`target="_blank"`、Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
+Vue 表单 label、`v-html`、`target="_blank"`、Stylelint、ESLint、Prettier、单文件行数或文件归位门禁失败时，`lint-staged` 恢复执行前状态并阻止提交。保护文件
 门禁始终在代码质量门禁成功之后运行，因此通知和指纹对应最终暂存内容。
 
 TypeScript 类型检查不会进入 `pre-commit`。开启 `typeCheck` 后，repo-guard 在 `pre-push`
@@ -597,6 +598,32 @@ repo-guard target-blank
 
 `init` 或 `doctor --fix` 会补充 `guard:target-blank`；该硬性门禁没有关闭命令。
 
+### Vue 表单控件 label 门禁
+
+repo-guard 始终检查 Vue 根模板中的原生 `input`、`select` 和 `textarea`，要求每个需要命名的控件具有可静态验证的无障碍名称。接受以下写法：
+
+```vue
+<label for="email">邮箱</label>
+<input id="email">
+
+<label>姓名 <input></label>
+<input aria-label="站内搜索">
+<span id="phone-label">手机号</span>
+<input aria-labelledby="phone-label">
+```
+
+`input[type=hidden|button|submit|reset|image]` 不要求额外 label；自定义 Vue 组件不由本规则假定为原生控件。`placeholder`、`title`、空字符串和无法静态证明非空的动态 `aria-label` 不会被当作 label。静态属性及简单绑定字面量可以解析，例如 `:aria-label="'搜索'"`、`:id="'email'"` 和 `:for="'email'"`。
+
+`aria-labelledby` 的每个静态 token 都必须指向模板中现有的静态 id；外部动态渲染关系无法证明，因此应改成明确的模板关联或经过审批的精确结构化例外。未经批准的问题使用规则 ID `vue/form-control-label`，发现位置指向控件标签名。
+
+全项目检查命令为：
+
+```bash
+repo-guard form-labels
+```
+
+`init` 或 `doctor --fix` 会补充 `guard:form-labels`；该硬性门禁没有关闭命令，也不依赖项目是否安装 ESLint 或可访问性插件。
+
 ### 依赖治理门禁
 
 依赖治理检查根目录 `package.json` 与 npm `package-lock.json`。新项目由 `init` 默认开启；已有项目迁移后保持关闭，评估存量依赖后再启用。只有根清单或锁文件被暂存时才进入 `pre-commit`，并直接读取 Git 暂存快照，因此不会混入未暂存内容，也不能通过只删除锁文件绕过。显式命令不受开关限制，可用于启用前审计：
@@ -1019,6 +1046,7 @@ repo-guard migrate
 repo-guard exceptions
 repo-guard unsafe-html
 repo-guard target-blank
+repo-guard form-labels
 repo-guard enable eslint prettier stylelint styleComplexity maxFileLines filePlacement dependencies architecture typeCheck unitTest coverage build
 repo-guard disable filePlacement
 repo-guard file-placement
@@ -1040,14 +1068,14 @@ repo-guard dry-run
 repo-guard gate --dry-run
 ```
 
-`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue `v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
+`doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.12.12
+## 升级到 0.12.13
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.12
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.12.13
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
@@ -1121,3 +1149,8 @@ Vue 根模板并跳过脚本、注释和插值字符串；未经批准的发现�
 0.12.12 新增 `preCommit.stylelint.complexity` 和 `repo-guard style-complexity`，默认限制复合选择器段数
 与样式嵌套深度为 3。Stylelint 就绪的新项目默认开启；已有配置迁移后保持关闭，可先专项审计再执行
 `repo-guard enable styleComplexity`。硬规则不能被项目配置、ignore 或 disable 注释覆盖。
+
+0.12.13 新增始终启用的 Vue 原生表单控件 label 门禁和 `repo-guard form-labels` 全项目命令。
+`input`、`select`、`textarea` 必须具有静态 `for/id`、外层 `label`、非空 `aria-label` 或指向现有 id 的
+`aria-labelledby`；`placeholder`、`title` 和不可证明的动态绑定不能绕过。精确例外规则为
+`vue/form-control-label`。

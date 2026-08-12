@@ -8,6 +8,7 @@ import { runFilePlacementFiles } from './file-placement.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
+import { runVueFormLabelFiles } from './vue-form-label.js';
 import { runVueTargetBlankFiles } from './vue-target-blank.js';
 import { runUnsafeVueHtmlFiles } from './vue-unsafe-html.js';
 import {
@@ -156,6 +157,14 @@ export async function runQualityFiles({ root, files, config }) {
       });
       if (targetBlankExitCode !== 0) {
         return fail(targetBlankExitCode);
+      }
+      const formLabelExitCode = runVueFormLabelFiles({
+        root,
+        files: normalizedFiles,
+        exceptions: config.exceptions,
+      });
+      if (formLabelExitCode !== 0) {
+        return fail(formLabelExitCode);
       }
     }
 

@@ -156,6 +156,7 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
   assert.match(content, /AI 不得自行新增例外/);
   assert.match(content, /Vue 模板禁止使用 `v-html`/);
   assert.match(content, /target="_blank"/);
+  assert.match(content, /原生表单控件必须具有可静态验证/);
   assert.match(content, /依赖必须遵守精确版本/);
   assert.match(content, /样式复杂度门禁/);
 });

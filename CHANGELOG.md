@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.13
+
+- 新增始终启用的 Vue 原生表单控件 label 门禁，覆盖 `input`、`select` 和 `textarea`。
+- 接受静态 `for/id`、外层 `label`、非空 `aria-label` 及指向模板现有 id 的 `aria-labelledby`；拒绝 `placeholder`、`title`、空值和不可证明的动态绑定。
+- 新增 `repo-guard form-labels`、`guard:form-labels`、doctor 诊断、统一 AI 修复报告和 `vue/form-control-label` 精确结构化例外。
+- 在 `PUBLISHING.md` 与仓库 `AGENTS.md` 中固化发布版本规则：小型兼容功能升补丁版本，大型门禁或工作流升次版本，不兼容变更先审查主版本及迁移方案。
+
 ## 0.12.12
 
 - 新增 `preCommit.stylelint.complexity` 配置和 `repo-guard style-complexity` 全项目命令，默认限制复合选择器段数与样式嵌套深度为 3。

@@ -341,6 +341,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false } = {}) {
       'Vue target=_blank staged gate '
       + '(hard requirement, rel=noopener+noreferrer, rule=vue/target-blank-security)',
     );
+    checks.push(
+      'Vue form control label staged gate '
+      + '(hard requirement, rule=vue/form-control-label)',
+    );
     if (config.dependencyPolicy.enabled) {
       checks.push(
         `Dependency policy (exact=${config.dependencyPolicy.requireExactVersions}, `

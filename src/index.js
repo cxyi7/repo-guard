@@ -52,9 +52,18 @@ export {
 export { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 export { runPrettierFiles } from './prettier-runner.js';
 export {
+  findVueTemplateElements,
   findVueTemplateAttributes,
   sourceLocation as resolveVueSourceLocation,
 } from './vue-template-parser.js';
+export {
+  buildVueFormLabelAiInstructions,
+  findVueFormLabelIssues,
+  inspectVueFormLabels,
+  runVueFormLabelFiles,
+  runVueFormLabelProject,
+  VUE_FORM_CONTROL_LABEL_RULE,
+} from './vue-form-label.js';
 export {
   buildVueTargetBlankAiInstructions,
   findVueTargetBlankIssues,

@@ -12,6 +12,11 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Preserve partially staged and unstaged changes through `lint-staged`.
 - Managed Hook upgrades must accept known older markers but generate only the current version.
 - Every behavior change requires tests and synchronized README/config schema updates.
+- Version every independently released change by impact: use a patch release for one small
+  rule or localized compatible enhancement, a minor release for a substantial new gate or
+  workflow, and explicitly review any incompatible change before selecting a major release.
+- Keep one independently reviewed feature in one release; do not bundle the next feature into
+  a version that has already completed review.
 - Run `npm run check`, `npm test`, and `npm run pack:check` before publishing.
 - Always authenticate to npm in a new visible terminal with the official Web login and
   account 2FA flow. Verify that `npm whoami` returns `cxyi7`, then publish from a second

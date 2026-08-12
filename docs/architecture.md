@@ -1,8 +1,14 @@
 # 架构说明
 
+## Vue 表单控件 label 门禁
+
+`vue-template-parser` 除属性流外还提供根模板元素、父级位置和 HTML void 元素信息。`vue-form-label` 只处理原生 `input`、`select`、`textarea`，以静态 `for/id`、祖先 `label`、非空 `aria-label` 或全部可解析的 `aria-labelledby` 关系证明控件具有无障碍名称。
+
+无法证明的控件使用固定规则 ID `vue/form-control-label` 和控件标签名精确位置匹配结构化例外。暂存门禁在 Vue 安全检查之后运行；全项目命令为 `repo-guard form-labels`。规则无配置开关，不依赖项目 ESLint，避免项目 ignore 或插件配置关闭硬性要求。
+
 ## Vue target=_blank 安全门禁
 
-`vue-template-parser` 统一解析 Vue SFC 根模板的标签、属性和值位置，供 `v-html` 和链接安全规则复用。`vue-target-blank` 识别静态 `_blank` 以及可解析为 `_blank` 的简单 `v-bind:target` 字面量，并要求同一标签的静态或绑定字面量 `rel` 同时包含 `noopener`、`noreferrer`；动态 `rel` 无法证明安全，因此阻止提交。
+`vue-template-parser` 统一解析 Vue SFC 根模板的标签、属性、元素层级和值位置，供 `v-html`、链接安全和表单 label 规则复用。`vue-target-blank` 识别静态 `_blank` 以及可解析为 `_blank` 的简单 `v-bind:target` 字面量，并要求同一标签的静态或绑定字面量 `rel` 同时包含 `noopener`、`noreferrer`；动态 `rel` 无法证明安全，因此阻止提交。
 
 每个问题以 `target` 属性名的精确行列和固定规则 ID `vue/target-blank-security` 匹配结构化例外。暂存门禁在 `v-html` 检查之后运行，全项目命令为 `repo-guard target-blank`，报告会区分缺失 token 与动态 `rel`。
 
@@ -50,6 +56,7 @@
    ├─ eslint-diagnostics       编号化 AI 修复指令
    ├─ eslint-config            由 JSON 开关控制的 AI 可维护性基础规则
    ├─ prettier-runner          检查、格式化
+   ├─ vue-form-label          原生表单控件无障碍名称硬门禁
    ├─ max-file-lines          行数预警、Vue 区域分析和 strict/noRegression 门禁
    ├─ build-runner            项目生产构建脚本验证和执行
    ├─ typecheck-runner        项目 TypeScript 脚本验证和执行

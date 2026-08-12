@@ -57,6 +57,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
   assert.equal(packageJson.scripts['guard:unsafe-html'], 'repo-guard unsafe-html');
   assert.equal(packageJson.scripts['guard:target-blank'], 'repo-guard target-blank');
+  assert.equal(packageJson.scripts['guard:form-labels'], 'repo-guard form-labels');
   assert.equal(
     packageJson.scripts['guard:style-complexity'],
     'repo-guard style-complexity',

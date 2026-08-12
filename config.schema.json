@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
-  "description": "Project-level dependency governance, protected-file, structured-exception, hard Vue security, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
+  "description": "Project-level dependency governance, protected-file, structured-exception, hard Vue security and accessibility, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -74,7 +74,7 @@
               "rule": {
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)+$",
-                "description": "Namespaced repo-guard rule id, for example vue/no-v-html."
+                "description": "Namespaced repo-guard rule id, for example vue/no-v-html or vue/form-control-label."
               },
               "path": {
                 "type": "string",

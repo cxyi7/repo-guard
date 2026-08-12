@@ -7,6 +7,7 @@ import { runDoctor } from './commands/doctor.js';
 import { runDependenciesCommand } from './commands/dependencies.js';
 import { runExceptionsCommand } from './commands/exceptions.js';
 import { runFilePlacementCommand } from './commands/file-placement.js';
+import { runFormLabelsCommand } from './commands/form-labels.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
@@ -46,6 +47,7 @@ Usage:
   repo-guard unit-test
   repo-guard unsafe-html
   repo-guard target-blank
+  repo-guard form-labels
   repo-guard style-complexity
   repo-guard file-placement
   repo-guard lighthouse [--skip-build]
@@ -124,6 +126,9 @@ export async function runCli(argumentsList) {
       case 'target-blank':
         ensureSupportedOptions(rest, new Set());
         return runTargetBlankCommand();
+      case 'form-labels':
+        ensureSupportedOptions(rest, new Set());
+        return runFormLabelsCommand();
       case 'style-complexity':
         ensureSupportedOptions(rest, new Set());
         return await runStyleComplexityCommand();
