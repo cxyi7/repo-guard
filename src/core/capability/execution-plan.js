@@ -67,7 +67,9 @@ export function defineExecutionPlan({ id, environment, locked = true, steps }) {
 }
 
 export function validateExecutionPlan(plan, registry) {
-  const positions = new Map();
+  // Relations describe the first activation of a capability. A reviewed plan may
+  // intentionally invoke the same capability again for a later read-only verify step.
+  const firstPositions = new Map();
   for (const [index, step] of plan.steps.entries()) {
     const gate = registry.get(step.gateId);
     if (!gate.environments.includes(plan.environment)) {
@@ -80,39 +82,45 @@ export function validateExecutionPlan(plan, registry) {
     if (!MUTATIONS.includes(mutation)) {
       throw new Error(`Execution plan ${plan.id} uses unsupported mutation ${mutation}`);
     }
+    if (!gate.allowedMutations.includes(mutation)) {
+      throw new Error(
+        `Execution plan ${plan.id} cannot relabel ${step.id} as ${mutation}; `
+        + `${gate.id} allows ${gate.allowedMutations.join(', ')}`,
+      );
+    }
     if (!ALLOWED_MUTATIONS[plan.environment].includes(mutation)) {
       throw new Error(
         `Execution plan ${plan.id} cannot run ${step.id} with ${mutation} in `
         + plan.environment,
       );
     }
-    if (!positions.has(gate.id)) positions.set(gate.id, index);
+    if (!firstPositions.has(gate.id)) firstPositions.set(gate.id, index);
   }
   for (const step of plan.steps) {
     const gate = registry.get(step.gateId);
     for (const dependency of gate.requires) {
-      const dependencyPosition = positions.get(dependency);
+      const dependencyPosition = firstPositions.get(dependency);
       if (dependencyPosition == null) {
         throw new Error(`Execution plan ${plan.id} omits dependency ${dependency} for ${gate.id}`);
       }
-      if (dependencyPosition >= positions.get(gate.id)) {
+      if (dependencyPosition >= firstPositions.get(gate.id)) {
         throw new Error(`Execution plan ${plan.id} runs ${gate.id} before ${dependency}`);
       }
     }
     for (const predecessor of gate.after) {
-      const predecessorPosition = positions.get(predecessor);
-      if (predecessorPosition != null && predecessorPosition >= positions.get(gate.id)) {
+      const predecessorPosition = firstPositions.get(predecessor);
+      if (predecessorPosition != null && predecessorPosition >= firstPositions.get(gate.id)) {
         throw new Error(`Execution plan ${plan.id} runs ${gate.id} before ${predecessor}`);
       }
     }
     for (const successor of gate.before) {
-      const successorPosition = positions.get(successor);
-      if (successorPosition != null && successorPosition <= positions.get(gate.id)) {
+      const successorPosition = firstPositions.get(successor);
+      if (successorPosition != null && successorPosition <= firstPositions.get(gate.id)) {
         throw new Error(`Execution plan ${plan.id} runs ${gate.id} after ${successor}`);
       }
     }
     for (const conflict of gate.conflicts) {
-      if (positions.has(conflict)) {
+      if (firstPositions.has(conflict)) {
         throw new Error(`Execution plan ${plan.id} contains conflicting gates ${gate.id} and ${conflict}`);
       }
     }

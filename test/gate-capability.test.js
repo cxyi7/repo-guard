@@ -25,6 +25,7 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.equal(dynamicCode.manualCommand, 'dynamic-code');
   assert.equal(dynamicCode.packageScript, 'guard:dynamic-code');
   assert.equal(dynamicCode.mutation, 'read-only');
+  assert.deepEqual(dynamicCode.allowedMutations, ['read-only']);
   assert.deepEqual(dynamicCode.environments, [
     'manual',
     'pre-commit',
@@ -112,6 +113,10 @@ test('rejects duplicate identities, duplicate commands, and missing dependencies
 test('validates gate lifecycle, mutation, timeout, and handlers', () => {
   assert.throws(() => gate({ environments: ['runtime'] }), /unsupported value/);
   assert.throws(() => gate({ mutation: 'network' }), /Gate mutation/);
+  assert.throws(
+    () => gate({ mutation: 'working-tree-fix', allowedMutations: ['read-only'] }),
+    /must include its maximum mutation/,
+  );
   assert.throws(() => gate({ defaultTimeoutMs: 0 }), /positive integer/);
   assert.throws(() => gate({ run: null }), /must be functions/);
   assert.throws(() => gate({ supportsFix: 'yes' }), /must be booleans/);
@@ -123,4 +128,25 @@ test('validates gate lifecycle, mutation, timeout, and handlers', () => {
     () => gate({ manualCommand: 'example' }),
     /requires manualOrder/,
   );
+});
+
+test('records existing tool-backed capability prerequisites and side effects in Registry', () => {
+  const eslint = gateRegistry.get('quality.eslint');
+  assert.deepEqual(eslint.requiredTools, ['eslint']);
+  assert.equal(eslint.supportsFix, true);
+
+  const typecheck = gateRegistry.get('quality.typecheck');
+  assert.equal(typecheck.defaultTimeoutMs, 180000);
+  assert.equal(typecheck.mutation, 'read-only');
+  assert.deepEqual(typecheck.requiredScripts, ['config:typeCheck.script']);
+
+  const unitTest = gateRegistry.get('quality.unit-test');
+  assert.deepEqual(unitTest.requiredTools, ['vitest']);
+  assert.deepEqual(unitTest.requiredScripts, ['config:unitTest.script']);
+  assert.deepEqual(unitTest.artifactTypes, ['coverage-report']);
+
+  const lighthouse = gateRegistry.get('quality.lighthouse');
+  assert.equal(lighthouse.defaultTimeoutMs, 300000);
+  assert.equal(lighthouse.mutation, 'read-only');
+  assert.deepEqual(lighthouse.requiredTools, ['@lhci/cli']);
 });

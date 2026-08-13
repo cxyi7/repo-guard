@@ -34,6 +34,7 @@ export function defineGate({
   configVersions = [1],
   environments,
   mutation,
+  allowedMutations = [mutation],
   defaultTimeoutMs,
   requires = [],
   before = [],
@@ -90,6 +91,14 @@ export function defineGate({
   if (!MUTATIONS.includes(mutation)) {
     throw new TypeError(`Gate mutation must be one of: ${MUTATIONS.join(', ')}`);
   }
+  const normalizedAllowedMutations = stringArray(
+    allowedMutations,
+    'Gate allowedMutations',
+    MUTATIONS,
+  );
+  if (!normalizedAllowedMutations.includes(mutation)) {
+    throw new TypeError('Gate allowedMutations must include its maximum mutation');
+  }
   if (!Number.isInteger(defaultTimeoutMs) || defaultTimeoutMs < 1) {
     throw new TypeError('Gate defaultTimeoutMs must be a positive integer');
   }
@@ -109,6 +118,7 @@ export function defineGate({
     configVersions: Object.freeze([...configVersions]),
     environments: stringArray(environments, 'Gate environments', ENVIRONMENTS),
     mutation,
+    allowedMutations: normalizedAllowedMutations,
     defaultTimeoutMs,
     requires: stringArray(requires, 'Gate requires'),
     before: stringArray(before, 'Gate before'),

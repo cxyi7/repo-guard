@@ -2,9 +2,9 @@
 
 ## 0.18.0
 
-- 建立全平台静态 Gate Registry，集中声明稳定 ID、配置键、生命周期、副作用、manual command、项目脚本和依赖关系；启动时拒绝重复 ID/配置键/命令、未知关系和排序环路。
+- 建立全平台静态 Gate Registry，集中声明稳定 ID、配置键、生命周期、允许的副作用、超时、所需工具/项目脚本、artifact、manual command 和依赖关系；启动时拒绝重复 ID/配置键/命令、未知关系、排序环路和未声明的副作用降级。
 - 新增不可变的 pre-commit、pre-push、CI policy 与 CI full Execution Plan；项目配置只能启停允许配置的能力，不能改变受审顺序，pre-commit 的 Stylelint fix、ESLint fix、Prettier、只读验证和保护文件顺序保持不变。
-- manual CLI 帮助、命令发现、参数白名单与项目脚本从 Registry 派生；CI、pre-push 和 staged quality 按 Execution Plan 遍历，原生只读 gate 可通过通用执行器接入，旧 runner 继续通过组合层适配。
+- manual CLI 帮助、命令发现、参数白名单与项目脚本从 Registry 派生；CI、pre-push 和 staged quality 按 Execution Plan 遍历，原生只读 gate 的 manual/CI 路径统一执行异步 setup、plan 和 run，旧 runner 继续通过组合层适配。
 
 ## 0.17.0
 

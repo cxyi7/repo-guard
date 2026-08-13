@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import {
   createExecutionPlanRegistry,
@@ -11,6 +19,10 @@ import { createGateRegistry } from '../src/core/capability/gate-registry.js';
 import { gateRegistry } from '../src/gates/registry.js';
 import { executionPlans } from '../src/orchestration/execution-plans.js';
 import { executeRegisteredGate } from '../src/orchestration/gate-executor.js';
+import { runNativeManualGate } from '../src/orchestration/cli/manual-gates.js';
+
+const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
+mkdirSync(TEST_ROOT, { recursive: true });
 
 function gate(id, overrides = {}) {
   return defineGate({
@@ -138,7 +150,11 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
     /unsupported environment/,
   );
   const mutatingRegistry = createGateRegistry([
-    gate('mutating', { environments: ['ci-full'], mutation: 'working-tree-fix' }),
+    gate('mutating', {
+      environments: ['ci-full'],
+      mutation: 'working-tree-fix',
+      allowedMutations: ['working-tree-fix', 'read-only'],
+    }),
   ]);
   assert.throws(
     () => validateExecutionPlan(
@@ -155,6 +171,31 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
     }),
     mutatingRegistry,
   ));
+  const mislabeledRegistry = createGateRegistry([
+    gate('mislabeled', { environments: ['ci-full'], mutation: 'working-tree-fix' }),
+  ]);
+  assert.throws(
+    () => validateExecutionPlan(
+      defineExecutionPlan({
+        id: 'mislabeled-ci',
+        environment: 'ci-full',
+        steps: [{ id: 'mislabeled-read', gateId: 'mislabeled', mutation: 'read-only' }],
+      }),
+      mislabeledRegistry,
+    ),
+    /cannot relabel mislabeled-read as read-only/,
+  );
+
+  const managedRegistry = createGateRegistry([
+    gate('managed', { environments: ['ci-policy'], mutation: 'managed-files' }),
+  ]);
+  assert.throws(
+    () => validateExecutionPlan(
+      defineExecutionPlan({ id: 'managed-policy', environment: 'ci-policy', steps: ['managed'] }),
+      managedRegistry,
+    ),
+    /cannot run managed with managed-files/,
+  );
 });
 
 test('rejects duplicate config keys, invalid relation references, ordering cycles, and conflicts', () => {
@@ -233,4 +274,52 @@ test('executes a newly registered native read-only gate without a lifecycle-spec
   assert.equal(result.status, 'passed');
   assert.deepEqual(result.plan.files, ['src/a.js']);
   assert.equal(contexts[0], context);
+});
+
+test('runs an asynchronous native manual gate through setup, plan, renderer, and status mapping', async (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'native-manual-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.equal(spawnSync('git', ['init'], { cwd: root }).status, 0);
+  writeFileSync(path.join(root, 'repo-guard.config.json'), `${JSON.stringify({
+    version: 1,
+    rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
+  })}\n`);
+  writeFileSync(path.join(root, 'example.js'), 'export const value = 1;\n');
+  assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);
+
+  const calls = [];
+  const nativeGate = gate('example.manual-native', {
+    environments: ['manual'],
+    manualCommand: 'manual-native',
+    manualOrder: 1,
+    inspectSetup: async (gateContext) => {
+      calls.push(['setup', gateContext.environment]);
+      return { status: 'ready', summary: 'ready' };
+    },
+    plan: async (gateContext) => {
+      calls.push(['plan', gateContext.files.includes('example.js')]);
+      return Object.freeze({ count: gateContext.files.length });
+    },
+    run: async ({ plan }) => {
+      calls.push(['run', plan.count]);
+      return {
+        gateId: 'example.manual-native',
+        status: 'passed',
+        summary: 'native manual passed',
+        findings: [],
+        artifacts: [],
+        metrics: {},
+        durationMs: 0,
+        error: null,
+        diagnostics: [],
+        legacyExitCode: null,
+      };
+    },
+    renderConsole: () => [],
+  });
+
+  assert.equal(await runNativeManualGate(nativeGate, root), 0);
+  assert.deepEqual(calls.map(([name]) => name), ['setup', 'plan', 'run']);
+  assert.equal(calls[0][1], 'manual');
+  assert.equal(calls[1][1], true);
 });
