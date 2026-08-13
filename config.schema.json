@@ -30,7 +30,7 @@
     },
     "ci": {
       "type": "object",
-      "description": "Read-only remote CI gate and report settings. Console and compatible JSON steps are rendered from structured gate results; migrated steps such as dynamic-code include a versioned gateResult while preserving legacy fields. GitLab integration is installed as a managed local include without replacing the project's root pipeline.",
+      "description": "Read-only remote CI gate and report settings. Console and JSON steps are rendered from structured gate results, and every non-skipped step exitCode uses the unified status mapping. Migrated steps such as dynamic-code include a versioned gateResult. GitLab integration is installed as a managed local include without replacing the project's root pipeline.",
       "additionalProperties": false,
       "properties": {
         "enabled": {

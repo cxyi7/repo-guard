@@ -5,6 +5,7 @@ import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { gateRegistry } from './gates/registry.js';
 import { runRegisteredManualGate } from './orchestration/cli/manual-gates.js';
+import { gateResultToExitCode, gateStatusToExitCode } from './core/result/gate-result.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
@@ -151,7 +152,7 @@ export async function runCli(argumentsList) {
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();
       case 'pre-push':
-        return runPrePush(process.cwd(), {
+        return await runPrePush(process.cwd(), {
           input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
           remoteName: rest[0] || 'origin',
         });
@@ -179,12 +180,13 @@ export async function runCli(argumentsList) {
         if (gateRegistry.findByManualCommand(command)) {
           const gate = gateRegistry.findByManualCommand(command);
           ensureSupportedOptions(rest, new Set(gate.manualOptions));
-          return await runRegisteredManualGate(command, rest);
+          const result = await runRegisteredManualGate(command, rest);
+          return gateResultToExitCode(result);
         }
         throw new Error(`Unknown command: ${command}\n\n${HELP_TEXT}`);
     }
   } catch (error) {
     console.error(`repo-guard failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('execution-error');
   }
 }

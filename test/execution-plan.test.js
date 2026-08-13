@@ -16,9 +16,10 @@ import {
 } from '../src/core/capability/execution-plan.js';
 import { defineGate } from '../src/core/capability/gate-definition.js';
 import { createGateRegistry } from '../src/core/capability/gate-registry.js';
+import { createGateResult } from '../src/core/result/gate-result.js';
 import { gateRegistry } from '../src/gates/registry.js';
 import { executionPlans } from '../src/orchestration/execution-plans.js';
-import { executeRegisteredGate } from '../src/orchestration/gate-executor.js';
+import { orchestratePlan } from '../src/orchestration/orchestrator.js';
 import { runNativeManualGate } from '../src/orchestration/cli/manual-gates.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
@@ -252,7 +253,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   assert.match(sources['commands/doctor'], /gateRegistry\.all/);
   assert.match(sources['ci-runner'], /executionPlans\.get/);
   assert.match(sources['quality-runner'], /preCommitPlan\.steps/);
-  assert.match(sources['commands/pre-push'], /prePushPlan\.steps/);
+  assert.match(sources['commands/pre-push'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);
   assert.equal(gateRegistry.findByConfigKey('typeCheck')?.id, 'quality.typecheck');
@@ -266,14 +267,27 @@ test('executes a newly registered native read-only gate without a lifecycle-spec
       return { status: 'ready', summary: 'ready' };
     },
     plan: (context) => Object.freeze({ files: Object.freeze([...context.files]) }),
-    run: ({ plan }) => ({ gateId: 'example.native', status: 'passed', plan }),
+    run: ({ plan }) => {
+      contexts.push(plan);
+      return createGateResult({
+        gateId: 'example.native',
+        status: 'passed',
+        summary: 'example native passed',
+      });
+    },
+  });
+  const registry = createGateRegistry([nativeGate]);
+  const plan = defineExecutionPlan({
+    id: 'example-native',
+    environment: 'pre-commit',
+    steps: [nativeGate.id],
   });
   const context = Object.freeze({ root: 'C:/repo', files: Object.freeze(['src/a.js']) });
-  const result = await executeRegisteredGate({ gate: nativeGate, context });
+  const execution = await orchestratePlan({ plan, registry, context });
 
-  assert.equal(result.status, 'passed');
-  assert.deepEqual(result.plan.files, ['src/a.js']);
-  assert.equal(contexts[0], context);
+  assert.equal(execution.status, 'passed');
+  assert.equal(contexts[0].files, context.files);
+  assert.deepEqual(contexts[1].files, ['src/a.js']);
 });
 
 test('runs an asynchronous native manual gate through setup, plan, renderer, and status mapping', async (context) => {
@@ -312,13 +326,12 @@ test('runs an asynchronous native manual gate through setup, plan, renderer, and
         durationMs: 0,
         error: null,
         diagnostics: [],
-        legacyExitCode: null,
       };
     },
     renderConsole: () => [],
   });
 
-  assert.equal(await runNativeManualGate(nativeGate, root), 0);
+  assert.equal((await runNativeManualGate(nativeGate, root)).status, 'passed');
   assert.deepEqual(calls.map(([name]) => name), ['setup', 'plan', 'run']);
   assert.equal(calls[0][1], 'manual');
   assert.equal(calls[1][1], true);

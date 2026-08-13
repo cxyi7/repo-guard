@@ -34,7 +34,7 @@ async function captureConsole(task) {
   }
 }
 
-export async function adaptLegacyRunner({
+export async function adaptNumericRunner({
   gateId,
   task,
   violationExitCodes = null,
@@ -59,11 +59,11 @@ export async function adaptLegacyRunner({
     }
     const { value, diagnostics } = captured;
     if (!Number.isInteger(value) || value < 0) {
-      throw new TypeError(`Legacy gate ${gateId} must return a non-negative integer exit code`);
+      throw new TypeError(`Numeric gate ${gateId} must return a non-negative integer exit code`);
     }
     const status = statusForExitCode(value, violationExitCodes);
     const error = status === 'execution-error'
-      ? new Error(`Legacy gate ${gateId} returned unexpected exit code ${value}`)
+      ? new Error(`Numeric gate ${gateId} returned unexpected exit code ${value}`)
       : null;
     return createGateResult({
       gateId,
@@ -72,7 +72,6 @@ export async function adaptLegacyRunner({
       durationMs: Date.now() - startedAt,
       error,
       diagnostics,
-      legacyExitCode: value,
     });
   } catch (error) {
     const normalizedError = normalizeError(error);

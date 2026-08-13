@@ -127,7 +127,7 @@ test('exposes a full-project unsafe-html CLI with unified failure reporting', (c
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/no-v-html/);
   assert.match(result.stderr, /src\/Panel\.vue 第 1 行第 16 列/);
   assert.match(result.stderr, /AI 不得新增、延期或修改结构化例外/);

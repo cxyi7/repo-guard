@@ -8,8 +8,9 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { createChangeSet } from '../src/core/capability/gate-context.js';
 import {
-  inspectCoverageReports,
+  inspectCoverageReports as inspectCoverageReportsWithChangeSet,
   parseChangedLineNumbers,
   parseCoverageSummary,
   parseLcov,
@@ -17,6 +18,16 @@ import {
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
+
+function inspectCoverageReports(options) {
+  return inspectCoverageReportsWithChangeSet({
+    ...options,
+    changes: createChangeSet({
+      source: 'test',
+      changes: options.changes ?? [],
+    }),
+  });
+}
 
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });

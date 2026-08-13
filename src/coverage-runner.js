@@ -6,6 +6,7 @@ import {
 import path from 'node:path';
 import micromatch from 'micromatch';
 import { normalizeGitPath } from './config.js';
+import { changeSetEntries } from './core/capability/gate-context.js';
 import { runGit } from './git.js';
 
 const GLOBAL_METRICS = Object.freeze([
@@ -249,7 +250,7 @@ function inspectChangedCoverage(root, changes, config, lcovFiles) {
   };
 }
 
-export function inspectCoverageReports({ root, config, changes = [] }) {
+export function inspectCoverageReports({ root, config, changes }) {
   if (!isStructuredCoverage(config.coverage)) {
     return null;
   }
@@ -271,7 +272,12 @@ export function inspectCoverageReports({ root, config, changes = [] }) {
     }];
   }));
   const lcovFiles = parseLcov(readFileSync(reports.lcov, 'utf8'), root);
-  const changed = inspectChangedCoverage(root, changes, config, lcovFiles);
+  const changed = inspectChangedCoverage(
+    root,
+    changeSetEntries(changes, 'Coverage changes'),
+    config,
+    lcovFiles,
+  );
   return {
     changed,
     global,

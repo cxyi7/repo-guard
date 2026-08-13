@@ -218,7 +218,7 @@ test('runs the project accessibility script and blocks failures', (context) => {
   assert.equal(runAccessibilityTestGate({ root, config: config() }), 7);
 });
 
-test('runs enabled accessibility tests from pre-push', (context) => {
+test('runs enabled accessibility tests from pre-push', async (context) => {
   const source = "import { axe } from 'vitest-axe';\ntest('a11y', async () => { expect(await axe(document.body)).toHaveNoViolations(); });\n";
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -233,8 +233,13 @@ test('runs enabled accessibility tests from pre-push', (context) => {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify(projectConfig, null, 2)}\n`,
   );
+  ensureAccessibilityTestPolicy(root, projectConfig.accessibilityTest);
+  assert.equal(spawnSync('git', ['config', 'user.name', 'repo-guard test'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['config', 'user.email', 'repo-guard@example.invalid'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['commit', '-m', 'fixture'], { cwd: root }).status, 0);
 
-  assert.equal(runPrePush(root), 0);
+  assert.equal(await runPrePush(root), 0);
   assert.equal(readFileSync(path.join(root, 'a11y-calls.log'), 'utf8'), 'run\n');
 });
 

@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.18.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.19.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -414,7 +414,7 @@ CI 优先读取 `CI_MERGE_REQUEST_DIFF_BASE_SHA` 和 `CI_COMMIT_SHA`，普通分
 repo-guard ci --profile policy --base <sha> --head <sha>
 ```
 
-退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；CI 步骤的 console 与 JSON 由同一结果渲染，同时保持现有输出和报告结构兼容。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码，CI 每个非跳过步骤的 `exitCode` 也遵循这套映射，不再保留 runner 自己的历史数字语义。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
 ### 文件归位门禁
 
@@ -1251,15 +1251,17 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.18.0
+## 升级到 0.19.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.18.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.19.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-0.18.0 建立静态 Gate Registry 和受审 Execution Plan。Registry 统一声明能力的生命周期、最大及允许副作用、超时、所需工具/项目脚本和 artifact；manual CLI 的能力发现、帮助文本、参数白名单与项目脚本由 Registry 派生，原生门禁统一执行异步 setup、plan 和 run。pre-commit、pre-push、CI policy 和 CI full 的顺序由不可变 plan 定义，项目配置仍只控制已有开关，不能重排步骤或把步骤改成能力未声明的低副作用。现有 CLI 文案、退出码、CI profile、部分暂存恢复和 pre-commit 固定顺序保持兼容；尚未原生迁移的 runner 继续通过组合层适配。
+0.19.0 完成统一编排器收敛：manual CLI、CI policy/full 与 pre-push 使用不可变 `GateContext`、同一 `ChangeSet`、超时/取消、结果聚合和唯一退出码映射。pre-push 仍保持既定步骤顺序和精确推送快照约束；保护文件、测试策略、单元测试及变更行覆盖率共享同一范围事实。本次为内部架构重构，不保留旧 runner 的退出码字段、同步编排入口或兼容 CI 步骤退出语义；尚未原生迁移的数字 runner 只在组合边界转换为 `GateResult`。
+
+0.18.0 建立静态 Gate Registry 和受审 Execution Plan。Registry 统一声明能力的生命周期、最大及允许副作用、超时、所需工具/项目脚本和 artifact；manual CLI 的能力发现、帮助文本、参数白名单与项目脚本由 Registry 派生，原生门禁统一执行异步 setup、plan 和 run。pre-commit、pre-push、CI policy 和 CI full 的顺序由不可变 plan 定义，项目配置仍只控制已有开关，不能重排步骤或把步骤改成能力未声明的低副作用。
 
 0.17.0 将动态代码门禁作为首个纵向试点迁入 Gate Capability 与内部 Registry。配置仍为 `version: 1`，现有 CLI 文案、pre-commit 顺序、CI profile 和兼容步骤字段不变；CI 的 `dynamic-code` 步骤新增 `gateResult`，用于读取原生结构化 finding 和 metric。试点确认门禁执行需要仓库根目录、标准化配置和不可变文件范围；统一 ChangeSet、超时信号和结构化 logger 仍按阶段 4 收敛。本版本不迁移其他门禁，也不引入 Execution Plan。
 

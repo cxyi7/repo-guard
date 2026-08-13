@@ -218,9 +218,10 @@ test('reports warnings without weakening the hard error gate', (context) => {
   assert.equal(runArchitectureGate({ root, config: architectureConfig() }), 0);
 });
 
-test('exposes architecture through CLI and pre-push', (context) => {
+test('exposes architecture through CLI and pre-push', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
+  ensureArchitecturePolicy(root, architectureConfig());
 
   const cliResult = spawnSync(process.execPath, [CLI_PATH, 'architecture'], {
     cwd: root,
@@ -228,7 +229,11 @@ test('exposes architecture through CLI and pre-push', (context) => {
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
   assert.match(cliResult.stdout, /architecture passed/);
-  assert.equal(runPrePush(root), 0);
+  assert.equal(spawnSync('git', ['config', 'user.name', 'repo-guard test'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['config', 'user.email', 'repo-guard@example.invalid'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);
+  assert.equal(spawnSync('git', ['commit', '-m', 'fixture'], { cwd: root }).status, 0);
+  assert.equal(await runPrePush(root), 0);
 });
 
 test('maintains an idempotent AGENTS architecture policy', (context) => {

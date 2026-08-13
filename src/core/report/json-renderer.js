@@ -1,4 +1,6 @@
-const LEGACY_CI_STATUS = Object.freeze({
+import { gateResultToExitCode } from '../result/gate-result.js';
+
+const CI_STATUS = Object.freeze({
   passed: 'passed',
   skipped: 'skipped',
   violation: 'failed',
@@ -22,17 +24,16 @@ export function renderGateResultJson(result) {
   return report;
 }
 
-export function renderLegacyCiStep(result, {
+export function renderCiStep(result, {
   name = result.gateId,
   includeGateResult = false,
-  exitCode = result.legacyExitCode,
 } = {}) {
   const step = {
     name,
-    status: LEGACY_CI_STATUS[result.status],
+    status: CI_STATUS[result.status],
   };
   if (result.status !== 'skipped') {
-    if (exitCode != null) step.exitCode = exitCode;
+    step.exitCode = gateResultToExitCode(result);
     step.durationMs = result.durationMs;
   }
   if (result.error) step.error = result.error.message;

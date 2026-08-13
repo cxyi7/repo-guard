@@ -4,6 +4,7 @@ import {
   validateCiReportPath,
 } from '../config.js';
 import { runCiGate, writeCiReport } from '../ci-runner.js';
+import { gateStatusToExitCode } from '../core/result/gate-result.js';
 import { findRepositoryRoot } from '../git.js';
 
 function errorReport(options, error) {
@@ -44,7 +45,7 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
   } catch (error) {
     tryWriteErrorReport(root, null, errorReport(options, error));
     console.error(`repo-guard CI configuration failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('configuration-error');
   }
 
   let config;
@@ -53,7 +54,7 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
   } catch (error) {
     tryWriteErrorReport(root, reportPath, errorReport(options, error));
     console.error(`repo-guard CI configuration failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('configuration-error');
   }
   try {
     return await runCiGate({ root, config, ...options });
@@ -64,6 +65,6 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
       { ...errorReport(options, error), status: 'execution-error' },
     );
     console.error(`repo-guard CI execution failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('execution-error');
   }
 }

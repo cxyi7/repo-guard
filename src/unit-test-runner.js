@@ -14,6 +14,7 @@ import {
   isStructuredCoverage,
   prepareCoverageReports,
 } from './coverage-runner.js';
+import { changeSetEntries } from './core/capability/gate-context.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
@@ -409,6 +410,7 @@ function inspectComponentInteractions({ root, changes, config }) {
 }
 
 export function inspectUnitTestPolicy({ root, changes, config }) {
+  changes = changeSetEntries(changes, 'Unit test policy changes');
   const missingTests = [];
   const bypasses = [];
 
@@ -571,7 +573,8 @@ function runNpmScript(root, config) {
   });
 }
 
-export function runUnitTestGate({ root, config, changes = [] }) {
+export function runUnitTestGate({ root, config, changes }) {
+  changeSetEntries(changes, 'Unit test gate changes');
   const setup = validateUnitTestSetup(root, config);
   const policy = inspectUnitTestPolicy({ root, changes, config });
   if (policy.missingTests.length > 0

@@ -132,7 +132,7 @@ test('explicit CLI audits ignored files while the staged enhancement is disabled
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /style\/selector-max-id/);
   assert.match(result.stderr, /style\/no-unexpected-global-style/);
 });

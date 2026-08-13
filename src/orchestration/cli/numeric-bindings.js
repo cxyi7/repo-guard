@@ -11,10 +11,10 @@ import { runStyleComplexityCommand } from '../../commands/style-complexity.js';
 import { runStyleGovernanceCommand } from '../../commands/style-governance.js';
 import { runTargetBlankCommand } from '../../commands/target-blank.js';
 import { runTypeCheckCommand } from '../../commands/typecheck.js';
-import { runUnitTestCommand } from '../../commands/unit-test.js';
+import { runUnitTestGate } from '../../unit-test-runner.js';
 import { runUnsafeHtmlCommand } from '../../commands/unsafe-html.js';
 
-export const legacyManualBindings = Object.freeze({
+export const numericManualBindings = Object.freeze({
   'repository.structured-exceptions': ({ cwd }) => runExceptionsCommand(cwd),
   'dependencies.policy': ({ cwd }) => runDependenciesCommand(cwd),
   'security.vue-unsafe-html': ({ cwd }) => runUnsafeHtmlCommand(cwd),
@@ -23,7 +23,11 @@ export const legacyManualBindings = Object.freeze({
   'accessibility.vue-image-alt': ({ cwd }) => runImageAltCommand(cwd),
   'repository.file-placement': ({ cwd }) => runFilePlacementCommand(cwd),
   'quality.typecheck': ({ cwd }) => runTypeCheckCommand(cwd),
-  'quality.unit-test': ({ cwd }) => runUnitTestCommand(cwd),
+  'quality.unit-test': ({ context }) => runUnitTestGate({
+    root: context.root,
+    config: context.config.unitTest,
+    changes: context.changes,
+  }),
   'quality.accessibility-test': ({ cwd }) => runAccessibilityTestCommand(cwd),
   'quality.architecture': ({ cwd }) => runArchitectureCommand(cwd),
   'quality.build': ({ cwd }) => runBuildCommand(cwd),

@@ -255,7 +255,7 @@ test('exposes dependency governance through the CLI', (context) => {
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /dependencies\/non-exact-version/);
   assert.match(result.stderr, /npm install --package-lock-only/);
   assert.match(readFileSync(path.join(root, 'package.json'), 'utf8'), /\^1\.7\.0/);

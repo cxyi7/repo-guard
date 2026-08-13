@@ -30,13 +30,17 @@ import { runUnsafeVueHtmlProject } from './vue-unsafe-html.js';
 import { runVueFormLabelProject } from './vue-form-label.js';
 import { runVueImageAltProject } from './vue-image-alt.js';
 import { runVueTargetBlankProject } from './vue-target-blank.js';
-import { createGateResult } from './core/result/gate-result.js';
-import { adaptLegacyRunner } from './core/result/legacy-runner-adapter.js';
+import { createGateResult, gateStatusToExitCode } from './core/result/gate-result.js';
+import { adaptNumericRunner } from './core/result/numeric-runner-adapter.js';
 import { writeGateResultConsole } from './core/report/console-renderer.js';
-import { renderLegacyCiStep } from './core/report/json-renderer.js';
+import { renderCiStep } from './core/report/json-renderer.js';
+import {
+  createChangeSet,
+  createGateContext,
+} from './core/capability/gate-context.js';
 import { gateRegistry } from './gates/registry.js';
 import { executionPlans } from './orchestration/execution-plans.js';
-import { executeRegisteredGate } from './orchestration/gate-executor.js';
+import { orchestratePlan } from './orchestration/orchestrator.js';
 
 function matchingFiles(files, pattern) {
   return files.filter((file) => micromatch.isMatch(file, pattern, {
@@ -97,13 +101,13 @@ export async function runCiGate({
     );
     writeCiReport(root, reportPath, configurationErrorReport(profile, error));
     console.error(`repo-guard CI configuration failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('configuration-error');
   }
   if (!['policy', 'full'].includes(profile)) {
     const error = new Error('CI profile must be policy or full');
     writeCiReport(root, reportPath, configurationErrorReport(profile, error));
     console.error(`repo-guard CI configuration failed: ${error.message}`);
-    return 1;
+    return gateStatusToExitCode('configuration-error');
   }
 
   let range;
@@ -121,136 +125,138 @@ export async function runCiGate({
     };
     writeCiReport(root, reportPath, report);
     console.error(`repo-guard CI range failed: ${error.message}`);
-    return 3;
+    return gateStatusToExitCode('range-error');
   }
 
   const projectFiles = collectProjectFiles(root)
     .filter((file) => file !== reportPath && !file.startsWith(`${reportPath}/`));
   const steps = [];
-  let executionError = false;
-  let violation = false;
   const recordResult = (name, result, {
     includeGateResult = false,
-    exitCode = result.legacyExitCode,
     includeDiagnostics = true,
   } = {}) => {
-    steps.push(renderLegacyCiStep(result, { name, includeGateResult, exitCode }));
+    steps.push(renderCiStep(result, { name, includeGateResult }));
     writeGateResultConsole(
       includeDiagnostics ? result : { ...result, diagnostics: [] },
       { label: name },
     );
-    if (result.status === 'violation') {
-      violation = true;
-    } else if (result.status.endsWith('-error')) {
-      executionError = true;
-    }
   };
-  const runStep = async (name, task, { enabled = true } = {}) => {
+  const runStep = async (gateId, name, task, { enabled = true } = {}) => {
     if (!enabled) {
       const result = createGateResult({
-        gateId: name,
+        gateId,
         status: 'skipped',
         summary: `${name} is disabled`,
       });
       recordResult(name, result);
-      return;
+      return { name, result, recorded: true };
     }
-    const result = await adaptLegacyRunner({ gateId: name, task });
-    recordResult(name, result);
+    const result = await adaptNumericRunner({ gateId, task });
+    return { name, result };
   };
 
-  const protectedChanges = classifyChanges(range.changes, config);
   const ciPlan = executionPlans.get(profile === 'full' ? 'ci-full' : 'ci-policy');
-  for (const step of ciPlan.steps) {
-    switch (step.id) {
+  const changeSet = createChangeSet({
+    source: 'ci',
+    changes: range.changes,
+    revision: { base: range.base, head: range.head },
+  });
+  const context = createGateContext({
+    root,
+    environment: ciPlan.environment,
+    config,
+    changes: changeSet,
+    files: projectFiles,
+    artifactDirectory: path.dirname(path.join(root, reportPath)),
+  });
+  const protectedChanges = classifyChanges(changeSet.entries, config);
+  const execution = await orchestratePlan({
+    plan: ciPlan,
+    registry: gateRegistry,
+    context,
+    executeStep: async ({ context: stepContext, gate, step }) => {
+      switch (step.id) {
       case 'repository.structured-exceptions':
-        await runStep('structured-exceptions', () => { const result = inspectExceptionRegistry(config.exceptions); return result.expired.length || result.future.length ? 2 : 0; });
-        break;
+        return await runStep(gate.id, 'structured-exceptions', () => { const result = inspectExceptionRegistry(config.exceptions); return result.expired.length || result.future.length ? 2 : 0; });
       case 'security.dynamic-code': {
         const gate = gateRegistry.get(step.gateId);
-        const gatePlan = gate.plan({ root, config, files: projectFiles });
-        const result = gate.run({ root, config, plan: gatePlan });
+        const gatePlan = await gate.plan(stepContext);
+        const result = await gate.run({ ...stepContext, plan: gatePlan });
         for (const line of gate.renderConsole(result)) {
           if (line.stream === 'stderr') console.error(line.message);
           else console.log(line.message);
         }
-        recordResult('dynamic-code', result, { includeGateResult: true, exitCode: result.status === 'passed' ? 0 : result.status === 'violation' ? 1 : null, includeDiagnostics: false });
-        break;
+        return { name: 'dynamic-code', result, recordOptions: { includeGateResult: true, includeDiagnostics: false } };
       }
       case 'security.vue-unsafe-html':
-        await runStep('vue-unsafe-html', () => runUnsafeVueHtmlProject({ root, exceptions: config.exceptions }));
-        break;
+        return await runStep(gate.id, 'vue-unsafe-html', () => runUnsafeVueHtmlProject({ root, exceptions: config.exceptions }));
       case 'security.vue-target-blank':
-        await runStep('vue-target-blank', () => runVueTargetBlankProject({ root, exceptions: config.exceptions }));
-        break;
+        return await runStep(gate.id, 'vue-target-blank', () => runVueTargetBlankProject({ root, exceptions: config.exceptions }));
       case 'accessibility.vue-form-label':
-        await runStep('vue-form-labels', () => runVueFormLabelProject({ root, exceptions: config.exceptions }));
-        break;
+        return await runStep(gate.id, 'vue-form-labels', () => runVueFormLabelProject({ root, exceptions: config.exceptions }));
       case 'accessibility.vue-image-alt':
-        await runStep('vue-image-alt', () => runVueImageAltProject({ root, exceptions: config.exceptions }));
-        break;
+        return await runStep(gate.id, 'vue-image-alt', () => runVueImageAltProject({ root, exceptions: config.exceptions }));
       case 'dependencies.policy':
-        await runStep('dependency-policy', () => runDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions }), { enabled: config.dependencyPolicy.enabled });
-        break;
+        return await runStep(gate.id, 'dependency-policy', () => runDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions }), { enabled: config.dependencyPolicy.enabled });
       case 'repository.file-placement':
-        await runStep('file-placement', () => runFilePlacementProject({ root, config: config.preCommit.filePlacement }), { enabled: config.preCommit.filePlacement.enabled });
-        break;
+        return await runStep(gate.id, 'file-placement', () => runFilePlacementProject({ root, config: config.preCommit.filePlacement }), { enabled: config.preCommit.filePlacement.enabled });
       case 'repository.maximum-file-lines':
-        await runStep('maximum-file-lines', () => runMaxFileLinesFiles({ root, files: selectMaxFileLineFiles(projectFiles.map((relative) => ({ relative, absolute: path.join(root, relative) })), config.preCommit.maxFileLines), config: config.preCommit.maxFileLines, baselineRef: range.base, changes: range.changes }), { enabled: config.preCommit.maxFileLines.enabled });
-        break;
+        return await runStep(gate.id, 'maximum-file-lines', () => runMaxFileLinesFiles({
+          root,
+          files: selectMaxFileLineFiles(
+            projectFiles.map((relative) => ({
+              relative,
+              absolute: path.join(root, relative),
+            })),
+            config.preCommit.maxFileLines,
+          ),
+          config: config.preCommit.maxFileLines,
+          baselineRef: range.base,
+          changes: changeSet.entries,
+        }), { enabled: config.preCommit.maxFileLines.enabled });
       case 'quality.unit-test-policy':
-        await runStep('unit-test-policy', () => { const policy = inspectUnitTestPolicy({ root, changes: range.changes, config: config.unitTest }); if (policy.missingTests.length || policy.bypasses.length || policy.componentInteractions.length) { console.error(buildUnitTestAiInstructions({ ...policy, script: config.unitTest.script })); return 2; } return 0; }, { enabled: config.unitTest.enabled && profile === 'policy' });
-        break;
+        return await runStep(gate.id, 'unit-test-policy', () => { const policy = inspectUnitTestPolicy({ root, changes: changeSet, config: config.unitTest }); if (policy.missingTests.length || policy.bypasses.length || policy.componentInteractions.length) { console.error(buildUnitTestAiInstructions({ ...policy, script: config.unitTest.script })); return 2; } return 0; }, { enabled: config.unitTest.enabled && profile === 'policy' });
       case 'repository.protected-files':
-        await runStep('protected-files', () => { if (protectedChanges.length === 0) return 0; for (const change of protectedChanges) console.log(`Protected ${change.level}: ${change.path} (${change.category})`); return config.ci.protectedFiles.action === 'fail' ? 2 : 0; });
-        break;
+        return await runStep(gate.id, 'protected-files', () => { if (protectedChanges.length === 0) return 0; for (const change of protectedChanges) console.log(`Protected ${change.level}: ${change.path} (${change.category})`); return config.ci.protectedFiles.action === 'fail' ? 2 : 0; });
       case 'quality.stylelint-project':
-        await runStep('stylelint', () => runStylelintFiles({ root, files: matchingFiles(projectFiles, config.preCommit.stylelint.pattern), fix: false, maxWarnings: config.preCommit.stylelint.maxWarnings, requireConfig: config.preCommit.stylelint.requireConfig, complexity: config.preCommit.stylelint.complexity, governance: config.preCommit.stylelint.governance, exceptions: config.exceptions }), { enabled: config.preCommit.stylelint.enabled });
-        break;
+        return await runStep(gate.id, 'stylelint', () => runStylelintFiles({ root, files: matchingFiles(projectFiles, config.preCommit.stylelint.pattern), fix: false, maxWarnings: config.preCommit.stylelint.maxWarnings, requireConfig: config.preCommit.stylelint.requireConfig, complexity: config.preCommit.stylelint.complexity, governance: config.preCommit.stylelint.governance, exceptions: config.exceptions }), { enabled: config.preCommit.stylelint.enabled });
       case 'quality.eslint-project':
-        await runStep('eslint', () => runEslintFiles({ root, files: matchingFiles(projectFiles, config.preCommit.eslint.pattern), fix: false, maxWarnings: config.preCommit.eslint.maxWarnings, preset: config.preCommit.eslint.preset }), { enabled: config.preCommit.eslint.enabled });
-        break;
+        return await runStep(gate.id, 'eslint', () => runEslintFiles({ root, files: matchingFiles(projectFiles, config.preCommit.eslint.pattern), fix: false, maxWarnings: config.preCommit.eslint.maxWarnings, preset: config.preCommit.eslint.preset }), { enabled: config.preCommit.eslint.enabled });
       case 'quality.prettier-project':
-        await runStep('prettier', () => runPrettierFiles({ root, files: matchingFiles(projectFiles, config.preCommit.prettier.pattern), fix: false, requireConfig: config.preCommit.prettier.requireConfig }), { enabled: config.preCommit.prettier.enabled });
-        break;
+        return await runStep(gate.id, 'prettier', () => runPrettierFiles({ root, files: matchingFiles(projectFiles, config.preCommit.prettier.pattern), fix: false, requireConfig: config.preCommit.prettier.requireConfig }), { enabled: config.preCommit.prettier.enabled });
       case 'quality.typecheck':
-        await runStep('type-check', () => runTypeCheckGate({ root, config: config.typeCheck }), { enabled: config.typeCheck.enabled });
-        break;
+        return await runStep(gate.id, 'type-check', () => runTypeCheckGate({ root, config: config.typeCheck }), { enabled: config.typeCheck.enabled });
       case 'quality.unit-test':
-        await runStep('unit-tests', () => runUnitTestGate({ root, config: config.unitTest, changes: range.changes }), { enabled: config.unitTest.enabled });
-        break;
+        return await runStep(gate.id, 'unit-tests', () => runUnitTestGate({ root, config: config.unitTest, changes: changeSet }), { enabled: config.unitTest.enabled });
       case 'quality.accessibility-test':
-        await runStep('accessibility-tests', () => runAccessibilityTestGate({ root, config: config.accessibilityTest }), { enabled: config.accessibilityTest.enabled });
-        break;
+        return await runStep(gate.id, 'accessibility-tests', () => runAccessibilityTestGate({ root, config: config.accessibilityTest }), { enabled: config.accessibilityTest.enabled });
       case 'quality.architecture':
-        await runStep('architecture', () => runArchitectureGate({ root, config: config.architecture }), { enabled: config.architecture.enabled });
-        break;
+        return await runStep(gate.id, 'architecture', () => runArchitectureGate({ root, config: config.architecture }), { enabled: config.architecture.enabled });
       case 'quality.build':
-        await runStep('build', () => runBuildGate({ root, config: config.build }), { enabled: config.build.enabled });
-        break;
+        return await runStep(gate.id, 'build', () => runBuildGate({ root, config: config.build }), { enabled: config.build.enabled });
       default: {
         const gate = gateRegistry.get(step.gateId);
-        const result = await executeRegisteredGate({
-          gate,
-          context: {
-            root,
-            config,
-            files: projectFiles,
-            changes: range.changes,
-            revision: { base: range.base, head: range.head },
-            environment: ciPlan.environment,
-          },
-        });
+        const gatePlan = await gate.plan(stepContext);
+        const result = await gate.run({ ...stepContext, plan: gatePlan });
         for (const line of gate.renderConsole?.(result) ?? []) {
           if (line.stream === 'stderr') console.error(line.message);
           else console.log(line.message);
         }
-        recordResult(step.id, result, { includeGateResult: true, includeDiagnostics: false });
+        return { name: step.id, result, recordOptions: { includeGateResult: true, includeDiagnostics: false } };
       }
-    }
-  }
+      }
+    },
+    onResult: ({ outcome, result, step }) => {
+      if (outcome.recorded) return;
+      recordResult(outcome.name ?? step.id, result, outcome.recordOptions);
+    },
+  });
 
-  const status = executionError ? 'error' : violation ? 'failed' : 'passed';
+  const status = execution.status === 'execution-error'
+    ? 'error'
+    : execution.status === 'configuration-error' || execution.status === 'range-error'
+      ? 'error'
+    : execution.status === 'violation' ? 'failed' : 'passed';
   const report = {
     version: 1,
     status,
@@ -269,5 +275,5 @@ export async function runCiGate({
   };
   writeCiReport(root, reportPath, report);
   console.log(`repo-guard CI report: ${reportPath} (${status}).`);
-  return executionError ? 1 : violation ? 2 : 0;
+  return execution.exitCode;
 }

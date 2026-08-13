@@ -27,6 +27,13 @@ function git(root, args) {
   assert.equal(result.status, 0, result.stderr);
 }
 
+function commitFixture(root) {
+  git(root, ['config', 'user.name', 'repo-guard test']);
+  git(root, ['config', 'user.email', 'repo-guard@example.invalid']);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'fixture']);
+}
+
 function typeCheckConfig(extra = {}) {
   return {
     enabled: true,
@@ -96,7 +103,7 @@ test('runs the consuming project typecheck script and blocks failures', (context
   );
 });
 
-test('exposes TypeScript through CLI and runs it first from pre-push', (context) => {
+test('exposes TypeScript through CLI and runs it first from pre-push', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -106,7 +113,8 @@ test('exposes TypeScript through CLI and runs it first from pre-push', (context)
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
   assert.match(cliResult.stdout, /TypeScript passed/);
-  assert.equal(runPrePush(root), 0);
+  commitFixture(root);
+  assert.equal(await runPrePush(root), 0);
   assert.equal(existsSync(path.join(root, 'typecheck-calls.log')), true);
   assert.equal(
     readFileSync(path.join(root, 'typecheck-calls.log'), 'utf8'),

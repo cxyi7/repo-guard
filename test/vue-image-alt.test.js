@@ -170,7 +170,7 @@ test('exposes a full-project image-alt CLI with unified reporting', (context) =>
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/img-alt/);
   assert.match(result.stderr, /针对性修复/);
   assert.match(result.stderr, /不得用 title、aria-label、文件名、泛化占位词/);

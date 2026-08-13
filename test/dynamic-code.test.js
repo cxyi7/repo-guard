@@ -190,7 +190,7 @@ test('exposes a full-project CLI with actionable AI repair instructions', (conte
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /security\/no-eval/);
   assert.match(result.stderr, /src\/runtime\.ts 第 1 行第 40 列/);
   assert.match(result.stderr, /风险原因/);

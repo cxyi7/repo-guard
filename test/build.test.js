@@ -26,6 +26,13 @@ function git(root, args) {
   assert.equal(result.status, 0, result.stderr);
 }
 
+function commitFixture(root) {
+  git(root, ['config', 'user.name', 'repo-guard test']);
+  git(root, ['config', 'user.email', 'repo-guard@example.invalid']);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'fixture']);
+}
+
 function buildConfig(extra = {}) {
   return {
     enabled: true,
@@ -95,7 +102,7 @@ test('runs the consuming project build script and blocks failures', (context) =>
   );
 });
 
-test('exposes build through CLI and runs it from pre-push', (context) => {
+test('exposes build through CLI and runs it from pre-push', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -105,7 +112,8 @@ test('exposes build through CLI and runs it from pre-push', (context) => {
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
   assert.match(cliResult.stdout, /build passed/);
-  assert.equal(runPrePush(root), 0);
+  commitFixture(root);
+  assert.equal(await runPrePush(root), 0);
   assert.equal(
     readFileSync(path.join(root, 'build-calls.log'), 'utf8'),
     'build\nbuild\n',

@@ -175,7 +175,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   )).status, 'failed');
 });
 
-test('writes native dynamic-code findings without changing the legacy CI step contract', async (context) => {
+test('writes native dynamic-code findings with the unified CI exit contract', async (context) => {
   const fixture = repository();
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(
@@ -197,7 +197,7 @@ test('writes native dynamic-code findings without changing the legacy CI step co
   const step = report.steps.find(({ name }) => name === 'dynamic-code');
   assert.deepEqual({ status: step.status, exitCode: step.exitCode }, {
     status: 'failed',
-    exitCode: 1,
+    exitCode: 2,
   });
   assert.equal(step.gateResult.status, 'violation');
   assert.equal(step.gateResult.findings[0].ruleId, 'security/no-eval');
@@ -226,7 +226,7 @@ test('keeps dynamic-code execution errors distinct from policy violations', asyn
   ));
   const step = report.steps.find(({ name }) => name === 'dynamic-code');
   assert.equal(step.status, 'error');
-  assert.equal('exitCode' in step, false);
+  assert.equal(step.exitCode, 1);
   assert.equal(step.gateResult.status, 'execution-error');
   assert.match(step.gateResult.error.message, /Dynamic code gate could not parse/);
 });

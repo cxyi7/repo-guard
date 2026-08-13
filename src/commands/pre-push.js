@@ -11,7 +11,15 @@ import {
 import { runUnitTestGate } from '../unit-test-runner.js';
 import { runTypeCheckGate } from '../typecheck-runner.js';
 import { assertExceptionRegistryCurrent } from '../exception-registry.js';
+import {
+  createChangeSet,
+  createGateContext,
+} from '../core/capability/gate-context.js';
+import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
+import { adaptNumericRunner } from '../core/result/numeric-runner-adapter.js';
+import { gateRegistry } from '../gates/registry.js';
 import { prePushPlan } from '../orchestration/execution-plans.js';
+import { orchestratePlan } from '../orchestration/orchestrator.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -121,7 +129,7 @@ function resolvePushConfig(root, input) {
   return { config: revisionConfigs[0].config, skip: false };
 }
 
-export function runPrePush(cwd = process.cwd(), {
+export async function runPrePush(cwd = process.cwd(), {
   input = '',
   remoteName = 'origin',
 } = {}) {
@@ -129,44 +137,70 @@ export function runPrePush(cwd = process.cwd(), {
   const resolved = resolvePushConfig(root, input);
   if (resolved.skip) {
     console.log(`repo-guard pre-push: ${resolved.skipMessage}; quality gates skipped.`);
-    return 0;
+    return gateStatusToExitCode('skipped');
   }
   const { config } = resolved;
-
-  for (const step of prePushPlan.steps) {
-    let exitCode = 0;
-    switch (step.id) {
+  const changeSet = createChangeSet({
+    source: 'pre-push',
+    changes: collectPrePushChanges({ input, remoteName, root }),
+  });
+  const context = createGateContext({
+    root,
+    environment: prePushPlan.environment,
+    config,
+    changes: changeSet,
+  });
+  const execution = await orchestratePlan({
+    plan: prePushPlan,
+    registry: gateRegistry,
+    context,
+    stopOnFailure: true,
+    executeStep: async ({ step }) => {
+      let task;
+      switch (step.id) {
       case 'quality.typecheck':
-        if (config.typeCheck.enabled) exitCode = runTypeCheckGate({ root, config: config.typeCheck });
+        if (config.typeCheck.enabled) task = () => runTypeCheckGate({ root, config: config.typeCheck });
         else console.log('repo-guard pre-push: TypeScript type check is disabled.');
         break;
       case 'quality.unit-test':
-        if (config.unitTest.enabled) exitCode = runUnitTestGate({ root, config: config.unitTest, changes: collectPrePushChanges({ input, remoteName, root }) });
+        if (config.unitTest.enabled) task = () => runUnitTestGate({ root, config: config.unitTest, changes: changeSet });
         else console.log('repo-guard pre-push: unit tests are disabled.');
         break;
       case 'quality.accessibility-test':
-        if (config.accessibilityTest.enabled) exitCode = runAccessibilityTestGate({ root, config: config.accessibilityTest });
+        if (config.accessibilityTest.enabled) task = () => runAccessibilityTestGate({ root, config: config.accessibilityTest });
         else console.log('repo-guard pre-push: accessibility tests are disabled.');
         break;
       case 'quality.architecture':
-        if (config.architecture.enabled) exitCode = runArchitectureGate({ root, config: config.architecture });
+        if (config.architecture.enabled) task = () => runArchitectureGate({ root, config: config.architecture });
         else console.log('repo-guard pre-push: architecture dependency gate is disabled.');
         break;
       case 'quality.build':
-        if (config.build.enabled) exitCode = runBuildGate({ root, config: config.build });
+        if (config.build.enabled) task = () => runBuildGate({ root, config: config.build });
         else console.log('repo-guard pre-push: project build is disabled.');
         break;
       case 'quality.lighthouse':
         if (config.lighthouse.enabled) {
           const buildAlreadyRan = config.build.enabled
             && config.lighthouse.buildScript === config.build.script;
-          exitCode = runVueLighthouse({ root, config: config.lighthouse, skipBuild: buildAlreadyRan });
+          task = () => runVueLighthouse({ root, config: config.lighthouse, skipBuild: buildAlreadyRan });
         } else console.log('repo-guard pre-push: Lighthouse is disabled.');
         break;
       default:
         throw new Error(`Unsupported pre-push execution step: ${step.id}`);
-    }
-    if (exitCode !== 0) return exitCode;
-  }
-  return 0;
+      }
+      if (!task) {
+        return createGateResult({
+          gateId: step.gateId,
+          status: 'skipped',
+          summary: `${step.id} is disabled`,
+        });
+      }
+      return await adaptNumericRunner({
+        gateId: step.gateId,
+        task,
+        captureDiagnostics: false,
+      });
+    },
+  });
+  return execution.exitCode;
 }

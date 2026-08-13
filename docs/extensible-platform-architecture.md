@@ -678,6 +678,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 4：编排器收敛
 
+实施状态：`0.19.0` 已完成。manual CLI、CI policy/full 与 pre-push 已统一使用不可变 `GateContext`、同一 `ChangeSet`、逐 gate 超时/取消、结果聚合和唯一退出码映射；CI 的保护文件、测试策略、单元测试与变更行覆盖率共享同一范围事实，pre-push 保留既定顺序和精确推送快照约束。本次重构不保留旧 runner 退出码字段、同步编排入口或兼容 CI 步骤退出语义，未原生化 runner 只在组合边界转换为 `GateResult`。
+
 - 提取统一 `GateContext`、ChangeSet、超时和取消；
 - 将 CI 的步骤执行和结果聚合迁入通用 orchestrator；
 - 保留 `policy`、`full` 的外部语义；

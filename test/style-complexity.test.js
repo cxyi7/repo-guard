@@ -69,7 +69,7 @@ test('explicit CLI audits ignored files even when the staged gate is disabled', 
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /style\/selector-max-compound-selectors/);
   assert.match(result.stderr, /语义化 class/);
 });

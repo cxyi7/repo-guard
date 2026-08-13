@@ -7,11 +7,11 @@ import {
   gateResultToExitCode,
   gateStatusToExitCode,
 } from '../src/core/result/gate-result.js';
-import { adaptLegacyRunner } from '../src/core/result/legacy-runner-adapter.js';
+import { adaptNumericRunner } from '../src/core/result/numeric-runner-adapter.js';
 import { renderGateResultConsole } from '../src/core/report/console-renderer.js';
 import {
   renderGateResultJson,
-  renderLegacyCiStep,
+  renderCiStep,
 } from '../src/core/report/json-renderer.js';
 
 test('validates and freezes the unified gate result model', () => {
@@ -64,8 +64,8 @@ test('maps every stable status to the existing CLI exit contract', () => {
   assert.equal(gateStatusToExitCode('range-error'), 3);
 });
 
-test('adapts legacy diagnostics and exit codes without changing console or CI shapes', async () => {
-  const result = await adaptLegacyRunner({
+test('adapts numeric runner results into unified statuses and CI exits', async () => {
+  const result = await adaptNumericRunner({
     gateId: 'security.legacy-example',
     task: async () => {
       console.log('checked 2 files');
@@ -75,13 +75,13 @@ test('adapts legacy diagnostics and exit codes without changing console or CI sh
   });
 
   assert.equal(result.status, 'violation');
-  assert.equal(gateResultToExitCode(result, { preserveLegacy: true }), 2);
+  assert.equal(gateResultToExitCode(result), 2);
   assert.deepEqual(renderGateResultConsole(result, { label: 'legacy-example' }), [
     { stream: 'stdout', message: 'checked 2 files' },
     { stream: 'stderr', message: 'unsafe call at src/example.js:3' },
     { stream: 'stderr', message: 'FAIL  legacy-example' },
   ]);
-  assert.deepEqual(renderLegacyCiStep(result, { name: 'legacy-example' }), {
+  assert.deepEqual(renderCiStep(result, { name: 'legacy-example' }), {
     name: 'legacy-example',
     status: 'failed',
     exitCode: 2,
@@ -111,7 +111,7 @@ test('renders one normalized result as versioned JSON', () => {
 });
 
 test('normalizes thrown legacy errors for both renderers', async () => {
-  const result = await adaptLegacyRunner({
+  const result = await adaptNumericRunner({
     gateId: 'quality.crashed',
     task: () => {
       console.warn('tool warning before crash');
@@ -131,7 +131,7 @@ test('normalizes thrown legacy errors for both renderers', async () => {
     code: 'ETOOL',
   });
 
-  const primitiveError = await adaptLegacyRunner({
+  const primitiveError = await adaptNumericRunner({
     gateId: 'quality.primitive-error',
     task: () => Promise.reject('primitive failure'),
   });

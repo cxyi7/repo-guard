@@ -11,6 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { DEFAULT_UNIT_TEST_CONFIG } from '../src/config.js';
+import { createChangeSet } from '../src/core/capability/gate-context.js';
 import { collectPrePushChanges } from '../src/pre-push-changes.js';
 import {
   ensureUnitTestPolicy,
@@ -21,14 +22,32 @@ import {
   analyzeUnitTestContent,
   expectedUnitTestPath,
   expectedUnitTestPaths,
-  inspectUnitTestPolicy,
-  runUnitTestGate,
+  inspectUnitTestPolicy as inspectUnitTestPolicyWithChangeSet,
+  runUnitTestGate as runUnitTestGateWithChangeSet,
   validateUnitTestSetup,
 } from '../src/unit-test-runner.js';
 import { buildManagedTextBlock } from '../src/managed-text-block.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
+
+function withChangeSet(options) {
+  return {
+    ...options,
+    changes: createChangeSet({
+      source: 'test',
+      changes: options.changes ?? [],
+    }),
+  };
+}
+
+function inspectUnitTestPolicy(options) {
+  return inspectUnitTestPolicyWithChangeSet(withChangeSet(options));
+}
+
+function runUnitTestGate(options) {
+  return runUnitTestGateWithChangeSet(withChangeSet(options));
+}
 
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });

@@ -1,32 +1,82 @@
 import { loadConfig } from '../../config.js';
-import { gateResultToExitCode } from '../../core/result/gate-result.js';
+import { createChangeSet, createGateContext } from '../../core/capability/gate-context.js';
+import { defineExecutionPlan } from '../../core/capability/execution-plan.js';
+import { createGateRegistry } from '../../core/capability/gate-registry.js';
+import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { adaptNumericRunner } from '../../core/result/numeric-runner-adapter.js';
 import { collectProjectFiles } from '../../file-placement.js';
 import { gateRegistry } from '../../gates/registry.js';
+import { collectWorkingTreeChanges } from '../../git-changes.js';
 import { findRepositoryRoot } from '../../git.js';
-import { executeRegisteredGate } from '../gate-executor.js';
-import { legacyManualBindings } from './manual-bindings.js';
+import { orchestratePlan } from '../orchestrator.js';
+import { numericManualBindings } from './numeric-bindings.js';
 
-export async function runNativeManualGate(gate, cwd = process.cwd()) {
+function manualContext(root, config) {
+  const changes = createChangeSet({
+    source: 'manual',
+    changes: collectWorkingTreeChanges(root),
+  });
+  return createGateContext({
+    root,
+    config,
+    files: collectProjectFiles(root),
+    changes,
+    environment: 'manual',
+  });
+}
+
+async function runManualGate(gate, {
+  argumentsList = [],
+  cwd = process.cwd(),
+  registry = gateRegistry,
+} = {}) {
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
-  const result = await executeRegisteredGate({
-    gate,
-    context: {
-      root,
-      config,
-      files: collectProjectFiles(root),
-      changes: null,
-      revision: null,
-      environment: 'manual',
+  const context = manualContext(root, config);
+  const plan = defineExecutionPlan({
+    id: `manual:${gate.id}`,
+    environment: 'manual',
+    steps: [gate.id],
+  });
+  const numericBinding = numericManualBindings[gate.id];
+  const execution = await orchestratePlan({
+    plan,
+    registry,
+    context,
+    stopOnFailure: true,
+    executeStep: async ({ context: executionContext }) => numericBinding
+      ? await adaptNumericRunner({
+        gateId: gate.id,
+        task: () => numericBinding({
+          argumentsList,
+          cwd: root,
+          gate,
+          context: executionContext,
+        }),
+      })
+      : await (async () => {
+        const gatePlan = await gate.plan(executionContext);
+        return await gate.run({ ...executionContext, plan: gatePlan });
+      })(),
+    onResult: ({ result }) => {
+      if (gate.renderConsole && !numericBinding) {
+        for (const line of gate.renderConsole(result)) {
+          if (line.stream === 'stderr') console.error(line.message);
+          else console.log(line.message);
+        }
+        return;
+      }
+      writeGateResultConsole(result, { label: gate.manualCommand ?? gate.id });
     },
   });
-  for (const line of gate.renderConsole?.(result) ?? []) {
-    if (line.stream === 'stderr') console.error(line.message);
-    else console.log(line.message);
-  }
-  if (result.status === 'execution-error') throw new Error(result.error.message);
-  const exitCode = gateResultToExitCode(result);
-  return result.status === 'violation' && exitCode === 2 ? 1 : exitCode;
+  return execution.decisiveResult;
+}
+
+export async function runNativeManualGate(gate, cwd = process.cwd()) {
+  return await runManualGate(gate, {
+    cwd,
+    registry: createGateRegistry([gate]),
+  });
 }
 
 export async function runRegisteredManualGate(
@@ -36,7 +86,5 @@ export async function runRegisteredManualGate(
 ) {
   const gate = gateRegistry.findByManualCommand(command);
   if (!gate) return null;
-  const legacyBinding = legacyManualBindings[gate.id];
-  if (legacyBinding) return await legacyBinding({ argumentsList, cwd, gate });
-  return await runNativeManualGate(gate, cwd);
+  return await runManualGate(gate, { argumentsList, cwd });
 }

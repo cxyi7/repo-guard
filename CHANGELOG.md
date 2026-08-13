@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0
+
+- 新增不可变 `GateContext` 与 `ChangeSet`，manual CLI、CI policy/full 和 pre-push 通过同一通用 orchestrator 执行，统一处理逐 gate 超时、上游取消、失败短路、结果聚合和最终退出码。
+- CI 的保护文件、测试策略、单元测试和变更行覆盖率复用同一 Git 变更事实；pre-push 保持既定顺序与精确推送快照约束，并迁移为支持超时/取消的异步编排。
+- 本次架构重构删除 `GateResult.legacyExitCode`、旧退出码保留选项、同步编排入口及兼容 CI 步骤退出语义；尚未原生化的数字 runner 只在组合边界转换为统一 `GateResult`。
+
 ## 0.18.0
 
 - 建立全平台静态 Gate Registry，集中声明稳定 ID、配置键、生命周期、允许的副作用、超时、所需工具/项目脚本、artifact、manual command 和依赖关系；启动时拒绝重复 ID/配置键/命令、未知关系、排序环路和未声明的副作用降级。

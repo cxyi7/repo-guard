@@ -133,7 +133,6 @@ export function createGateResult({
   durationMs = 0,
   error = null,
   diagnostics = [],
-  legacyExitCode = null,
 }) {
   requireNonEmptyString(gateId, 'GateResult gateId');
   if (!GATE_STATUSES.includes(status)) {
@@ -142,9 +141,6 @@ export function createGateResult({
   requireNonEmptyString(summary, 'GateResult summary');
   if (!Array.isArray(findings) || !Array.isArray(artifacts) || !Array.isArray(diagnostics)) {
     throw new TypeError('GateResult findings, artifacts, and diagnostics must be arrays');
-  }
-  if (legacyExitCode != null && (!Number.isInteger(legacyExitCode) || legacyExitCode < 0)) {
-    throw new TypeError('GateResult legacyExitCode must be a non-negative integer or null');
   }
   const normalizedError = normalizeError(error);
   if (status.endsWith('-error') && normalizedError == null) {
@@ -163,7 +159,6 @@ export function createGateResult({
     durationMs: requireNonNegativeNumber(durationMs, 'GateResult durationMs'),
     error: normalizedError,
     diagnostics: Object.freeze(diagnostics.map(normalizeDiagnostic)),
-    legacyExitCode,
   });
 }
 
@@ -177,7 +172,6 @@ export function gateStatusToExitCode(status) {
   return 1;
 }
 
-export function gateResultToExitCode(result, { preserveLegacy = false } = {}) {
-  if (preserveLegacy && result.legacyExitCode != null) return result.legacyExitCode;
+export function gateResultToExitCode(result) {
   return gateStatusToExitCode(result.status);
 }

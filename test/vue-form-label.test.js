@@ -198,7 +198,7 @@ test('exposes a full-project form-labels CLI with unified reporting', (context) 
     cwd: root,
     encoding: 'utf8',
   });
-  assert.equal(result.status, 1);
+  assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/form-control-label/);
   assert.match(result.stderr, /<label>/);
   assert.match(result.stderr, /placeholder/);
