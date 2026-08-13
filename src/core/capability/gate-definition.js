@@ -50,7 +50,6 @@ export function defineGate({
   inspectSetup,
   plan,
   run,
-  renderConsole = null,
 }) {
   nonEmptyString(id, 'Gate id');
   if (configKey != null) nonEmptyString(configKey, 'Gate configKey');
@@ -74,9 +73,6 @@ export function defineGate({
     || typeof plan !== 'function'
     || typeof run !== 'function') {
     throw new TypeError('Gate inspectSetup, plan, and run must be functions');
-  }
-  if (renderConsole != null && typeof renderConsole !== 'function') {
-    throw new TypeError('Gate renderConsole must be a function or null');
   }
   return Object.freeze({
     id,
@@ -102,6 +98,5 @@ export function defineGate({
     inspectSetup,
     plan,
     run,
-    renderConsole,
   });
 }

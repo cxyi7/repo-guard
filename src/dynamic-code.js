@@ -1,3 +1,5 @@
+// Compatibility facade for the package-root API. Remove only in an explicitly reviewed major
+// release after the public-export audit confirms consumers have migrated to supported commands.
 import { collectProjectFiles } from './file-placement.js';
 import {
   buildDynamicCodeGateResult,

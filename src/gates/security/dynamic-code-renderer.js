@@ -1,4 +1,4 @@
-const NO_EVAL_RULE = 'security/no-eval';
+import { NO_EVAL_RULE } from './dynamic-code-rules.js';
 
 function findingDetails(finding) {
   if (finding.rule) {

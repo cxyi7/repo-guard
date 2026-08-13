@@ -160,7 +160,7 @@ test('returns native structured findings and metrics from the registered capabil
   ));
 
   const gate = gateRegistry.get('security.dynamic-code');
-  const plan = gate.plan({ root, config });
+  const plan = gate.plan({ root, config, files: ['src/runtime.ts'] });
   const result = gate.run({ root, config, plan });
   assert.equal(Object.isFrozen(plan), true);
   assert.equal(Object.isFrozen(plan.files), true);

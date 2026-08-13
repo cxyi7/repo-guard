@@ -3,14 +3,15 @@ import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { createGateResult, normalizeError } from '../../core/result/gate-result.js';
 import { findStructuredException } from '../../exception-registry.js';
-import { collectProjectFiles } from '../../file-placement.js';
 import { sourceLocation } from '../../vue-template-parser.js';
 import { findDynamicCodeAstReferences } from './dynamic-code-ast.js';
-import { renderDynamicCodeResult } from './dynamic-code-renderer.js';
+import {
+  NO_EVAL_RULE,
+  NO_FUNCTION_CONSTRUCTOR_RULE,
+} from './dynamic-code-rules.js';
 
 export const DYNAMIC_CODE_GATE_ID = 'security.dynamic-code';
-export const NO_EVAL_RULE = 'security/no-eval';
-export const NO_FUNCTION_CONSTRUCTOR_RULE = 'security/no-function-constructor';
+export { NO_EVAL_RULE, NO_FUNCTION_CONSTRUCTOR_RULE };
 
 const SCRIPT_EXTENSIONS = new Set([
   '.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx',
@@ -74,6 +75,12 @@ function normalizeFiles(root, files) {
       relative: path.relative(root, absolute).replace(/\\/g, '/'),
     };
   });
+}
+
+function immutableFileScope(files) {
+  return Object.freeze(files.map((file) => (
+    typeof file === 'string' ? file : Object.freeze({ ...file })
+  )));
 }
 
 export function inspectDynamicCode({ root, files, exceptions }) {
@@ -193,14 +200,19 @@ export const dynamicCodeGate = defineGate({
   supportsFix: false,
   supportsCancellation: false,
   inspectSetup: inspectDynamicCodeSetup,
-  plan({ root, files = null }) {
+  plan({ root, files }) {
+    if (!Array.isArray(files)) {
+      throw new TypeError('Dynamic code gate requires an explicit file scope');
+    }
     return Object.freeze({
       root,
-      files: Object.freeze([...(files ?? collectProjectFiles(root))]),
+      files: immutableFileScope(files),
     });
   },
-  renderConsole: renderDynamicCodeResult,
-  run({ root, config, plan = dynamicCodeGate.plan({ root }) }) {
+  run({ root, config, plan }) {
+    if (!plan || !Array.isArray(plan.files)) {
+      throw new TypeError('Dynamic code gate requires an execution plan');
+    }
     return buildDynamicCodeGateResult({
       root,
       files: plan.files,

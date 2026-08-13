@@ -163,7 +163,11 @@ export async function runCiGate({
     return 0;
   });
   const dynamicCodeGate = gateRegistry.get('security.dynamic-code');
-  const dynamicCodePlan = dynamicCodeGate.plan({ root, config });
+  const dynamicCodePlan = dynamicCodeGate.plan({
+    root,
+    config,
+    files: projectFiles,
+  });
   const dynamicCodeResult = dynamicCodeGate.run({ root, config, plan: dynamicCodePlan });
   for (const line of dynamicCodeGate.renderConsole(dynamicCodeResult)) {
     if (line.stream === 'stderr') console.error(line.message);

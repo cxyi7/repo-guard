@@ -649,7 +649,7 @@ repo-guard dynamic-code
 
 `init` 或 `doctor --fix` 会补充 `guard:dynamic-code` 项目脚本和 AGENTS.md 硬性要求。该门禁没有 `enable` 或 `disable` 命令。
 
-动态代码门禁是首个完成平台化纵向迁移的只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；CI 兼容步骤额外包含 `gateResult`，其中提供版本化 finding、metric 和诊断结果。
+动态代码门禁是首个完成平台化纵向迁移的只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；门禁只返回结构化结果，console renderer 在 Registry 组合边界挂接。CI 兼容步骤额外包含 `gateResult`，其中提供版本化 finding、metric 和诊断结果。
 
 ### Vue v-html 安全门禁
 
@@ -1259,7 +1259,7 @@ npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-0.17.0 将动态代码门禁作为首个纵向试点迁入 Gate Capability 与内部 Registry。配置仍为 `version: 1`，现有 CLI 文案、pre-commit 顺序、CI profile 和兼容步骤字段不变；CI 的 `dynamic-code` 步骤新增 `gateResult`，用于读取原生结构化 finding 和 metric。本版本不迁移其他门禁，也不引入 Execution Plan。
+0.17.0 将动态代码门禁作为首个纵向试点迁入 Gate Capability 与内部 Registry。配置仍为 `version: 1`，现有 CLI 文案、pre-commit 顺序、CI profile 和兼容步骤字段不变；CI 的 `dynamic-code` 步骤新增 `gateResult`，用于读取原生结构化 finding 和 metric。试点确认门禁执行需要仓库根目录、标准化配置和不可变文件范围；统一 ChangeSet、超时信号和结构化 logger 仍按阶段 4 收敛。本版本不迁移其他门禁，也不引入 Execution Plan。
 
 0.16.0 建立统一门禁结果与报告基础设施，并让 CI 步骤聚合通过兼容适配层使用该模型。配置仍为 `version: 1`，现有 CLI 文案、退出码、CI profile 和 JSON 报告结构不变；本版本不引入 Registry、外部门禁或执行顺序调整。
 

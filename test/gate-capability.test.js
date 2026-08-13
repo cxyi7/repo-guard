@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { defineGate } from '../src/core/capability/gate-definition.js';
 import { createGateRegistry } from '../src/core/capability/gate-registry.js';
 import { gateRegistry } from '../src/gates/registry.js';
+import { dynamicCodeGate } from '../src/gates/security/dynamic-code-gate.js';
 
 function gate(overrides = {}) {
   return defineGate({
@@ -40,6 +42,8 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.deepEqual(dynamicCode.artifactTypes, []);
   assert.equal(dynamicCode.supportsFix, false);
   assert.equal(dynamicCode.supportsCancellation, false);
+  assert.equal('renderConsole' in dynamicCodeGate, false);
+  assert.equal(typeof dynamicCode.renderConsole, 'function');
   assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
   assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 1 } }), {
     status: 'ready',
@@ -47,6 +51,37 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
       + '(hard requirement, rules=security/no-eval+security/no-function-constructor)',
     rules: dynamicCode.rules,
   });
+});
+
+test('keeps a supplied file scope immutable without letting the gate own console output', () => {
+  const sourceFile = { absolute: 'C:/repo/src/example.js', relative: 'src/example.js' };
+  const plan = dynamicCodeGate.plan({ root: 'C:/repo', files: [sourceFile] });
+
+  assert.equal(Object.isFrozen(plan), true);
+  assert.equal(Object.isFrozen(plan.files), true);
+  assert.equal(Object.isFrozen(plan.files[0]), true);
+  assert.notEqual(plan.files[0], sourceFile);
+  sourceFile.relative = 'src/changed.js';
+  assert.equal(plan.files[0].relative, 'src/example.js');
+  assert.throws(
+    () => dynamicCodeGate.plan({ root: 'C:/repo' }),
+    /requires an explicit file scope/,
+  );
+  assert.throws(
+    () => dynamicCodeGate.run({ root: 'C:/repo', config: { exceptions: [] } }),
+    /requires an execution plan/,
+  );
+});
+
+test('enforces the migrated gate dependency boundary', () => {
+  const source = readFileSync(
+    new URL('../src/gates/security/dynamic-code-gate.js', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(source, /from ['"].*renderer\.js['"]/);
+  assert.doesNotMatch(source, /collectProjectFiles|collectStagedChanges|runGit/);
+  assert.doesNotMatch(source, /\bconsole\.|process\.exit(?:Code)?/);
 });
 
 test('rejects duplicate identities, duplicate commands, and missing dependencies', () => {
