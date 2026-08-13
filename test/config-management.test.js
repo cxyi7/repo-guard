@@ -150,14 +150,14 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(first.changed, true);
   assert.deepEqual(migrated.rules, sparseConfig().rules);
   assert.deepEqual(migrated.exclusions, []);
-  assert.equal(migrated.preCommit.eslint.enabled, false);
-  assert.equal(migrated.preCommit.eslint.preset, false);
-  assert.equal(migrated.preCommit.prettier.enabled, false);
+  assert.equal(migrated.preCommit.eslint.enabled, true);
+  assert.equal(migrated.preCommit.eslint.preset, true);
+  assert.equal(migrated.preCommit.prettier.enabled, true);
   assert.equal(migrated.preCommit.stylelint.enabled, false);
   assert.equal(migrated.preCommit.stylelint.governance.enabled, false);
   assert.equal(migrated.preCommit.filePlacement.enabled, true);
   assert.equal(migrated.preCommit.filePlacement.rules.length, 2);
-  assert.equal(migrated.preCommit.maxFileLines.enabled, false);
+  assert.equal(migrated.preCommit.maxFileLines.enabled, true);
   assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
   assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
   assert.equal(migrated.lighthouse.enabled, false);
@@ -171,29 +171,27 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.unitTest.mappings.length, 5);
   assert.equal(migrated.notification.enabled, true);
   assert.deepEqual(migrated.exceptions.entries, []);
-  assert.equal(migrated.dependencyPolicy.enabled, false);
+  assert.equal(migrated.dependencyPolicy.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
   const second = migrateProjectConfig(root);
   assert.equal(second.changed, false);
 });
 
-test('preserves the legacy boolean coverage switch during migration', (context) => {
+test('rejects legacy boolean coverage during migration', (context) => {
   const root = createFixture(sparseConfig({
     unitTest: { coverage: true },
   }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  migrateProjectConfig(root);
-  assert.equal(readConfig(root).unitTest.coverage, true);
+  assert.throws(() => migrateProjectConfig(root), /unitTest\.coverage must be an object/);
 });
 
 test('enables selected quality gates and preserves explicit settings', (context) => {
   const root = createFixture(sparseConfig({
     preCommit: {
-      prettier: {
-        requireConfig: false,
-      },
+      eslint: { enabled: false },
+      prettier: { enabled: false, requireConfig: false },
     },
   }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -287,7 +285,7 @@ test('enables the architecture pre-push feature', (context) => {
 });
 
 test('enables the dependency governance pre-commit feature', (context) => {
-  const root = createFixture(sparseConfig());
+  const root = createFixture(sparseConfig({ dependencyPolicy: { enabled: false } }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['dependencies'], true);
@@ -337,9 +335,9 @@ test('disables style enhancements together with Stylelint', (context) => {
   assert.equal(config.preCommit.stylelint.governance.enabled, false);
 });
 
-test('enables structured coverage from a legacy boolean configuration', (context) => {
+test('enables structured coverage configuration', (context) => {
   const root = createFixture(sparseConfig({
-    unitTest: { coverage: false },
+    unitTest: { coverage: { enabled: false } },
   }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -352,7 +350,9 @@ test('enables structured coverage from a legacy boolean configuration', (context
 });
 
 test('enables the maximum file lines pre-commit feature', (context) => {
-  const root = createFixture(sparseConfig());
+  const root = createFixture(sparseConfig({
+    preCommit: { maxFileLines: { enabled: false } },
+  }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['maxFileLines'], true);

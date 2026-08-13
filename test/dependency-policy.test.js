@@ -12,7 +12,6 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   inspectDependencyPolicy,
-  runDependencyPolicy,
 } from '../src/dependency-policy.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
@@ -147,11 +146,11 @@ test('accepts exact npm aliases and workspace dependencies with a synchronized l
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runDependencyPolicy({
+  assert.equal(inspectDependencyPolicy({
     root,
     config: policy(),
     exceptions: registry(),
-  }), 0);
+  }).violations.length, 0);
 });
 
 test('still rejects unapproved sources when exact-version enforcement is disabled', (context) => {

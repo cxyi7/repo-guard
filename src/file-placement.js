@@ -1,6 +1,5 @@
 import path from 'node:path';
 import micromatch from 'micromatch';
-import { collectStagedChanges } from './git-changes.js';
 import { runGit } from './git.js';
 
 function matches(filePath, patterns, { nocase = false } = {}) {
@@ -93,22 +92,6 @@ export function buildFilePlacementAiInstructions(
   return lines.join('\n');
 }
 
-export function runFilePlacementFiles({ root, files, config }) {
-  const changes = collectStagedChanges(root);
-  const result = inspectFilePlacement({
-    changes,
-    config,
-    files: files.map(({ relative }) => relative),
-  });
-  if (result.violations.length > 0) {
-    console.error(buildFilePlacementAiInstructions(result.violations));
-    return 1;
-  }
-
-  console.log(`File placement passed: ${result.checkedCount} staged file(s) checked.`);
-  return 0;
-}
-
 export function collectProjectFiles(root) {
   const parsePaths = (output) => output
     .split('\0')
@@ -123,28 +106,4 @@ export function collectProjectFiles(root) {
     ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
     { cwd: root },
   ).stdout).filter((filePath) => !deleted.has(filePath));
-}
-
-export function runFilePlacementProject({ root, config }) {
-  const files = collectProjectFiles(root);
-  const result = inspectFilePlacement({
-    changes: files.map((filePath) => ({
-      status: 'A',
-      oldPath: null,
-      path: filePath,
-    })),
-    config: { ...config, mode: 'changedFiles' },
-  });
-  if (result.violations.length > 0) {
-    console.error(buildFilePlacementAiInstructions(
-      result.violations,
-      { conclusion: '全仓检查未通过。' },
-    ));
-    return 1;
-  }
-
-  console.log(
-    `File placement project check passed: ${result.checkedCount} of ${files.length} file(s) matched rules.`,
-  );
-  return 0;
 }

@@ -100,16 +100,14 @@ function cloneUnitTestConfig(value = {}) {
   return {
     ...DEFAULT_UNIT_TEST_CONFIG,
     ...value,
-    coverage: typeof coverage === 'boolean'
-      ? coverage
-      : {
-        ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
-        ...coverage,
-        thresholds: {
-          ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds,
-          ...(coverage.thresholds ?? {}),
-        },
+    coverage: {
+      ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
+      ...coverage,
+      thresholds: {
+        ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds,
+        ...(coverage.thresholds ?? {}),
       },
+    },
     componentInteraction: {
       ...DEFAULT_COMPONENT_INTERACTION_CONFIG,
       ...(value.componentInteraction ?? {}),
@@ -319,13 +317,6 @@ export function migrateProjectConfig(root, {
 
 function featureConfig(config, feature) {
   if (feature === 'coverage') {
-    if (typeof config.unitTest.coverage === 'boolean') {
-      config.unitTest.coverage = {
-        ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
-        enabled: config.unitTest.coverage,
-        thresholds: { ...DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds },
-      };
-    }
     return config.unitTest.coverage;
   }
   if (feature === 'componentInteraction') {

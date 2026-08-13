@@ -105,7 +105,11 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
             new Error(`${gate.id} setup is ${setup.status}: ${setup.summary}`),
           );
         }
-        return await executeStep({ context: stepContext, gate, step });
+        return await executeStep({
+          context: Object.freeze({ ...stepContext, step }),
+          gate,
+          step,
+        });
       }),
       aborted,
     ]);

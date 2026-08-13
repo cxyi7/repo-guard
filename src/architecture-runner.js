@@ -8,7 +8,10 @@ import {
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createGateResult } from './core/result/gate-result.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
+
+const ARCHITECTURE_GATE_ID = 'quality.architecture';
 
 function resolveDependencyCruiser(root) {
   const metadata = resolveProjectPackageMetadata(
@@ -189,10 +192,6 @@ export function runArchitectureGate({ root, config }) {
       `${JSON.stringify(createDependencyCruiserConfig(config, setup), null, 2)}\n`,
       'utf8',
     );
-    console.log(
-      `repo-guard architecture: cruising ${config.sourcePaths.join(', ')} `
-      + `with dependency-cruiser ${setup.dependencyCruiser.version}...`,
-    );
     const execution = spawnSync(
       process.execPath,
       [
@@ -214,8 +213,12 @@ export function runArchitectureGate({ root, config }) {
     );
     if (execution.error) {
       if (execution.error.code === 'ETIMEDOUT') {
-        console.error(`Architecture dependency analysis exceeded ${config.timeoutMs}ms.`);
-        return 1;
+        return createGateResult({
+          gateId: ARCHITECTURE_GATE_ID,
+          status: 'execution-error',
+          summary: `Architecture analysis exceeded ${config.timeoutMs}ms`,
+          error: execution.error,
+        });
       }
       throw new Error(`Unable to run dependency-cruiser: ${execution.error.message}`);
     }
@@ -232,16 +235,35 @@ export function runArchitectureGate({ root, config }) {
       violationSeverity(violation) === 'error'
     ));
     if (hasErrors) {
-      console.error([
-        formatted,
-        '',
-        buildArchitectureAiRepairInstructions({ root, violations: report.violations }),
-      ].join('\n'));
-      return 1;
+      return createGateResult({
+        gateId: ARCHITECTURE_GATE_ID,
+        status: 'violation',
+        summary: `Architecture found ${report.violations.length} violation(s)`,
+        findings: report.violations.map((violation) => ({
+          ruleId: `architecture/${violation.rule?.name || 'dependency'}`,
+          severity: violationSeverity(violation) === 'warn' ? 'warning' : 'error',
+          message: violation.rule?.name || 'Architecture dependency violation',
+          location: violation.from ? { path: violation.from } : null,
+          evidence: violation.to ? `${violation.from} -> ${violation.to}` : null,
+        })),
+        diagnostics: [{
+          level: 'error',
+          message: [
+            formatted,
+            '',
+            buildArchitectureAiRepairInstructions({ root, violations: report.violations }),
+          ].join('\n'),
+        }],
+        metrics: { modules: report.modulesCruised, violations: report.violations.length },
+      });
     }
-    console.log(formatted);
-    console.log('repo-guard architecture passed.');
-    return 0;
+    return createGateResult({
+      gateId: ARCHITECTURE_GATE_ID,
+      status: 'passed',
+      summary: `Architecture passed across ${report.modulesCruised} module(s)`,
+      diagnostics: [{ level: 'info', message: formatted }],
+      metrics: { modules: report.modulesCruised, violations: report.violations.length },
+    });
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }

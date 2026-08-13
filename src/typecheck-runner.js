@@ -1,9 +1,12 @@
-import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   readFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { createGateResult } from './core/result/gate-result.js';
+import { runProjectScript } from './integrations/npm/run-script.js';
+
+export const TYPE_CHECK_GATE_ID = 'quality.typecheck';
 
 function readProjectPackage(root) {
   const target = path.join(root, 'package.json');
@@ -32,45 +35,49 @@ export function detectProjectTypeCheckSetup(root, config) {
   }
 }
 
-function runNpmScript(root, config) {
-  const command = process.platform === 'win32'
-    ? process.env.ComSpec || 'cmd.exe'
-    : 'npm';
-  const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', `npm run ${config.script}`]
-    : ['run', config.script];
-  return spawnSync(command, args, {
-    cwd: root,
-    env: process.env,
-    stdio: 'inherit',
-    timeout: config.timeoutMs,
-    windowsHide: true,
-  });
-}
-
 export function runTypeCheckGate({ root, config }) {
+  const startedAt = Date.now();
   const setup = validateTypeCheckSetup(root, config);
-  console.log(
-    `repo-guard TypeScript: running npm script "${config.script}" `
-    + `(${setup.command})...`,
-  );
-  const result = runNpmScript(root, config);
-  if (result.error) {
-    if (result.error.code === 'ETIMEDOUT') {
-      console.error(`TypeScript 类型检查超过 ${config.timeoutMs}ms，推送已停止。`);
-      return 1;
-    }
-    throw new Error(`Unable to run TypeScript type check: ${result.error.message}`);
+  const diagnostics = [{
+    level: 'info',
+    message: `repo-guard TypeScript: running npm script "${config.script}" (${setup.command})...`,
+  }];
+  const execution = runProjectScript({ root, script: config.script, timeoutMs: config.timeoutMs });
+  if (execution.error) {
+    const error = execution.timedOut
+      ? new Error(`TypeScript type check exceeded ${config.timeoutMs}ms`)
+      : new Error(`Unable to run TypeScript type check: ${execution.error.message}`);
+    return createGateResult({
+      gateId: TYPE_CHECK_GATE_ID,
+      status: 'execution-error',
+      summary: error.message,
+      error,
+      diagnostics,
+      durationMs: Date.now() - startedAt,
+    });
   }
-  if (result.status !== 0) {
-    console.error([
-      `TypeScript 类型检查失败（退出码 ${result.status ?? 1}），推送已停止。`,
+  if (execution.status !== 0) {
+    diagnostics.push({ level: 'error', message: [
+      `TypeScript 类型检查失败（退出码 ${execution.status ?? 1}），推送已停止。`,
       '请根据上方 tsc/vue-tsc 输出修复类型根因和相关调用方。',
       '不得使用 any、@ts-ignore、@ts-nocheck、关闭 strict 选项或修改门禁绕过。',
       `修复后重新运行 npm run ${config.script}。`,
-    ].join('\n'));
-    return result.status ?? 1;
+    ].join('\n') });
+    return createGateResult({
+      gateId: TYPE_CHECK_GATE_ID,
+      status: 'violation',
+      summary: 'TypeScript type check failed',
+      diagnostics,
+      metrics: { processExitCode: execution.status ?? 1 },
+      durationMs: Date.now() - startedAt,
+    });
   }
-  console.log('repo-guard TypeScript passed.');
-  return 0;
+  diagnostics.push({ level: 'info', message: 'repo-guard TypeScript passed.' });
+  return createGateResult({
+    gateId: TYPE_CHECK_GATE_ID,
+    status: 'passed',
+    summary: 'TypeScript type check passed',
+    diagnostics,
+    durationMs: Date.now() - startedAt,
+  });
 }

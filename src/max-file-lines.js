@@ -271,24 +271,3 @@ export function buildMaxFileLinesWarnings(warnings) {
     ...lines,
   ].join('\n');
 }
-
-export function runMaxFileLinesFiles({ root, files, config, baselineRef, changes }) {
-  const { violations, warnings } = evaluateMaxFileLines({
-    root,
-    files,
-    config,
-    baselineRef,
-    changes,
-  });
-  if (warnings.length > 0) {
-    console.warn(buildMaxFileLinesWarnings(warnings));
-  }
-  if (violations.length === 0) {
-    console.log(`Maximum file lines passed: ${files.length} staged file(s).`);
-    return 0;
-  }
-
-  console.error(buildMaxFileLinesAiInstructions(violations));
-  console.error(`共 ${violations.length} 个文件超限，提交已停止。`);
-  return 1;
-}

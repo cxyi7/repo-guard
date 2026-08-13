@@ -18,7 +18,7 @@
     },
     "notification": {
       "type": "object",
-      "description": "Project-wide WeCom notification switch. Missing values stay enabled for compatibility.",
+      "description": "Project-wide WeCom notification switch. Omitted values use the current platform default.",
       "additionalProperties": false,
       "properties": {
         "enabled": {
@@ -163,8 +163,8 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Run dependency governance when root package.json or package-lock.json is staged. New init configurations set this to true; migrated configurations stay false."
+          "default": true,
+          "description": "Run dependency governance when root package.json or package-lock.json is staged."
         },
         "requireExactVersions": {
           "type": "boolean",
@@ -431,15 +431,9 @@
           "description": "Maximum runtime for the unit-test process."
         },
         "coverage": {
-          "oneOf": [
-            {
-              "type": "boolean",
-              "description": "Legacy compatibility mode: only append --coverage without repo-guard threshold enforcement."
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
                 "enabled": {
                   "type": "boolean",
                   "default": false,
@@ -488,9 +482,7 @@
                     }
                   }
                 }
-              }
-            }
-          ],
+              },
           "default": {
             "enabled": false,
             "reportsDirectory": "coverage",
@@ -788,8 +780,8 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": false,
-              "description": "Reject staged files that exceed the first matching rule and print standalone AI refactoring instructions. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+              "default": true,
+              "description": "Reject staged files that exceed the first matching rule and print standalone AI refactoring instructions."
             },
             "mode": {
               "type": "string",
@@ -969,8 +961,8 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": false,
-              "description": "Run Prettier against staged files before the protected-file gate. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+              "default": true,
+              "description": "Run Prettier against staged files before the protected-file gate."
             },
             "pattern": {
               "type": "string",
@@ -997,13 +989,13 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "default": false,
-              "description": "Run ESLint against staged files before the protected-file gate. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+              "default": true,
+              "description": "Run ESLint against staged files before the protected-file gate."
             },
             "preset": {
               "type": "boolean",
-              "default": false,
-              "description": "Automatically inject the repo-guard AI maintainability preset before the project's ESLint Flat Config. New init configurations set this to true; omitted values stay false for upgrade compatibility."
+              "default": true,
+              "description": "Automatically inject the repo-guard AI maintainability preset before the project's ESLint Flat Config."
             },
             "pattern": {
               "type": "string",

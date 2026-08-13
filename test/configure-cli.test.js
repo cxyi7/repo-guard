@@ -31,6 +31,11 @@ test('CLI migrates configuration and enables selected gates', (context) => {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
+      preCommit: {
+        eslint: { enabled: false },
+        prettier: { enabled: false },
+        maxFileLines: { enabled: false },
+      },
       rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
     }, null, 2)}\n`,
   );

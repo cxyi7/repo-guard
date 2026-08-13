@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+import path from 'node:path';
 import {
   captureFileContents,
   restoreFileContents,
@@ -7,6 +8,9 @@ import { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
 import { createRepoGuardEslintConfig } from './eslint-config.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
+import { createGateResult } from './core/result/gate-result.js';
+
+export const ESLINT_GATE_ID = 'quality.eslint';
 
 const MINIMUM_PRESET_ESLINT_VERSION = Object.freeze([9, 19]);
 
@@ -120,8 +124,21 @@ function hasBlockingProblems(summary, maxWarnings) {
   return summary.errors > 0 || summary.warnings > maxWarnings;
 }
 
-function printRepairInstructions(root, results, maxWarnings) {
-  console.error(buildEslintAiRepairInstructions({ root, results, maxWarnings }));
+function blockingFindings(root, results, maxWarnings) {
+  const warningCount = results.reduce((total, result) => total + result.warningCount, 0);
+  const warningsAreBlocking = warningCount > maxWarnings;
+  return results.flatMap((result) => result.messages
+    .filter((message) => message.severity === 2 || (warningsAreBlocking && message.severity === 1))
+    .map((message) => ({
+      ruleId: `eslint/${message.ruleId || 'parsing-error'}`,
+      severity: message.severity === 1 ? 'warning' : 'error',
+      message: String(message.message).trim(),
+      location: {
+        path: path.relative(root, result.filePath).replace(/\\/g, '/'),
+        ...(message.line ? { line: message.line } : {}),
+        ...(message.column ? { column: message.column } : {}),
+      },
+    })));
 }
 
 export async function runEslintFiles({
@@ -132,7 +149,7 @@ export async function runEslintFiles({
   preset = false,
 }) {
   if (files.length === 0) {
-    return 0;
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: 'ESLint has no applicable files' });
   }
 
   const { ESLint, version } = await loadProjectEslint(root);
@@ -150,21 +167,17 @@ export async function runEslintFiles({
   const lintableFiles = await collectLintableFiles(initialEslint, normalizedFiles);
 
   if (lintableFiles.length === 0) {
-    console.log(`ESLint ${version}: all staged files are ignored by the project configuration.`);
-    return 0;
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: `ESLint ${version}: all files are ignored by the project configuration` });
   }
 
   const initialResults = await initialEslint.lintFiles(lintableFiles);
   const initialSummary = summarize(initialResults);
   if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    console.log(`ESLint ${version} passed: ${lintableFiles.length} staged file(s).`);
-    return 0;
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${version} passed`, metrics: { checkedFiles: lintableFiles.length, errors: 0, warnings: initialSummary.warnings } });
   }
 
   if (!fix) {
-    printRepairInstructions(root, initialResults, maxWarnings);
-    console.error('ESLint 检查未通过，请按上面的编号信息修复后重新提交。');
-    return 1;
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: blockingFindings(root, initialResults, maxWarnings), diagnostics: [{ level: 'error', message: buildEslintAiRepairInstructions({ root, results: initialResults, maxWarnings }) }], metrics: { checkedFiles: lintableFiles.length, errors: initialSummary.errors, warnings: initialSummary.warnings } });
   }
 
   const fixingEslint = new ESLint(eslintOptions(true));
@@ -186,17 +199,8 @@ export async function runEslintFiles({
   const finalSummary = summarize(finalResults);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    printRepairInstructions(root, finalResults, maxWarnings);
-    console.error(
-      `ESLint 自动修复后仍有 ${finalSummary.errors} 个错误、`
-      + `${finalSummary.warnings} 个警告，提交已停止。`,
-    );
-    return 1;
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: blockingFindings(root, finalResults, maxWarnings), diagnostics: [{ level: 'error', message: buildEslintAiRepairInstructions({ root, results: finalResults, maxWarnings }) }], metrics: { checkedFiles: lintableFiles.length, errors: finalSummary.errors, warnings: finalSummary.warnings } });
   }
 
-  console.log(
-    `ESLint ${version} auto-fix and verification passed: `
-    + `${lintableFiles.length} staged file(s).`,
-  );
-  return 0;
+  return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${version} auto-fix and verification passed`, metrics: { checkedFiles: lintableFiles.length, errors: 0, warnings: finalSummary.warnings } });
 }

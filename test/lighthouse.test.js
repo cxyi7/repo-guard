@@ -108,7 +108,7 @@ test('builds a Vue project and runs Lighthouse collect then assert', (context) =
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }), 0);
+  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }).status, 'passed');
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\nassert\n');
 });
 
@@ -120,7 +120,7 @@ test('supports skipping the Vue build for an already running project', (context)
     root,
     config: lighthouseConfig(),
     skipBuild: true,
-  }), 0);
+  }).status, 'passed');
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'collect\nassert\n');
 });
 
@@ -134,7 +134,7 @@ test('exposes the Vue Lighthouse runner through the CLI', (context) => {
     { cwd: root, encoding: 'utf8' },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Lighthouse passed/);
+  assert.match(result.stdout, /PASS {2}lighthouse/);
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'collect\nassert\n');
 });
 
@@ -143,7 +143,7 @@ test('stops before assertions when Lighthouse collection fails', (context) => {
   context.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'fail-phase'), 'collect\n');
 
-  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }), 7);
+  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }).status, 'execution-error');
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\n');
 });
 

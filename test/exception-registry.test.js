@@ -146,7 +146,7 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /1 active/);
+  assert.match(cliResult.stdout, /PASS {2}exceptions/);
 
   const config = loadConfig(root).exceptions;
   assert.equal(ensureExceptionPolicy(root, config).changed, true);

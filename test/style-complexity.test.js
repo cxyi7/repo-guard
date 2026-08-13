@@ -82,7 +82,7 @@ test('allows only an exact active structured exception', async (context) => {
   const createdOn = new Date(Date.now() - (24 * 60 * 60 * 1000))
     .toISOString().slice(0, 10);
 
-  const exitCode = await runStyleComplexityProject({
+  const result = await runStyleComplexityProject({
     root,
     files: ['style.css'],
     config: {
@@ -104,5 +104,5 @@ test('allows only an exact active structured exception', async (context) => {
       expiresOn,
     }]),
   });
-  assert.equal(exitCode, 0);
+  assert.equal(result.status, 'passed');
 });

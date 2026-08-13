@@ -151,7 +151,7 @@ test('allows only an exact active structured governance exception', async (conte
   const expiresOn = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000))
     .toISOString().slice(0, 10);
 
-  const exitCode = await runStyleGovernanceProject({
+  const result = await runStyleGovernanceProject({
     root,
     files: [file],
     config: {
@@ -179,5 +179,5 @@ test('allows only an exact active structured governance exception', async (conte
       }],
     },
   });
-  assert.equal(exitCode, 0);
+  assert.equal(result.status, 'passed');
 });

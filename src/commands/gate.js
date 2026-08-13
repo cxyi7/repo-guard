@@ -1,24 +1,10 @@
 import { loadConfig } from '../config.js';
-import {
-  classifyChanges,
-  collectStagedChanges,
-} from '../git-changes.js';
-import { createStagedFingerprint } from '../fingerprint.js';
+import { createChangeSet, createGateContext } from '../core/capability/gate-context.js';
+import { gateResultToExitCode } from '../core/result/gate-result.js';
+import { writeGateResultConsole } from '../core/report/console-renderer.js';
+import { collectStagedChanges } from '../git-changes.js';
 import { findRepositoryRoot } from '../git.js';
-import {
-  assertLocalEnvironmentNotStaged,
-  resolveNotificationEnvironment,
-} from '../local-env.js';
-import { printProtectedChanges } from '../report.js';
-import {
-  notificationWasSent,
-  saveNotificationState,
-} from '../state.js';
-import {
-  buildNotificationText,
-  loadNotificationConfig,
-  sendWecomNotification,
-} from '../wecom.js';
+import { protectedFilesGate } from '../gates/repository/native-policy-gates.js';
 
 export async function runGate({
   cwd = process.cwd(),
@@ -28,52 +14,28 @@ export async function runGate({
 } = {}) {
   const root = context?.root ?? findRepositoryRoot(cwd);
   const config = context?.config ?? loadConfig(root);
-  const stagedChanges = context?.changes?.entries ?? collectStagedChanges(root);
-  assertLocalEnvironmentNotStaged(stagedChanges);
-  const protectedChanges = classifyChanges(stagedChanges, config);
-
-  if (protectedChanges.length === 0) {
-    console.log('repo-guard gate passed: staged changes do not include protected files.');
-    return 0;
-  }
-
-  console.log(`repo-guard detected ${protectedChanges.length} protected staged change(s):`);
-  printProtectedChanges(protectedChanges);
-
-  const notifyChanges = protectedChanges.filter(({ level }) => level === 'notify');
-  if (notifyChanges.length === 0) {
-    console.log('repo-guard gate passed: all protected changes are audit-only.');
-    return 0;
-  }
-
-  if (!config.notification.enabled) {
-    console.log(
-      'repo-guard gate passed: WeCom notification is disabled; '
-      + 'notify-level changes were recorded without sending a notification.',
-    );
-    return 0;
-  }
-
-  const fingerprint = createStagedFingerprint(root, notifyChanges);
-  const content = buildNotificationText(root, notifyChanges, fingerprint);
-  console.log(`Fingerprint: ${fingerprint}`);
-
-  if (dryRun) {
-    console.log('WeCom notification preview:');
-    console.log(content);
-    return 0;
-  }
-
-  if (!forceNotify && notificationWasSent(root, fingerprint)) {
-    console.log('The same staged tree has already been reported; duplicate notification skipped.');
-    return 0;
-  }
-
-  const { webhook, mentionMobiles } = loadNotificationConfig(
-    resolveNotificationEnvironment(root),
-  );
-  await sendWecomNotification(webhook, content, mentionMobiles);
-  saveNotificationState(root, fingerprint);
-  console.log('WeCom notification sent; commit may continue.');
-  return 0;
+  const changes = context?.changes ?? createChangeSet({
+    source: 'manual',
+    changes: collectStagedChanges(root),
+  });
+  const gateContext = context ?? createGateContext({
+    root,
+    environment: 'pre-commit',
+    config,
+    changes,
+  });
+  const invocationContext = Object.freeze({
+    ...gateContext,
+    dryRun,
+    forceNotify,
+    step: Object.freeze({
+      id: protectedFilesGate.id,
+      gateId: protectedFilesGate.id,
+      mutation: protectedFilesGate.mutation,
+    }),
+  });
+  const plan = protectedFilesGate.plan(invocationContext);
+  const result = await protectedFilesGate.run({ ...invocationContext, plan });
+  writeGateResultConsole(result, { label: 'protected-files' });
+  return gateResultToExitCode(result);
 }

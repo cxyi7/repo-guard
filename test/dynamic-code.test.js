@@ -15,7 +15,7 @@ import {
   inspectDynamicCode,
   NO_EVAL_RULE,
   NO_FUNCTION_CONSTRUCTOR_RULE,
-} from '../src/dynamic-code.js';
+} from '../src/gates/security/dynamic-code-gate.js';
 import { gateRegistry } from '../src/gates/registry.js';
 import { renderGateResultJson } from '../src/core/report/json-renderer.js';
 

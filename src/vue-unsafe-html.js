@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { findStructuredException } from './exception-registry.js';
-import { collectProjectFiles } from './file-placement.js';
 import {
   findVueTemplateAttributes,
   sourceLocation,
@@ -67,32 +66,4 @@ export function buildUnsafeVueHtmlAiInstructions(violations) {
   });
   lines.push('', `共 ${violations.length} 处未经批准的 v-html，提交已停止。`);
   return lines.join('\n');
-}
-
-function reportApproved(approved) {
-  for (const finding of approved) {
-    console.warn(
-      `Vue v-html approved exception: ${finding.path}:${finding.line}:${finding.column} `
-      + `(${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
-    );
-  }
-}
-
-export function runUnsafeVueHtmlFiles({ root, files, exceptions }) {
-  const result = inspectUnsafeVueHtml({ root, files, exceptions });
-  reportApproved(result.approved);
-  if (result.violations.length > 0) {
-    console.error(buildUnsafeVueHtmlAiInstructions(result.violations));
-    return 1;
-  }
-  console.log(
-    `Vue v-html gate passed: ${result.checkedCount} file(s), `
-    + `${result.approved.length} approved exception(s).`,
-  );
-  return 0;
-}
-
-export function runUnsafeVueHtmlProject({ root, exceptions }) {
-  const files = collectProjectFiles(root);
-  return runUnsafeVueHtmlFiles({ root, files, exceptions });
 }

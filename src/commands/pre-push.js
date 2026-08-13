@@ -1,22 +1,16 @@
-import { runBuildGate } from '../build-runner.js';
-import { runAccessibilityTestGate } from '../accessibility-test-runner.js';
-import { runArchitectureGate } from '../architecture-runner.js';
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
 import { findRepositoryRoot, gitValue, runGit } from '../git.js';
-import { runVueLighthouse } from '../lighthouse-runner.js';
 import {
   collectPrePushChanges,
   parsePrePushUpdates,
 } from '../pre-push-changes.js';
-import { runUnitTestGate } from '../unit-test-runner.js';
-import { runTypeCheckGate } from '../typecheck-runner.js';
 import { assertExceptionRegistryCurrent } from '../exception-registry.js';
 import {
   createChangeSet,
   createGateContext,
 } from '../core/capability/gate-context.js';
-import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
-import { adaptNumericRunner } from '../core/result/numeric-runner-adapter.js';
+import { gateStatusToExitCode } from '../core/result/gate-result.js';
+import { writeGateResultConsole } from '../core/report/console-renderer.js';
 import { gateRegistry } from '../gates/registry.js';
 import { prePushPlan } from '../orchestration/execution-plans.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';
@@ -155,52 +149,23 @@ export async function runPrePush(cwd = process.cwd(), {
     registry: gateRegistry,
     context,
     stopOnFailure: true,
-    executeStep: async ({ step }) => {
-      let task;
+    executeStep: async ({ context: stepContext, gate, step }) => {
       switch (step.id) {
       case 'quality.typecheck':
-        if (config.typeCheck.enabled) task = () => runTypeCheckGate({ root, config: config.typeCheck });
-        else console.log('repo-guard pre-push: TypeScript type check is disabled.');
-        break;
       case 'quality.unit-test':
-        if (config.unitTest.enabled) task = () => runUnitTestGate({ root, config: config.unitTest, changes: changeSet });
-        else console.log('repo-guard pre-push: unit tests are disabled.');
-        break;
       case 'quality.accessibility-test':
-        if (config.accessibilityTest.enabled) task = () => runAccessibilityTestGate({ root, config: config.accessibilityTest });
-        else console.log('repo-guard pre-push: accessibility tests are disabled.');
-        break;
       case 'quality.architecture':
-        if (config.architecture.enabled) task = () => runArchitectureGate({ root, config: config.architecture });
-        else console.log('repo-guard pre-push: architecture dependency gate is disabled.');
-        break;
       case 'quality.build':
-        if (config.build.enabled) task = () => runBuildGate({ root, config: config.build });
-        else console.log('repo-guard pre-push: project build is disabled.');
-        break;
       case 'quality.lighthouse':
-        if (config.lighthouse.enabled) {
-          const buildAlreadyRan = config.build.enabled
-            && config.lighthouse.buildScript === config.build.script;
-          task = () => runVueLighthouse({ root, config: config.lighthouse, skipBuild: buildAlreadyRan });
-        } else console.log('repo-guard pre-push: Lighthouse is disabled.');
-        break;
+        {
+          const gatePlan = await gate.plan(stepContext);
+          return await gate.run({ ...stepContext, plan: gatePlan });
+        }
       default:
         throw new Error(`Unsupported pre-push execution step: ${step.id}`);
       }
-      if (!task) {
-        return createGateResult({
-          gateId: step.gateId,
-          status: 'skipped',
-          summary: `${step.id} is disabled`,
-        });
-      }
-      return await adaptNumericRunner({
-        gateId: step.gateId,
-        task,
-        captureDiagnostics: false,
-      });
     },
+    onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
   });
   return execution.exitCode;
 }

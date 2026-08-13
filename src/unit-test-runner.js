@@ -15,6 +15,7 @@ import {
   prepareCoverageReports,
 } from './coverage-runner.js';
 import { changeSetEntries } from './core/capability/gate-context.js';
+import { createGateResult } from './core/result/gate-result.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
@@ -584,7 +585,16 @@ export function runUnitTestGate({ root, config, changes }) {
       ...policy,
       script: config.script,
     }));
-    return 1;
+    return createGateResult({
+      gateId: 'quality.unit-test',
+      status: 'violation',
+      summary: 'Unit test policy failed',
+      metrics: {
+        missingTests: policy.missingTests.length,
+        bypasses: policy.bypasses.length,
+        componentInteractions: policy.componentInteractions.length,
+      },
+    });
   }
 
   console.log(
@@ -597,7 +607,12 @@ export function runUnitTestGate({ root, config, changes }) {
   if (result.error) {
     if (result.error.code === 'ETIMEDOUT') {
       console.error(`单元测试超过 ${config.timeoutMs}ms，推送已停止。`);
-      return 1;
+      return createGateResult({
+        gateId: 'quality.unit-test',
+        status: 'execution-error',
+        summary: `Unit tests exceeded ${config.timeoutMs}ms`,
+        error: result.error,
+      });
     }
     throw new Error(`Unable to run unit tests: ${result.error.message}`);
   }
@@ -608,7 +623,11 @@ export function runUnitTestGate({ root, config, changes }) {
       '不得删除失败测试、降低必要断言、使用 .skip/.skipIf/.todo/.only 或修改门禁绕过。',
       `修复后重新运行 npm run ${config.script}。`,
     ].join('\n'));
-    return result.status ?? 1;
+    return createGateResult({
+      gateId: 'quality.unit-test',
+      status: 'violation',
+      summary: `Unit tests failed with exit code ${result.status ?? 1}`,
+    });
   }
   if (isStructuredCoverage(config.coverage)) {
     let coverageResult;
@@ -620,7 +639,12 @@ export function runUnitTestGate({ root, config, changes }) {
         'Ensure the configured Vitest coverage provider can generate json-summary and lcov reports.',
         'Do not reuse stale reports, disable the gate, or reduce thresholds to bypass the failure.',
       ].join('\n'));
-      return 1;
+      return createGateResult({
+        gateId: 'quality.unit-test',
+        status: 'execution-error',
+        summary: 'Coverage report inspection failed',
+        error,
+      });
     }
     const report = formatCoverageReport(coverageResult, root);
     console.log(report);
@@ -630,9 +654,18 @@ export function runUnitTestGate({ root, config, changes }) {
         'Add effective tests for the uncovered behavior and changed lines, then run the unit-test gate again.',
         'Do not exclude production files or reduce thresholds to bypass the gate.',
       ].join('\n'));
-      return 1;
+      return createGateResult({
+        gateId: 'quality.unit-test',
+        status: 'violation',
+        summary: 'Coverage threshold failed',
+      });
     }
   }
   console.log('repo-guard unit tests passed.');
-  return 0;
+  return createGateResult({
+    gateId: 'quality.unit-test',
+    status: 'passed',
+    summary: `Unit tests passed with Vitest ${setup.vitest.version}`,
+    metrics: { coverageEnabled: isCoverageEnabled(config.coverage) ? 1 : 0 },
+  });
 }

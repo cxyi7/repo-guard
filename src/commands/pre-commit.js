@@ -3,7 +3,6 @@ import {
   loadConfig,
   validateConfig,
 } from '../config.js';
-import { runStagedDependencyPolicy } from '../dependency-policy.js';
 import { runEslintFiles } from '../eslint-runner.js';
 import { findRepositoryRoot, runGit } from '../git.js';
 import { collectStagedChanges } from '../git-changes.js';
@@ -13,12 +12,9 @@ import {
   createChangeSet,
   createGateContext,
 } from '../core/capability/gate-context.js';
-import { createGateResult } from '../core/result/gate-result.js';
-import { adaptNumericRunner } from '../core/result/numeric-runner-adapter.js';
 import { gateRegistry } from '../gates/registry.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';
 import { preCommitPolicyPlan } from '../orchestration/pre-commit/protected-plan.js';
-import { runGate } from './gate.js';
 
 function loadStagedConfig(root) {
   const result = runGit(['show', `:${CONFIG_FILE}`], {
@@ -55,34 +51,21 @@ export async function runPreCommit(cwd = process.cwd()) {
     registry: gateRegistry,
     context,
     stopOnFailure: true,
-    executeStep: async ({ step }) => {
-      let task;
+    executeStep: async ({ context: stepContext, gate, step }) => {
       switch (step.id) {
         case 'dependencies.policy':
-          if (!config.dependencyPolicy.enabled) {
-            return createGateResult({
-              gateId: step.gateId,
-              status: 'skipped',
-              summary: 'Staged dependency policy is disabled',
-            });
+          {
+            const gatePlan = await gate.plan(stepContext);
+            return await gate.run({ ...stepContext, plan: gatePlan });
           }
-          task = () => runStagedDependencyPolicy({
-            root,
-            config: config.dependencyPolicy,
-            exceptions: config.exceptions,
-          });
-          break;
         case 'repository.protected-files':
-          task = () => runGate({ cwd, context });
-          break;
+          {
+            const gatePlan = await gate.plan(stepContext);
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         default:
           throw new Error(`Unsupported protected pre-commit policy step: ${step.id}`);
       }
-      return await adaptNumericRunner({
-        gateId: step.gateId,
-        task,
-        captureDiagnostics: false,
-      });
     },
   });
   if (execution.status.endsWith('-error')) {

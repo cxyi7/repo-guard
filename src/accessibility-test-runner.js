@@ -6,6 +6,7 @@ import {
 import path from 'node:path';
 import micromatch from 'micromatch';
 import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from './config.js';
+import { createGateResult } from './core/result/gate-result.js';
 import { collectProjectFiles } from './file-placement.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { analyzeUnitTestContent } from './unit-test-runner.js';
@@ -372,7 +373,12 @@ export function runAccessibilityTestGate({ root, config }) {
       inspection.problems,
       config.script,
     ));
-    return 1;
+    return createGateResult({
+      gateId: 'quality.accessibility-test',
+      status: 'configuration-error',
+      summary: `Accessibility test setup has ${inspection.problems.length} problem(s)`,
+      error: new Error('Accessibility test setup is invalid'),
+    });
   }
   const integrations = inspection.integrations
     .map(({ name, version }) => `${name} ${version}`)
@@ -385,7 +391,12 @@ export function runAccessibilityTestGate({ root, config }) {
   if (result.error) {
     if (result.error.code === 'ETIMEDOUT') {
       console.error(`axe 可访问性测试超过 ${config.timeoutMs}ms，推送已停止。`);
-      return 1;
+      return createGateResult({
+        gateId: 'quality.accessibility-test',
+        status: 'execution-error',
+        summary: `Accessibility tests exceeded ${config.timeoutMs}ms`,
+        error: result.error,
+      });
     }
     throw new Error(`Unable to run accessibility tests: ${result.error.message}`);
   }
@@ -396,8 +407,18 @@ export function runAccessibilityTestGate({ root, config }) {
       '不得禁用规则、排除违规节点、降低扫描范围、删除断言或关闭门禁。',
       `修复后重新运行 npm run ${config.script}。`,
     ].join('\n'));
-    return result.status ?? 1;
+    return createGateResult({
+      gateId: 'quality.accessibility-test',
+      status: 'violation',
+      summary: `Accessibility tests failed with exit code ${result.status ?? 1}`,
+      metrics: { testFiles: inspection.files.length },
+    });
   }
   console.log('repo-guard accessibility tests passed.');
-  return 0;
+  return createGateResult({
+    gateId: 'quality.accessibility-test',
+    status: 'passed',
+    summary: `Accessibility tests passed (${integrations}; ${inspection.files.length} file(s))`,
+    metrics: { testFiles: inspection.files.length },
+  });
 }

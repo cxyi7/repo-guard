@@ -54,6 +54,19 @@ function config(extra = {}) {
   });
 }
 
+function sparseCiConfig() {
+  return {
+    version: 1,
+    dependencyPolicy: { enabled: false },
+    preCommit: {
+      eslint: { enabled: false },
+      prettier: { enabled: false },
+      maxFileLines: { enabled: false },
+    },
+    rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
+  };
+}
+
 function repository() {
   const root = mkdtempSync(path.join(TEST_ROOT, 'ci-'));
   git(root, ['init']);
@@ -124,15 +137,15 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   assert.equal(report.profile, 'policy');
   assert.equal(report.protectedFiles.length, 1);
   assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
-    { name: 'structured-exceptions', status: 'passed' },
+    { name: 'repository.structured-exceptions', status: 'passed' },
     { name: 'dynamic-code', status: 'passed' },
-    { name: 'vue-unsafe-html', status: 'passed' },
-    { name: 'vue-target-blank', status: 'passed' },
-    { name: 'vue-form-labels', status: 'passed' },
-    { name: 'vue-image-alt', status: 'passed' },
-    { name: 'dependency-policy', status: 'skipped' },
-    { name: 'file-placement', status: 'skipped' },
-    { name: 'maximum-file-lines', status: 'skipped' },
+    { name: 'security.vue-unsafe-html', status: 'passed' },
+    { name: 'security.vue-target-blank', status: 'passed' },
+    { name: 'accessibility.vue-form-label', status: 'passed' },
+    { name: 'accessibility.vue-image-alt', status: 'passed' },
+    { name: 'dependencies.policy', status: 'skipped' },
+    { name: 'repository.file-placement', status: 'skipped' },
+    { name: 'repository.maximum-file-lines', status: 'skipped' },
     { name: 'unit-test-policy', status: 'skipped' },
     { name: 'protected-files', status: 'passed' },
   ]);
@@ -238,7 +251,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), rootCi);
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
-    `${JSON.stringify({ version: 1, rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }] }, null, 2)}\n`,
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
   );
 
   const result = installGitLabCi(fixture.root, { profile: 'policy' });
@@ -279,7 +292,7 @@ test('generates the GitLab template but does not rewrite complex existing includ
   writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), original);
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
-    `${JSON.stringify({ version: 1, rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }] }, null, 2)}\n`,
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
   );
 
   const result = installGitLabCi(fixture.root, { profile: 'full' });
@@ -294,7 +307,7 @@ test('exposes install-ci and ci through the package CLI', (context) => {
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
-    `${JSON.stringify({ version: 1, rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }] }, null, 2)}\n`,
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
   );
   const cli = path.join(process.cwd(), 'bin', 'repo-guard.js');
   const install = spawnSync(process.execPath, [
@@ -329,7 +342,7 @@ test('doctor detects attempts to weaken the managed GitLab job', (context) => {
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
-    `${JSON.stringify({ version: 1, rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }] }, null, 2)}\n`,
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
   );
   installGitLabCi(fixture.root);
   const rootPath = path.join(fixture.root, '.gitlab-ci.yml');

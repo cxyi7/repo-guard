@@ -211,11 +211,11 @@ test('runs the project accessibility script and blocks failures', (context) => {
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runAccessibilityTestGate({ root, config: config() }), 0);
+  assert.equal(runAccessibilityTestGate({ root, config: config() }).status, 'passed');
   assert.equal(readFileSync(path.join(root, 'a11y-calls.log'), 'utf8'), 'run\n');
 
   writeFileSync(path.join(root, 'fail-a11y'), 'yes\n');
-  assert.equal(runAccessibilityTestGate({ root, config: config() }), 7);
+  assert.equal(runAccessibilityTestGate({ root, config: config() }).status, 'violation');
 });
 
 test('runs enabled accessibility tests from pre-push', async (context) => {

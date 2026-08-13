@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**当前产品行为基本符合纯门禁平台定位，但内部模块组织和扩展协议只达到“功能型工具集合”，还没有完全形成“可扩展门禁平台”。**
+结论：**1.0.0 已完成官方门禁的原生 Gate Capability、统一 Registry、Execution Plan、GateContext 和结构化结果收口；当前主要未完成项是阶段 6 的外部门禁脚本、阶段 7 的发布准备计划，以及阶段 8 的目录依赖边界自动化。**
 
 ### 3.1 已经符合的部分
 
@@ -55,7 +55,7 @@
 | 职责拆分 | 保护文件检查与暂存代码质量检查是独立模块 | 符合 |
 | 安全规则 | 动态代码和 Vue 硬规则不依赖消费项目 ESLint 配置 | 符合 |
 | 例外治理 | 例外精确、限时、独立审批，且不能由工具自动新增或续期 | 符合 |
-| 配置演进 | 配置迁移幂等，保持显式开关和旧项目兼容 | 符合 |
+| 配置演进 | 配置迁移幂等，显式配置优先；缺省字段采用当前平台默认值，不保留旧默认语义 | 符合 |
 | 交付安全 | Lighthouse 不隐式上传，CI 报告路径受到保护 | 符合 |
 
 这些原则应视为平台不变量，后续内部重构不能改变。
@@ -64,15 +64,9 @@
 
 | 问题 | 当前表现 | 影响 |
 | --- | --- | --- |
-| 能力注册分散 | CLI switch、doctor、配置开关、pre-push 和 CI 各自维护能力列表 | 新增门禁需要修改多个中央模块，容易遗漏 |
-| 编排和门禁耦合 | `quality-runner`、`ci-runner`、`pre-push` 直接按具体能力硬编码调用 | runner 会随能力增加持续膨胀 |
-| 结果模型不统一 | 多数 runner 直接输出 console 文本并返回数字退出码 | CI、CLI 和未来报告难以稳定复用结构化结果 |
-| setup 诊断不统一 | 不同门禁各自实现 detect、validate、doctor 逻辑 | 状态术语和修复行为容易不一致 |
-| 能力元数据缺失 | 没有统一声明执行阶段、只读性、依赖、超时和 artifact | 无法在执行前完整验证组合是否合法 |
 | 外部项目门禁不可通用接入 | 当前只内建 typecheck、unit、axe、build 等固定脚本类型 | 新增 API、页面或视觉测试仍需修改 repo-guard 核心 |
 | 文件结构偏平 | `src` 中 command、policy、runner、解析器和基础设施混排 | 依赖方向主要靠约定，难以自动验证 |
-| 公共 API 较宽 | 包根导出许多内部 runner 和辅助函数 | 后续重构会受到不必要的兼容约束 |
-| CI profile 固定 | `policy` 与 `full` 由中央 runner 决定具体步骤 | 难以添加独立 release-ready 或项目自定义阶段 |
+| 发布准备计划未实现 | 当前只有 `policy` 与 `full` CI 计划 | 尚不能独立证明版本、changelog、Schema 和 artifact 已可发布 |
 
 以上问题不意味着当前实现错误；它们是从“已有门禁工具”继续扩展为“门禁平台”时需要解决的结构性限制。
 
@@ -300,12 +294,7 @@ interface GateResult {
 
 AI 修复指令是 finding 的一种 renderer，不应成为门禁唯一输出。
 
-现有 runner 向结构化结果迁移分为两步：
-
-1. 兼容阶段：adapter 捕获旧 runner 的退出码和诊断，转换为 `GateResult`，保持外部行为不变；
-2. 原生阶段：门禁直接返回结构化 finding 和 metric，不再以 console 文本或数字退出码作为内部事实来源。
-
-第一步只用于降低迁移风险，不能作为最终状态。每个门禁只有完成第二步，才算完成平台化迁移。
+所有官方门禁必须直接返回结构化 finding 和 metric，不得以 console 文本或数字退出码作为内部事实来源。0.x 迁移期曾使用的数字 runner adapter、旧 facade 和重复 command wrapper 已在 1.0.0 删除；后续阶段不得重新引入兼容旁路。
 
 ### 6.4 注册与校验
 
@@ -538,9 +527,9 @@ JSON 是统一汇总协议；JUnit 可以作为附加 artifact 保留给 GitLab 
 
 ## 10. 配置演进
 
-### 10.1 保持当前配置兼容
+### 10.1 严格使用当前配置契约
 
-当前 `version: 1` 配置继续有效。不能在次版本中直接删除或改名：
+当前平台只接受 `version: 1` 的现行 Schema。配置迁移可以补齐当前字段并保留显式值，但不得接受已删除的字段形态、旧类型或旧默认语义。以下顶层字段构成当前契约：
 
 - `preCommit`；
 - `dependencyPolicy`；
@@ -554,7 +543,7 @@ JSON 是统一汇总协议；JUnit 可以作为附加 artifact 保留给 GitLab 
 - `notification`；
 - `rules`、`exclusions` 和 `exceptions`。
 
-内部可以先归一化为新的 Gate Registry 模型，外部 JSON 不必立即随目录结构变化。
+缺省字段直接使用当前默认值。任何不兼容变更都必须作为明确的主版本发布，并同步代码、测试、README、Schema 与 changelog；不设置双读、别名、静默回退或临时兼容 adapter。
 
 ### 10.2 新配置只表达门禁
 
@@ -625,7 +614,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 每个阶段作为独立功能、独立评审和独立发布，不能捆绑到已完成评审的版本中。
 
-从第一阶段起，所有新平台模块直接进入目标目录；旧文件不批量移动，而是在被改造时随对应功能迁移。允许短期存在兼容层，但兼容层必须有明确删除条件，不能继续把新 runner 写入当前扁平 `src` 根目录。
+从第一阶段起，所有新平台模块直接进入目标目录；旧文件不批量移动，而是在被改造时随对应功能迁移。1.0.0 起不允许新增兼容层，也不能继续把新 runner 写入当前扁平 `src` 根目录。
 
 ### 阶段 0：固化当前行为
 
@@ -640,23 +629,23 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 1：统一结果模型
 
-实施状态：`0.16.0` 已完成。统一模型位于 `src/core/result`，renderer 位于 `src/core/report`；CI 步骤通过兼容 adapter 使用同一结果生成现有 console 与 JSON。具体门禁仍待后续阶段逐项改为原生结构化结果。
+实施状态：`0.16.0` 建立统一模型；1.0.0 已删除该阶段的临时 adapter。统一模型位于 `src/core/result`，renderer 位于 `src/core/report`，所有官方门禁原生生成同一结果。
 
 - 定义 `GateStatus`、`Finding`、`Artifact` 和 `GateResult`；
 - 新模块直接创建在 `core/result` 和 `core/report`；
-- 建立旧 runner adapter，将退出码和诊断转换为结构化结果；
+- 迁移期曾建立旧 runner adapter；该临时实现已在 1.0.0 删除；
 - 建立 console 和 JSON renderer；
-- 保持现有 CLI 文案和退出码兼容。
+- 由唯一状态映射器产生 CLI 退出码。
 
 验收：同一结果可以无损生成当前 console 输出和 CI JSON。
 
 ### 阶段 2：完成一个纵向试点
 
-实施状态：`0.17.0` 已完成。动态代码门禁已迁入 `src/gates/security`，以 `security.dynamic-code` 注册到内部 Registry，原生返回 finding、metric 和诊断；manual CLI、pre-commit、CI 与 doctor 已使用同一能力定义，console renderer 在 Registry 组合边界挂接而不被 gate 导入。试点确认当前门禁需要仓库根目录、标准化配置和不可变文件范围；统一 ChangeSet、超时信号和结构化 logger 留待阶段 4 的 GateContext 收敛。旧包根 API 保留兼容 facade，其删除条件是完成公共导出审计并在经独立评审的主版本中提供迁移说明。
+实施状态：`0.17.0` 完成动态代码试点；1.0.0 已删除旧包根 facade。动态代码门禁位于 `src/gates/security`，以 `security.dynamic-code` 注册到内部 Registry，原生返回 finding、metric 和诊断；manual CLI、pre-commit、CI 与 doctor 使用同一能力定义。
 
 - 选择一个低副作用、只读且已有充分测试的门禁，例如动态代码或文件归位；
 - 完整接通配置、Gate Definition、Registry、`inspectSetup`、manual CLI、CI、doctor 和 renderer；
-- 先通过 adapter 保持兼容，再让该门禁原生返回 finding、metric 和 artifact；
+- 让该门禁原生返回 finding、metric 和 artifact；
 - 验证 GateContext 是否足以表达文件、变更范围、超时和诊断需求；
 - 删除该门禁在 CLI、doctor 和 CI 中已经被 Registry 替代的重复清单。
 
@@ -664,7 +653,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 3：内部 Gate Registry 与 Execution Plan
 
-实施状态：`0.18.0` 已完成。静态 Registry 已覆盖现有 Gate Capability 的生命周期、最大及允许副作用、超时、所需工具/项目脚本、artifact 和发现元数据，并校验重复 ID、配置键、manual command、未知关系、排序环路及未声明的副作用降级；manual CLI、doctor 与项目脚本从该目录派生。pre-commit、pre-push、CI policy 和 CI full 使用不可变的受审 Execution Plan，配置只能启停已声明能力而不能重排步骤；原生只读 gate 的 manual/CI 路径通过通用执行器运行异步 setup、plan 和 run，尚未纵向迁移的 runner 暂由组合层兼容适配。
+实施状态：`0.18.0` 建立静态 Registry 和 Execution Plan；1.0.0 已将全部官方门禁原生化并删除组合层数字适配。Registry 覆盖 Capability 的生命周期、副作用、超时、所需工具/项目脚本、artifact 和发现元数据，并校验重复 ID、配置键、manual command、未知关系、排序环路及未声明的副作用降级。
 
 - 定义 `defineGate` 和静态注册表；
 - 定义 `defineExecutionPlan`，建立 locked pre-commit plan 和已审核的 pre-push、CI plan；
@@ -678,7 +667,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 4：编排器收敛
 
-实施状态：`0.19.0` 已完成。manual CLI、CI policy/full 与 pre-push 已统一使用不可变 `GateContext`、同一 `ChangeSet`、逐 gate 超时/取消、结果聚合和唯一退出码映射；CI 的保护文件、测试策略、单元测试与变更行覆盖率共享同一范围事实，pre-push 保留既定顺序和精确推送快照约束。本次重构不保留旧 runner 退出码字段、同步编排入口或兼容 CI 步骤退出语义，未原生化 runner 只在组合边界转换为 `GateResult`。
+实施状态：`0.19.0` 已完成。manual CLI、CI policy/full 与 pre-push 统一使用不可变 `GateContext`、同一 `ChangeSet`、逐 gate 超时/取消、结果聚合和唯一退出码映射；CI 的保护文件、测试策略、单元测试与变更行覆盖率共享同一范围事实，pre-push 保留既定顺序和精确推送快照约束。1.0.0 后不存在未原生化 runner。
 
 - 提取统一 `GateContext`、ChangeSet、超时和取消；
 - 将 CI 的步骤执行和结果聚合迁入通用 orchestrator；
@@ -704,6 +693,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 6：外部门禁脚本
 
+实施状态：下一阶段，尚未完成。该阶段必须基于 1.0.0 原生契约实现，不接受旧 runner、任意 shell command 或报告协议兼容分支。
+
 - 定义 `externalGates` Schema；
 - 定义 `repo-guard-json-v1` 报告 Schema；
 - 实现 npm script 校验、超时、artifact 安全和脱敏；
@@ -728,7 +719,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 - 禁止 gate 直接 console、设置退出码、重新收集 Git 范围或跨 gate 深层导入；
 - 禁止再向 `src` 根目录新增 runner、policy 和 parser；
 - 审计包根 exports，区分承诺的公共 API 和内部 API；
-- 对需要收缩的公共导出先弃用，再在明确主版本中移除。
+- 包根公共导出已在 1.0.0 主版本直接收缩为当前平台契约；后续不得重新导出内部 runner。
 
 验收：目标目录已形成，临时兼容层已有归零证明，依赖边界由自动化规则保证，且无消费项目生产代码依赖本包。
 

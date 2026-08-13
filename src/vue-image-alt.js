@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { findStructuredException } from './exception-registry.js';
-import { collectProjectFiles } from './file-placement.js';
 import {
   findVueTemplateElements,
   sourceLocation,
@@ -237,32 +236,4 @@ export function buildVueImageAltAiInstructions(violations) {
   });
   lines.push('', `共 ${violations.length} 个图片 alt 问题，提交已停止。`);
   return lines.join('\n');
-}
-
-function reportApproved(approved) {
-  for (const finding of approved) {
-    console.warn(
-      `Vue image alt approved exception: ${finding.path}:${finding.line}:${finding.column} `
-      + `(${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
-    );
-  }
-}
-
-export function runVueImageAltFiles({ root, files, exceptions }) {
-  const result = inspectVueImageAlts({ root, files, exceptions });
-  reportApproved(result.approved);
-  if (result.violations.length > 0) {
-    console.error(buildVueImageAltAiInstructions(result.violations));
-    return 1;
-  }
-  console.log(
-    `Vue image alt gate passed: ${result.checkedCount} file(s), `
-    + `${result.approved.length} approved exception(s).`,
-  );
-  return 0;
-}
-
-export function runVueImageAltProject({ root, exceptions }) {
-  const files = collectProjectFiles(root);
-  return runVueImageAltFiles({ root, files, exceptions });
 }

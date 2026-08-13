@@ -16,6 +16,9 @@ import {
 } from './stylelint-project.js';
 import { assertVueStyleLanguages } from './vue-style-languages.js';
 import { inspectUnexpectedGlobalStyles } from './style-governance.js';
+import { createGateResult } from './core/result/gate-result.js';
+
+export const STYLELINT_GATE_ID = 'quality.stylelint';
 
 export const STYLE_COMPLEXITY_RULES = Object.freeze({
   maxCompoundSelectors: 'selector-max-compound-selectors',
@@ -70,10 +73,6 @@ function summarize(results) {
 
 function hasBlockingProblems(summary, maxWarnings) {
   return summary.errors > 0 || summary.warnings > maxWarnings;
-}
-
-function printRepairInstructions(root, results, maxWarnings) {
-  console.error(buildStylelintAiRepairInstructions({ root, results, maxWarnings }));
 }
 
 function complexityConfig(projectConfig, complexity) {
@@ -232,16 +231,22 @@ function applyOwnedRuleExceptions(root, report, exceptions, complexity, governan
   return { approved, results };
 }
 
-function reportApprovedOwnedRules(approved) {
-  for (const finding of approved) {
-    console.warn(
-      `Style governance approved exception: ${finding.path}:${finding.line}:${finding.column} `
-      + `${finding.rule} (${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
-    );
-  }
+function stylelintFindings(root, results, maxWarnings) {
+  const warningCount = results.reduce((total, result) => total + (result.warnings || []).filter(({ severity }) => severity === 'warning').length, 0);
+  const warningsBlock = warningCount > maxWarnings;
+  return results.flatMap((result) => [
+    ...(result.warnings || []).filter((warning) => warning.severity === 'error' || (warningsBlock && warning.severity === 'warning')).map((warning) => ({
+      ruleId: warning.rule?.startsWith('style/') ? warning.rule : `stylelint/${warning.rule || 'syntax-error'}`,
+      severity: warning.severity === 'warning' ? 'warning' : 'error',
+      message: warning.text || 'Stylelint violation',
+      location: { path: path.relative(root, result.source).replace(/\\/g, '/'), ...(warning.line ? { line: warning.line } : {}), ...(warning.column ? { column: warning.column } : {}) },
+    })),
+    ...(result.invalidOptionWarnings || []).map((warning) => ({ ruleId: 'stylelint/invalid-option', severity: 'error', message: warning.text || warning.message || 'Invalid Stylelint option', location: { path: path.relative(root, result.source).replace(/\\/g, '/') } })),
+  ]);
 }
 
 export async function runStylelintFiles({
+  gateId = STYLELINT_GATE_ID,
   root,
   files,
   fix,
@@ -254,7 +259,7 @@ export async function runStylelintFiles({
   governanceOnly = false,
 }) {
   if (files.length === 0) {
-    return 0;
+    return createGateResult({ gateId, status: 'skipped', summary: 'Stylelint has no applicable files' });
   }
 
   const normalizedFiles = normalizeStagedFiles(root, files, 'Stylelint')
@@ -300,23 +305,16 @@ export async function runStylelintFiles({
     complexity,
     governance,
   );
-  reportApprovedOwnedRules(initial.approved);
   const initialSummary = summarize(initial.results);
   const lintedCount = activeFileCount(initial.results);
   const ignoredCount = normalizedFiles.length - lintedCount;
 
   if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    console.log(
-      `Stylelint ${version} passed: ${lintedCount} staged file(s)`
-      + `${ignoredCount > 0 ? `, ${ignoredCount} ignored` : ''}.`,
-    );
-    return 0;
+    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${version} passed`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
   }
 
   if (!fix) {
-    printRepairInstructions(root, initial.results, maxWarnings);
-    console.error('Stylelint 检查未通过，请按上面的编号信息修复后重新提交。');
-    return 1;
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: stylelintFindings(root, initial.results, maxWarnings), diagnostics: [{ level: 'error', message: buildStylelintAiRepairInstructions({ root, results: initial.results, maxWarnings }) }], metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
   }
 
   const originalContents = captureFileContents(normalizedFiles);
@@ -340,7 +338,6 @@ export async function runStylelintFiles({
       complexity,
       governance,
     );
-    reportApprovedOwnedRules(final.approved);
   } catch (error) {
     restoreFileContents(originalContents);
     throw error;
@@ -349,22 +346,15 @@ export async function runStylelintFiles({
   const finalSummary = summarize(final.results);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    printRepairInstructions(root, final.results, maxWarnings);
-    console.error(
-      `Stylelint 自动修复后仍有 ${finalSummary.errors} 个错误、`
-      + `${finalSummary.warnings} 个警告，提交已停止。`,
-    );
-    return 1;
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: stylelintFindings(root, final.results, maxWarnings), diagnostics: [{ level: 'error', message: buildStylelintAiRepairInstructions({ root, results: final.results, maxWarnings }) }], metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
   }
 
-  console.log(
-    `Stylelint ${version} auto-fix and verification passed: ${lintedCount} staged file(s).`,
-  );
-  return 0;
+  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${version} auto-fix and verification passed`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
 }
 
 export async function runStyleComplexityProject({ root, files, config, exceptions }) {
   return await runStylelintFiles({
+    gateId: 'quality.style-complexity',
     root,
     files,
     fix: false,
@@ -378,6 +368,7 @@ export async function runStyleComplexityProject({ root, files, config, exception
 
 export async function runStyleGovernanceProject({ root, files, config, exceptions }) {
   return await runStylelintFiles({
+    gateId: 'quality.style-governance',
     root,
     files,
     fix: false,

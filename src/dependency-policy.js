@@ -330,50 +330,19 @@ export function buildDependencyPolicyAiInstructions(violations) {
   return lines.join('\n');
 }
 
-export function runDependencyPolicy({ root, config, exceptions }) {
-  const result = inspectDependencyPolicy({ root, config, exceptions });
-  for (const item of result.approved) {
-    console.warn(
-      `Dependency policy approved exception: ${item.path}:${item.line}:${item.column} `
-      + `${item.rule} (${item.exception.id}, expires=${item.exception.expiresOn}).`,
-    );
-  }
-  if (result.violations.length > 0) {
-    console.error(buildDependencyPolicyAiInstructions(result.violations));
-    return 1;
-  }
-  console.log(`Dependency policy passed: ${result.approved.length} approved exception(s).`);
-  return 0;
-}
-
-export function runStagedDependencyPolicy({ root, config, exceptions }) {
-  const changed = runGit([
-    'diff',
-    '--cached',
-    '--name-only',
-    '--diff-filter=ACDMRT',
-    '--',
-    'package.json',
-    'package-lock.json',
-  ], { cwd: root }).stdout.trim();
-  if (!changed) {
-    console.log('Dependency policy: root package metadata is not staged.');
-    return 0;
-  }
-
+export function inspectStagedDependencyPolicy({ root, config, exceptions }) {
   const packageResult = runGit(['show', ':package.json'], {
     allowFailure: true,
     cwd: root,
   });
   if (packageResult.status !== 0) {
-    console.error(buildDependencyPolicyAiInstructions([{
+    return { approved: [], violations: [{
       line: 1,
       column: 1,
       message: 'The root package.json cannot be deleted or omitted',
       path: 'package.json',
       rule: 'dependencies/missing-manifest',
-    }]));
-    return 1;
+    }] };
   }
 
   const snapshotRoot = mkdtempSync(path.join(tmpdir(), 'repo-guard-dependencies-'));
@@ -386,7 +355,7 @@ export function runStagedDependencyPolicy({ root, config, exceptions }) {
     if (lockResult.status === 0) {
       writeFileSync(path.join(snapshotRoot, 'package-lock.json'), lockResult.stdout, 'utf8');
     }
-    return runDependencyPolicy({
+    return inspectDependencyPolicy({
       root: snapshotRoot,
       config,
       exceptions,

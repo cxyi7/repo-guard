@@ -29,14 +29,14 @@ export const DEFAULT_STYLE_GOVERNANCE_CONFIG = Object.freeze({
   ]),
 });
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
-  enabled: false,
-  preset: false,
+  enabled: true,
+  preset: true,
   pattern: DEFAULT_ESLINT_PATTERN,
   fix: true,
   maxWarnings: 0,
 });
 export const DEFAULT_PRETTIER_CONFIG = Object.freeze({
-  enabled: false,
+  enabled: true,
   pattern: DEFAULT_PRETTIER_PATTERN,
   fix: true,
   requireConfig: true,
@@ -56,7 +56,7 @@ export const DEFAULT_BUILD_CONFIG = Object.freeze({
   timeoutMs: 300000,
 });
 export const DEFAULT_DEPENDENCY_POLICY_CONFIG = Object.freeze({
-  enabled: false,
+  enabled: true,
   requireExactVersions: true,
   requireLockfile: true,
   allowedProtocols: Object.freeze(['npm', 'workspace']),
@@ -94,7 +94,7 @@ export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
   ]),
 });
 export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
-  enabled: false,
+  enabled: true,
   mode: 'strict',
   warnAt: 0.85,
   rules: Object.freeze([
@@ -926,11 +926,9 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   const coverageValue = unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
   let unitTestCoverage;
-  if (typeof coverageValue === 'boolean') {
-    unitTestCoverage = coverageValue;
-  } else {
+  {
     if (!coverageValue || typeof coverageValue !== 'object' || Array.isArray(coverageValue)) {
-      throw new Error(`${configPath} unitTest.coverage must be a boolean or object`);
+      throw new Error(`${configPath} unitTest.coverage must be an object`);
     }
     assertKnownProperties(
       coverageValue,

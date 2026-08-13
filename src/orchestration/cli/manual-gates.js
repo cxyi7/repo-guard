@@ -3,13 +3,11 @@ import { createChangeSet, createGateContext } from '../../core/capability/gate-c
 import { defineExecutionPlan } from '../../core/capability/execution-plan.js';
 import { createGateRegistry } from '../../core/capability/gate-registry.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
-import { adaptNumericRunner } from '../../core/result/numeric-runner-adapter.js';
 import { collectProjectFiles } from '../../file-placement.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { collectWorkingTreeChanges } from '../../git-changes.js';
 import { findRepositoryRoot } from '../../git.js';
 import { orchestratePlan } from '../orchestrator.js';
-import { numericManualBindings } from './numeric-bindings.js';
 
 function manualContext(root, config) {
   const changes = createChangeSet({
@@ -38,28 +36,18 @@ async function runManualGate(gate, {
     environment: 'manual',
     steps: [gate.id],
   });
-  const numericBinding = numericManualBindings[gate.id];
   const execution = await orchestratePlan({
     plan,
     registry,
     context,
     stopOnFailure: true,
-    executeStep: async ({ context: executionContext }) => numericBinding
-      ? await adaptNumericRunner({
-        gateId: gate.id,
-        task: () => numericBinding({
-          argumentsList,
-          cwd: root,
-          gate,
-          context: executionContext,
-        }),
-      })
-      : await (async () => {
-        const gatePlan = await gate.plan(executionContext);
-        return await gate.run({ ...executionContext, plan: gatePlan });
-      })(),
+    executeStep: async ({ context: executionContext }) => {
+      const invocationContext = Object.freeze({ ...executionContext, argumentsList });
+      const gatePlan = await gate.plan(invocationContext);
+      return await gate.run({ ...invocationContext, plan: gatePlan });
+    },
     onResult: ({ result }) => {
-      if (gate.renderConsole && !numericBinding) {
+      if (gate.renderConsole) {
         for (const line of gate.renderConsole(result)) {
           if (line.stream === 'stderr') console.error(line.message);
           else console.log(line.message);

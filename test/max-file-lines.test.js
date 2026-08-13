@@ -16,7 +16,6 @@ import {
   evaluateMaxFileLines,
   inspectMaxFileLines,
   matchMaxFileLineRule,
-  runMaxFileLinesFiles,
 } from '../src/max-file-lines.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
@@ -128,8 +127,8 @@ test('allows the exact limit and reports each file above it', (context) => {
       passLineCount: 1000,
     },
   ]);
-  assert.equal(runMaxFileLinesFiles({ root, files: [vueFile], config: CONFIG }), 0);
-  assert.equal(runMaxFileLinesFiles({ root, files: [jsFile], config: CONFIG }), 1);
+  assert.equal(evaluateMaxFileLines({ root, files: [vueFile], config: CONFIG }).violations.length, 0);
+  assert.equal(evaluateMaxFileLines({ root, files: [jsFile], config: CONFIG }).violations.length, 1);
 });
 
 test('builds standalone AI refactor instructions for Vue and JavaScript files', () => {

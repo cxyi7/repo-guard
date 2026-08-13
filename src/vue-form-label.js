@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { findStructuredException } from './exception-registry.js';
-import { collectProjectFiles } from './file-placement.js';
 import {
   findVueTemplateElements,
   sourceLocation,
@@ -263,32 +262,4 @@ export function buildVueFormLabelAiInstructions(violations) {
   });
   lines.push('', `共 ${violations.length} 个表单控件缺少可验证 label，提交已停止。`);
   return lines.join('\n');
-}
-
-function reportApproved(approved) {
-  for (const finding of approved) {
-    console.warn(
-      `Vue form label approved exception: ${finding.path}:${finding.line}:${finding.column} `
-      + `(${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
-    );
-  }
-}
-
-export function runVueFormLabelFiles({ root, files, exceptions }) {
-  const result = inspectVueFormLabels({ root, files, exceptions });
-  reportApproved(result.approved);
-  if (result.violations.length > 0) {
-    console.error(buildVueFormLabelAiInstructions(result.violations));
-    return 1;
-  }
-  console.log(
-    `Vue form label gate passed: ${result.checkedCount} file(s), `
-    + `${result.approved.length} approved exception(s).`,
-  );
-  return 0;
-}
-
-export function runVueFormLabelProject({ root, exceptions }) {
-  const files = collectProjectFiles(root);
-  return runVueFormLabelFiles({ root, files, exceptions });
 }

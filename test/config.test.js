@@ -34,7 +34,7 @@ function baseConfig(extra = {}) {
   };
 }
 
-test('existing version 1 configs keep the ESLint gate disabled', () => {
+test('sparse version 1 configs use the current platform defaults', () => {
   const config = validateConfig(baseConfig());
 
   assert.deepEqual(config.notification, { enabled: true });
@@ -50,7 +50,7 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
   assert.deepEqual(config.preCommit.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
   assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
-    enabled: false,
+    enabled: true,
     pattern: DEFAULT_PRETTIER_PATTERN,
     fix: true,
     requireConfig: true,
@@ -69,8 +69,8 @@ test('existing version 1 configs keep the ESLint gate disabled', () => {
     governance: DEFAULT_STYLE_GOVERNANCE_CONFIG,
   });
   assert.deepEqual(config.preCommit.eslint, {
-    enabled: false,
-    preset: false,
+    enabled: true,
+    preset: true,
     pattern: DEFAULT_ESLINT_PATTERN,
     fix: true,
     maxWarnings: 0,
@@ -349,7 +349,17 @@ test('validates and normalizes unit test configuration', () => {
       enabled: true,
       script: '  test:unit  ',
       timeoutMs: 60000,
-      coverage: true,
+      coverage: {
+        enabled: true,
+        reportsDirectory: 'coverage',
+        thresholds: {
+          lines: 80,
+          statements: 80,
+          functions: 80,
+          branches: 80,
+          changedLines: 90,
+        },
+      },
       requireTests: 'changedFiles',
       sourcePatterns: ['  src/utils/**/*.js  '],
       testPatterns: ['**/*.spec.js'],
@@ -365,7 +375,17 @@ test('validates and normalizes unit test configuration', () => {
     enabled: true,
     script: 'test:unit',
     timeoutMs: 60000,
-    coverage: true,
+    coverage: {
+      enabled: true,
+      reportsDirectory: 'coverage',
+      thresholds: {
+        lines: 80,
+        statements: 80,
+        functions: 80,
+        branches: 80,
+        changedLines: 90,
+      },
+    },
     componentInteraction: {
       enabled: false,
       componentPatterns: ['src/components/**/*.vue'],

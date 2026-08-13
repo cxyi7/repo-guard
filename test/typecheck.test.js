@@ -94,9 +94,9 @@ test('runs the consuming project typecheck script and blocks failures', (context
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runTypeCheckGate({ root, config: typeCheckConfig() }), 0);
+  assert.equal(runTypeCheckGate({ root, config: typeCheckConfig() }).status, 'passed');
   writeFileSync(path.join(root, 'fail-typecheck'), 'fail\n');
-  assert.equal(runTypeCheckGate({ root, config: typeCheckConfig() }), 7);
+  assert.equal(runTypeCheckGate({ root, config: typeCheckConfig() }).status, 'violation');
   assert.equal(
     readFileSync(path.join(root, 'typecheck-calls.log'), 'utf8'),
     'typecheck\ntypecheck\n',

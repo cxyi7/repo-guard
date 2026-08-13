@@ -35,6 +35,12 @@ function createRepository() {
     `${JSON.stringify({
       version: 1,
       notification: { enabled: false },
+      dependencyPolicy: { enabled: false },
+      preCommit: {
+        eslint: { enabled: false },
+        prettier: { enabled: false },
+        maxFileLines: { enabled: false },
+      },
       rules: [{ pattern: 'src/**', category: 'Source', level: 'notify' }],
     }, null, 2)}\n`,
   );
@@ -136,7 +142,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.deepEqual(config.exceptions.entries, []);
   assert.equal(config.dependencyPolicy.enabled, false);
   assert.equal(config.preCommit.eslint.enabled, false);
-  assert.equal(config.preCommit.eslint.preset, false);
+  assert.equal(config.preCommit.eslint.preset, true);
   assert.equal(config.preCommit.prettier.enabled, false);
   assert.equal(config.preCommit.stylelint.complexity.enabled, false);
   assert.equal(config.preCommit.stylelint.governance.enabled, false);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+
+- 将所有官方门禁收口为原生 `GateResult` Capability，删除数字 runner adapter、旧动态代码 facade、重复 command wrapper 和可旁路统一编排的数字执行入口。
+- 收缩包根公共 API，只公开当前配置、Gate 定义/上下文/Registry 与结构化结果契约；这是明确的不兼容主版本重构。
+- 缺省配置直接采用当前平台默认值，不再为旧项目保留 ESLint、Prettier、依赖治理和单文件行数门禁的关闭语义；托管 Hook 仍按仓库安全要求识别已知旧标记，但只生成当前版本。
+
 ## 0.20.0
 
 - 将 pre-commit 固化为启动时校验的受保护执行计划，锁定 Stylelint fix、ESLint fix、Prettier、只读复检、硬性暂存检查、依赖策略和保护文件顺序；拒绝项目配置调序以及全项目修复、类型检查、测试、构建和网络门禁进入。

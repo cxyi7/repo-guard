@@ -455,7 +455,7 @@ test('rechecks the mapped component when only its interaction test changes', (co
   assert.equal(result.componentInteractions[0].sourcePath, 'src/components/Editor.vue');
 });
 
-test('runs the consuming project script and forwards the coverage switch', (context) => {
+test('runs the consuming project script and returns native results', (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src', 'utils'), { recursive: true });
@@ -467,19 +467,19 @@ test('runs the consuming project script and forwards the coverage switch', (cont
 
   assert.equal(runUnitTestGate({
     root,
-    config: unitTestConfig({ coverage: true }),
+    config: unitTestConfig(),
     changes: [
       { status: 'A', oldPath: null, path: 'src/utils/money.js' },
       { status: 'A', oldPath: null, path: 'src/utils/money.spec.js' },
     ],
-  }), 0);
-  assert.equal(readFileSync(path.join(root, 'test-calls.log'), 'utf8'), '--coverage\n');
+  }).status, 'passed');
+  assert.equal(readFileSync(path.join(root, 'test-calls.log'), 'utf8'), '\n');
 
   writeFileSync(path.join(root, 'fail-tests'), 'yes\n');
   assert.equal(runUnitTestGate({
     root,
     config: unitTestConfig(),
-  }), 7);
+  }).status, 'violation');
 });
 
 test('requires Vue Test Utils only when component interaction semantics are enabled', (context) => {
@@ -528,7 +528,7 @@ test('enforces structured global and changed-line coverage after tests pass', (c
       { status: 'A', oldPath: null, path: 'src/utils/money.js' },
       { status: 'A', oldPath: null, path: 'src/utils/money.spec.js' },
     ],
-  }), 0);
+  }).status, 'passed');
   const args = readFileSync(path.join(root, 'test-calls.log'), 'utf8');
   assert.match(args, /--coverage\.reporter=json-summary/);
   assert.match(args, /--coverage\.reporter=lcov/);
@@ -539,7 +539,7 @@ test('enforces structured global and changed-line coverage after tests pass', (c
     root,
     config: unitTestConfig({ coverage }),
     changes: [],
-  }), 1);
+  }).status, 'execution-error');
 });
 
 test('maintains an idempotent AGENTS unit test policy without replacing project text', (context) => {

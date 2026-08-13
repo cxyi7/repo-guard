@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { findStructuredException } from './exception-registry.js';
-import { collectProjectFiles } from './file-placement.js';
 import {
   findVueTemplateAttributes,
   sourceLocation,
@@ -141,32 +140,4 @@ export function buildVueTargetBlankAiInstructions(violations) {
   });
   lines.push('', `共 ${violations.length} 处不安全的 target="_blank"，提交已停止。`);
   return lines.join('\n');
-}
-
-function reportApproved(approved) {
-  for (const finding of approved) {
-    console.warn(
-      `Vue target=_blank approved exception: ${finding.path}:${finding.line}:${finding.column} `
-      + `(${finding.exception.id}, expires=${finding.exception.expiresOn}).`,
-    );
-  }
-}
-
-export function runVueTargetBlankFiles({ root, files, exceptions }) {
-  const result = inspectVueTargetBlank({ root, files, exceptions });
-  reportApproved(result.approved);
-  if (result.violations.length > 0) {
-    console.error(buildVueTargetBlankAiInstructions(result.violations));
-    return 1;
-  }
-  console.log(
-    `Vue target=_blank gate passed: ${result.checkedCount} file(s), `
-    + `${result.approved.length} approved exception(s).`,
-  );
-  return 0;
-}
-
-export function runVueTargetBlankProject({ root, exceptions }) {
-  const files = collectProjectFiles(root);
-  return runVueTargetBlankFiles({ root, files, exceptions });
 }

@@ -245,7 +245,7 @@ test('restores fixes on a failing initial commit without a Git stash', async (co
   );
 });
 
-test('lets the project disable the ESLint gate explicitly', async (context) => {
+test('dynamic-code gate rejects invalid syntax when ESLint is disabled', async (context) => {
   const root = createRepository({ enabled: false });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   commitBaseline(root);
@@ -254,7 +254,7 @@ test('lets the project disable the ESLint gate explicitly', async (context) => {
   writeFileSync(path.join(root, 'sample.js'), invalid);
   git(root, ['add', 'sample.js']);
 
-  assert.equal(await runPreCommit(root), 0);
+  assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), invalid);
 });
 
@@ -353,7 +353,7 @@ test('does not block modified legacy resources in newFiles mode', async (context
   assert.match(git(root, ['show', ':src/components/legacy.png']), /updated/);
 });
 
-test('does not block files ignored by the project ESLint configuration', async (context) => {
+test('dynamic-code gate still checks files ignored by ESLint', async (context) => {
   const root = createRepository({ eslintPreset: true });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -361,7 +361,7 @@ test('does not block files ignored by the project ESLint configuration', async (
   writeFileSync(path.join(root, 'ignored.js'), ignored);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 0);
+  assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':ignored.js'])), ignored);
 });
 

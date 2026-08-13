@@ -11,6 +11,9 @@ import {
 } from './file-snapshot.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
+import { createGateResult } from './core/result/gate-result.js';
+
+export const PRETTIER_GATE_ID = 'quality.prettier';
 
 export function resolveProjectPrettierMetadata(root) {
   return resolveProjectPackageMetadata(root, 'prettier', 'Prettier');
@@ -109,7 +112,7 @@ export async function runPrettierFiles({
   requireConfig,
 }) {
   if (files.length === 0) {
-    return 0;
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'skipped', summary: 'Prettier has no applicable files' });
   }
 
   const { prettier, version } = await loadProjectPrettier(root);
@@ -124,19 +127,11 @@ export async function runPrettierFiles({
   const changed = formatting.filter(({ formatted, original }) => formatted !== original);
 
   if (changed.length === 0) {
-    console.log(
-      `Prettier ${version} passed: ${formatting.length} staged file(s)`
-      + `${ignoredCount > 0 ? `, ${ignoredCount} ignored` : ''}.`,
-    );
-    return 0;
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${version} passed`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: 0 } });
   }
 
   if (!fix) {
-    for (const { file } of changed) {
-      console.error(`Prettier formatting required: ${path.relative(root, file)}`);
-    }
-    console.error('Prettier failed and automatic formatting is disabled.');
-    return 1;
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'violation', summary: `Prettier requires formatting in ${changed.length} file(s)`, findings: changed.map(({ file }) => ({ ruleId: 'prettier/format', severity: 'error', message: 'File does not match the project Prettier configuration', location: { path: path.relative(root, file).replace(/\\/g, '/') }, remediation: 'Run the project Prettier formatter and stage the result.' })), metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
   }
 
   const originalContents = captureFileContents(changed.map(({ file }) => file));
@@ -149,9 +144,5 @@ export async function runPrettierFiles({
     throw error;
   }
 
-  console.log(
-    `Prettier ${version} formatted ${changed.length} staged file(s)`
-    + `${ignoredCount > 0 ? `; ${ignoredCount} ignored` : ''}.`,
-  );
-  return 0;
+  return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${version} formatted ${changed.length} file(s)`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
 }

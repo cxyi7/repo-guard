@@ -1,0 +1,250 @@
+import path from 'node:path';
+import { defineGate } from '../../core/capability/gate-definition.js';
+import { changeSetEntries } from '../../core/capability/gate-context.js';
+import { buildDependencyPolicyAiInstructions, inspectDependencyPolicy, inspectStagedDependencyPolicy } from '../../dependency-policy.js';
+import { formatExceptionRegistryReport, inspectExceptionRegistry } from '../../exception-registry.js';
+import { buildFilePlacementAiInstructions, inspectFilePlacement } from '../../file-placement.js';
+import { buildMaxFileLinesAiInstructions, buildMaxFileLinesWarnings, evaluateMaxFileLines, selectMaxFileLineFiles } from '../../max-file-lines.js';
+import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
+import { buildUnsafeVueHtmlAiInstructions, inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';
+import { buildVueTargetBlankAiInstructions, inspectVueTargetBlank, VUE_TARGET_BLANK_RULE } from '../../vue-target-blank.js';
+import { buildVueFormLabelAiInstructions, inspectVueFormLabels, VUE_FORM_CONTROL_LABEL_RULE } from '../../vue-form-label.js';
+import { buildVueImageAltAiInstructions, inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
+import { classifyChanges } from '../../git-changes.js';
+import { createStagedFingerprint } from '../../fingerprint.js';
+import { assertLocalEnvironmentNotStaged, resolveNotificationEnvironment } from '../../local-env.js';
+import { notificationWasSent, saveNotificationState } from '../../state.js';
+import { buildNotificationText, loadNotificationConfig, sendWecomNotification } from '../../wecom.js';
+
+const CONFIG_VERSION = [1];
+
+function ready(summary) { return { status: 'ready', summary }; }
+
+function projectFiles(context) {
+  return context.files.map((file) => {
+    if (typeof file !== 'string') return file;
+    return { relative: file, absolute: path.join(context.root, file) };
+  });
+}
+
+function policyFinding(item, fallbackRule) {
+  return findingFromPolicy({ ...item, rule: item.rule ?? fallbackRule }, {
+    remediation: item.repair ?? null,
+  });
+}
+
+function vueGate({ id, rule, inspect, instructions, summary, manualCommand, manualOrder, doctorOrder }) {
+  return defineGate({
+    id,
+    configVersions: CONFIG_VERSION,
+    environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'],
+    mutation: 'read-only',
+    defaultTimeoutMs: 120000,
+    manualCommand,
+    manualOrder,
+    doctorOrder,
+    packageScript: `guard:${manualCommand}`,
+    rules: [rule],
+    inspectSetup: () => ready(`${summary} (hard requirement, rule=${rule})`),
+    plan: (context) => ({ files: projectFiles(context) }),
+    run({ root, config, plan }) {
+      const result = inspect({ root, files: plan.files, exceptions: config.exceptions });
+      const metrics = {
+        checkedFiles: result.checkedCount,
+        approvedExceptions: result.approved.length,
+        violations: result.violations.length,
+      };
+      const approvedDiagnostics = result.approved.map((item) => ({
+        level: 'warn',
+        message: `${id} approved exception: ${item.path}:${item.line}:${item.column} (${item.exception.id}, expires=${item.exception.expiresOn})`,
+      }));
+      if (result.approved.length > 0) approvedDiagnostics.push({
+        level: 'info',
+        message: `${summary} passed: ${result.checkedCount} file(s), ${result.approved.length} approved exception(s).`,
+      });
+      if (result.violations.length === 0) {
+        return passedResult(id, `${summary} passed`, { diagnostics: approvedDiagnostics, metrics });
+      }
+      return violationResult(id, `${summary} found ${result.violations.length} violation(s)`, {
+        findings: result.violations.map((item) => policyFinding(item, rule)),
+        metrics,
+        diagnostics: [
+          ...approvedDiagnostics,
+          { level: 'error', message: instructions(result.violations) },
+        ],
+      });
+    },
+  });
+}
+
+export const unsafeHtmlGate = vueGate({
+  id: 'security.vue-unsafe-html', rule: VUE_NO_V_HTML_RULE,
+  inspect: inspectUnsafeVueHtml, instructions: buildUnsafeVueHtmlAiInstructions,
+  summary: 'Vue v-html gate', manualCommand: 'unsafe-html', manualOrder: 80, doctorOrder: 80,
+});
+export const targetBlankGate = vueGate({
+  id: 'security.vue-target-blank', rule: VUE_TARGET_BLANK_RULE,
+  inspect: inspectVueTargetBlank, instructions: buildVueTargetBlankAiInstructions,
+  summary: 'Vue target=_blank gate', manualCommand: 'target-blank', manualOrder: 90, doctorOrder: 90,
+});
+export const formLabelGate = vueGate({
+  id: 'accessibility.vue-form-label', rule: VUE_FORM_CONTROL_LABEL_RULE,
+  inspect: inspectVueFormLabels, instructions: buildVueFormLabelAiInstructions,
+  summary: 'Vue form label gate', manualCommand: 'form-labels', manualOrder: 100, doctorOrder: 100,
+});
+export const imageAltGate = vueGate({
+  id: 'accessibility.vue-image-alt', rule: VUE_IMAGE_ALT_RULE,
+  inspect: inspectVueImageAlts, instructions: buildVueImageAltAiInstructions,
+  summary: 'Vue image alt gate', manualCommand: 'image-alt', manualOrder: 110, doctorOrder: 110,
+});
+
+export const exceptionRegistryGate = defineGate({
+  id: 'repository.structured-exceptions', configKey: 'exceptions', configVersions: CONFIG_VERSION,
+  environments: ['manual', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 30000,
+  manualCommand: 'exceptions', manualOrder: 10, packageScript: 'guard:exceptions',
+  inspectSetup: () => ready('Structured exception registry'), plan: () => ({}),
+  run({ config }) {
+    const result = inspectExceptionRegistry(config.exceptions);
+    const invalid = [...result.expired, ...result.future];
+    if (invalid.length === 0) return passedResult('repository.structured-exceptions', `Structured exceptions are current (${result.active.length} active)`, { metrics: { entries: result.entries.length, active: result.active.length, expiring: result.expiring.length } });
+    return violationResult('repository.structured-exceptions', 'Structured exceptions contain invalid dates', {
+      diagnostics: [{ level: 'error', message: formatExceptionRegistryReport(result) }],
+      findings: invalid.map((entry) => ({ ruleId: 'exceptions/invalid-date', severity: 'error', message: `Exception ${entry.id} is ${result.expired.includes(entry) ? 'expired' : 'future-dated'}` })),
+    });
+  },
+});
+
+export const dependencyPolicyGate = defineGate({
+  id: 'dependencies.policy', configKey: 'dependencyPolicy', featureName: 'dependencies', featureOrder: 80,
+  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000,
+  manualCommand: 'dependencies', manualOrder: 20, doctorOrder: 120, packageScript: 'guard:dependencies',
+  inspectSetup: ({ config }) => ready(config.dependencyPolicy.enabled ? 'Dependency policy enabled' : 'Dependency policy disabled'),
+  plan: ({ config, changes, environment }) => ({
+    enabled: environment === 'manual' || config.dependencyPolicy.enabled,
+    applicable: environment !== 'pre-commit' || changeSetEntries(changes).some((change) => ['package.json', 'package-lock.json'].includes(change.path ?? change.relative)),
+  }),
+  run({ root, config, plan, environment }) {
+    if (!plan.enabled) return skippedResult('dependencies.policy', 'Dependency policy is disabled');
+    if (!plan.applicable) return skippedResult('dependencies.policy', 'Root package metadata is unchanged');
+    const result = environment === 'pre-commit'
+      ? inspectStagedDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions })
+      : inspectDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions });
+    if (result.violations.length === 0) return passedResult('dependencies.policy', 'Dependency policy passed', { metrics: { approvedExceptions: result.approved.length } });
+    return violationResult('dependencies.policy', `Dependency policy found ${result.violations.length} violation(s)`, {
+      findings: result.violations.map((item) => policyFinding(item, item.rule)),
+      diagnostics: [{ level: 'error', message: buildDependencyPolicyAiInstructions(result.violations) }],
+      metrics: { violations: result.violations.length, approvedExceptions: result.approved.length },
+    });
+  },
+});
+
+export const filePlacementGate = defineGate({
+  id: 'repository.file-placement', configKey: 'preCommit.filePlacement', featureName: 'filePlacement', featureOrder: 40,
+  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000,
+  manualCommand: 'file-placement', manualOrder: 150, doctorOrder: 150, packageScript: 'guard:file-placement',
+  inspectSetup: ({ config }) => ready(config.preCommit.filePlacement.enabled ? 'File placement enabled' : 'File placement disabled'),
+  plan: ({ config, changes, files, environment }) => ({
+    enabled: environment === 'manual' || config.preCommit.filePlacement.enabled,
+    changes: environment === 'manual'
+      ? files.map((file) => ({ status: 'A', oldPath: null, path: typeof file === 'string' ? file : file.relative }))
+      : changeSetEntries(changes),
+  }),
+  run({ config, plan }) {
+    if (!plan.enabled) return skippedResult('repository.file-placement', 'File placement is disabled');
+    const result = inspectFilePlacement({ changes: plan.changes, config: config.preCommit.filePlacement });
+    if (result.violations.length === 0) return passedResult('repository.file-placement', 'File placement passed', { diagnostics: [{ level: 'info', message: `File placement project check passed: ${result.checkedCount} file(s) matched rules.` }], metrics: { checkedFiles: result.checkedCount } });
+    return violationResult('repository.file-placement', `File placement found ${result.violations.length} violation(s)`, {
+      findings: result.violations.map((item) => ({ ruleId: 'repository/file-placement', severity: 'error', message: `${item.path} must be placed under an allowed directory`, location: { path: item.path }, remediation: `Move it to ${item.suggestedPath}` })),
+      diagnostics: [{ level: 'error', message: buildFilePlacementAiInstructions(result.violations) }], metrics: { checkedFiles: result.checkedCount, violations: result.violations.length },
+    });
+  },
+});
+
+export const maximumFileLinesGate = defineGate({
+  id: 'repository.maximum-file-lines', configKey: 'preCommit.maxFileLines', featureName: 'maxFileLines', featureOrder: 50,
+  configVersions: CONFIG_VERSION, environments: ['pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000, doctorOrder: 140,
+  inspectSetup: ({ config }) => ready(config.preCommit.maxFileLines.enabled ? 'Maximum file lines enabled' : 'Maximum file lines disabled'),
+  plan: ({ root, config, files, revision, changes }) => ({
+    enabled: config.preCommit.maxFileLines.enabled,
+    files: selectMaxFileLineFiles(projectFiles({ root, files }), config.preCommit.maxFileLines),
+    baselineRef: revision?.base ?? null,
+    changes: changeSetEntries(changes),
+  }),
+  run({ root, config, plan }) {
+    if (!plan.enabled || plan.files.length === 0) return skippedResult('repository.maximum-file-lines', 'Maximum file lines has no applicable files');
+    const result = evaluateMaxFileLines({ root, files: plan.files, config: config.preCommit.maxFileLines, baselineRef: plan.baselineRef, changes: plan.changes });
+    const diagnostics = result.warnings.length ? [{ level: 'warn', message: buildMaxFileLinesWarnings(result.warnings) }] : [];
+    if (result.violations.length === 0) return passedResult('repository.maximum-file-lines', 'Maximum file lines passed', { diagnostics, metrics: { checkedFiles: plan.files.length, warnings: result.warnings.length } });
+    return violationResult('repository.maximum-file-lines', `Maximum file lines found ${result.violations.length} violation(s)`, {
+      findings: result.violations.map((item) => ({ ruleId: 'repository/maximum-file-lines', severity: 'error', message: `${item.path} has ${item.lineCount} lines; maximum is ${item.maxLines}`, location: { path: item.path } })),
+      diagnostics: [...diagnostics, { level: 'error', message: buildMaxFileLinesAiInstructions(result.violations) }], metrics: { checkedFiles: plan.files.length, violations: result.violations.length },
+    });
+  },
+});
+
+export const protectedFilesGate = defineGate({
+  id: 'repository.protected-files',
+  configVersions: CONFIG_VERSION,
+  environments: ['pre-commit', 'ci-policy', 'ci-full'],
+  mutation: 'external-write',
+  allowedMutations: ['external-write', 'read-only'],
+  defaultTimeoutMs: 120000,
+  inspectSetup: () => ready('Protected file policy'),
+  plan: ({ config, changes, step, dryRun = false, forceNotify = false }) => ({
+    action: step?.mutation === 'read-only' ? config.ci.protectedFiles.action : 'notify',
+    protectedChanges: classifyChanges(changeSetEntries(changes), config),
+    stagedChanges: changeSetEntries(changes),
+    dryRun,
+    forceNotify,
+  }),
+  async run({ root, config, plan }) {
+    assertLocalEnvironmentNotStaged(plan.stagedChanges);
+    const findings = plan.protectedChanges.map((change) => ({
+      ruleId: 'repository/protected-file',
+      severity: plan.action === 'fail' ? 'error' : 'warning',
+      message: `${change.path} is protected (${change.category})`,
+      location: { path: change.path },
+    }));
+    if (findings.length === 0) {
+      return passedResult('repository.protected-files', 'No protected files changed', {
+        metrics: { protectedChanges: 0 },
+      });
+    }
+    if (plan.action === 'fail') {
+      return violationResult('repository.protected-files', `Protected file policy found ${findings.length} change(s)`, {
+        findings,
+        metrics: { protectedChanges: findings.length },
+      });
+    }
+    const notifyChanges = plan.protectedChanges.filter(({ level }) => level === 'notify');
+    const diagnostics = findings.map(({ message }) => ({ level: 'warn', message }));
+    if (notifyChanges.length === 0 || !config.notification.enabled) {
+      return passedResult('repository.protected-files', findings.length === 0
+        ? 'No protected files changed'
+        : `Recorded ${findings.length} protected file change(s)`, {
+        diagnostics,
+        metrics: { protectedChanges: findings.length },
+      });
+    }
+    const fingerprint = createStagedFingerprint(root, notifyChanges);
+    const content = buildNotificationText(root, notifyChanges, fingerprint);
+    if (plan.dryRun) diagnostics.push({ level: 'info', message: content });
+    else if (!plan.forceNotify && notificationWasSent(root, fingerprint)) {
+      diagnostics.push({ level: 'info', message: 'Duplicate protected-file notification skipped' });
+    } else {
+      const { webhook, mentionMobiles } = loadNotificationConfig(resolveNotificationEnvironment(root));
+      await sendWecomNotification(webhook, content, mentionMobiles);
+      saveNotificationState(root, fingerprint);
+      diagnostics.push({ level: 'info', message: 'WeCom protected-file notification sent' });
+    }
+    return passedResult('repository.protected-files', `Processed ${findings.length} protected file change(s)`, {
+      diagnostics,
+      metrics: { protectedChanges: findings.length, notifications: notifyChanges.length },
+    });
+  },
+});
+
+export const nativePolicyGates = Object.freeze([
+  unsafeHtmlGate, targetBlankGate, formLabelGate, imageAltGate, exceptionRegistryGate,
+  dependencyPolicyGate, filePlacementGate, maximumFileLinesGate, protectedFilesGate,
+]);

@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { createGateResult } from './core/result/gate-result.js';
 import { validateVueLighthouseSetup } from './lighthouse-project.js';
 
 function commandLabel(command, args) {
@@ -55,7 +56,11 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     const buildExitCode = runNpmScript(root, config.buildScript, config.timeoutMs);
     if (buildExitCode !== 0) {
       console.error(`repo-guard Lighthouse: build failed with exit code ${buildExitCode}.`);
-      return buildExitCode;
+      return createGateResult({
+        gateId: 'quality.lighthouse',
+        status: 'violation',
+        summary: `Lighthouse build failed with exit code ${buildExitCode}`,
+      });
     }
   }
 
@@ -69,7 +74,12 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
   );
   if (collectExitCode !== 0) {
     console.error(`repo-guard Lighthouse: collection failed with exit code ${collectExitCode}.`);
-    return collectExitCode;
+    return createGateResult({
+      gateId: 'quality.lighthouse',
+      status: 'execution-error',
+      summary: `Lighthouse collection failed with exit code ${collectExitCode}`,
+      error: new Error(`LHCI collect exited with code ${collectExitCode}`),
+    });
   }
 
   console.log('repo-guard Lighthouse: checking project assertions...');
@@ -82,11 +92,24 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
   );
   if (assertExitCode !== 0) {
     console.error(`repo-guard Lighthouse: assertions failed with exit code ${assertExitCode}.`);
-    return assertExitCode;
+    return createGateResult({
+      gateId: 'quality.lighthouse',
+      status: 'violation',
+      summary: `Lighthouse assertions failed with exit code ${assertExitCode}`,
+    });
   }
 
   console.log(
     `repo-guard Lighthouse passed. Raw reports: ${path.join(root, '.lighthouseci')}`,
   );
-  return 0;
+  return createGateResult({
+    gateId: 'quality.lighthouse',
+    status: 'passed',
+    summary: 'Lighthouse assertions passed',
+    artifacts: [{
+      path: path.relative(root, path.join(root, '.lighthouseci')).replace(/\\/g, '/'),
+      type: 'lighthouse-report',
+      description: 'Local Lighthouse CI reports',
+    }],
+  });
 }

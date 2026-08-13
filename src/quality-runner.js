@@ -3,27 +3,18 @@ import {
   captureFileContents,
   restoreFileContents,
 } from './file-snapshot.js';
-import { runEslintFiles } from './eslint-runner.js';
-import { runFilePlacementFiles } from './file-placement.js';
-import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
-import { runStylelintFiles } from './stylelint-runner.js';
 import { gateRegistry } from './gates/registry.js';
-import { renderDynamicCodeResult } from './dynamic-code.js';
-import { runVueFormLabelFiles } from './vue-form-label.js';
-import { runVueImageAltFiles } from './vue-image-alt.js';
-import { runVueTargetBlankFiles } from './vue-target-blank.js';
-import { runUnsafeVueHtmlFiles } from './vue-unsafe-html.js';
+import { renderDynamicCodeResult } from './gates/security/dynamic-code-renderer.js';
 import {
-  runMaxFileLinesFiles,
   selectMaxFileLineFiles,
 } from './max-file-lines.js';
+import { collectStagedChanges } from './git-changes.js';
 import {
   createChangeSet,
   createGateContext,
 } from './core/capability/gate-context.js';
 import { createGateResult } from './core/result/gate-result.js';
-import { adaptNumericRunner } from './core/result/numeric-runner-adapter.js';
 import { orchestratePlan } from './orchestration/orchestrator.js';
 import { preCommitQualityPlan } from './orchestration/pre-commit/protected-plan.js';
 
@@ -134,7 +125,7 @@ export async function runQualityExecution({ root, files, config }) {
       }),
       changes: createChangeSet({
         source: 'pre-commit-staged-files',
-        changes: normalizedFiles,
+        changes: collectStagedChanges(root),
       }),
       files: normalizedFiles,
     });
@@ -144,29 +135,46 @@ export async function runQualityExecution({ root, files, config }) {
       context,
       stopOnFailure: true,
       executeStep: async ({ context: stepContext, gate, step }) => {
-        let task = null;
       switch (step.id) {
         case 'quality.stylelint-fix':
-          if (stylelintFiles.length > 0) task = () => runStylelintFiles({ root, files: stylelintFiles, fix: stylelintConfig.fix, maxWarnings: stylelintConfig.maxWarnings, requireConfig: stylelintConfig.requireConfig, complexity: stylelintConfig.complexity, governance: stylelintConfig.governance, exceptions: config.exceptions });
-          break;
+          if (stylelintFiles.length === 0) break;
+          {
+            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: stylelintFiles }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         case 'quality.eslint-fix':
-          if (eslintFiles.length > 0 && eslintConfig.fix) task = () => runEslintFiles({ root, files: eslintFiles, fix: true, maxWarnings: eslintConfig.maxWarnings, preset: eslintConfig.preset });
-          break;
+          if (eslintFiles.length === 0 || !eslintConfig.fix) break;
+          {
+            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: eslintFiles }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         case 'quality.prettier':
-          if (prettierFiles.length > 0) task = () => runPrettierFiles({ root, files: prettierFiles, fix: prettierConfig.fix, requireConfig: prettierConfig.requireConfig });
-          break;
+          if (prettierFiles.length === 0) break;
+          {
+            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: prettierFiles }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         case 'quality.stylelint-verify':
-          if (stylelintFiles.length > 0) task = () => runStylelintFiles({ root, files: stylelintFiles, fix: false, maxWarnings: stylelintConfig.maxWarnings, requireConfig: stylelintConfig.requireConfig, complexity: stylelintConfig.complexity, governance: stylelintConfig.governance, exceptions: config.exceptions });
-          break;
+          if (stylelintFiles.length === 0) break;
+          {
+            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: stylelintFiles }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         case 'quality.eslint-verify':
-          if (eslintFiles.length > 0 && (!eslintConfig.fix || prettierFiles.length > 0)) task = () => runEslintFiles({ root, files: eslintFiles, fix: false, maxWarnings: eslintConfig.maxWarnings, preset: eslintConfig.preset });
-          break;
+          if (eslintFiles.length === 0 || (eslintConfig.fix && prettierFiles.length === 0)) break;
+          {
+            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: eslintFiles }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         case 'security.dynamic-code':
           if (dynamicCodeFiles.length > 0) {
             try {
               const gatePlan = await gate.plan(stepContext);
               const result = await gate.run({ ...stepContext, plan: gatePlan });
-              renderDynamicCodeResult(result);
+              for (const line of renderDynamicCodeResult(result)) {
+                if (line.stream === 'stderr') console.error(line.message);
+                else console.log(line.message);
+              }
               return result;
             } catch (error) {
               if (!String(error.message).startsWith('Dynamic code gate could not parse ')) throw error;
@@ -180,32 +188,24 @@ export async function runQualityExecution({ root, files, config }) {
           }
           break;
         case 'security.vue-unsafe-html':
-          if (vueSecurityFiles.length > 0) task = () => runUnsafeVueHtmlFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
-          break;
         case 'security.vue-target-blank':
-          if (vueSecurityFiles.length > 0) task = () => runVueTargetBlankFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
-          break;
         case 'accessibility.vue-form-label':
-          if (vueSecurityFiles.length > 0) task = () => runVueFormLabelFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
-          break;
         case 'accessibility.vue-image-alt':
-          if (vueSecurityFiles.length > 0) task = () => runVueImageAltFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
-          break;
         case 'repository.maximum-file-lines':
-          if (maxFileLineFiles.length > 0) task = () => runMaxFileLinesFiles({ root, files: maxFileLineFiles, config: maxFileLinesConfig });
-          break;
         case 'repository.file-placement':
-          if (filePlacementConfig.enabled) task = () => runFilePlacementFiles({ root, files: normalizedFiles, config: filePlacementConfig });
-          break;
+          if (step.id.startsWith('security.') || step.id.startsWith('accessibility.')) {
+            if (vueSecurityFiles.length === 0) break;
+          }
+          if (step.id === 'repository.maximum-file-lines' && maxFileLineFiles.length === 0) break;
+          if (step.id === 'repository.file-placement' && !filePlacementConfig.enabled) break;
+          {
+            const gatePlan = await gate.plan(stepContext);
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
         default:
           throw new Error(`Unsupported protected pre-commit quality step: ${step.id}`);
       }
-        if (!task) return skipped(step, `${step.id} has no matching staged files or is disabled`);
-        return await adaptNumericRunner({
-          gateId: step.gateId,
-          task,
-          captureDiagnostics: false,
-        });
+        return skipped(step, `${step.id} has no matching staged files or is disabled`);
       },
     });
     if (execution.exitCode !== 0) restoreFileContents(originalContents);

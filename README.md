@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.20.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.0.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -24,11 +24,11 @@ Vue Lighthouse 默认关闭，开启时业务项目还需
 安装 `@lhci/cli`、提供 `lighthouserc.*` 和 Chrome。通知功能需要在
 `.env.config` 中填写企业微信通知参数；`doctor` 会检查这些前置条件。
 单元测试仅在新项目已经安装 Vitest 且存在 `test:unit` 脚本时由 `init` 自动开启；
-已有项目迁移后保持关闭，可准备完成后通过开关开启。
-axe 可访问性测试仅在新项目已有 `test:a11y`、匹配测试文件、受支持集成、真实扫描和零违规断言时自动开启；已有项目迁移后保持关闭。
-TypeScript 门禁仅在新项目已经存在 `typecheck` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
-独立构建门禁仅在新项目已经存在 `build` 脚本时由 `init` 自动开启；已有项目迁移后保持关闭。
-依赖架构门禁仅在新项目已安装 dependency-cruiser 且存在默认 `src` 路径时自动开启；已有项目迁移后保持关闭。
+未检测到对应项目工具或脚本的能力保持关闭，可在准备完成后通过开关开启。
+axe 可访问性测试仅在项目已有 `test:a11y`、匹配测试文件、受支持集成、真实扫描和零违规断言时自动开启。
+TypeScript 门禁仅在项目已经存在 `typecheck` 脚本时由 `init` 自动开启。
+独立构建门禁仅在项目已经存在 `build` 脚本时由 `init` 自动开启。
+依赖架构门禁仅在项目已安装 dependency-cruiser 且存在默认 `src` 路径时自动开启。
 
 `init` 会：
 
@@ -55,9 +55,9 @@ repo-guard doctor --fix
 
 `migrate` 只补齐当前版本缺失的 `$schema`、`notification`、`exceptions`、`dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`accessibilityTest`、`lighthouse`、`preCommit` 和默认
 字段，保留已有保护规则、排除项和显式配置；重复执行不会继续改文件，也不会改变
-已有项目已经显式配置的门禁开关。为避免升级后突然阻止现有提交，迁移得到的 `dependencyPolicy`、`architecture`、`build`、`typeCheck`、`unitTest`、`accessibilityTest`、
-`maxFileLines` 和 `preCommit.eslint.preset` 默认关闭；文件归位默认开启但使用 `newFiles` 模式，
-只约束今后新增、复制或重命名到新位置的文件，不会因历史错位文件被普通修改而阻止提交。
+已经显式配置的门禁开关。缺省字段直接采用当前平台默认值，不保留旧版本的关闭语义：依赖治理、
+单文件行数、ESLint、ESLint preset 与 Prettier 默认开启；依赖消费项目工具或脚本的重型能力仍按检测结果显式启用。
+文件归位使用 `newFiles` 模式，只约束新增、复制或重命名到新位置的文件。
 
 `doctor --fix` 会先迁移配置，再重新生成托管 Hook、维护 `.gitattributes`、
 `.gitignore`、`.env.config` 和 `guard:*` 项目脚本，最后执行完整诊断。它不会：
@@ -468,7 +468,7 @@ npx repo-guard file-placement
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
-| `enabled` | 新项目 `true`；旧配置迁移后 `false` | 是否检查最终暂存文件的完整行数 |
+| `enabled` | `true` | 是否检查最终暂存文件的完整行数 |
 | `mode` | `strict` | `strict` 严格限制；`noRegression` 允许存量超限文件不再增长 |
 | `warnAt` | `0.85` | 达到限制比例时输出非阻断预警 |
 | `rules` | Vue 700 行、JS/TS 1000 行 | 按顺序匹配，第一条命中的规则生效 |
@@ -649,7 +649,7 @@ repo-guard dynamic-code
 
 `init` 或 `doctor --fix` 会补充 `guard:dynamic-code` 项目脚本和 AGENTS.md 硬性要求。该门禁没有 `enable` 或 `disable` 命令。
 
-动态代码门禁是首个完成平台化纵向迁移的只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；门禁只返回结构化结果，console renderer 在 Registry 组合边界挂接。CI 兼容步骤额外包含 `gateResult`，其中提供版本化 finding、metric 和诊断结果。
+动态代码门禁是原生只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；门禁只返回结构化结果，console renderer 在 Registry 组合边界挂接。CI 步骤直接包含版本化 `gateResult`，其中提供 finding、metric 和诊断结果。
 
 ### Vue v-html 安全门禁
 
@@ -740,7 +740,7 @@ repo-guard image-alt
 
 ### 依赖治理门禁
 
-依赖治理检查根目录 `package.json` 与 npm `package-lock.json`。新项目由 `init` 默认开启；已有项目迁移后保持关闭，评估存量依赖后再启用。只有根清单或锁文件被暂存时才进入 `pre-commit`，并直接读取 Git 暂存快照，因此不会混入未暂存内容，也不能通过只删除锁文件绕过。显式命令不受开关限制，可用于启用前审计：
+依赖治理检查根目录 `package.json` 与 npm `package-lock.json`，当前配置默认开启。只有根清单或锁文件被暂存时才进入 `pre-commit`，并直接读取 Git 暂存快照，因此不会混入未暂存内容，也不能通过只删除锁文件绕过。显式命令不受开关限制，可用于独立审计：
 
 ```bash
 repo-guard dependencies
@@ -885,7 +885,7 @@ emit、Props、路由、Store 或 Mock 调用结果。仅检查组件已定义�
 npm install --save-dev @vitest/coverage-v8
 ```
 
-旧配置中的 `coverage: true/false` 继续兼容：`true` 只追加 `--coverage`，不会自动启用 repo-guard
+`unitTest.coverage` 只接受当前对象结构；旧的 `coverage: true/false` 不再接受。启用时需明确设置 `coverage.enabled`、报告目录和阈值。
 阈值判定。要使用硬门禁，应改为上方结构化对象。覆盖不足必须补充有效测试，不得通过降低阈值、
 扩大 `exclusions`、排除生产源码或复用旧报告绕过。
 
@@ -1089,8 +1089,8 @@ disable 注释、覆盖规则、扩大 ignore 或自行登记例外。
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
-| `enabled` | 新项目 `true`；旧配置缺省 `false` | 是否启用暂存文件 ESLint 门禁 |
-| `preset` | 新项目 `true`；旧配置缺省 `false` | 是否自动注入 repo-guard AI 可维护性规则基线 |
+| `enabled` | `true` | 是否启用暂存文件 ESLint 门禁 |
+| `preset` | `true` | 是否自动注入 repo-guard AI 可维护性规则基线 |
 | `pattern` | `*.{js,jsx,ts,tsx,vue}` | `lint-staged` 文件匹配规则 |
 | `fix` | `true` | 是否应用 ESLint 自动修复 |
 | `maxWarnings` | `0` | 提交允许的最大警告数 |
@@ -1130,8 +1130,7 @@ npm install --save-dev eslint @eslint/js
 # TypeScript 项目按需安装 typescript-eslint
 ```
 
-`preset: false` 时只运行项目原有 ESLint 配置。新项目初始化默认开启；已有配置迁移
-时默认关闭，避免包升级后突然增加阻断规则。`doctor` 会检查 ESLint 版本、
+`preset: false` 时只运行项目原有 ESLint 配置。当前配置默认开启；`doctor` 会检查 ESLint 版本、
 `@eslint/js` 和已发现的可选插件，并输出实际启用的集成。
 
 该基线包含以下规则组：
@@ -1159,7 +1158,7 @@ npm install --save-dev eslint @eslint/js
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
-| `enabled` | 新项目 `true`；旧配置缺省 `false` | 是否启用暂存文件 Prettier 门禁 |
+| `enabled` | `true` | 是否启用暂存文件 Prettier 门禁 |
 | `pattern` | 常见代码、样式、数据和文档扩展名 | 需要格式化的暂存文件 |
 | `fix` | `true` | 自动格式化；设为 `false` 时只检查并阻止不合规提交 |
 | `requireConfig` | `true` | 是否要求匹配文件必须找到项目 Prettier 配置 |
@@ -1251,13 +1250,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.20.0
+## 升级到 1.0.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.20.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.0.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+1.0.0 完成原生 Gate 平台收口。所有官方门禁直接返回 `GateResult`，删除数字 runner adapter、旧动态代码 facade、重复 command wrapper 和旧数字执行入口；包根只公开当前配置、Gate Capability 与结构化结果契约。缺省配置采用当前平台默认值，不再为旧项目保留关闭语义。该版本是明确的不兼容重构；唯一保留的升级识别是托管 Hook 对已知旧标记的读取，生成结果始终只使用当前标记。
 
 0.20.0 将 pre-commit 固化为不可由项目配置重排的受保护执行计划，并在启动时校验完整步骤、顺序和副作用。暂存质量步骤与最终依赖/保护文件策略共享该计划但保持独立 Capability；内部统一返回 `GateResult` 编排结果，不保留旧数字结果协议。Hook 仍由 `lint-staged` 隔离部分暂存内容并通过文件快照在失败时恢复，外部成功/失败语义不变。该计划明确拒绝全项目修复、类型检查、测试、构建和 Lighthouse 等网络门禁。
 

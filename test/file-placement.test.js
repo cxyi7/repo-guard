@@ -9,7 +9,6 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { runFilePlacementCommand } from '../src/commands/file-placement.js';
 import { DEFAULT_FILE_PLACEMENT_CONFIG } from '../src/config.js';
 import {
   buildFilePlacementAiInstructions,
@@ -137,18 +136,13 @@ test('full-project inspection checks tracked and non-ignored untracked files reg
   );
   git(root, ['add', 'src/components/legacy.md', '.gitignore']);
 
-  const errors = [];
-  const originalError = console.error;
-  console.error = (message) => errors.push(String(message));
-  context.after(() => {
-    console.error = originalError;
+  const failedCliResult = spawnSync(process.execPath, [CLI_PATH, 'file-placement'], {
+    cwd: root,
+    encoding: 'utf8',
   });
-
-  const exitCode = runFilePlacementCommand(root);
-
-  assert.equal(exitCode, 1);
-  assert.match(errors.join('\n'), /src\/components\/legacy\.md/);
-  assert.doesNotMatch(errors.join('\n'), /ignored\.md/);
+  assert.equal(failedCliResult.status, 2);
+  assert.match(failedCliResult.stderr, /src\/components\/legacy\.md/);
+  assert.doesNotMatch(failedCliResult.stderr, /ignored\.md/);
 
   renameSync(
     path.join(root, 'src', 'components', 'legacy.md'),

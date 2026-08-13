@@ -95,6 +95,12 @@ function createFixture({ enabled = true } = {}) {
       version: 1,
       architecture: { ...architectureConfig(), enabled },
       notification: { enabled: false },
+      dependencyPolicy: { enabled: false },
+      preCommit: {
+        eslint: { enabled: false },
+        prettier: { enabled: false },
+        maxFileLines: { enabled: false },
+      },
       rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
     }, null, 2)}\n`,
   );
@@ -147,7 +153,7 @@ test('parses dependency-cruiser JSON and blocks error violations', (context) => 
     cycle: ['src/shared.js', 'src/main.js'],
   }]);
 
-  assert.equal(runArchitectureGate({ root, config: architectureConfig() }), 1);
+  assert.equal(runArchitectureGate({ root, config: architectureConfig() }).status, 'violation');
   const generated = JSON.parse(
     readFileSync(path.join(root, 'architecture-generated-config.json'), 'utf8'),
   );
@@ -215,7 +221,7 @@ test('reports warnings without weakening the hard error gate', (context) => {
     rule: { name: 'review-boundary', severity: 'warn' },
   }]);
 
-  assert.equal(runArchitectureGate({ root, config: architectureConfig() }), 0);
+  assert.equal(runArchitectureGate({ root, config: architectureConfig() }).status, 'passed');
 });
 
 test('exposes architecture through CLI and pre-push', async (context) => {
@@ -228,7 +234,7 @@ test('exposes architecture through CLI and pre-push', async (context) => {
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /architecture passed/);
+  assert.match(cliResult.stdout, /PASS {2}architecture/);
   assert.equal(spawnSync('git', ['config', 'user.name', 'repo-guard test'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'repo-guard@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);
