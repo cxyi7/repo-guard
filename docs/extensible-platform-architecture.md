@@ -386,7 +386,7 @@ repo-guard 负责检查工具是否存在、以受控参数运行、归一化结
     {
       "id": "project.api-test",
       "enabled": true,
-      "environments": ["ci-full", "ci-release"],
+      "environments": ["manual", "ci-full"],
       "script": "test:api",
       "timeoutMs": 300000,
       "report": {
@@ -403,8 +403,8 @@ repo-guard 负责检查工具是否存在、以受控参数运行、归一化结
 - 只能运行 `package.json` 中已存在的精确脚本名；
 - 不接受任意 shell 命令、命令拼接或内联脚本；
 - pre-commit 默认禁止项目脚本门禁；
-- 需要 Secret 或网络的门禁默认只允许受信 CI 环境；
-- 每项门禁有超时、取消、并发组和 artifact 上限；
+- CI 外部门禁只允许 GitLab 明确标记为受保护引用的 CI full；
+- 每项门禁有超时、取消和 artifact 上限，并在固定计划中串行执行；
 - 报告必须通过版本化 Schema 校验；
 - repo-guard 不加载项目 JavaScript 作为进程内插件；
 - 报告在汇总前执行路径检查和敏感信息检查。

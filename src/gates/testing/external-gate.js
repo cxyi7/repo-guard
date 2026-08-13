@@ -15,8 +15,22 @@ import { runGit } from '../../git.js';
 const MAX_REPORT_BYTES = 1024 * 1024;
 const MAX_ARTIFACTS = 20;
 const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
+const SAFE_GENERATED_SEGMENT = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/;
+const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+
+function isSafeGeneratedSegment(segment) {
+  return SAFE_GENERATED_SEGMENT.test(segment) && !WINDOWS_RESERVED_NAME.test(segment);
+}
 
 function assertSafeGeneratedPath(root, relative, label, { mustExist = true } = {}) {
+  nonEmpty(relative, label);
+  const segments = relative.split('/');
+  if (relative.includes('\\')
+    || segments[0] !== 'reports'
+    || segments.length < 2
+    || segments.some((segment) => !isSafeGeneratedSegment(segment))) {
+    throw new Error(`${label} must use a normalized path inside reports/`);
+  }
   const target = path.resolve(root, relative);
   const reportsRoot = path.resolve(root, 'reports');
   if (target === reportsRoot || !target.startsWith(`${reportsRoot}${path.sep}`)) {
@@ -32,10 +46,10 @@ function assertSafeGeneratedPath(root, relative, label, { mustExist = true } = {
   if (mustExist && (!existsSync(target) || !lstatSync(target).isFile())) {
     throw new Error(`${label} was not generated as a regular file: ${relative}`);
   }
-  const tracked = runGit(['ls-files', '--error-unmatch', '--', relative], {
-    allowFailure: true,
-    cwd: root,
-  }).status === 0;
+  const relativeKey = relative.toLowerCase();
+  const tracked = runGit(['ls-files', '-z'], { cwd: root }).stdout
+    .split('\0')
+    .some((trackedPath) => trackedPath.toLowerCase() === relativeKey);
   if (tracked) throw new Error(`${label} must not overwrite a tracked file: ${relative}`);
   return target;
 }
@@ -46,14 +60,15 @@ function nonEmpty(value, label) {
 }
 
 function repositoryPath(value, label) {
-  const normalized = nonEmpty(value, label).replace(/\\/g, '/');
-  if (path.posix.isAbsolute(normalized)
-    || normalized === '..'
-    || normalized.startsWith('../')
-    || normalized.includes('/../')) {
-    throw new Error(`${label} must be repository-relative without parent traversal`);
+  const normalized = nonEmpty(value, label);
+  const segments = normalized.split('/');
+  if (normalized.includes('\\')
+    || path.posix.isAbsolute(normalized)
+    || /^[A-Za-z]:\//.test(normalized)
+    || segments.some((segment) => !segment || segment === '.' || segment === '..')) {
+    throw new Error(`${label} must be a normalized repository-relative path`);
   }
-  return normalized.replace(/^\.\//, '');
+  return normalized;
 }
 
 function assertExactProperties(value, allowed, label) {
@@ -153,6 +168,13 @@ function validateReport(config, raw, root, startedAt, execution) {
     }
     return artifact;
   });
+  const artifactPaths = artifacts.map(({ path: artifactPath }) => artifactPath.toLowerCase());
+  if (new Set(artifactPaths).size !== artifactPaths.length) {
+    throw new Error(`External gate ${config.id} report contains duplicate artifact paths`);
+  }
+  if (artifactPaths.includes(config.report.path.toLowerCase())) {
+    throw new Error(`External gate ${config.id} artifacts must not repeat its primary report path`);
+  }
   const diagnostics = [];
   if (execution.stdout.trim()) diagnostics.push({ level: 'info', message: execution.stdout.trim() });
   if (execution.stderr.trim()) diagnostics.push({ level: 'error', message: execution.stderr.trim() });

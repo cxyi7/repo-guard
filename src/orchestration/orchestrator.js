@@ -83,10 +83,20 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
   timeoutError.name = 'TimeoutError';
   const timeout = setTimeout(() => controller.abort(timeoutError), gate.defaultTimeoutMs);
   const stepContext = Object.freeze({ ...context, signal: controller.signal });
+  let cancellationCleanupTimeout = null;
   const aborted = new Promise((resolve, reject) => {
     controller.signal.addEventListener(
       'abort',
-      () => reject(abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`)),
+      () => {
+        if (!gate.supportsCancellation) {
+          reject(abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`));
+          return;
+        }
+        cancellationCleanupTimeout = setTimeout(
+          () => reject(new Error(`Gate ${gate.id} did not stop within 5000ms after cancellation`)),
+          5000,
+        );
+      },
       { once: true },
     );
   });
@@ -105,16 +115,21 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
             new Error(`${gate.id} setup is ${setup.status}: ${setup.summary}`),
           );
         }
-        return await executeStep({
+        const outcome = await executeStep({
           context: Object.freeze({ ...stepContext, step }),
           gate,
           step,
         });
+        if (controller.signal.aborted) {
+          throw abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`);
+        }
+        return outcome;
       }),
       aborted,
     ]);
   } finally {
     clearTimeout(timeout);
+    if (cancellationCleanupTimeout) clearTimeout(cancellationCleanupTimeout);
     upstream?.removeEventListener('abort', onUpstreamAbort);
   }
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -65,10 +66,8 @@ function createFixture({
     path.join(root, 'scripts', 'external.mjs'),
     [
       "import { mkdirSync, writeFileSync } from 'node:fs';",
-      ...(trackReport ? ["import { spawnSync } from 'node:child_process';"] : []),
       "mkdirSync('reports', { recursive: true });",
       `writeFileSync('reports/external.json', ${JSON.stringify(`${JSON.stringify(report)}\n`)});`,
-      ...(trackReport ? ["spawnSync('git', ['add', 'reports/external.json']);"] : []),
       ...(output == null ? [] : [`console.log(${JSON.stringify(output)});`]),
       `process.exitCode = ${exitCode};`,
     ].join('\n'),
@@ -82,6 +81,14 @@ function createFixture({
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify(projectConfig([config]), null, 2)}\n`,
   );
+  if (trackReport) {
+    const trackedPath = process.platform === 'win32'
+      ? 'reports/EXTERNAL.json'
+      : 'reports/external.json';
+    mkdirSync(path.join(root, 'reports'));
+    writeFileSync(path.join(root, trackedPath), `${JSON.stringify(passedReport())}\n`);
+    git(root, ['add', trackedPath]);
+  }
   return root;
 }
 
@@ -114,13 +121,13 @@ test('appends enabled external gates only to the fixed end of CI full', () => {
 });
 
 test('runs a project npm script and returns its native structured result', async (context) => {
-  const root = createFixture({ report: passedReport(), output: 'token=do-not-leak' });
+  const root = createFixture({ report: passedReport(), output: 'api_key=do-not-leak' });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const result = await runExternalManualGate('project.api-contract', root);
   assert.equal(result.status, 'passed');
   assert.equal(result.metrics.requests, 3);
   assert.equal(result.artifacts[0].path, 'reports/external.json');
-  assert.match(result.diagnostics[0].message, /token=\[REDACTED\]/);
+  assert.match(result.diagnostics[0].message, /api_key=\[REDACTED\]/);
   assert.doesNotMatch(result.diagnostics[0].message, /do-not-leak/);
 });
 
@@ -164,7 +171,13 @@ test('runs enabled external gates at the end of CI full and records native JSON'
       protectedFiles: { action: 'report' },
     },
   });
-  assert.equal(await runCiGate({ root, config, base, head }), 0);
+  assert.equal(await runCiGate({
+    root,
+    config,
+    base,
+    head,
+    env: { GITLAB_CI: 'true', CI_COMMIT_REF_PROTECTED: 'true' },
+  }), 0);
   const report = JSON.parse(readFileSync(path.join(root, 'reports', 'ci.json'), 'utf8'));
   assert.equal(report.steps.at(-1).name, 'project.api-contract');
   assert.equal(report.steps.at(-1).gateResult.status, 'passed');
@@ -201,6 +214,35 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
     { report: passedReport(), exitCode: 2, pattern: /requires script exit code 0/ },
     { report: passedReport({ unexpected: true }), exitCode: 0, pattern: /unknown field/ },
     { report: passedReport({ summary: 'token=super-secret' }), exitCode: 0, pattern: /contains sensitive data/ },
+    {
+      report: passedReport({
+        artifacts: [{ path: 'reports\\nested\\result.txt', type: 'text' }],
+      }),
+      exitCode: 0,
+      pattern: /normalized path/,
+    },
+    {
+      report: passedReport({
+        findings: [{
+          ruleId: 'api/path',
+          severity: 'warning',
+          message: 'Bad path',
+          location: { path: 'src\\api.js' },
+        }],
+      }),
+      exitCode: 0,
+      pattern: /normalized repository-relative path/,
+    },
+    {
+      report: passedReport({ artifacts: [{ path: 'reports/result.txt:secret', type: 'text' }] }),
+      exitCode: 0,
+      pattern: /normalized path/,
+    },
+    {
+      report: passedReport({ artifacts: [{ path: 'reports/result.', type: 'text' }] }),
+      exitCode: 0,
+      pattern: /normalized path/,
+    },
   ];
   for (const fixture of fixtures) {
     const root = createFixture(fixture);
@@ -223,6 +265,29 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
   const trackedRoot = createFixture({ report: passedReport(), trackReport: true });
   context.after(() => rmSync(trackedRoot, { recursive: true, force: true }));
   const tracked = await runExternalManualGate('project.api-contract', trackedRoot);
-  assert.equal(tracked.status, 'execution-error');
+  assert.equal(tracked.status, 'configuration-error');
   assert.match(tracked.summary, /must not overwrite a tracked file/);
+});
+
+test('terminates the complete npm process tree when an external gate times out', async (context) => {
+  const root = createFixture({
+    report: passedReport(),
+    config: externalConfig({ timeoutMs: 1000 }),
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(
+    path.join(root, 'scripts', 'external.mjs'),
+    [
+      "import { spawn } from 'node:child_process';",
+      "import { mkdirSync } from 'node:fs';",
+      "mkdirSync('reports', { recursive: true });",
+      "spawn(process.execPath, ['-e', \"setTimeout(() => require('node:fs').writeFileSync('reports/orphan.txt', 'orphan'), 1500)\"], { stdio: 'ignore' });",
+      'setInterval(() => {}, 1000);',
+    ].join('\n'),
+  );
+  const result = await runExternalManualGate('project.api-contract', root);
+  assert.equal(result.status, 'execution-error');
+  assert.match(result.summary, /exceeded its 1000ms timeout/);
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  assert.equal(existsSync(path.join(root, 'reports', 'orphan.txt')), false);
 });

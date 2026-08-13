@@ -4,7 +4,7 @@
 
 - 新增严格的 `externalGates` 配置和 `repo-guard-json-v1` 报告 Schema，项目可通过精确 npm script 在 manual 与 CI full 接入 API、页面或视觉等自有门禁。
 - 项目 Registry 从官方静态 Registry 派生，启用的 `project.*` 门禁只能固定追加到 CI full 官方步骤末尾，不能进入 pre-commit、pre-push、CI policy 或重排安全流水线。
-- 新增报告新鲜度、状态/退出码一致性、未知字段、路径/符号链接、tracked file、大小、artifact 和敏感内容验证，并对外部脚本输出进行脱敏。
+- 新增报告新鲜度、状态/退出码一致性、未知字段、标准路径/符号链接、tracked file、大小、artifact 和敏感内容验证，并对外部脚本输出进行脱敏；超时、取消或输出超限会终止完整 npm 进程树。
 
 ## 1.0.0
 

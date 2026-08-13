@@ -40,7 +40,7 @@ function assertNoSymlinkPath(root, reportPath) {
 }
 
 function isTrustedExternalGateCi(env) {
-  return env.GITLAB_CI !== 'true' || env.CI_COMMIT_REF_PROTECTED === 'true';
+  return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
 }
 
 export function writeCiReport(root, reportPath, report) {

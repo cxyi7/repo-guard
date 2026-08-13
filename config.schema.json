@@ -108,7 +108,7 @@
               },
               "path": {
                 "type": "string",
-                "pattern": "^reports/.+\\.json$",
+                "pattern": "^reports/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))(?:(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?/)*[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?\\.json$",
                 "description": "Fresh untracked report path inside reports/."
               }
             }

@@ -135,6 +135,67 @@ test('enforces gate timeouts and forwards the same cancellation signal to a step
   assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
 });
 
+test('waits for cancellation-capable gates to finish cleanup after a timeout', async () => {
+  const fixtureValue = fixture('ci-full');
+  const timedGate = defineGate({
+    ...fixtureValue.registry.get('first'),
+    id: 'timed-cleanup',
+    defaultTimeoutMs: 10,
+    supportsCancellation: true,
+  });
+  const registry = createGateRegistry([timedGate]);
+  const plan = defineExecutionPlan({
+    id: 'timed-cleanup',
+    environment: 'ci-full',
+    steps: ['timed-cleanup'],
+  });
+  let cleaned = false;
+  const execution = await orchestratePlan({
+    plan,
+    registry,
+    context: fixtureValue.context,
+    executeStep: ({ context }) => new Promise((resolve, reject) => {
+      context.signal.addEventListener('abort', () => {
+        setTimeout(() => {
+          cleaned = true;
+          reject(context.signal.reason);
+        }, 20);
+      }, { once: true });
+    }),
+  });
+  assert.equal(cleaned, true);
+  assert.equal(execution.status, 'execution-error');
+  assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
+});
+
+test('does not accept a passing result returned after cancellation', async () => {
+  const fixtureValue = fixture('ci-full');
+  const timedGate = defineGate({
+    ...fixtureValue.registry.get('first'),
+    id: 'timed-late-pass',
+    defaultTimeoutMs: 10,
+    supportsCancellation: true,
+  });
+  const registry = createGateRegistry([timedGate]);
+  const plan = defineExecutionPlan({
+    id: 'timed-late-pass',
+    environment: 'ci-full',
+    steps: ['timed-late-pass'],
+  });
+  const execution = await orchestratePlan({
+    plan,
+    registry,
+    context: fixtureValue.context,
+    executeStep: ({ context }) => new Promise((resolve) => {
+      context.signal.addEventListener('abort', () => {
+        setTimeout(() => resolve(result('timed-late-pass', 'passed')), 20);
+      }, { once: true });
+    }),
+  });
+  assert.equal(execution.status, 'execution-error');
+  assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
+});
+
 test('honors an upstream cancellation before starting an asynchronous step', async () => {
   const fixtureValue = fixture('ci-full');
   const controller = new AbortController();

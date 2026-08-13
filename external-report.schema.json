@@ -9,7 +9,7 @@
     "schemaVersion": { "const": 1 },
     "gateId": { "type": "string", "pattern": "^project\\.[a-z][a-z0-9-]*$" },
     "status": { "type": "string", "enum": ["passed", "violation"] },
-    "summary": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "pattern": "\\S" },
     "findings": {
       "type": "array",
       "items": {
@@ -17,15 +17,15 @@
         "additionalProperties": false,
         "required": ["ruleId", "severity", "message"],
         "properties": {
-          "ruleId": { "type": "string", "minLength": 1 },
+          "ruleId": { "type": "string", "pattern": "\\S" },
           "severity": { "type": "string", "enum": ["info", "warning", "error"] },
-          "message": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "pattern": "\\S" },
           "location": {
             "type": ["object", "null"],
             "additionalProperties": false,
             "required": ["path"],
             "properties": {
-              "path": { "type": "string", "minLength": 1 },
+              "path": { "type": "string", "pattern": "^(?!/)(?![A-Za-z]:/)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*//)[^\\\\]+$" },
               "line": { "type": "integer", "minimum": 1 },
               "column": { "type": "integer", "minimum": 1 },
               "endLine": { "type": "integer", "minimum": 1 },
@@ -39,6 +39,7 @@
     },
     "metrics": {
       "type": "object",
+      "propertyNames": { "minLength": 1 },
       "additionalProperties": { "type": "number" }
     },
     "artifacts": {
@@ -49,8 +50,8 @@
         "additionalProperties": false,
         "required": ["path", "type"],
         "properties": {
-          "path": { "type": "string", "pattern": "^reports/.+" },
-          "type": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "pattern": "^reports/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?(?:/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?)*$" },
+          "type": { "type": "string", "pattern": "\\S" },
           "description": { "type": ["string", "null"] }
         }
       }

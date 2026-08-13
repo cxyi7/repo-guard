@@ -500,11 +500,23 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     if (entry.report.format !== 'repo-guard-json-v1') {
       throw new Error(`${label}.report.format must be repo-guard-json-v1`);
     }
+    const reportSegments = typeof entry.report.path === 'string'
+      ? entry.report.path.split('/')
+      : [];
+    if (reportSegments[0] !== 'reports'
+      || reportSegments.length < 2
+      || reportSegments.some((segment) => (
+        !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/.test(segment)
+        || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(segment)
+      ))) {
+      throw new Error(`${label}.report.path must use a normalized path inside reports/`);
+    }
     const reportPath = validateCiReportPath(entry.report.path, `${label}.report.path`);
-    if (externalReportPaths.has(reportPath)) {
+    const reportPathKey = reportPath.toLowerCase();
+    if (externalReportPaths.has(reportPathKey)) {
       throw new Error(`${configPath} external gate report path is duplicated: ${reportPath}`);
     }
-    externalReportPaths.add(reportPath);
+    externalReportPaths.add(reportPathKey);
     return {
       id: entry.id,
       enabled: entry.enabled,
@@ -514,6 +526,9 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       report: { format: entry.report.format, path: reportPath },
     };
   });
+  if (externalReportPaths.has(ciReportPath.toLowerCase())) {
+    throw new Error(`${configPath} external gate report path must differ from ci.reportPath`);
+  }
 
   const exceptionsValue = value.exceptions ?? {};
   if (!exceptionsValue || typeof exceptionsValue !== 'object'

@@ -881,7 +881,10 @@ test('validates strict external project gate configuration', () => {
     [{ script: 'npm test && deploy' }, /exact npm script name/],
     [{ timeoutMs: 999 }, /between 1000 and 1800000/],
     [{ report: { format: 'junit', path: 'reports/api-contract.json' } }, /repo-guard-json-v1/],
-    [{ report: { format: 'repo-guard-json-v1', path: '../api.json' } }, /stay inside the repository/],
+    [{ report: { format: 'repo-guard-json-v1', path: '../api.json' } }, /normalized path/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports\\api.json' } }, /normalized path/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports/alias./api.json' } }, /normalized path/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports/CON.json' } }, /normalized path/],
   ]) {
     assert.throws(
       () => validateConfig(baseConfig({ externalGates: [{ ...entry, ...change }] })),
@@ -900,7 +903,30 @@ test('validates strict external project gate configuration', () => {
     /report path is duplicated/,
   );
   assert.throws(
+    () => validateConfig(baseConfig({ externalGates: [
+      entry,
+      {
+        ...entry,
+        id: 'project.browser',
+        report: { ...entry.report, path: 'reports/API-CONTRACT.json' },
+      },
+    ] })),
+    /report path is duplicated/,
+  );
+  assert.throws(
     () => validateConfig(baseConfig({ externalGates: [{ ...entry, command: 'node test.js' }] })),
     /unsupported properties: command/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({
+      ci: {
+        enabled: true,
+        profile: 'full',
+        reportPath: 'reports/api-contract.json',
+        protectedFiles: { action: 'report' },
+      },
+      externalGates: [entry],
+    })),
+    /must differ from ci\.reportPath/,
   );
 });

@@ -458,7 +458,7 @@ repo-guard external project.api-contract
 }
 ```
 
-完整报告 Schema 可从 `@cxyi7/repo-guard/external-report.schema.json` 引用。报告与 artifact 必须位于 `reports/`、不能覆盖 Git 已跟踪文件、不能经过符号链接；报告上限 1 MiB，artifact 最多 20 个且每个不超过 10 MiB。repo-guard 会拒绝旧报告、未知字段、状态/退出码矛盾、路径穿越和敏感信息，并对脚本输出中的常见 Token、密码、Cookie、Authorization 与私钥内容脱敏。外部门禁不会进入 pre-commit、pre-push 或 CI policy。
+完整报告 Schema 可从 `@cxyi7/repo-guard/external-report.schema.json` 引用。报告与 artifact 必须使用 `/` 分隔的标准仓库相对路径并位于 `reports/`，不能覆盖 Git 已跟踪文件、不能经过符号链接；外部报告路径还必须与 CI 主报告路径不同。报告上限 1 MiB，artifact 最多 20 个且每个不超过 10 MiB。repo-guard 会拒绝旧报告、未知字段、状态/退出码矛盾、路径穿越和敏感信息，并对脚本输出中的常见 Token、密码、Cookie、Authorization 与私钥内容脱敏；超时、取消或输出超限会终止完整 npm 进程树。外部门禁不会进入 pre-commit、pre-push 或 CI policy。
 
 ### 文件归位门禁
 
