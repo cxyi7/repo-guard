@@ -296,7 +296,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
 
   assert.doesNotMatch(sources.cli, /case ['"](?:dynamic-code|unsafe-html|typecheck|build)['"]/);
   assert.doesNotMatch(sources['hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
-  assert.match(sources['commands/doctor'], /gateRegistry\.all/);
+  assert.match(sources['commands/doctor'], /createProjectGateRegistry\(config\)\.all/);
   assert.match(sources['ci-runner'], /executionPlans\.get/);
   assert.match(sources['quality-runner'], /plan: preCommitQualityPlan/);
   assert.doesNotMatch(sources['quality-runner'], /run\w+Project|quality\.typecheck|quality\.lighthouse/);

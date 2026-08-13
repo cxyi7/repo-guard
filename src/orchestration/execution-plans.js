@@ -1,6 +1,7 @@
 import {
   createExecutionPlanRegistry,
   defineExecutionPlan,
+  validateExecutionPlan,
 } from '../core/capability/execution-plan.js';
 import { gateRegistry } from '../gates/registry.js';
 import { preCommitPlan } from './pre-commit/protected-plan.js';
@@ -66,6 +67,22 @@ export const ciFullPlan = defineExecutionPlan({
     'quality.build',
   ],
 });
+
+export function createProjectCiFullPlan(config, registry, { includeExternalGates = true } = {}) {
+  return validateExecutionPlan(defineExecutionPlan({
+    id: 'ci-full',
+    environment: 'ci-full',
+    locked: true,
+    steps: [
+      ...ciFullPlan.steps,
+      ...config.externalGates
+        .filter((gate) => includeExternalGates
+          && gate.enabled
+          && gate.environments.includes('ci-full'))
+        .map(({ id }) => id),
+    ],
+  }), registry);
+}
 
 export const executionPlans = createExecutionPlanRegistry([
   preCommitPlan,

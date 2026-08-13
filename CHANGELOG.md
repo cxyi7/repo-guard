@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- 新增严格的 `externalGates` 配置和 `repo-guard-json-v1` 报告 Schema，项目可通过精确 npm script 在 manual 与 CI full 接入 API、页面或视觉等自有门禁。
+- 项目 Registry 从官方静态 Registry 派生，启用的 `project.*` 门禁只能固定追加到 CI full 官方步骤末尾，不能进入 pre-commit、pre-push、CI policy 或重排安全流水线。
+- 新增报告新鲜度、状态/退出码一致性、未知字段、路径/符号链接、tracked file、大小、artifact 和敏感内容验证，并对外部脚本输出进行脱敏。
+
 ## 1.0.0
 
 - 将所有官方门禁收口为原生 `GateResult` Capability，删除数字 runner adapter、旧动态代码 facade、重复 command wrapper 和可旁路统一编排的数字执行入口。

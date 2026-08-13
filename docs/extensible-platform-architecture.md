@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.0.0 已完成官方门禁的原生 Gate Capability、统一 Registry、Execution Plan、GateContext 和结构化结果收口；当前主要未完成项是阶段 6 的外部门禁脚本、阶段 7 的发布准备计划，以及阶段 8 的目录依赖边界自动化。**
+结论：**1.1.0 已在原生 Gate 平台上完成严格的外部门禁脚本接入；当前主要未完成项是阶段 7 的发布准备计划，以及阶段 8 的目录依赖边界自动化。**
 
 ### 3.1 已经符合的部分
 
@@ -64,7 +64,6 @@
 
 | 问题 | 当前表现 | 影响 |
 | --- | --- | --- |
-| 外部项目门禁不可通用接入 | 当前只内建 typecheck、unit、axe、build 等固定脚本类型 | 新增 API、页面或视觉测试仍需修改 repo-guard 核心 |
 | 文件结构偏平 | `src` 中 command、policy、runner、解析器和基础设施混排 | 依赖方向主要靠约定，难以自动验证 |
 | 发布准备计划未实现 | 当前只有 `policy` 与 `full` CI 计划 | 尚不能独立证明版本、changelog、Schema 和 artifact 已可发布 |
 
@@ -518,7 +517,7 @@ profile 应由“已审核的执行计划”选择门禁，不能允许任意配
 - `gateId` 必须与配置一致；
 - `status` 不能与脚本退出状态矛盾；
 - 未生成、过期、损坏或 Schema 不匹配的报告视为执行错误；
-- 报告允许未来增加未知字段，但不能改变既有字段语义；
+- 报告只接受当前 Schema 明确定义的字段；协议升级必须同步修改 Schema、实现、测试和文档，不接受未知字段或旧协议兼容分支；
 - artifact 必须位于允许目录，不能覆盖已跟踪文件或穿越符号链接；
 - 日志和报告禁止包含 Token、Cookie、密码、私钥或完整敏感请求体；
 - repo-guard 只汇总结果，不推断项目接口语义。
@@ -693,7 +692,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 6：外部门禁脚本
 
-实施状态：下一阶段，尚未完成。该阶段必须基于 1.0.0 原生契约实现，不接受旧 runner、任意 shell command 或报告协议兼容分支。
+实施状态：`1.1.0` 已完成。项目配置通过严格 `externalGates` 声明 `project.*` 能力，项目 Registry 从官方静态 Registry 派生；manual 使用统一 `external` 入口，CI full 只在全部官方步骤末尾追加已启用能力。执行器只调用精确 npm script，验证 `repo-guard-json-v1`、退出码、超时/取消、报告新鲜度、artifact 路径/大小、符号链接和敏感内容；不接受旧 runner、任意 shell command、JavaScript 插件或报告协议兼容分支。
 
 - 定义 `externalGates` Schema；
 - 定义 `repo-guard-json-v1` 报告 Schema；

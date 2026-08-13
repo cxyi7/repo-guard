@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cxyi7.github.io/repo-guard/repo-guard-json-v1.schema.json",
+  "title": "repo-guard external gate report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "gateId", "status", "summary", "findings", "metrics", "artifacts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "gateId": { "type": "string", "pattern": "^project\\.[a-z][a-z0-9-]*$" },
+    "status": { "type": "string", "enum": ["passed", "violation"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "severity", "message"],
+        "properties": {
+          "ruleId": { "type": "string", "minLength": 1 },
+          "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+          "message": { "type": "string", "minLength": 1 },
+          "location": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 1 },
+              "endLine": { "type": "integer", "minimum": 1 },
+              "endColumn": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "evidence": { "type": ["string", "null"] },
+          "remediation": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "type"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^reports/.+" },
+          "type": { "type": "string", "minLength": 1 },
+          "description": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -18,8 +18,8 @@ import {
   createChangeSet,
   createGateContext,
 } from './core/capability/gate-context.js';
-import { gateRegistry } from './gates/registry.js';
-import { executionPlans } from './orchestration/execution-plans.js';
+import { createProjectGateRegistry } from './gates/registry.js';
+import { createProjectCiFullPlan, executionPlans } from './orchestration/execution-plans.js';
 import { orchestratePlan } from './orchestration/orchestrator.js';
 
 function matchingFiles(files, pattern) {
@@ -37,6 +37,10 @@ function assertNoSymlinkPath(root, reportPath) {
       throw new Error(`CI report path must not traverse a symbolic link: ${reportPath}`);
     }
   }
+}
+
+function isTrustedExternalGateCi(env) {
+  return env.GITLAB_CI !== 'true' || env.CI_COMMIT_REF_PROTECTED === 'true';
 }
 
 export function writeCiReport(root, reportPath, report) {
@@ -108,8 +112,9 @@ export async function runCiGate({
     return gateStatusToExitCode('range-error');
   }
 
+  const reportPaths = new Set([reportPath, ...config.externalGates.map(({ report }) => report.path)]);
   const projectFiles = collectProjectFiles(root)
-    .filter((file) => file !== reportPath && !file.startsWith(`${reportPath}/`));
+    .filter((file) => !reportPaths.has(file));
   const steps = [];
   const recordResult = (name, result, {
     includeGateResult = false,
@@ -121,7 +126,12 @@ export async function runCiGate({
       { label: name },
     );
   };
-  const ciPlan = executionPlans.get(profile === 'full' ? 'ci-full' : 'ci-policy');
+  const registry = createProjectGateRegistry(config);
+  const ciPlan = profile === 'full'
+    ? createProjectCiFullPlan(config, registry, {
+      includeExternalGates: isTrustedExternalGateCi(env),
+    })
+    : executionPlans.get('ci-policy');
   const changeSet = createChangeSet({
     source: 'ci',
     changes: range.changes,
@@ -138,7 +148,7 @@ export async function runCiGate({
   const protectedChanges = classifyChanges(changeSet.entries, config);
   const execution = await orchestratePlan({
     plan: ciPlan,
-    registry: gateRegistry,
+    registry,
     context,
     executeStep: async ({ context: stepContext, gate, step }) => {
       switch (step.id) {
@@ -154,7 +164,7 @@ export async function runCiGate({
         return { name: step.id, result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
       }
       case 'security.dynamic-code': {
-        const gate = gateRegistry.get(step.gateId);
+        const gate = registry.get(step.gateId);
         const gatePlan = await gate.plan(stepContext);
         const result = await gate.run({ ...stepContext, plan: gatePlan });
         for (const line of gate.renderConsole(result)) {
@@ -200,7 +210,7 @@ export async function runCiGate({
           return { name: step.id, result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
         }
       default: {
-        const gate = gateRegistry.get(step.gateId);
+        const gate = registry.get(step.gateId);
         const gatePlan = await gate.plan(stepContext);
         const result = await gate.run({ ...stepContext, plan: gatePlan });
         for (const line of gate.renderConsole?.(result) ?? []) {

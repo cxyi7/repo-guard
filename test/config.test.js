@@ -859,3 +859,48 @@ test('validates and normalizes dependency governance configuration', () => {
     /at least 10 characters/,
   );
 });
+
+test('validates strict external project gate configuration', () => {
+  const entry = {
+    id: 'project.api-contract',
+    enabled: true,
+    environments: ['manual', 'ci-full'],
+    script: 'test:api-contract',
+    timeoutMs: 120000,
+    report: {
+      format: 'repo-guard-json-v1',
+      path: 'reports/api-contract.json',
+    },
+  };
+  const config = validateConfig(baseConfig({ externalGates: [entry] }));
+  assert.deepEqual(config.externalGates, [entry]);
+
+  for (const [change, pattern] of [
+    [{ id: 'api-contract' }, /project\.<kebab-case>/],
+    [{ environments: ['pre-push'] }, /unique manual or ci-full/],
+    [{ script: 'npm test && deploy' }, /exact npm script name/],
+    [{ timeoutMs: 999 }, /between 1000 and 1800000/],
+    [{ report: { format: 'junit', path: 'reports/api-contract.json' } }, /repo-guard-json-v1/],
+    [{ report: { format: 'repo-guard-json-v1', path: '../api.json' } }, /stay inside the repository/],
+  ]) {
+    assert.throws(
+      () => validateConfig(baseConfig({ externalGates: [{ ...entry, ...change }] })),
+      pattern,
+    );
+  }
+  assert.throws(
+    () => validateConfig(baseConfig({ externalGates: [entry, entry] })),
+    /gate id is duplicated/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ externalGates: [
+      entry,
+      { ...entry, id: 'project.browser' },
+    ] })),
+    /report path is duplicated/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ externalGates: [{ ...entry, command: 'node test.js' }] })),
+    /unsupported properties: command/,
+  );
+});

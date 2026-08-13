@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Structured Git and GitLab CI policy gates for Vue security, accessibility, code quality, dependencies, architecture, builds, coverage, and tests",
   "keywords": [
     "git-hooks",
@@ -36,13 +36,15 @@
   },
   "exports": {
     ".": "./src/index.js",
-    "./config.schema.json": "./config.schema.json"
+    "./config.schema.json": "./config.schema.json",
+    "./external-report.schema.json": "./external-report.schema.json"
   },
   "files": [
     "bin",
     "scripts",
     "src",
     "config.schema.json",
+    "external-report.schema.json",
     "CHANGELOG.md",
     "README.md"
   ],

@@ -375,6 +375,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       'version',
       'notification',
       'ci',
+      'externalGates',
       'exceptions',
       'dependencyPolicy',
       'architecture',
@@ -453,6 +454,66 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   if (!['report', 'fail'].includes(ciProtectedFilesAction)) {
     throw new Error(`${configPath} ci.protectedFiles.action must be report or fail`);
   }
+
+  const externalGatesValue = value.externalGates ?? [];
+  if (!Array.isArray(externalGatesValue)) {
+    throw new Error(`${configPath} externalGates must be an array`);
+  }
+  const externalGateIds = new Set();
+  const externalReportPaths = new Set();
+  const externalGates = externalGatesValue.map((entry, index) => {
+    const label = `${configPath} externalGates item ${index + 1}`;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`${label} must be an object`);
+    }
+    assertKnownProperties(
+      entry,
+      new Set(['id', 'enabled', 'environments', 'script', 'timeoutMs', 'report']),
+      label,
+    );
+    for (const field of ['id', 'enabled', 'environments', 'script', 'timeoutMs', 'report']) {
+      if (!Object.hasOwn(entry, field)) throw new Error(`${label}.${field} is required`);
+    }
+    if (typeof entry.id !== 'string' || !/^project\.[a-z][a-z0-9-]*$/.test(entry.id)) {
+      throw new Error(`${label}.id must use the project.<kebab-case> namespace`);
+    }
+    if (externalGateIds.has(entry.id)) {
+      throw new Error(`${configPath} external gate id is duplicated: ${entry.id}`);
+    }
+    externalGateIds.add(entry.id);
+    if (typeof entry.enabled !== 'boolean') throw new Error(`${label}.enabled must be a boolean`);
+    if (!Array.isArray(entry.environments) || entry.environments.length === 0
+      || entry.environments.some((environment) => !['manual', 'ci-full'].includes(environment))
+      || new Set(entry.environments).size !== entry.environments.length) {
+      throw new Error(`${label}.environments must contain unique manual or ci-full values`);
+    }
+    if (typeof entry.script !== 'string' || !/^[A-Za-z0-9:_-]+$/.test(entry.script)) {
+      throw new Error(`${label}.script must be an exact npm script name`);
+    }
+    if (!Number.isInteger(entry.timeoutMs) || entry.timeoutMs < 1000 || entry.timeoutMs > 1800000) {
+      throw new Error(`${label}.timeoutMs must be between 1000 and 1800000`);
+    }
+    if (!entry.report || typeof entry.report !== 'object' || Array.isArray(entry.report)) {
+      throw new Error(`${label}.report must be an object`);
+    }
+    assertKnownProperties(entry.report, new Set(['format', 'path']), `${label}.report`);
+    if (entry.report.format !== 'repo-guard-json-v1') {
+      throw new Error(`${label}.report.format must be repo-guard-json-v1`);
+    }
+    const reportPath = validateCiReportPath(entry.report.path, `${label}.report.path`);
+    if (externalReportPaths.has(reportPath)) {
+      throw new Error(`${configPath} external gate report path is duplicated: ${reportPath}`);
+    }
+    externalReportPaths.add(reportPath);
+    return {
+      id: entry.id,
+      enabled: entry.enabled,
+      environments: [...entry.environments],
+      script: entry.script,
+      timeoutMs: entry.timeoutMs,
+      report: { format: entry.report.format, path: reportPath },
+    };
+  });
 
   const exceptionsValue = value.exceptions ?? {};
   if (!exceptionsValue || typeof exceptionsValue !== 'object'
@@ -1493,6 +1554,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       reportPath: ciReportPath,
       protectedFiles: { action: ciProtectedFilesAction },
     },
+    externalGates,
     exceptions: {
       warningDays: exceptionWarningDays,
       maxDays: exceptionMaxDays,

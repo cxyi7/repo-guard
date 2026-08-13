@@ -4,7 +4,7 @@ import { defineExecutionPlan } from '../../core/capability/execution-plan.js';
 import { createGateRegistry } from '../../core/capability/gate-registry.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { collectProjectFiles } from '../../file-placement.js';
-import { gateRegistry } from '../../gates/registry.js';
+import { createProjectGateRegistry, gateRegistry } from '../../gates/registry.js';
 import { collectWorkingTreeChanges } from '../../git-changes.js';
 import { findRepositoryRoot } from '../../git.js';
 import { orchestratePlan } from '../orchestrator.js';
@@ -58,6 +58,18 @@ async function runManualGate(gate, {
     },
   });
   return execution.decisiveResult;
+}
+
+export async function runExternalManualGate(gateId, cwd = process.cwd()) {
+  if (!gateId.startsWith('project.')) throw new Error(`${gateId} is not an external project gate`);
+  const root = findRepositoryRoot(cwd);
+  const config = loadConfig(root);
+  const registry = createProjectGateRegistry(config);
+  const gate = registry.get(gateId);
+  if (!gate.environments.includes('manual')) {
+    throw new Error(`External gate ${gateId} does not support manual execution`);
+  }
+  return await runManualGate(gate, { cwd, registry });
 }
 
 export async function runNativeManualGate(gate, cwd = process.cwd()) {

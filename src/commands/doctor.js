@@ -40,7 +40,7 @@ import {
   ensureUnitTestPolicy,
   UNIT_TEST_POLICY_FILE,
 } from '../unit-test-policy.js';
-import { gateRegistry } from '../gates/registry.js';
+import { createProjectGateRegistry } from '../gates/registry.js';
 
 const PACKAGE_JSON = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
@@ -261,13 +261,31 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   }
 
   if (config) {
-    const doctorGates = gateRegistry.all
+    const doctorGates = createProjectGateRegistry(config).all
       .filter(({ doctorOrder }) => doctorOrder != null)
       .sort((left, right) => left.doctorOrder - right.doctorOrder);
     for (const gate of doctorGates) {
       try {
         const setup = await gate.inspectSetup({ root, config });
         if (setup == null) continue;
+        if (setup.status === 'ready') checks.push(setup.summary);
+        else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
+      } catch (error) {
+        errors.push(error.message);
+      }
+    }
+    for (const externalGate of config.externalGates) {
+      if (!externalGate.enabled) {
+        checks.push(`External gate ${externalGate.id} is disabled`);
+        continue;
+      }
+      try {
+        const gate = createProjectGateRegistry(config).get(externalGate.id);
+        const requestedEnvironment = ci ? `ci-${config.ci.profile}` : 'manual';
+        const environment = gate.environments.includes(requestedEnvironment)
+          ? requestedEnvironment
+          : gate.environments[0];
+        const setup = await gate.inspectSetup({ root, config, environment });
         if (setup.status === 'ready') checks.push(setup.summary);
         else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
       } catch (error) {

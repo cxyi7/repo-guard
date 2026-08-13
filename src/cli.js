@@ -4,7 +4,10 @@ import { runCiCommand } from './commands/ci.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { gateRegistry } from './gates/registry.js';
-import { runRegisteredManualGate } from './orchestration/cli/manual-gates.js';
+import {
+  runExternalManualGate,
+  runRegisteredManualGate,
+} from './orchestration/cli/manual-gates.js';
 import { gateResultToExitCode, gateStatusToExitCode } from './core/result/gate-result.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
@@ -56,6 +59,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard dry-run
   repo-guard pre-commit
   repo-guard pre-push
+  repo-guard external <project.gate-id>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
@@ -176,6 +180,13 @@ export async function runCli(argumentsList) {
         return await runGate({ dryRun: true });
       case 'hook-message':
         return runHookMessage(rest);
+      case 'external': {
+        if (rest.length !== 1 || rest[0].startsWith('-')) {
+          throw new Error('external requires one project.<kebab-case> gate id');
+        }
+        const result = await runExternalManualGate(rest[0]);
+        return gateResultToExitCode(result);
+      }
       default:
         if (gateRegistry.findByManualCommand(command)) {
           const gate = gateRegistry.findByManualCommand(command);

@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.0.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.1.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -415,6 +415,50 @@ repo-guard ci --profile policy --base <sha> --head <sha>
 ```
 
 退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码，CI 每个非跳过步骤的 `exitCode` 也遵循这套映射，不再保留 runner 自己的历史数字语义。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+
+### 外部门禁脚本
+
+消费项目可通过 `externalGates` 接入 API 合约、页面、视觉等项目自有测试，而无需修改 repo-guard 核心。外部门禁只允许精确的 `package.json` npm script 名称，不接受命令参数、shell 片段、任意 JavaScript 插件或业务 endpoint。它只能在 manual 和受信的 CI full 中运行；GitLab CI 只在 `CI_COMMIT_REF_PROTECTED=true` 的受保护引用上运行外部门禁，Merge Request 与未受保护分支即使选择 full profile 也不会执行。启用的 CI full 外部门禁固定追加在全部官方步骤之后，不能插入或重排官方流水线。
+
+```json
+{
+  "externalGates": [
+    {
+      "id": "project.api-contract",
+      "enabled": true,
+      "environments": ["manual", "ci-full"],
+      "script": "test:api-contract",
+      "timeoutMs": 120000,
+      "report": {
+        "format": "repo-guard-json-v1",
+        "path": "reports/api-contract.json"
+      }
+    }
+  ]
+}
+```
+
+手工运行：
+
+```bash
+repo-guard external project.api-contract
+```
+
+项目脚本必须生成最新的 `repo-guard-json-v1` JSON。通过时脚本退出码必须是 `0`；策略违规时必须是 `2`，并至少包含一个 `error` finding：
+
+```json
+{
+  "schemaVersion": 1,
+  "gateId": "project.api-contract",
+  "status": "passed",
+  "summary": "API contract checks passed",
+  "findings": [],
+  "metrics": { "requests": 12 },
+  "artifacts": []
+}
+```
+
+完整报告 Schema 可从 `@cxyi7/repo-guard/external-report.schema.json` 引用。报告与 artifact 必须位于 `reports/`、不能覆盖 Git 已跟踪文件、不能经过符号链接；报告上限 1 MiB，artifact 最多 20 个且每个不超过 10 MiB。repo-guard 会拒绝旧报告、未知字段、状态/退出码矛盾、路径穿越和敏感信息，并对脚本输出中的常见 Token、密码、Cookie、Authorization 与私钥内容脱敏。外部门禁不会进入 pre-commit、pre-push 或 CI policy。
 
 ### 文件归位门禁
 
@@ -1250,13 +1294,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 1.0.0
+## 升级到 1.1.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.0.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.1.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+1.1.0 新增受限外部门禁脚本：项目可用精确 npm script 与 `repo-guard-json-v1` 报告接入 manual 和 CI full。项目 Registry 只在官方静态 Registry 后追加 `project.*` 能力；CI full 固定在官方步骤末尾追加已启用外部门禁。执行器验证超时、报告新鲜度、Schema、退出码、artifact 路径/大小、符号链接和敏感内容，不开放任意 shell 或 JavaScript 插件 API。
 
 1.0.0 完成原生 Gate 平台收口。所有官方门禁直接返回 `GateResult`，删除数字 runner adapter、旧动态代码 facade、重复 command wrapper 和旧数字执行入口；包根只公开当前配置、Gate Capability 与结构化结果契约。缺省配置采用当前平台默认值，不再为旧项目保留关闭语义。该版本是明确的不兼容重构；唯一保留的升级识别是托管 Hook 对已知旧标记的读取，生成结果始终只使用当前标记。
 

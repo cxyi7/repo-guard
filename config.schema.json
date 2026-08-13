@@ -62,6 +62,60 @@
         }
       }
     },
+    "externalGates": {
+      "type": "array",
+      "default": [],
+      "description": "Project-owned read-only gates executed only through exact npm script names. They may run manually or at the fixed end of CI full and must emit repo-guard-json-v1 reports under reports/.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "enabled", "environments", "script", "timeoutMs", "report"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^project\\.[a-z][a-z0-9-]*$",
+            "description": "Stable project-owned gate id in the reserved project.<kebab-case> namespace."
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "environments": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": ["manual", "ci-full"]
+            }
+          },
+          "script": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9:_-]+$",
+            "description": "Exact package.json npm script name. Shell fragments and arguments are forbidden."
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 1800000
+          },
+          "report": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["format", "path"],
+            "properties": {
+              "format": {
+                "const": "repo-guard-json-v1"
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^reports/.+\\.json$",
+                "description": "Fresh untracked report path inside reports/."
+              }
+            }
+          }
+        }
+      }
+    },
     "exceptions": {
       "type": "object",
       "description": "Human-reviewed, exact-location exceptions shared by repo-guard rules. Expired entries block normal commands.",
