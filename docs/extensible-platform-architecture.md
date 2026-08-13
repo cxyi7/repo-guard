@@ -691,6 +691,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 5：保护 pre-commit 固定流水线
 
+实施状态：`0.20.0` 已完成。pre-commit 的完整步骤、顺序和副作用由专用受保护计划在启动时校验，暂存质量段与最终依赖/保护文件策略段只能从该计划派生；两段均通过统一 orchestrator 传递 `GateResult`，不保留 runner 内部数字结果协议。保护文件与暂存代码质量仍为独立 Capability，`lint-staged` 隔离、文件快照、部分暂存及失败恢复保持不变，Hook 外部仍使用既有 0/1 成败语义。计划明确拒绝全项目修复、类型检查、测试、构建和 Lighthouse 等网络门禁。
+
 - 将质量步骤表示为不可由项目重排的受保护执行计划；
 - 保持 Stylelint、ESLint、Prettier、只读复检和保护文件的既定顺序；
 - 保持 `lint-staged`、文件快照、部分暂存和失败恢复；

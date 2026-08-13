@@ -43,7 +43,7 @@ function resolveIgnorePaths(root) {
 
 export async function resolveProjectPrettierConfigFile(root) {
   const { prettier } = await loadProjectPrettier(root);
-  return await prettier.resolveConfigFile(root);
+  return await prettier.resolveConfigFile(path.join(root, 'package.json'));
 }
 
 async function prepareFormatting(prettier, root, files, requireConfig) {

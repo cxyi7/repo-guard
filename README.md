@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.19.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.20.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1251,13 +1251,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.19.0
+## 升级到 0.20.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.19.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.20.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.20.0 将 pre-commit 固化为不可由项目配置重排的受保护执行计划，并在启动时校验完整步骤、顺序和副作用。暂存质量步骤与最终依赖/保护文件策略共享该计划但保持独立 Capability；内部统一返回 `GateResult` 编排结果，不保留旧数字结果协议。Hook 仍由 `lint-staged` 隔离部分暂存内容并通过文件快照在失败时恢复，外部成功/失败语义不变。该计划明确拒绝全项目修复、类型检查、测试、构建和 Lighthouse 等网络门禁。
 
 0.19.0 完成统一编排器收敛：manual CLI、CI policy/full 与 pre-push 使用不可变 `GateContext`、同一 `ChangeSet`、超时/取消、结果聚合和唯一退出码映射。pre-push 仍保持既定步骤顺序和精确推送快照约束；保护文件、测试策略、单元测试及变更行覆盖率共享同一范围事实。本次为内部架构重构，不保留旧 runner 的退出码字段、同步编排入口或兼容 CI 步骤退出语义；尚未原生迁移的数字 runner 只在组合边界转换为 `GateResult`。
 

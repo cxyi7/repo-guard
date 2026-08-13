@@ -24,10 +24,11 @@ export async function runGate({
   cwd = process.cwd(),
   dryRun = false,
   forceNotify = false,
+  context = null,
 } = {}) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
-  const stagedChanges = collectStagedChanges(root);
+  const root = context?.root ?? findRepositoryRoot(cwd);
+  const config = context?.config ?? loadConfig(root);
+  const stagedChanges = context?.changes?.entries ?? collectStagedChanges(root);
   assertLocalEnvironmentNotStaged(stagedChanges);
   const protectedChanges = classifyChanges(stagedChanges, config);
 

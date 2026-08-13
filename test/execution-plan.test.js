@@ -20,6 +20,11 @@ import { createGateResult } from '../src/core/result/gate-result.js';
 import { gateRegistry } from '../src/gates/registry.js';
 import { executionPlans } from '../src/orchestration/execution-plans.js';
 import { orchestratePlan } from '../src/orchestration/orchestrator.js';
+import {
+  defineProtectedPreCommitPlan,
+  preCommitPolicyPlan,
+  preCommitQualityPlan,
+} from '../src/orchestration/pre-commit/protected-plan.js';
 import { runNativeManualGate } from '../src/orchestration/cli/manual-gates.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
@@ -118,6 +123,47 @@ test('locks the reviewed lifecycle order independently from project configuratio
     ['quality.stylelint-fix', 'quality.eslint-fix'],
   );
   assert.deepEqual(config.executionOrder, ['repository.protected-files']);
+});
+
+test('rejects every attempt to reorder or expand the protected pre-commit plan', () => {
+  const steps = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
+  [steps[0], steps[1]] = [steps[1], steps[0]];
+  assert.throws(
+    () => defineProtectedPreCommitPlan({ steps }),
+    /order and mutation contract cannot be changed/,
+  );
+
+  const relabeled = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
+  relabeled[0].mutation = 'read-only';
+  assert.throws(
+    () => defineProtectedPreCommitPlan({ steps: relabeled }),
+    /order and mutation contract cannot be changed/,
+  );
+
+  const withTypeCheck = [
+    ...executionPlans.get('pre-commit').steps,
+    'quality.typecheck',
+  ];
+  assert.throws(
+    () => defineProtectedPreCommitPlan({ steps: withTypeCheck }),
+    /forbids project-wide, type-check, test, build, and network gate quality\.typecheck/,
+  );
+
+  assert.throws(
+    () => defineProtectedPreCommitPlan({
+      steps: [...executionPlans.get('pre-commit').steps, 'quality.lighthouse'],
+    }),
+    /network gate quality\.lighthouse/,
+  );
+
+  assert.deepEqual(
+    [...preCommitQualityPlan.steps, ...preCommitPolicyPlan.steps],
+    executionPlans.get('pre-commit').steps,
+  );
+  assert.deepEqual(
+    preCommitPolicyPlan.steps.map(({ id }) => id),
+    ['dependencies.policy', 'repository.protected-files'],
+  );
 });
 
 test('rejects duplicate plans, unknown gates, unsupported environments, and dependency mistakes', () => {
@@ -252,7 +298,8 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   assert.doesNotMatch(sources['hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
   assert.match(sources['commands/doctor'], /gateRegistry\.all/);
   assert.match(sources['ci-runner'], /executionPlans\.get/);
-  assert.match(sources['quality-runner'], /preCommitPlan\.steps/);
+  assert.match(sources['quality-runner'], /plan: preCommitQualityPlan/);
+  assert.doesNotMatch(sources['quality-runner'], /run\w+Project|quality\.typecheck|quality\.lighthouse/);
   assert.match(sources['commands/pre-push'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);

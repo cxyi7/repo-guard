@@ -664,7 +664,7 @@
     },
     "preCommit": {
       "type": "object",
-      "description": "Staged quality gates. Hard Vue v-html and target=_blank rel-security checks run independently without disable switches. Missing configurable defaults can be materialized with repo-guard migrate.",
+      "description": "Staged quality gates run through a protected, non-reorderable pre-commit plan. Only staged-file Stylelint/ESLint/Prettier fixes are allowed; project-wide fixes, type checking, tests, builds, and network gates are forbidden. Hard Vue v-html and target=_blank rel-security checks run independently without disable switches. Missing configurable defaults can be materialized with repo-guard migrate.",
       "additionalProperties": false,
       "properties": {
         "filePlacement": {

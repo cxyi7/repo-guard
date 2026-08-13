@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.0
+
+- 将 pre-commit 固化为启动时校验的受保护执行计划，锁定 Stylelint fix、ESLint fix、Prettier、只读复检、硬性暂存检查、依赖策略和保护文件顺序；拒绝项目配置调序以及全项目修复、类型检查、测试、构建和网络门禁进入。
+- 暂存质量段与最终策略段由同一计划派生并通过通用 orchestrator 传递 `GateResult`，删除 runner 内部数字结果协议；保护文件与暂存代码质量仍是独立 Capability。
+- 保留 `lint-staged` 暂存隔离、文件快照、部分暂存和失败恢复以及 Hook 的 0/1 外部语义；修正 Prettier 3 配置文件搜索锚点，确保只从消费仓库内开始查找项目配置。
+
 ## 0.19.0
 
 - 新增不可变 `GateContext` 与 `ChangeSet`，manual CLI、CI policy/full 和 pre-push 通过同一通用 orchestrator 执行，统一处理逐 gate 超时、上游取消、失败短路、结果聚合和最终退出码。

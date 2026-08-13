@@ -1,0 +1,86 @@
+import {
+  defineExecutionPlan,
+  validateExecutionPlan,
+} from '../../core/capability/execution-plan.js';
+import { gateRegistry } from '../../gates/registry.js';
+
+export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
+  Object.freeze({ id: 'quality.stylelint-fix', gateId: 'quality.stylelint', mutation: 'working-tree-fix' }),
+  Object.freeze({ id: 'quality.eslint-fix', gateId: 'quality.eslint', mutation: 'working-tree-fix' }),
+  Object.freeze({ id: 'quality.prettier', gateId: 'quality.prettier', mutation: 'working-tree-fix' }),
+  Object.freeze({ id: 'quality.stylelint-verify', gateId: 'quality.stylelint', mutation: 'read-only' }),
+  Object.freeze({ id: 'quality.eslint-verify', gateId: 'quality.eslint', mutation: 'read-only' }),
+  Object.freeze({ id: 'security.dynamic-code', gateId: 'security.dynamic-code', mutation: 'read-only' }),
+  Object.freeze({ id: 'security.vue-unsafe-html', gateId: 'security.vue-unsafe-html', mutation: 'read-only' }),
+  Object.freeze({ id: 'security.vue-target-blank', gateId: 'security.vue-target-blank', mutation: 'read-only' }),
+  Object.freeze({ id: 'accessibility.vue-form-label', gateId: 'accessibility.vue-form-label', mutation: 'read-only' }),
+  Object.freeze({ id: 'accessibility.vue-image-alt', gateId: 'accessibility.vue-image-alt', mutation: 'read-only' }),
+  Object.freeze({ id: 'repository.maximum-file-lines', gateId: 'repository.maximum-file-lines', mutation: 'read-only' }),
+  Object.freeze({ id: 'repository.file-placement', gateId: 'repository.file-placement', mutation: 'read-only' }),
+  Object.freeze({ id: 'dependencies.policy', gateId: 'dependencies.policy', mutation: 'read-only' }),
+  Object.freeze({ id: 'repository.protected-files', gateId: 'repository.protected-files', mutation: 'external-write' }),
+]);
+
+export const FORBIDDEN_PRE_COMMIT_GATE_IDS = Object.freeze([
+  'quality.typecheck',
+  'quality.unit-test',
+  'quality.accessibility-test',
+  'quality.architecture',
+  'quality.build',
+  'quality.lighthouse',
+]);
+
+const QUALITY_STEP_COUNT = PROTECTED_PRE_COMMIT_STEPS.findIndex(
+  ({ id }) => id === 'dependencies.policy',
+);
+
+function sameStep(actual, expected) {
+  return actual.id === expected.id
+    && actual.gateId === expected.gateId
+    && actual.mutation === expected.mutation;
+}
+
+export function validateProtectedPreCommitPlan(plan, registry = gateRegistry) {
+  if (plan.id !== 'pre-commit' || plan.environment !== 'pre-commit' || !plan.locked) {
+    throw new Error('Protected pre-commit plan must be locked to the pre-commit lifecycle');
+  }
+  const forbidden = plan.steps.find(({ gateId }) => FORBIDDEN_PRE_COMMIT_GATE_IDS.includes(gateId));
+  if (forbidden) {
+    throw new Error(`Protected pre-commit plan forbids project-wide, type-check, test, build, and network gate ${forbidden.gateId}`);
+  }
+  if (plan.steps.length !== PROTECTED_PRE_COMMIT_STEPS.length
+    || plan.steps.some((step, index) => !sameStep(step, PROTECTED_PRE_COMMIT_STEPS[index]))) {
+    throw new Error('Protected pre-commit plan order and mutation contract cannot be changed');
+  }
+  return validateExecutionPlan(plan, registry);
+}
+
+export function defineProtectedPreCommitPlan({ steps = PROTECTED_PRE_COMMIT_STEPS } = {}) {
+  return validateProtectedPreCommitPlan(defineExecutionPlan({
+    id: 'pre-commit',
+    environment: 'pre-commit',
+    locked: true,
+    steps,
+  }));
+}
+
+export const preCommitPlan = defineProtectedPreCommitPlan();
+
+function section(id, steps) {
+  return Object.freeze({
+    id,
+    environment: preCommitPlan.environment,
+    locked: true,
+    steps: Object.freeze([...steps]),
+  });
+}
+
+export const preCommitQualityPlan = section(
+  'pre-commit:staged-quality',
+  preCommitPlan.steps.slice(0, QUALITY_STEP_COUNT),
+);
+
+export const preCommitPolicyPlan = section(
+  'pre-commit:final-policy',
+  preCommitPlan.steps.slice(QUALITY_STEP_COUNT),
+);

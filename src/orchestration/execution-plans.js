@@ -3,28 +3,9 @@ import {
   defineExecutionPlan,
 } from '../core/capability/execution-plan.js';
 import { gateRegistry } from '../gates/registry.js';
+import { preCommitPlan } from './pre-commit/protected-plan.js';
 
-export const preCommitPlan = defineExecutionPlan({
-  id: 'pre-commit',
-  environment: 'pre-commit',
-  locked: true,
-  steps: [
-    { id: 'quality.stylelint-fix', gateId: 'quality.stylelint', mutation: 'working-tree-fix' },
-    { id: 'quality.eslint-fix', gateId: 'quality.eslint', mutation: 'working-tree-fix' },
-    'quality.prettier',
-    { id: 'quality.stylelint-verify', gateId: 'quality.stylelint', mutation: 'read-only' },
-    { id: 'quality.eslint-verify', gateId: 'quality.eslint', mutation: 'read-only' },
-    'security.dynamic-code',
-    'security.vue-unsafe-html',
-    'security.vue-target-blank',
-    'accessibility.vue-form-label',
-    'accessibility.vue-image-alt',
-    'repository.maximum-file-lines',
-    'repository.file-placement',
-    'dependencies.policy',
-    'repository.protected-files',
-  ],
-});
+export { preCommitPlan } from './pre-commit/protected-plan.js';
 
 export const prePushPlan = defineExecutionPlan({
   id: 'pre-push',

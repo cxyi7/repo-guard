@@ -6,9 +6,18 @@ import {
 import { runStagedDependencyPolicy } from '../dependency-policy.js';
 import { runEslintFiles } from '../eslint-runner.js';
 import { findRepositoryRoot, runGit } from '../git.js';
+import { collectStagedChanges } from '../git-changes.js';
 import { runQualityGate } from '../quality-gate.js';
-import { runQualityFiles } from '../quality-runner.js';
-import { preCommitPlan } from '../orchestration/execution-plans.js';
+import { runQualityExecution } from '../quality-runner.js';
+import {
+  createChangeSet,
+  createGateContext,
+} from '../core/capability/gate-context.js';
+import { createGateResult } from '../core/result/gate-result.js';
+import { adaptNumericRunner } from '../core/result/numeric-runner-adapter.js';
+import { gateRegistry } from '../gates/registry.js';
+import { orchestratePlan } from '../orchestration/orchestrator.js';
+import { preCommitPolicyPlan } from '../orchestration/pre-commit/protected-plan.js';
 import { runGate } from './gate.js';
 
 function loadStagedConfig(root) {
@@ -31,18 +40,61 @@ export async function runPreCommit(cwd = process.cwd()) {
     return qualityExitCode;
   }
   const config = loadStagedConfig(root);
-  for (const step of preCommitPlan.steps.slice(-2)) {
-    if (step.id === 'dependencies.policy' && config.dependencyPolicy.enabled) {
-      const dependencyExitCode = runStagedDependencyPolicy({
-        root,
-        config: config.dependencyPolicy,
-        exceptions: config.exceptions,
+  const changes = createChangeSet({
+    source: 'pre-commit',
+    changes: collectStagedChanges(root),
+  });
+  const context = createGateContext({
+    root,
+    environment: preCommitPolicyPlan.environment,
+    config,
+    changes,
+  });
+  const execution = await orchestratePlan({
+    plan: preCommitPolicyPlan,
+    registry: gateRegistry,
+    context,
+    stopOnFailure: true,
+    executeStep: async ({ step }) => {
+      let task;
+      switch (step.id) {
+        case 'dependencies.policy':
+          if (!config.dependencyPolicy.enabled) {
+            return createGateResult({
+              gateId: step.gateId,
+              status: 'skipped',
+              summary: 'Staged dependency policy is disabled',
+            });
+          }
+          task = () => runStagedDependencyPolicy({
+            root,
+            config: config.dependencyPolicy,
+            exceptions: config.exceptions,
+          });
+          break;
+        case 'repository.protected-files':
+          task = () => runGate({ cwd, context });
+          break;
+        default:
+          throw new Error(`Unsupported protected pre-commit policy step: ${step.id}`);
+      }
+      return await adaptNumericRunner({
+        gateId: step.gateId,
+        task,
+        captureDiagnostics: false,
       });
-      if (dependencyExitCode !== 0) return dependencyExitCode;
+    },
+  });
+  if (execution.status.endsWith('-error')) {
+    const error = new Error(
+      execution.decisiveResult?.error?.message ?? 'Pre-commit policy could not complete',
+    );
+    if (execution.decisiveResult?.error?.code) {
+      error.code = execution.decisiveResult.error.code;
     }
-    if (step.id === 'repository.protected-files') return await runGate({ cwd });
+    throw error;
   }
-  return 0;
+  return execution.exitCode === 0 ? 0 : 1;
 }
 
 export async function runLintFiles(files, cwd = process.cwd()) {
@@ -66,5 +118,15 @@ export async function runLintFiles(files, cwd = process.cwd()) {
 export async function runQualityFileCommand(files, cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
-  return await runQualityFiles({ root, files, config });
+  const execution = await runQualityExecution({ root, files, config });
+  if (execution.status.endsWith('-error')) {
+    const error = new Error(
+      execution.decisiveResult?.error?.message ?? 'Quality gate could not complete',
+    );
+    if (execution.decisiveResult?.error?.code) {
+      error.code = execution.decisiveResult.error.code;
+    }
+    throw error;
+  }
+  return execution.exitCode === 0 ? 0 : 1;
 }
