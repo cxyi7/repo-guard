@@ -11,6 +11,7 @@ import {
 import { runUnitTestGate } from '../unit-test-runner.js';
 import { runTypeCheckGate } from '../typecheck-runner.js';
 import { assertExceptionRegistryCurrent } from '../exception-registry.js';
+import { prePushPlan } from '../orchestration/execution-plans.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -132,74 +133,40 @@ export function runPrePush(cwd = process.cwd(), {
   }
   const { config } = resolved;
 
-  if (config.typeCheck.enabled) {
-    const typeCheckExitCode = runTypeCheckGate({
-      root,
-      config: config.typeCheck,
-    });
-    if (typeCheckExitCode !== 0) {
-      return typeCheckExitCode;
+  for (const step of prePushPlan.steps) {
+    let exitCode = 0;
+    switch (step.id) {
+      case 'quality.typecheck':
+        if (config.typeCheck.enabled) exitCode = runTypeCheckGate({ root, config: config.typeCheck });
+        else console.log('repo-guard pre-push: TypeScript type check is disabled.');
+        break;
+      case 'quality.unit-test':
+        if (config.unitTest.enabled) exitCode = runUnitTestGate({ root, config: config.unitTest, changes: collectPrePushChanges({ input, remoteName, root }) });
+        else console.log('repo-guard pre-push: unit tests are disabled.');
+        break;
+      case 'quality.accessibility-test':
+        if (config.accessibilityTest.enabled) exitCode = runAccessibilityTestGate({ root, config: config.accessibilityTest });
+        else console.log('repo-guard pre-push: accessibility tests are disabled.');
+        break;
+      case 'quality.architecture':
+        if (config.architecture.enabled) exitCode = runArchitectureGate({ root, config: config.architecture });
+        else console.log('repo-guard pre-push: architecture dependency gate is disabled.');
+        break;
+      case 'quality.build':
+        if (config.build.enabled) exitCode = runBuildGate({ root, config: config.build });
+        else console.log('repo-guard pre-push: project build is disabled.');
+        break;
+      case 'quality.lighthouse':
+        if (config.lighthouse.enabled) {
+          const buildAlreadyRan = config.build.enabled
+            && config.lighthouse.buildScript === config.build.script;
+          exitCode = runVueLighthouse({ root, config: config.lighthouse, skipBuild: buildAlreadyRan });
+        } else console.log('repo-guard pre-push: Lighthouse is disabled.');
+        break;
+      default:
+        throw new Error(`Unsupported pre-push execution step: ${step.id}`);
     }
-  } else {
-    console.log('repo-guard pre-push: TypeScript type check is disabled.');
+    if (exitCode !== 0) return exitCode;
   }
-
-  if (config.unitTest.enabled) {
-    const changes = collectPrePushChanges({ input, remoteName, root });
-    const unitTestExitCode = runUnitTestGate({
-      root,
-      config: config.unitTest,
-      changes,
-    });
-    if (unitTestExitCode !== 0) {
-      return unitTestExitCode;
-    }
-  } else {
-    console.log('repo-guard pre-push: unit tests are disabled.');
-  }
-
-  if (config.accessibilityTest.enabled) {
-    const accessibilityExitCode = runAccessibilityTestGate({
-      root,
-      config: config.accessibilityTest,
-    });
-    if (accessibilityExitCode !== 0) {
-      return accessibilityExitCode;
-    }
-  } else {
-    console.log('repo-guard pre-push: accessibility tests are disabled.');
-  }
-
-  if (config.architecture.enabled) {
-    const architectureExitCode = runArchitectureGate({
-      root,
-      config: config.architecture,
-    });
-    if (architectureExitCode !== 0) {
-      return architectureExitCode;
-    }
-  } else {
-    console.log('repo-guard pre-push: architecture dependency gate is disabled.');
-  }
-
-  if (config.build.enabled) {
-    const buildExitCode = runBuildGate({ root, config: config.build });
-    if (buildExitCode !== 0) {
-      return buildExitCode;
-    }
-  } else {
-    console.log('repo-guard pre-push: project build is disabled.');
-  }
-
-  if (!config.lighthouse.enabled) {
-    console.log('repo-guard pre-push: Lighthouse is disabled.');
-    return 0;
-  }
-  const buildAlreadyRan = config.build.enabled
-    && config.lighthouse.buildScript === config.build.script;
-  return runVueLighthouse({
-    root,
-    config: config.lighthouse,
-    skipBuild: buildAlreadyRan,
-  });
+  return 0;
 }

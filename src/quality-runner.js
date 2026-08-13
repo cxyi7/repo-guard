@@ -18,6 +18,7 @@ import {
   runMaxFileLinesFiles,
   selectMaxFileLineFiles,
 } from './max-file-lines.js';
+import { preCommitPlan } from './orchestration/execution-plans.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -80,156 +81,58 @@ export async function runQualityFiles({ root, files, config }) {
   };
 
   try {
-    if (stylelintFiles.length > 0) {
-      const stylelintExitCode = await runStylelintFiles({
-        root,
-        files: stylelintFiles,
-        fix: stylelintConfig.fix,
-        maxWarnings: stylelintConfig.maxWarnings,
-        requireConfig: stylelintConfig.requireConfig,
-        complexity: stylelintConfig.complexity,
-        governance: stylelintConfig.governance,
-        exceptions: config.exceptions,
-      });
-      if (stylelintExitCode !== 0) {
-        return fail(stylelintExitCode);
+    for (const step of preCommitPlan.steps) {
+      let exitCode = 0;
+      switch (step.id) {
+        case 'quality.stylelint-fix':
+          if (stylelintFiles.length > 0) exitCode = await runStylelintFiles({ root, files: stylelintFiles, fix: stylelintConfig.fix, maxWarnings: stylelintConfig.maxWarnings, requireConfig: stylelintConfig.requireConfig, complexity: stylelintConfig.complexity, governance: stylelintConfig.governance, exceptions: config.exceptions });
+          break;
+        case 'quality.eslint-fix':
+          if (eslintFiles.length > 0 && eslintConfig.fix) exitCode = await runEslintFiles({ root, files: eslintFiles, fix: true, maxWarnings: eslintConfig.maxWarnings, preset: eslintConfig.preset });
+          break;
+        case 'quality.prettier':
+          if (prettierFiles.length > 0) exitCode = await runPrettierFiles({ root, files: prettierFiles, fix: prettierConfig.fix, requireConfig: prettierConfig.requireConfig });
+          break;
+        case 'quality.stylelint-verify':
+          if (stylelintFiles.length > 0) exitCode = await runStylelintFiles({ root, files: stylelintFiles, fix: false, maxWarnings: stylelintConfig.maxWarnings, requireConfig: stylelintConfig.requireConfig, complexity: stylelintConfig.complexity, governance: stylelintConfig.governance, exceptions: config.exceptions });
+          break;
+        case 'quality.eslint-verify':
+          if (eslintFiles.length > 0 && (!eslintConfig.fix || prettierFiles.length > 0)) exitCode = await runEslintFiles({ root, files: eslintFiles, fix: false, maxWarnings: eslintConfig.maxWarnings, preset: eslintConfig.preset });
+          break;
+        case 'security.dynamic-code':
+          if (dynamicCodeFiles.length > 0) {
+            try {
+              const gate = gateRegistry.get(step.gateId);
+              const gatePlan = gate.plan({ root, config, files: normalizedFiles });
+              exitCode = renderDynamicCodeResult(gate.run({ root, config, plan: gatePlan }));
+            } catch (error) {
+              if (!String(error.message).startsWith('Dynamic code gate could not parse ')) throw error;
+              console.warn(`${error.message}. Dynamic-code inspection was deferred for this invalid or unsupported script; when ESLint is enabled, its completed result remains authoritative.`);
+            }
+          }
+          break;
+        case 'security.vue-unsafe-html':
+          if (vueSecurityFiles.length > 0) exitCode = runUnsafeVueHtmlFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
+          break;
+        case 'security.vue-target-blank':
+          if (vueSecurityFiles.length > 0) exitCode = runVueTargetBlankFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
+          break;
+        case 'accessibility.vue-form-label':
+          if (vueSecurityFiles.length > 0) exitCode = runVueFormLabelFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
+          break;
+        case 'accessibility.vue-image-alt':
+          if (vueSecurityFiles.length > 0) exitCode = runVueImageAltFiles({ root, files: normalizedFiles, exceptions: config.exceptions });
+          break;
+        case 'repository.maximum-file-lines':
+          if (maxFileLineFiles.length > 0) exitCode = runMaxFileLinesFiles({ root, files: maxFileLineFiles, config: maxFileLinesConfig });
+          break;
+        case 'repository.file-placement':
+          if (filePlacementConfig.enabled) exitCode = runFilePlacementFiles({ root, files: normalizedFiles, config: filePlacementConfig });
+          break;
+        default:
+          continue;
       }
-    }
-
-    if (eslintFiles.length > 0 && eslintConfig.fix) {
-      const eslintFixExitCode = await runEslintFiles({
-        root,
-        files: eslintFiles,
-        fix: true,
-        maxWarnings: eslintConfig.maxWarnings,
-        preset: eslintConfig.preset,
-      });
-      if (eslintFixExitCode !== 0) {
-        return fail(eslintFixExitCode);
-      }
-    }
-
-    if (prettierFiles.length > 0) {
-      const prettierExitCode = await runPrettierFiles({
-        root,
-        files: prettierFiles,
-        fix: prettierConfig.fix,
-        requireConfig: prettierConfig.requireConfig,
-      });
-      if (prettierExitCode !== 0) {
-        return fail(prettierExitCode);
-      }
-    }
-
-    if (stylelintFiles.length > 0) {
-      const stylelintVerifyExitCode = await runStylelintFiles({
-        root,
-        files: stylelintFiles,
-        fix: false,
-        maxWarnings: stylelintConfig.maxWarnings,
-        requireConfig: stylelintConfig.requireConfig,
-        complexity: stylelintConfig.complexity,
-        governance: stylelintConfig.governance,
-        exceptions: config.exceptions,
-      });
-      if (stylelintVerifyExitCode !== 0) {
-        return fail(stylelintVerifyExitCode);
-      }
-    }
-
-    if (eslintFiles.length > 0 && (!eslintConfig.fix || prettierFiles.length > 0)) {
-      const eslintVerifyExitCode = await runEslintFiles({
-        root,
-        files: eslintFiles,
-        fix: false,
-        maxWarnings: eslintConfig.maxWarnings,
-        preset: eslintConfig.preset,
-      });
-      if (eslintVerifyExitCode !== 0) {
-        return fail(eslintVerifyExitCode);
-      }
-    }
-
-    if (dynamicCodeFiles.length > 0) {
-      let dynamicCodeExitCode;
-      try {
-        const gate = gateRegistry.get('security.dynamic-code');
-        const plan = gate.plan({ root, config, files: normalizedFiles });
-        dynamicCodeExitCode = renderDynamicCodeResult(gate.run({
-          root,
-          config,
-          plan,
-        }));
-      } catch (error) {
-        if (!String(error.message).startsWith('Dynamic code gate could not parse ')) {
-          throw error;
-        }
-        console.warn(
-          `${error.message}. Dynamic-code inspection was deferred for this invalid or `
-          + 'unsupported script; when ESLint is enabled, its completed result remains authoritative.',
-        );
-        dynamicCodeExitCode = 0;
-      }
-      if (dynamicCodeExitCode !== 0) {
-        return fail(dynamicCodeExitCode);
-      }
-    }
-
-    if (vueSecurityFiles.length > 0) {
-      const unsafeHtmlExitCode = runUnsafeVueHtmlFiles({
-        root,
-        files: normalizedFiles,
-        exceptions: config.exceptions,
-      });
-      if (unsafeHtmlExitCode !== 0) {
-        return fail(unsafeHtmlExitCode);
-      }
-      const targetBlankExitCode = runVueTargetBlankFiles({
-        root,
-        files: normalizedFiles,
-        exceptions: config.exceptions,
-      });
-      if (targetBlankExitCode !== 0) {
-        return fail(targetBlankExitCode);
-      }
-      const formLabelExitCode = runVueFormLabelFiles({
-        root,
-        files: normalizedFiles,
-        exceptions: config.exceptions,
-      });
-      if (formLabelExitCode !== 0) {
-        return fail(formLabelExitCode);
-      }
-      const imageAltExitCode = runVueImageAltFiles({
-        root,
-        files: normalizedFiles,
-        exceptions: config.exceptions,
-      });
-      if (imageAltExitCode !== 0) {
-        return fail(imageAltExitCode);
-      }
-    }
-
-    if (maxFileLineFiles.length > 0) {
-      const maxFileLinesExitCode = runMaxFileLinesFiles({
-        root,
-        files: maxFileLineFiles,
-        config: maxFileLinesConfig,
-      });
-      if (maxFileLinesExitCode !== 0) {
-        return fail(maxFileLinesExitCode);
-      }
-    }
-
-    if (filePlacementConfig.enabled) {
-      const filePlacementExitCode = runFilePlacementFiles({
-        root,
-        files: normalizedFiles,
-        config: filePlacementConfig,
-      });
-      if (filePlacementExitCode !== 0) {
-        return fail(filePlacementExitCode);
-      }
+      if (exitCode !== 0) return fail(exitCode);
     }
 
     return 0;

@@ -3,18 +3,12 @@ import path from 'node:path';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
   ensureAccessibilityTestPolicy,
-  isAccessibilityTestPolicyCurrent,
 } from '../accessibility-test-policy.js';
-import { validateAccessibilityTestSetup } from '../accessibility-test-runner.js';
 import {
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
-  isArchitecturePolicyCurrent,
 } from '../architecture-policy.js';
-import { validateArchitectureSetup } from '../architecture-runner.js';
-import { validateBuildSetup } from '../build-runner.js';
 import { loadConfig } from '../config.js';
-import { isStructuredCoverage } from '../coverage-runner.js';
 import {
   ensureExceptionPolicy,
   EXCEPTION_POLICY_FILE,
@@ -28,14 +22,6 @@ import {
   ensureProjectConfig,
   migrateProjectConfig,
 } from '../config-management.js';
-import {
-  resolveProjectEslintMetadata,
-  resolveRepoGuardEslintPreset,
-} from '../eslint-runner.js';
-import {
-  resolveProjectPrettierConfigFile,
-  resolveProjectPrettierMetadata,
-} from '../prettier-runner.js';
 import { findRepositoryRoot, gitValue } from '../git.js';
 import { inspectGitLabCi } from '../gitlab-ci.js';
 import {
@@ -50,18 +36,10 @@ import {
   resolveNotificationEnvironment,
 } from '../local-env.js';
 import { loadNotificationConfig } from '../wecom.js';
-import { validateVueLighthouseSetup } from '../lighthouse-project.js';
-import {
-  findProjectStylelintConfig,
-  resolveProjectStylelintMetadata,
-} from '../stylelint-project.js';
 import {
   ensureUnitTestPolicy,
-  isUnitTestPolicyCurrent,
   UNIT_TEST_POLICY_FILE,
 } from '../unit-test-policy.js';
-import { validateUnitTestSetup } from '../unit-test-runner.js';
-import { validateTypeCheckSetup } from '../typecheck-runner.js';
 import { gateRegistry } from '../gates/registry.js';
 
 const PACKAGE_JSON = JSON.parse(
@@ -282,260 +260,20 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     else checks.push(`GitLab CI integration (${config.ci.profile} profile)`);
   }
 
-  if (config?.build.enabled) {
-    try {
-      validateBuildSetup(root, config.build);
-      checks.push(
-        `Build pre-push gate (script=${config.build.script}, `
-        + `timeoutMs=${config.build.timeoutMs})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('Build pre-push gate is disabled');
-  }
-
-  if (config?.architecture.enabled) {
-    try {
-      const setup = validateArchitectureSetup(root, config.architecture);
-      const policyPath = path.join(root, ARCHITECTURE_POLICY_FILE);
-      if (!existsSync(policyPath)
-        || !isArchitecturePolicyCurrent(
-          readFileSync(policyPath, 'utf8'),
-          config.architecture,
-        )) {
-        throw new Error(
-          `${ARCHITECTURE_POLICY_FILE} is missing the repo-guard architecture policy; `
-          + 'run repo-guard doctor --fix',
-        );
-      }
-      checks.push(
-        `Architecture dependency gate (dependency-cruiser ${setup.dependencyCruiser.version}, `
-        + `${config.architecture.rules.length} rules, `
-        + `sources=${config.architecture.sourcePaths.join(',')})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('Architecture dependency pre-push gate is disabled');
-  }
-
-  if (config?.lighthouse.enabled) {
-    try {
-      const setup = validateVueLighthouseSetup(root, config.lighthouse);
-      checks.push(
-        `Lighthouse CI ${setup.lighthouse.version} Vue pre-push gate `
-        + `(config=${setup.configFile}, build=${config.lighthouse.buildScript || 'skipped'})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('Lighthouse Vue pre-push gate is disabled');
-  }
-
-  if (config?.typeCheck.enabled) {
-    try {
-      validateTypeCheckSetup(root, config.typeCheck);
-      checks.push(
-        `TypeScript pre-push gate (script=${config.typeCheck.script}, `
-        + `timeoutMs=${config.typeCheck.timeoutMs})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('TypeScript pre-push gate is disabled');
-  }
-
-  if (config?.unitTest.enabled) {
-    try {
-      const setup = validateUnitTestSetup(root, config.unitTest);
-      const policyPath = path.join(root, UNIT_TEST_POLICY_FILE);
-      if (
-        !existsSync(policyPath)
-        || !isUnitTestPolicyCurrent(
-          readFileSync(policyPath, 'utf8'),
-          config.unitTest,
-        )
-      ) {
-        throw new Error(
-          `${UNIT_TEST_POLICY_FILE} is missing the repo-guard unit test policy; `
-          + 'run repo-guard doctor --fix',
-        );
-      }
-      checks.push(
-        `Vitest ${setup.vitest.version} pre-push gate `
-        + `(script=${config.unitTest.script}, requireTests=${config.unitTest.requireTests}, `
-        + `componentInteraction=${setup.vueTestUtils
-          ? `Vue Test Utils ${setup.vueTestUtils.version}`
-          : 'disabled'}, `
-        + `coverage=${isStructuredCoverage(config.unitTest.coverage)
-          ? `global=${config.unitTest.coverage.thresholds.lines}%/changed=${config.unitTest.coverage.thresholds.changedLines}%`
-          : (typeof config.unitTest.coverage === 'boolean'
-            ? config.unitTest.coverage
-            : 'disabled')}, mappings=${config.unitTest.mappings.length})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('Unit test pre-push gate is disabled');
-  }
-
-  if (config?.accessibilityTest.enabled) {
-    try {
-      const setup = validateAccessibilityTestSetup(root, config.accessibilityTest);
-      const policyPath = path.join(root, ACCESSIBILITY_TEST_POLICY_FILE);
-      if (
-        !existsSync(policyPath)
-        || !isAccessibilityTestPolicyCurrent(
-          readFileSync(policyPath, 'utf8'),
-          config.accessibilityTest,
-        )
-      ) {
-        throw new Error(
-          `${ACCESSIBILITY_TEST_POLICY_FILE} is missing the repo-guard accessibility test policy; `
-          + 'run repo-guard doctor --fix',
-        );
-      }
-      checks.push(
-        `axe accessibility test pre-push gate (script=${config.accessibilityTest.script}, `
-        + `files=${setup.files.length}, integrations=`
-        + `${setup.integrations.map(({ name, version }) => `${name}@${version}`).join(',')})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('axe accessibility test pre-push gate is disabled');
-  }
-
   if (config) {
-    for (const gate of gateRegistry.all) {
-      const setup = gate.inspectSetup({ root, config });
-      if (setup.status === 'ready') checks.push(setup.summary);
-      else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
-    }
-    checks.push('Vue v-html staged gate (hard requirement, rule=vue/no-v-html)');
-    checks.push(
-      'Vue target=_blank staged gate '
-      + '(hard requirement, rel=noopener+noreferrer, rule=vue/target-blank-security)',
-    );
-    checks.push(
-      'Vue form control label staged gate '
-      + '(hard requirement, rule=vue/form-control-label)',
-    );
-    checks.push(
-      'Vue image alt staged gate '
-      + '(hard requirement, rule=vue/img-alt)',
-    );
-    if (config.dependencyPolicy.enabled) {
-      checks.push(
-        `Dependency policy (exact=${config.dependencyPolicy.requireExactVersions}, `
-        + `lockfile=${config.dependencyPolicy.requireLockfile}, `
-        + `protocols=${config.dependencyPolicy.allowedProtocols.join(',') || 'none'}, `
-        + `banned=${config.dependencyPolicy.bannedPackages.length})`,
-      );
-    } else {
-      checks.push('Dependency policy staged gate is disabled');
-    }
-  }
-
-  if (config?.preCommit.eslint.enabled) {
-    try {
-      const eslint = resolveProjectEslintMetadata(root);
-      const preset = config.preCommit.eslint.preset
-        ? await resolveRepoGuardEslintPreset(root, eslint.version)
-        : null;
-      checks.push(
-        `ESLint ${eslint.version} staged gate `
-        + `(${config.preCommit.eslint.pattern}, fix=${config.preCommit.eslint.fix}, `
-        + `preset=${preset ? `enabled: ${preset.integrations.join(', ')}` : 'disabled'})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('ESLint staged gate is disabled');
-  }
-
-  if (config?.preCommit.maxFileLines.enabled) {
-    const limits = config.preCommit.maxFileLines.rules
-      .map(({ pattern, maxLines }) => `${pattern}<=${maxLines}`)
-      .join(', ');
-    checks.push(
-      `Maximum file lines staged gate `
-      + `(mode=${config.preCommit.maxFileLines.mode}, `
-      + `warnAt=${config.preCommit.maxFileLines.warnAt}, ${limits})`,
-    );
-  } else {
-    checks.push('Maximum file lines staged gate is disabled');
-  }
-
-  if (config?.preCommit.filePlacement.enabled) {
-    checks.push(
-      `File placement staged gate (mode=${config.preCommit.filePlacement.mode}, `
-      + `${config.preCommit.filePlacement.rules.length} rules)`,
-    );
-  } else {
-    checks.push('File placement staged gate is disabled');
-  }
-
-  if (config?.preCommit.stylelint.enabled) {
-    try {
-      const stylelint = resolveProjectStylelintMetadata(root);
-      const stylelintConfigFile = findProjectStylelintConfig(root);
-      if (config.preCommit.stylelint.requireConfig && !stylelintConfigFile) {
-        throw new Error('Stylelint staged gate requires a project Stylelint configuration file');
+    const doctorGates = gateRegistry.all
+      .filter(({ doctorOrder }) => doctorOrder != null)
+      .sort((left, right) => left.doctorOrder - right.doctorOrder);
+    for (const gate of doctorGates) {
+      try {
+        const setup = await gate.inspectSetup({ root, config });
+        if (setup == null) continue;
+        if (setup.status === 'ready') checks.push(setup.summary);
+        else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
+      } catch (error) {
+        errors.push(error.message);
       }
-      checks.push(
-        `Stylelint ${stylelint.version} staged gate `
-        + `(${config.preCommit.stylelint.pattern}, fix=${config.preCommit.stylelint.fix}, `
-        + `config=${stylelintConfigFile || 'project config optional'}, `
-        + `complexity=${config.preCommit.stylelint.complexity.enabled
-          ? `compound<=${config.preCommit.stylelint.complexity.maxCompoundSelectors}, `
-            + `nesting<=${config.preCommit.stylelint.complexity.maxNestingDepth}`
-          : 'disabled'}, `
-        + `governance=${config.preCommit.stylelint.governance.enabled
-          ? `specificity<=${config.preCommit.stylelint.governance.maxSpecificity}, `
-            + `ids<=${config.preCommit.stylelint.governance.maxIdSelectors}, `
-            + `important=${config.preCommit.stylelint.governance.disallowImportant
-              ? 'blocked'
-              : 'allowed'}, global-patterns=`
-            + config.preCommit.stylelint.governance.allowedGlobalStylePatterns.length
-          : 'disabled'})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
     }
-  } else {
-    checks.push('Stylelint staged gate is disabled');
-  }
-
-  if (config?.preCommit.prettier.enabled) {
-    try {
-      const prettier = resolveProjectPrettierMetadata(root);
-      let configDescription = 'project config optional';
-      if (config.preCommit.prettier.requireConfig) {
-        const prettierConfigFile = await resolveProjectPrettierConfigFile(root);
-        if (!prettierConfigFile) {
-          throw new Error('Prettier staged gate requires a project Prettier configuration file');
-        }
-        configDescription = path.relative(root, prettierConfigFile);
-      }
-      checks.push(
-        `Prettier ${prettier.version} staged gate `
-        + `(${config.preCommit.prettier.pattern}, fix=${config.preCommit.prettier.fix}, `
-        + `config=${configDescription})`,
-      );
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    checks.push('Prettier staged gate is disabled');
   }
 
   console.log(`repo-guard doctor: ${root}`);

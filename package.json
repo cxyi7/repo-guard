@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Structured Git and GitLab CI policy gates for Vue security, accessibility, code quality, dependencies, architecture, builds, coverage, and tests",
   "keywords": [
     "git-hooks",

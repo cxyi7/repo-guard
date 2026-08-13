@@ -4,6 +4,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { gateRegistry } from './gates/registry.js';
 import { assertExceptionRegistryCurrent } from './exception-registry.js';
 import {
   CONFIG_FILE,
@@ -30,20 +31,14 @@ import {
 } from './config.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';
-export const QUALITY_GATES = Object.freeze(['eslint', 'prettier', 'stylelint']);
+export const QUALITY_GATES = Object.freeze(
+  gateRegistry.configurable
+    .filter(({ id }) => ['quality.eslint', 'quality.prettier', 'quality.stylelint'].includes(id))
+    .map(({ featureName }) => featureName),
+);
+const GATE_FEATURES = gateRegistry.configurable.map(({ featureName }) => featureName);
 export const CONFIGURABLE_FEATURES = Object.freeze([
-  ...QUALITY_GATES,
-  'filePlacement',
-  'maxFileLines',
-  'styleComplexity',
-  'styleGovernance',
-  'dependencies',
-  'architecture',
-  'accessibilityTest',
-  'build',
-  'lighthouse',
-  'typeCheck',
-  'unitTest',
+  ...GATE_FEATURES,
   'componentInteraction',
   'coverage',
   'notification',
@@ -336,28 +331,12 @@ function featureConfig(config, feature) {
   if (feature === 'componentInteraction') {
     return config.unitTest.componentInteraction;
   }
-  if (feature === 'dependencies') {
-    return config.dependencyPolicy;
+  const gate = gateRegistry.configurable.find(({ featureName }) => featureName === feature);
+  if (gate) {
+    return gate.configKey.split('.').reduce((current, key) => current[key], config);
   }
-  if (feature === 'styleComplexity') {
-    return config.preCommit.stylelint.complexity;
-  }
-  if (feature === 'styleGovernance') {
-    return config.preCommit.stylelint.governance;
-  }
-  if (
-    feature === 'build'
-    || feature === 'ci'
-    || feature === 'architecture'
-    || feature === 'accessibilityTest'
-    || feature === 'notification'
-    || feature === 'lighthouse'
-    || feature === 'typeCheck'
-    || feature === 'unitTest'
-  ) {
-    return config[feature];
-  }
-  return config.preCommit[feature];
+  if (feature === 'ci' || feature === 'notification') return config[feature];
+  throw new Error(`Unsupported configurable feature: ${feature}`);
 }
 
 export function setFeaturesEnabled(root, requestedFeatures, enabled) {

@@ -664,6 +664,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 3：内部 Gate Registry 与 Execution Plan
 
+实施状态：`0.18.0` 已完成。静态 Registry 已覆盖现有 Gate Capability 元数据，并校验重复 ID、配置键、manual command、未知关系和排序环路；manual CLI、doctor 与项目脚本从该目录派生。pre-commit、pre-push、CI policy 和 CI full 使用不可变的受审 Execution Plan，配置只能启停已声明能力而不能重排步骤；原生只读 gate 可通过通用执行器接入，尚未纵向迁移的 runner 暂由组合层兼容适配。
+
 - 定义 `defineGate` 和静态注册表；
 - 定义 `defineExecutionPlan`，建立 locked pre-commit plan 和已审核的 pre-push、CI plan；
 - 按同一种纵向方式逐项注册硬性只读规则和独立命令；

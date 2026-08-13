@@ -3,10 +3,13 @@ import { gateResultToExitCode } from '../../core/result/gate-result.js';
 import { collectProjectFiles } from '../../file-placement.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { findRepositoryRoot } from '../../git.js';
+import { legacyManualBindings } from './manual-bindings.js';
 
-export function runRegisteredManualGate(command, cwd = process.cwd()) {
+export function runRegisteredManualGate(command, argumentsList = [], cwd = process.cwd()) {
   const gate = gateRegistry.findByManualCommand(command);
   if (!gate) return null;
+  const legacyBinding = legacyManualBindings[gate.id];
+  if (legacyBinding) return legacyBinding({ argumentsList, cwd, gate });
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
   const plan = gate.plan({ root, config, files: collectProjectFiles(root) });

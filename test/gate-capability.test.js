@@ -91,8 +91,8 @@ test('rejects duplicate identities, duplicate commands, and missing dependencies
   );
   assert.throws(
     () => createGateRegistry([
-      gate({ id: 'first', manualCommand: 'example' }),
-      gate({ id: 'second', manualCommand: 'example' }),
+      gate({ id: 'first', manualCommand: 'example', manualOrder: 1 }),
+      gate({ id: 'second', manualCommand: 'example', manualOrder: 2 }),
     ]),
     /Duplicate gate manual command/,
   );
@@ -115,4 +115,12 @@ test('validates gate lifecycle, mutation, timeout, and handlers', () => {
   assert.throws(() => gate({ defaultTimeoutMs: 0 }), /positive integer/);
   assert.throws(() => gate({ run: null }), /must be functions/);
   assert.throws(() => gate({ supportsFix: 'yes' }), /must be booleans/);
+  assert.throws(
+    () => gate({ configKey: 'example', featureName: 'example' }),
+    /requires featureOrder/,
+  );
+  assert.throws(
+    () => gate({ manualCommand: 'example' }),
+    /requires manualOrder/,
+  );
 });

@@ -190,6 +190,8 @@ export const dynamicCodeGate = defineGate({
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
   manualCommand: 'dynamic-code',
+  manualOrder: 70,
+  doctorOrder: 70,
   packageScript: 'guard:dynamic-code',
   rules: [NO_EVAL_RULE, NO_FUNCTION_CONSTRUCTOR_RULE],
   requiredTools: [],

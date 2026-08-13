@@ -8,6 +8,7 @@ import { runEslintFiles } from '../eslint-runner.js';
 import { findRepositoryRoot, runGit } from '../git.js';
 import { runQualityGate } from '../quality-gate.js';
 import { runQualityFiles } from '../quality-runner.js';
+import { preCommitPlan } from '../orchestration/execution-plans.js';
 import { runGate } from './gate.js';
 
 function loadStagedConfig(root) {
@@ -30,17 +31,18 @@ export async function runPreCommit(cwd = process.cwd()) {
     return qualityExitCode;
   }
   const config = loadStagedConfig(root);
-  if (config.dependencyPolicy.enabled) {
-    const dependencyExitCode = runStagedDependencyPolicy({
-      root,
-      config: config.dependencyPolicy,
-      exceptions: config.exceptions,
-    });
-    if (dependencyExitCode !== 0) {
-      return dependencyExitCode;
+  for (const step of preCommitPlan.steps.slice(-2)) {
+    if (step.id === 'dependencies.policy' && config.dependencyPolicy.enabled) {
+      const dependencyExitCode = runStagedDependencyPolicy({
+        root,
+        config: config.dependencyPolicy,
+        exceptions: config.exceptions,
+      });
+      if (dependencyExitCode !== 0) return dependencyExitCode;
     }
+    if (step.id === 'repository.protected-files') return await runGate({ cwd });
   }
-  return await runGate({ cwd });
+  return 0;
 }
 
 export async function runLintFiles(files, cwd = process.cwd()) {

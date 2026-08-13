@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.17.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.18.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1251,13 +1251,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.17.0
+## 升级到 0.18.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.17.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.18.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.18.0 建立静态 Gate Registry 和受审 Execution Plan。manual CLI 的能力发现、帮助文本、参数白名单与项目脚本由 Registry 派生；pre-commit、pre-push、CI policy 和 CI full 的顺序由不可变 plan 定义，项目配置仍只控制已有开关，不能重排步骤。现有 CLI 文案、退出码、CI profile、部分暂存恢复和 pre-commit 固定顺序保持兼容；尚未原生迁移的 runner 继续通过组合层适配。
 
 0.17.0 将动态代码门禁作为首个纵向试点迁入 Gate Capability 与内部 Registry。配置仍为 `version: 1`，现有 CLI 文案、pre-commit 顺序、CI profile 和兼容步骤字段不变；CI 的 `dynamic-code` 步骤新增 `gateResult`，用于读取原生结构化 finding 和 metric。试点确认门禁执行需要仓库根目录、标准化配置和不可变文件范围；统一 ChangeSet、超时信号和结构化 logger 仍按阶段 4 收敛。本版本不迁移其他门禁，也不引入 Execution Plan。
 

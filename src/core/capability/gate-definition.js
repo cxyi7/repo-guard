@@ -29,6 +29,8 @@ function stringArray(value, label, allowed = null) {
 export function defineGate({
   id,
   configKey = null,
+  featureName = null,
+  featureOrder = null,
   configVersions = [1],
   environments,
   mutation,
@@ -38,6 +40,9 @@ export function defineGate({
   after = [],
   conflicts = [],
   manualCommand = null,
+  manualOptions = [],
+  manualOrder = null,
+  doctorOrder = null,
   packageScript = null,
   rules = [],
   requiredTools = [],
@@ -53,7 +58,29 @@ export function defineGate({
 }) {
   nonEmptyString(id, 'Gate id');
   if (configKey != null) nonEmptyString(configKey, 'Gate configKey');
+  if (featureName != null) nonEmptyString(featureName, 'Gate featureName');
+  if (featureName != null && configKey == null) {
+    throw new TypeError('Gate featureName requires configKey');
+  }
+  if (featureName != null && featureOrder == null) {
+    throw new TypeError('Gate featureName requires featureOrder');
+  }
+  for (const [value, label] of [
+    [featureOrder, 'Gate featureOrder'],
+    [doctorOrder, 'Gate doctorOrder'],
+    [manualOrder, 'Gate manualOrder'],
+  ]) {
+    if (value != null && (!Number.isInteger(value) || value < 0)) {
+      throw new TypeError(`${label} must be a non-negative integer or null`);
+    }
+  }
   if (manualCommand != null) nonEmptyString(manualCommand, 'Gate manualCommand');
+  if (manualCommand != null && manualOrder == null) {
+    throw new TypeError('Gate manualCommand requires manualOrder');
+  }
+  if (packageScript != null && manualCommand == null) {
+    throw new TypeError('Gate packageScript requires manualCommand');
+  }
   if (packageScript != null) nonEmptyString(packageScript, 'Gate packageScript');
   if (!Array.isArray(configVersions)
     || configVersions.length === 0
@@ -77,6 +104,8 @@ export function defineGate({
   return Object.freeze({
     id,
     configKey,
+    featureName,
+    featureOrder,
     configVersions: Object.freeze([...configVersions]),
     environments: stringArray(environments, 'Gate environments', ENVIRONMENTS),
     mutation,
@@ -86,6 +115,9 @@ export function defineGate({
     after: stringArray(after, 'Gate after'),
     conflicts: stringArray(conflicts, 'Gate conflicts'),
     manualCommand,
+    manualOptions: stringArray(manualOptions, 'Gate manualOptions'),
+    manualOrder,
+    doctorOrder,
     packageScript,
     rules: stringArray(rules, 'Gate rules'),
     requiredTools: stringArray(requiredTools, 'Gate requiredTools'),

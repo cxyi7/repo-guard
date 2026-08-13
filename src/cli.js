@@ -1,40 +1,41 @@
 import { readFileSync } from 'node:fs';
-import { runAccessibilityTestCommand } from './commands/accessibility-test.js';
-import { runArchitectureCommand } from './commands/architecture.js';
-import { runBuildCommand } from './commands/build.js';
 import { runCheck } from './commands/check.js';
 import { runCiCommand } from './commands/ci.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
 import { gateRegistry } from './gates/registry.js';
 import { runRegisteredManualGate } from './orchestration/cli/manual-gates.js';
-import { runDependenciesCommand } from './commands/dependencies.js';
-import { runExceptionsCommand } from './commands/exceptions.js';
-import { runFilePlacementCommand } from './commands/file-placement.js';
-import { runFormLabelsCommand } from './commands/form-labels.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
-import { runImageAltCommand } from './commands/image-alt.js';
 import { runInit, runInstallHooks } from './commands/init.js';
 import { runInstallCiCommand } from './commands/install-ci.js';
-import { runLighthouseCommand } from './commands/lighthouse.js';
 import { runPrePush } from './commands/pre-push.js';
-import { runTargetBlankCommand } from './commands/target-blank.js';
-import { runStyleComplexityCommand } from './commands/style-complexity.js';
-import { runStyleGovernanceCommand } from './commands/style-governance.js';
-import { runTypeCheckCommand } from './commands/typecheck.js';
-import { runUnitTestCommand } from './commands/unit-test.js';
-import { runUnsafeHtmlCommand } from './commands/unsafe-html.js';
 import {
   runLintFiles,
   runPreCommit,
   runQualityFileCommand,
 } from './commands/pre-commit.js';
 
-const REGISTERED_MANUAL_HELP = gateRegistry.all
+const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
+  .sort((left, right) => left.manualOrder - right.manualOrder);
+const EARLY_MANUAL_HELP = registeredManualGates
+  .filter(({ manualOrder }) => manualOrder < 30)
   .map(({ manualCommand }) => `  repo-guard ${manualCommand}`)
   .join('\n');
+const REGISTERED_MANUAL_HELP = registeredManualGates
+  .filter(({ manualOrder }) => manualOrder >= 30)
+  .map(({ manualCommand, manualOptions }) => (
+    `  repo-guard ${manualCommand}${manualOptions.length > 0 ? ` [${manualOptions.join('|')}]` : ''}`
+  ))
+  .join('\n');
+const CONFIGURABLE_FEATURE_HELP = [
+  ...gateRegistry.configurable.map(({ featureName }) => featureName),
+  'componentInteraction',
+  'coverage',
+  'notification',
+  'ci',
+].join('|');
 
 const HELP_TEXT = `
 repo-guard - protected repository file guard
@@ -43,32 +44,18 @@ Usage:
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
-  repo-guard enable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification|ci> [...]
-  repo-guard disable <eslint|prettier|stylelint|styleComplexity|styleGovernance|maxFileLines|filePlacement|dependencies|architecture|typeCheck|unitTest|componentInteraction|accessibilityTest|coverage|build|lighthouse|notification|ci> [...]
+  repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
+  repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard doctor [--fix|--ci]
   repo-guard install-ci --provider gitlab [--profile policy|full] [--stage <name>] [--dry-run]
   repo-guard ci [--profile policy|full] [--base <sha>] [--head <sha>] [--report-json <path>]
-  repo-guard exceptions
-  repo-guard dependencies
+${EARLY_MANUAL_HELP}
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
   repo-guard pre-commit
   repo-guard pre-push
-  repo-guard build
-  repo-guard architecture
-  repo-guard typecheck
-  repo-guard unit-test
 ${REGISTERED_MANUAL_HELP}
-  repo-guard unsafe-html
-  repo-guard target-blank
-  repo-guard form-labels
-  repo-guard image-alt
-  repo-guard accessibility-test
-  repo-guard style-complexity
-  repo-guard style-governance
-  repo-guard file-placement
-  repo-guard lighthouse [--skip-build]
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
 Exit codes:
@@ -160,12 +147,6 @@ export async function runCli(argumentsList) {
           reportPath: options.values['--report-json'],
         });
       }
-      case 'exceptions':
-        ensureSupportedOptions(rest, new Set());
-        return runExceptionsCommand();
-      case 'dependencies':
-        ensureSupportedOptions(rest, new Set());
-        return runDependenciesCommand();
       case 'pre-commit':
         ensureSupportedOptions(rest, new Set());
         return await runPreCommit();
@@ -173,47 +154,6 @@ export async function runCli(argumentsList) {
         return runPrePush(process.cwd(), {
           input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
           remoteName: rest[0] || 'origin',
-        });
-      case 'build':
-        ensureSupportedOptions(rest, new Set());
-        return runBuildCommand();
-      case 'architecture':
-        ensureSupportedOptions(rest, new Set());
-        return runArchitectureCommand();
-      case 'unit-test':
-        ensureSupportedOptions(rest, new Set());
-        return runUnitTestCommand();
-      case 'typecheck':
-        ensureSupportedOptions(rest, new Set());
-        return runTypeCheckCommand();
-      case 'unsafe-html':
-        ensureSupportedOptions(rest, new Set());
-        return runUnsafeHtmlCommand();
-      case 'target-blank':
-        ensureSupportedOptions(rest, new Set());
-        return runTargetBlankCommand();
-      case 'form-labels':
-        ensureSupportedOptions(rest, new Set());
-        return runFormLabelsCommand();
-      case 'image-alt':
-        ensureSupportedOptions(rest, new Set());
-        return runImageAltCommand();
-      case 'accessibility-test':
-        ensureSupportedOptions(rest, new Set());
-        return runAccessibilityTestCommand();
-      case 'style-complexity':
-        ensureSupportedOptions(rest, new Set());
-        return await runStyleComplexityCommand();
-      case 'style-governance':
-        ensureSupportedOptions(rest, new Set());
-        return await runStyleGovernanceCommand();
-      case 'file-placement':
-        ensureSupportedOptions(rest, new Set());
-        return runFilePlacementCommand();
-      case 'lighthouse':
-        ensureSupportedOptions(rest, new Set(['--skip-build']));
-        return runLighthouseCommand(process.cwd(), {
-          skipBuild: rest.includes('--skip-build'),
         });
       case 'lint-files':
         return await runLintFiles(rest);
@@ -237,8 +177,9 @@ export async function runCli(argumentsList) {
         return runHookMessage(rest);
       default:
         if (gateRegistry.findByManualCommand(command)) {
-          ensureSupportedOptions(rest, new Set());
-          return runRegisteredManualGate(command);
+          const gate = gateRegistry.findByManualCommand(command);
+          ensureSupportedOptions(rest, new Set(gate.manualOptions));
+          return await runRegisteredManualGate(command, rest);
         }
         throw new Error(`Unknown command: ${command}\n\n${HELP_TEXT}`);
     }

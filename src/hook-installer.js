@@ -87,37 +87,22 @@ function ensurePackageScripts(root) {
   packageJson.scripts ||= {};
   packageJson.scripts['guard:init'] ||= 'repo-guard init';
   packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
-  packageJson.scripts['guard:exceptions'] ||= 'repo-guard exceptions';
-  packageJson.scripts['guard:dependencies'] ||= 'repo-guard dependencies';
   packageJson.scripts['guard:enable-dependencies'] ||= 'repo-guard enable dependencies';
   for (const gate of gateRegistry.all) {
     if (gate.packageScript && gate.manualCommand) {
       packageJson.scripts[gate.packageScript] ||= `repo-guard ${gate.manualCommand}`;
     }
   }
-  packageJson.scripts['guard:unsafe-html'] ||= 'repo-guard unsafe-html';
-  packageJson.scripts['guard:target-blank'] ||= 'repo-guard target-blank';
-  packageJson.scripts['guard:form-labels'] ||= 'repo-guard form-labels';
-  packageJson.scripts['guard:image-alt'] ||= 'repo-guard image-alt';
   packageJson.scripts['guard:enable-accessibility-test'] ||= 'repo-guard enable accessibilityTest';
-  packageJson.scripts['guard:accessibility-test'] ||= 'repo-guard accessibility-test';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
-  packageJson.scripts['guard:architecture'] ||= 'repo-guard architecture';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
-  packageJson.scripts['guard:style-complexity'] ||= 'repo-guard style-complexity';
   packageJson.scripts['guard:enable-style-complexity'] ||= 'repo-guard enable styleComplexity';
-  packageJson.scripts['guard:style-governance'] ||= 'repo-guard style-governance';
   packageJson.scripts['guard:enable-style-governance'] ||= 'repo-guard enable styleGovernance';
   packageJson.scripts['guard:enable-build'] ||= 'repo-guard enable build';
-  packageJson.scripts['guard:build'] ||= 'repo-guard build';
   packageJson.scripts['guard:enable-lighthouse'] ||= 'repo-guard enable lighthouse';
-  packageJson.scripts['guard:lighthouse'] ||= 'repo-guard lighthouse';
   packageJson.scripts['guard:enable-typecheck'] ||= 'repo-guard enable typeCheck';
-  packageJson.scripts['guard:typecheck'] ||= 'repo-guard typecheck';
   packageJson.scripts['guard:enable-unit-test'] ||= 'repo-guard enable unitTest';
-  packageJson.scripts['guard:unit-test'] ||= 'repo-guard unit-test';
-  packageJson.scripts['guard:file-placement'] ||= 'repo-guard file-placement';
   packageJson.scripts['guard:enable-notification'] ||= 'repo-guard enable notification';
   packageJson.scripts['guard:disable-notification'] ||= 'repo-guard disable notification';
   packageJson.scripts['guard:doctor'] ||= 'repo-guard doctor';
