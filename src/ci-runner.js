@@ -14,7 +14,6 @@ import { validateCiReportPath } from './config.js';
 import { classifyChanges } from './git-changes.js';
 import { runGit } from './git.js';
 import { runDependencyPolicy } from './dependency-policy.js';
-import { runDynamicCodeProject } from './dynamic-code.js';
 import { runEslintFiles } from './eslint-runner.js';
 import { inspectExceptionRegistry } from './exception-registry.js';
 import { collectProjectFiles, runFilePlacementProject } from './file-placement.js';
@@ -35,6 +34,7 @@ import { createGateResult } from './core/result/gate-result.js';
 import { adaptLegacyRunner } from './core/result/legacy-runner-adapter.js';
 import { writeGateResultConsole } from './core/report/console-renderer.js';
 import { renderLegacyCiStep } from './core/report/json-renderer.js';
+import { gateRegistry } from './gates/registry.js';
 
 function matchingFiles(files, pattern) {
   return files.filter((file) => micromatch.isMatch(file, pattern, {
@@ -127,6 +127,22 @@ export async function runCiGate({
   const steps = [];
   let executionError = false;
   let violation = false;
+  const recordResult = (name, result, {
+    includeGateResult = false,
+    exitCode = result.legacyExitCode,
+    includeDiagnostics = true,
+  } = {}) => {
+    steps.push(renderLegacyCiStep(result, { name, includeGateResult, exitCode }));
+    writeGateResultConsole(
+      includeDiagnostics ? result : { ...result, diagnostics: [] },
+      { label: name },
+    );
+    if (result.status === 'violation') {
+      violation = true;
+    } else if (result.status.endsWith('-error')) {
+      executionError = true;
+    }
+  };
   const runStep = async (name, task, { enabled = true } = {}) => {
     if (!enabled) {
       const result = createGateResult({
@@ -134,18 +150,11 @@ export async function runCiGate({
         status: 'skipped',
         summary: `${name} is disabled`,
       });
-      steps.push(renderLegacyCiStep(result, { name }));
-      writeGateResultConsole(result, { label: name });
+      recordResult(name, result);
       return;
     }
     const result = await adaptLegacyRunner({ gateId: name, task });
-    steps.push(renderLegacyCiStep(result, { name }));
-    writeGateResultConsole(result, { label: name });
-    if (result.status === 'violation') {
-      violation = true;
-    } else if (result.status.endsWith('-error')) {
-      executionError = true;
-    }
+    recordResult(name, result);
   };
 
   await runStep('structured-exceptions', () => {
@@ -153,10 +162,20 @@ export async function runCiGate({
     if (result.expired.length || result.future.length) return 2;
     return 0;
   });
-  await runStep('dynamic-code', () => runDynamicCodeProject({
-    root,
-    exceptions: config.exceptions,
-  }));
+  const dynamicCodeGate = gateRegistry.get('security.dynamic-code');
+  const dynamicCodePlan = dynamicCodeGate.plan({ root, config });
+  const dynamicCodeResult = dynamicCodeGate.run({ root, config, plan: dynamicCodePlan });
+  for (const line of dynamicCodeGate.renderConsole(dynamicCodeResult)) {
+    if (line.stream === 'stderr') console.error(line.message);
+    else console.log(line.message);
+  }
+  recordResult('dynamic-code', dynamicCodeResult, {
+    includeGateResult: true,
+    exitCode: dynamicCodeResult.status === 'passed'
+      ? 0
+      : dynamicCodeResult.status === 'violation' ? 1 : null,
+    includeDiagnostics: false,
+  });
   await runStep('vue-unsafe-html', () => runUnsafeVueHtmlProject({
     root,
     exceptions: config.exceptions,

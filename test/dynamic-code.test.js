@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -15,6 +16,8 @@ import {
   NO_EVAL_RULE,
   NO_FUNCTION_CONSTRUCTOR_RULE,
 } from '../src/dynamic-code.js';
+import { gateRegistry } from '../src/gates/registry.js';
+import { renderGateResultJson } from '../src/core/report/json-renderer.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
@@ -145,6 +148,37 @@ test('requires an exact active structured exception', (context) => {
   });
   assert.equal(approved.violations.length, 0);
   assert.equal(approved.approved[0].exception.id, 'reviewed-legacy-runtime');
+});
+
+test('returns native structured findings and metrics from the registered capability', (context) => {
+  const source = 'export const run = (payload) => eval(payload);\n';
+  const root = createFixture(source);
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = JSON.parse(readFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    'utf8',
+  ));
+
+  const gate = gateRegistry.get('security.dynamic-code');
+  const plan = gate.plan({ root, config });
+  const result = gate.run({ root, config, plan });
+  assert.equal(Object.isFrozen(plan), true);
+  assert.equal(Object.isFrozen(plan.files), true);
+  assert.equal(result.status, 'violation');
+  assert.deepEqual(result.metrics, {
+    checkedFiles: 1,
+    approvedExceptions: 0,
+    violations: 1,
+  });
+  assert.deepEqual(result.findings[0], {
+    ruleId: NO_EVAL_RULE,
+    severity: 'error',
+    message: 'eval dynamically executes runtime text',
+    location: { path: 'src/runtime.ts', line: 1, column: 33 },
+    evidence: result.findings[0].evidence,
+    remediation: result.findings[0].remediation,
+  });
+  assert.deepEqual(renderGateResultJson(result).findings, result.findings);
 });
 
 test('exposes a full-project CLI with actionable AI repair instructions', (context) => {

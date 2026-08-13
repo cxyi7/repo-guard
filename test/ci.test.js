@@ -137,6 +137,22 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     { name: 'protected-files', status: 'passed' },
   ]);
   assert.equal(report.steps.every((step) => !('diagnostics' in step)), true);
+  const dynamicCodeStep = report.steps.find(({ name }) => name === 'dynamic-code');
+  assert.equal(dynamicCodeStep.exitCode, 0);
+  assert.deepEqual(dynamicCodeStep.gateResult, {
+    schemaVersion: 1,
+    gateId: 'security.dynamic-code',
+    status: 'passed',
+    summary: dynamicCodeStep.gateResult.summary,
+    findings: [],
+    metrics: {
+      checkedFiles: 2,
+      approvedExceptions: 0,
+      violations: 0,
+    },
+    artifacts: [],
+    durationMs: dynamicCodeStep.gateResult.durationMs,
+  });
   assert.equal(readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8'), before);
 
   assert.equal(await runCiGate({
@@ -157,6 +173,62 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     path.join(fixture.root, 'reports', 'failed.json'),
     'utf8',
   )).status, 'failed');
+});
+
+test('writes native dynamic-code findings without changing the legacy CI step contract', async (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  writeFileSync(
+    path.join(fixture.root, 'src', 'unsafe.js'),
+    'export const unsafe = (payload) => eval(payload);\n',
+  );
+
+  assert.equal(await runCiGate({
+    root: fixture.root,
+    config: config(),
+    base: fixture.base,
+    head: fixture.head,
+    env: {},
+  }), 2);
+  const report = JSON.parse(readFileSync(
+    path.join(fixture.root, 'reports', 'repo-guard.json'),
+    'utf8',
+  ));
+  const step = report.steps.find(({ name }) => name === 'dynamic-code');
+  assert.deepEqual({ status: step.status, exitCode: step.exitCode }, {
+    status: 'failed',
+    exitCode: 1,
+  });
+  assert.equal(step.gateResult.status, 'violation');
+  assert.equal(step.gateResult.findings[0].ruleId, 'security/no-eval');
+  assert.deepEqual(step.gateResult.metrics, {
+    checkedFiles: 3,
+    approvedExceptions: 0,
+    violations: 1,
+  });
+});
+
+test('keeps dynamic-code execution errors distinct from policy violations', async (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  writeFileSync(path.join(fixture.root, 'src', 'invalid.js'), 'const = ;\n');
+
+  assert.equal(await runCiGate({
+    root: fixture.root,
+    config: config(),
+    base: fixture.base,
+    head: fixture.head,
+    env: {},
+  }), 1);
+  const report = JSON.parse(readFileSync(
+    path.join(fixture.root, 'reports', 'repo-guard.json'),
+    'utf8',
+  ));
+  const step = report.steps.find(({ name }) => name === 'dynamic-code');
+  assert.equal(step.status, 'error');
+  assert.equal('exitCode' in step, false);
+  assert.equal(step.gateResult.status, 'execution-error');
+  assert.match(step.gateResult.error.message, /Dynamic code gate could not parse/);
 });
 
 test('installs a managed GitLab include and preserves existing pipeline jobs', async (context) => {

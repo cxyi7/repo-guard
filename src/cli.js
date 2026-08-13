@@ -6,7 +6,8 @@ import { runCheck } from './commands/check.js';
 import { runCiCommand } from './commands/ci.js';
 import { runDisable, runEnable, runMigrate } from './commands/configure.js';
 import { runDoctor } from './commands/doctor.js';
-import { runDynamicCodeCommand } from './commands/dynamic-code.js';
+import { gateRegistry } from './gates/registry.js';
+import { runRegisteredManualGate } from './orchestration/cli/manual-gates.js';
 import { runDependenciesCommand } from './commands/dependencies.js';
 import { runExceptionsCommand } from './commands/exceptions.js';
 import { runFilePlacementCommand } from './commands/file-placement.js';
@@ -29,6 +30,11 @@ import {
   runPreCommit,
   runQualityFileCommand,
 } from './commands/pre-commit.js';
+
+const REGISTERED_MANUAL_HELP = gateRegistry.all
+  .filter(({ manualCommand }) => manualCommand)
+  .map(({ manualCommand }) => `  repo-guard ${manualCommand}`)
+  .join('\n');
 
 const HELP_TEXT = `
 repo-guard - protected repository file guard
@@ -53,7 +59,7 @@ Usage:
   repo-guard architecture
   repo-guard typecheck
   repo-guard unit-test
-  repo-guard dynamic-code
+${REGISTERED_MANUAL_HELP}
   repo-guard unsafe-html
   repo-guard target-blank
   repo-guard form-labels
@@ -180,9 +186,6 @@ export async function runCli(argumentsList) {
       case 'typecheck':
         ensureSupportedOptions(rest, new Set());
         return runTypeCheckCommand();
-      case 'dynamic-code':
-        ensureSupportedOptions(rest, new Set());
-        return runDynamicCodeCommand();
       case 'unsafe-html':
         ensureSupportedOptions(rest, new Set());
         return runUnsafeHtmlCommand();
@@ -233,6 +236,10 @@ export async function runCli(argumentsList) {
       case 'hook-message':
         return runHookMessage(rest);
       default:
+        if (gateRegistry.findByManualCommand(command)) {
+          ensureSupportedOptions(rest, new Set());
+          return runRegisteredManualGate(command);
+        }
         throw new Error(`Unknown command: ${command}\n\n${HELP_TEXT}`);
     }
   } catch (error) {

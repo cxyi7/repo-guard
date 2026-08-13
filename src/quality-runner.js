@@ -8,7 +8,8 @@ import { runFilePlacementFiles } from './file-placement.js';
 import { runPrettierFiles } from './prettier-runner.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { runStylelintFiles } from './stylelint-runner.js';
-import { runDynamicCodeFiles } from './dynamic-code.js';
+import { gateRegistry } from './gates/registry.js';
+import { renderDynamicCodeResult } from './dynamic-code.js';
 import { runVueFormLabelFiles } from './vue-form-label.js';
 import { runVueImageAltFiles } from './vue-image-alt.js';
 import { runVueTargetBlankFiles } from './vue-target-blank.js';
@@ -152,11 +153,13 @@ export async function runQualityFiles({ root, files, config }) {
     if (dynamicCodeFiles.length > 0) {
       let dynamicCodeExitCode;
       try {
-        dynamicCodeExitCode = runDynamicCodeFiles({
+        const gate = gateRegistry.get('security.dynamic-code');
+        const plan = gate.plan({ root, config, files: normalizedFiles });
+        dynamicCodeExitCode = renderDynamicCodeResult(gate.run({
           root,
-          files: normalizedFiles,
-          exceptions: config.exceptions,
-        });
+          config,
+          plan,
+        }));
       } catch (error) {
         if (!String(error.message).startsWith('Dynamic code gate could not parse ')) {
           throw error;

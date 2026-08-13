@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.16.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.17.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -649,6 +649,8 @@ repo-guard dynamic-code
 
 `init` 或 `doctor --fix` 会补充 `guard:dynamic-code` 项目脚本和 AGENTS.md 硬性要求。该门禁没有 `enable` 或 `disable` 命令。
 
+动态代码门禁是首个完成平台化纵向迁移的只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；CI 兼容步骤额外包含 `gateResult`，其中提供版本化 finding、metric 和诊断结果。
+
 ### Vue v-html 安全门禁
 
 repo-guard 始终检查暂存 `.vue` 文件根 `<template>` 中的 `v-html`。该门禁不依赖业务项目的 ESLint、`eslint-plugin-vue` 或配置开关；即使所有可选质量门禁关闭，未经批准的 `v-html` 仍会阻止提交。
@@ -1249,13 +1251,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.16.0
+## 升级到 0.17.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.16.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.17.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.17.0 将动态代码门禁作为首个纵向试点迁入 Gate Capability 与内部 Registry。配置仍为 `version: 1`，现有 CLI 文案、pre-commit 顺序、CI profile 和兼容步骤字段不变；CI 的 `dynamic-code` 步骤新增 `gateResult`，用于读取原生结构化 finding 和 metric。本版本不迁移其他门禁，也不引入 Execution Plan。
 
 0.16.0 建立统一门禁结果与报告基础设施，并让 CI 步骤聚合通过兼容适配层使用该模型。配置仍为 `version: 1`，现有 CLI 文案、退出码、CI profile 和 JSON 报告结构不变；本版本不引入 Registry、外部门禁或执行顺序调整。
 

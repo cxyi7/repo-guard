@@ -652,6 +652,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 2：完成一个纵向试点
 
+实施状态：`0.17.0` 已完成。动态代码门禁已迁入 `src/gates/security`，以 `security.dynamic-code` 注册到内部 Registry，原生返回 finding、metric 和诊断；manual CLI、pre-commit、CI 与 doctor 已使用同一能力定义，旧包根 API 保留兼容层并等待明确主版本收敛。
+
 - 选择一个低副作用、只读且已有充分测试的门禁，例如动态代码或文件归位；
 - 完整接通配置、Gate Definition、Registry、`inspectSetup`、manual CLI、CI、doctor 和 renderer；
 - 先通过 adapter 保持兼容，再让该门禁原生返回 finding、metric 和 artifact；

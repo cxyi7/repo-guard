@@ -22,15 +22,20 @@ export function renderGateResultJson(result) {
   return report;
 }
 
-export function renderLegacyCiStep(result, { name = result.gateId } = {}) {
+export function renderLegacyCiStep(result, {
+  name = result.gateId,
+  includeGateResult = false,
+  exitCode = result.legacyExitCode,
+} = {}) {
   const step = {
     name,
     status: LEGACY_CI_STATUS[result.status],
   };
   if (result.status !== 'skipped') {
-    if (result.legacyExitCode != null) step.exitCode = result.legacyExitCode;
+    if (exitCode != null) step.exitCode = exitCode;
     step.durationMs = result.durationMs;
   }
   if (result.error) step.error = result.error.message;
+  if (includeGateResult) step.gateResult = renderGateResultJson(result);
   return step;
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0
+
+- 完成首个 Gate Capability 纵向试点：动态代码门禁注册为只读 `security.dynamic-code`，统一声明 manual、pre-commit、CI 生命周期、规则、超时、配置版本与 setup 诊断。
+- 动态代码扫描器迁入 `src/gates/security` 并原生返回结构化 finding、metric 和诊断；CLI、pre-commit、CI 与 doctor 从同一 Registry 取得能力，旧包根 API 通过兼容导出继续可用。
+- CI 的动态代码步骤在保留既有 `name/status/exitCode/durationMs` 和控制台文案的同时附带版本化 `gateResult`，供新消费者读取稳定规则位置、证据、修复建议和指标。
+
 ## 0.16.0
 
 - 新增内部统一门禁结果模型，稳定区分通过、跳过、策略违规、配置错误、执行错误和范围错误，并统一表示 finding、artifact、metric、诊断与标准退出码。

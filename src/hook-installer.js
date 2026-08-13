@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { gateRegistry } from './gates/registry.js';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
@@ -89,7 +90,11 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:exceptions'] ||= 'repo-guard exceptions';
   packageJson.scripts['guard:dependencies'] ||= 'repo-guard dependencies';
   packageJson.scripts['guard:enable-dependencies'] ||= 'repo-guard enable dependencies';
-  packageJson.scripts['guard:dynamic-code'] ||= 'repo-guard dynamic-code';
+  for (const gate of gateRegistry.all) {
+    if (gate.packageScript && gate.manualCommand) {
+      packageJson.scripts[gate.packageScript] ||= `repo-guard ${gate.manualCommand}`;
+    }
+  }
   packageJson.scripts['guard:unsafe-html'] ||= 'repo-guard unsafe-html';
   packageJson.scripts['guard:target-blank'] ||= 'repo-guard target-blank';
   packageJson.scripts['guard:form-labels'] ||= 'repo-guard form-labels';

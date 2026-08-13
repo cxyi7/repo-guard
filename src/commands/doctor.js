@@ -62,6 +62,7 @@ import {
 } from '../unit-test-policy.js';
 import { validateUnitTestSetup } from '../unit-test-runner.js';
 import { validateTypeCheckSetup } from '../typecheck-runner.js';
+import { gateRegistry } from '../gates/registry.js';
 
 const PACKAGE_JSON = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
@@ -413,10 +414,11 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   }
 
   if (config) {
-    checks.push(
-      'Dynamic code staged gate '
-      + '(hard requirement, rules=security/no-eval+security/no-function-constructor)',
-    );
+    for (const gate of gateRegistry.all) {
+      const setup = gate.inspectSetup({ root, config });
+      if (setup.status === 'ready') checks.push(setup.summary);
+      else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
+    }
     checks.push('Vue v-html staged gate (hard requirement, rule=vue/no-v-html)');
     checks.push(
       'Vue target=_blank staged gate '
