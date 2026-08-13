@@ -31,6 +31,10 @@ import { runUnsafeVueHtmlProject } from './vue-unsafe-html.js';
 import { runVueFormLabelProject } from './vue-form-label.js';
 import { runVueImageAltProject } from './vue-image-alt.js';
 import { runVueTargetBlankProject } from './vue-target-blank.js';
+import { createGateResult } from './core/result/gate-result.js';
+import { adaptLegacyRunner } from './core/result/legacy-runner-adapter.js';
+import { writeGateResultConsole } from './core/report/console-renderer.js';
+import { renderLegacyCiStep } from './core/report/json-renderer.js';
 
 function matchingFiles(files, pattern) {
   return files.filter((file) => micromatch.isMatch(file, pattern, {
@@ -125,29 +129,22 @@ export async function runCiGate({
   let violation = false;
   const runStep = async (name, task, { enabled = true } = {}) => {
     if (!enabled) {
-      steps.push({ name, status: 'skipped' });
-      console.log(`SKIP  ${name}`);
+      const result = createGateResult({
+        gateId: name,
+        status: 'skipped',
+        summary: `${name} is disabled`,
+      });
+      steps.push(renderLegacyCiStep(result, { name }));
+      writeGateResultConsole(result, { label: name });
       return;
     }
-    const startedAt = Date.now();
-    try {
-      const exitCode = await task();
-      const status = exitCode === 0 ? 'passed' : 'failed';
-      steps.push({ name, status, exitCode, durationMs: Date.now() - startedAt });
-      if (exitCode === 0) console.log(`PASS  ${name}`);
-      else {
-        violation = true;
-        console.error(`FAIL  ${name}`);
-      }
-    } catch (error) {
+    const result = await adaptLegacyRunner({ gateId: name, task });
+    steps.push(renderLegacyCiStep(result, { name }));
+    writeGateResultConsole(result, { label: name });
+    if (result.status === 'violation') {
+      violation = true;
+    } else if (result.status.endsWith('-error')) {
       executionError = true;
-      steps.push({
-        name,
-        status: 'error',
-        error: error.message,
-        durationMs: Date.now() - startedAt,
-      });
-      console.error(`ERROR ${name}: ${error.message}`);
     }
   };
 

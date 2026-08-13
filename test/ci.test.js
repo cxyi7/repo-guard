@@ -123,6 +123,20 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   assert.equal(report.status, 'passed');
   assert.equal(report.profile, 'policy');
   assert.equal(report.protectedFiles.length, 1);
+  assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
+    { name: 'structured-exceptions', status: 'passed' },
+    { name: 'dynamic-code', status: 'passed' },
+    { name: 'vue-unsafe-html', status: 'passed' },
+    { name: 'vue-target-blank', status: 'passed' },
+    { name: 'vue-form-labels', status: 'passed' },
+    { name: 'vue-image-alt', status: 'passed' },
+    { name: 'dependency-policy', status: 'skipped' },
+    { name: 'file-placement', status: 'skipped' },
+    { name: 'maximum-file-lines', status: 'skipped' },
+    { name: 'unit-test-policy', status: 'skipped' },
+    { name: 'protected-files', status: 'passed' },
+  ]);
+  assert.equal(report.steps.every((step) => !('diagnostics' in step)), true);
   assert.equal(readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8'), before);
 
   assert.equal(await runCiGate({

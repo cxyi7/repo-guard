@@ -640,6 +640,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 1：统一结果模型
 
+实施状态：`0.16.0` 已完成。统一模型位于 `src/core/result`，renderer 位于 `src/core/report`；CI 步骤通过兼容 adapter 使用同一结果生成现有 console 与 JSON。具体门禁仍待后续阶段逐项改为原生结构化结果。
+
 - 定义 `GateStatus`、`Finding`、`Artifact` 和 `GateResult`；
 - 新模块直接创建在 `core/result` 和 `core/report`；
 - 建立旧 runner adapter，将退出码和诊断转换为结构化结果；

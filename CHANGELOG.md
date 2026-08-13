@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.0
+
+- 新增内部统一门禁结果模型，稳定区分通过、跳过、策略违规、配置错误、执行错误和范围错误，并统一表示 finding、artifact、metric、诊断与标准退出码。
+- 新增旧 runner 兼容适配层以及 console、版本化 JSON renderer；CI 步骤聚合已使用同一个 `GateResult` 生成现有控制台输出和兼容 JSON，保持原有命令文案、步骤结构及退出码。
+- 新平台模块从 `src/core/result` 与 `src/core/report` 进入目标目录，语法检查同步改为递归覆盖 `src`；本版本只实施架构阶段 1，不提前引入 Registry、Execution Plan 或具体门禁迁移。
+
 ## 0.15.0
 
 - 新增平台无关的 `repo-guard ci` 只读远程门禁，支持 GitLab MR/分支 SHA、`policy`/`full` profile、全仓硬规则、变更测试策略、保护文件 report/fail 和始终落盘的 JSON 报告。

@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.15.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.16.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -414,7 +414,7 @@ CI 优先读取 `CI_MERGE_REQUEST_DIFF_BASE_SHA` 和 `CI_COMMIT_SHA`，普通分
 repo-guard ci --profile policy --base <sha> --head <sha>
 ```
 
-退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；CI 步骤的 console 与 JSON 由同一结果渲染，同时保持现有输出和报告结构兼容。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
 ### 文件归位门禁
 
@@ -1249,13 +1249,15 @@ repo-guard gate --dry-run
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
 
-## 升级到 0.15.0
+## 升级到 0.16.0
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@0.15.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@0.16.0
 npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
+
+0.16.0 建立统一门禁结果与报告基础设施，并让 CI 步骤聚合通过兼容适配层使用该模型。配置仍为 `version: 1`，现有 CLI 文案、退出码、CI profile 和 JSON 报告结构不变；本版本不引入 Registry、外部门禁或执行顺序调整。
 
 0.15.0 新增 GitLab CI 远程门禁。升级不会自动修改已有 `.gitlab-ci.yml` 或开启 CI；先运行 `repo-guard install-ci --provider gitlab --profile policy --dry-run` 审查变更，再执行安装和 `repo-guard doctor --ci`。已有成熟 lint/test/build Job 的项目使用 `policy`，需要 repo-guard 统一编排时使用 `full`。
 
