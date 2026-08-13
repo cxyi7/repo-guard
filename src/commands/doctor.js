@@ -281,7 +281,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
       }
       try {
         const gate = createProjectGateRegistry(config).get(externalGate.id);
-        const requestedEnvironment = ci ? `ci-${config.ci.profile}` : 'manual';
+        const requestedEnvironment = ci && config.ci.profile === 'release-ready'
+          ? 'release-ready'
+          : ci ? `ci-${config.ci.profile}` : 'manual';
         const environment = gate.environments.includes(requestedEnvironment)
           ? requestedEnvironment
           : gate.environments[0];

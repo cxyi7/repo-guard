@@ -39,9 +39,9 @@
         },
         "profile": {
           "type": "string",
-          "enum": ["policy", "full"],
+          "enum": ["policy", "full", "release-ready"],
           "default": "policy",
-          "description": "policy integrates with existing lint/test/build jobs; full also runs enabled project quality, test, architecture, and build gates."
+          "description": "policy integrates with existing lint/test/build jobs; full also runs enabled project quality, test, architecture, and build gates; release-ready proves package release conditions without publishing or deploying."
         },
         "reportPath": {
           "type": "string",
@@ -65,7 +65,7 @@
     "externalGates": {
       "type": "array",
       "default": [],
-      "description": "Project-owned read-only gates executed only through exact npm script names. They may run manually or at the fixed end of CI full and must emit repo-guard-json-v1 reports under reports/.",
+      "description": "Project-owned read-only gates executed only through exact npm script names. They may run manually or at the fixed end of CI full or release-ready and must emit repo-guard-json-v1 reports under reports/.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -85,7 +85,7 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "enum": ["manual", "ci-full"]
+              "enum": ["manual", "ci-full", "release-ready"]
             }
           },
           "script": {

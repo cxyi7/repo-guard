@@ -108,7 +108,7 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
   });
   assert.throws(
     () => validateConfig(baseConfig({ ci: { profile: 'partial' } })),
-    /ci.profile must be policy or full/,
+    /ci.profile must be policy, full, or release-ready/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ ci: { reportPath: '../report.json' } })),
@@ -877,7 +877,7 @@ test('validates strict external project gate configuration', () => {
 
   for (const [change, pattern] of [
     [{ id: 'api-contract' }, /project\.<kebab-case>/],
-    [{ environments: ['pre-push'] }, /unique manual or ci-full/],
+    [{ environments: ['pre-push'] }, /unique manual, ci-full, or release-ready/],
     [{ script: 'npm test && deploy' }, /exact npm script name/],
     [{ timeoutMs: 999 }, /between 1000 and 1800000/],
     [{ report: { format: 'junit', path: 'reports/api-contract.json' } }, /repo-guard-json-v1/],

@@ -37,7 +37,7 @@ function vueGate({ id, rule, inspect, instructions, summary, manualCommand, manu
   return defineGate({
     id,
     configVersions: CONFIG_VERSION,
-    environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'],
+    environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
     mutation: 'read-only',
     defaultTimeoutMs: 120000,
     manualCommand,
@@ -100,7 +100,7 @@ export const imageAltGate = vueGate({
 
 export const exceptionRegistryGate = defineGate({
   id: 'repository.structured-exceptions', configKey: 'exceptions', configVersions: CONFIG_VERSION,
-  environments: ['manual', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 30000,
+  environments: ['manual', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 30000,
   manualCommand: 'exceptions', manualOrder: 10, packageScript: 'guard:exceptions',
   inspectSetup: () => ready('Structured exception registry'), plan: () => ({}),
   run({ config }) {
@@ -116,7 +116,7 @@ export const exceptionRegistryGate = defineGate({
 
 export const dependencyPolicyGate = defineGate({
   id: 'dependencies.policy', configKey: 'dependencyPolicy', featureName: 'dependencies', featureOrder: 80,
-  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000,
+  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000,
   manualCommand: 'dependencies', manualOrder: 20, doctorOrder: 120, packageScript: 'guard:dependencies',
   inspectSetup: ({ config }) => ready(config.dependencyPolicy.enabled ? 'Dependency policy enabled' : 'Dependency policy disabled'),
   plan: ({ config, changes, environment }) => ({
@@ -140,7 +140,7 @@ export const dependencyPolicyGate = defineGate({
 
 export const filePlacementGate = defineGate({
   id: 'repository.file-placement', configKey: 'preCommit.filePlacement', featureName: 'filePlacement', featureOrder: 40,
-  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000,
+  configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000,
   manualCommand: 'file-placement', manualOrder: 150, doctorOrder: 150, packageScript: 'guard:file-placement',
   inspectSetup: ({ config }) => ready(config.preCommit.filePlacement.enabled ? 'File placement enabled' : 'File placement disabled'),
   plan: ({ config, changes, files, environment }) => ({
@@ -162,7 +162,7 @@ export const filePlacementGate = defineGate({
 
 export const maximumFileLinesGate = defineGate({
   id: 'repository.maximum-file-lines', configKey: 'preCommit.maxFileLines', featureName: 'maxFileLines', featureOrder: 50,
-  configVersions: CONFIG_VERSION, environments: ['pre-commit', 'ci-policy', 'ci-full'], mutation: 'read-only', defaultTimeoutMs: 120000, doctorOrder: 140,
+  configVersions: CONFIG_VERSION, environments: ['pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000, doctorOrder: 140,
   inspectSetup: ({ config }) => ready(config.preCommit.maxFileLines.enabled ? 'Maximum file lines enabled' : 'Maximum file lines disabled'),
   plan: ({ root, config, files, revision, changes }) => ({
     enabled: config.preCommit.maxFileLines.enabled,
@@ -185,7 +185,7 @@ export const maximumFileLinesGate = defineGate({
 export const protectedFilesGate = defineGate({
   id: 'repository.protected-files',
   configVersions: CONFIG_VERSION,
-  environments: ['pre-commit', 'ci-policy', 'ci-full'],
+  environments: ['pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'external-write',
   allowedMutations: ['external-write', 'read-only'],
   defaultTimeoutMs: 120000,

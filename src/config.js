@@ -432,8 +432,8 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
     throw new Error(`${configPath} ci.enabled must be a boolean`);
   }
-  if (ciValue.profile != null && !['policy', 'full'].includes(ciValue.profile)) {
-    throw new Error(`${configPath} ci.profile must be policy or full`);
+  if (ciValue.profile != null && !['policy', 'full', 'release-ready'].includes(ciValue.profile)) {
+    throw new Error(`${configPath} ci.profile must be policy, full, or release-ready`);
   }
   const ciReportPath = validateCiReportPath(
     ciValue.reportPath ?? DEFAULT_CI_CONFIG.reportPath,
@@ -483,9 +483,9 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     externalGateIds.add(entry.id);
     if (typeof entry.enabled !== 'boolean') throw new Error(`${label}.enabled must be a boolean`);
     if (!Array.isArray(entry.environments) || entry.environments.length === 0
-      || entry.environments.some((environment) => !['manual', 'ci-full'].includes(environment))
+      || entry.environments.some((environment) => !['manual', 'ci-full', 'release-ready'].includes(environment))
       || new Set(entry.environments).size !== entry.environments.length) {
-      throw new Error(`${label}.environments must contain unique manual or ci-full values`);
+      throw new Error(`${label}.environments must contain unique manual, ci-full, or release-ready values`);
     }
     if (typeof entry.script !== 'string' || !/^[A-Za-z0-9:_-]+$/.test(entry.script)) {
       throw new Error(`${label}.script must be an exact npm script name`);

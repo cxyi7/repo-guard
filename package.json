@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Structured Git and GitLab CI policy gates for Vue security, accessibility, code quality, dependencies, architecture, builds, coverage, and tests",
   "keywords": [
     "git-hooks",
@@ -53,7 +53,7 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
     "check": "npm run lint && node scripts/check-syntax.js",
-    "pack:check": "npm pack --dry-run --json",
+    "pack:check": "npm pack --dry-run --json --ignore-scripts",
     "prepublishOnly": "npm run check && npm test"
   },
   "dependencies": {

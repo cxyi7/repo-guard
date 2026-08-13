@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- 新增只读 `release-ready` CI profile 与固定 Execution Plan，复用 CI policy、项目 `check`/`test`、build、可选 Lighthouse，并在官方步骤末尾追加显式声明且仅限受保护引用的外部门禁。
+- 新增版本、lockfile、changelog、draft 2020-12 Schema、exports/bin 与 npm pack 文件清单一致性检查；pack dry-run 忽略 lifecycle scripts、不生成 tarball，并拒绝敏感发布文件。
+- 发布准备子进程仅接收运行所需环境变量白名单，拒绝 publish/deploy 脚本；GitLab 模板、CLI、配置 Schema、README 与架构进度同步更新，整个计划只证明“可以发布”，不会发布或部署。
+
 ## 1.1.0
 
 - 新增严格的 `externalGates` 配置和 `repo-guard-json-v1` 报告 Schema，项目可通过精确 npm script 在 manual 与 CI full 接入 API、页面或视觉等自有门禁。

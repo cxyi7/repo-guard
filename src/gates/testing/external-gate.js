@@ -10,6 +10,7 @@ import { defineGate } from '../../core/capability/gate-definition.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import { skippedResult } from '../native-result.js';
 import { runExactNpmScript, containsSensitiveExternalData } from '../../integrations/npm/external-script.js';
+import { assertReleaseScriptReadOnly } from '../../integrations/npm/release-environment.js';
 import { runGit } from '../../git.js';
 
 const MAX_REPORT_BYTES = 1024 * 1024;
@@ -216,6 +217,9 @@ export function defineExternalGate(config) {
       const command = readPackage(root).scripts?.[config.script];
       if (typeof command !== 'string' || !command.trim()) {
         throw new Error(`External gate ${config.id} requires package.json script "${config.script}"`);
+      }
+      if (environment === 'release-ready') {
+        assertReleaseScriptReadOnly(readPackage(root).scripts ?? {}, config.script);
       }
       assertSafeGeneratedPath(root, config.report.path, 'External gate report', { mustExist: false });
       return { status: 'ready', summary: `${config.id} uses npm script ${config.script}` };

@@ -31,6 +31,7 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
     'pre-commit',
     'ci-policy',
     'ci-full',
+    'release-ready',
   ]);
   assert.deepEqual(dynamicCode.rules, [
     'security/no-eval',

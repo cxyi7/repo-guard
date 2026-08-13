@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.1.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.2.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -414,11 +414,20 @@ CI 优先读取 `CI_MERGE_REQUEST_DIFF_BASE_SHA` 和 `CI_COMMIT_SHA`，普通分
 repo-guard ci --profile policy --base <sha> --head <sha>
 ```
 
+发布候选可选择只读的 `release-ready` profile：
+
+```bash
+repo-guard install-ci --provider gitlab --profile release-ready
+repo-guard ci --profile release-ready --base <sha> --head <sha>
+```
+
+`release-ready` 使用固定计划依次执行 CI policy、消费项目精确的 `check` 与 `test` npm scripts、已启用的 build、可选 Lighthouse，以及必须精确等于 `npm pack --dry-run --json --ignore-scripts` 的 `pack:check` script。最后一步校验 package/lockfile 版本、`CHANGELOG.md` 版本标题、已导出的 draft 2020-12 Schema、exports/bin 和实际打包文件的一致性，并拒绝敏感发布文件。它不会生成 tarball，不运行 lifecycle scripts，不执行 `npm publish` 或 deploy，也不会把发布、部署和云凭证传给 `check`、`test` 或 pack 子进程。项目外部门禁只有显式声明 `release-ready` 且运行在 GitLab protected ref 时，才会固定追加在全部官方步骤之后。
+
 退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码，CI 每个非跳过步骤的 `exitCode` 也遵循这套映射，不再保留 runner 自己的历史数字语义。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
 ### 外部门禁脚本
 
-消费项目可通过 `externalGates` 接入 API 合约、页面、视觉等项目自有测试，而无需修改 repo-guard 核心。外部门禁只允许精确的 `package.json` npm script 名称，不接受命令参数、shell 片段、任意 JavaScript 插件或业务 endpoint。它只能在 manual 和受信的 CI full 中运行；GitLab CI 只在 `CI_COMMIT_REF_PROTECTED=true` 的受保护引用上运行外部门禁，Merge Request 与未受保护分支即使选择 full profile 也不会执行。启用的 CI full 外部门禁固定追加在全部官方步骤之后，不能插入或重排官方流水线。
+消费项目可通过 `externalGates` 接入 API 合约、页面、视觉等项目自有测试，而无需修改 repo-guard 核心。外部门禁只允许精确的 `package.json` npm script 名称，不接受命令参数、shell 片段、任意 JavaScript 插件或业务 endpoint。它只能在 manual、受信的 CI full 或 release-ready 中运行；GitLab CI 只在 `CI_COMMIT_REF_PROTECTED=true` 的受保护引用上运行外部门禁，Merge Request 与未受保护分支不会执行。启用的外部门禁固定追加在对应计划的全部官方步骤之后，不能插入或重排官方流水线。
 
 ```json
 {
@@ -426,7 +435,7 @@ repo-guard ci --profile policy --base <sha> --head <sha>
     {
       "id": "project.api-contract",
       "enabled": true,
-      "environments": ["manual", "ci-full"],
+      "environments": ["manual", "ci-full", "release-ready"],
       "script": "test:api-contract",
       "timeoutMs": 120000,
       "report": {
@@ -693,7 +702,7 @@ repo-guard dynamic-code
 
 `init` 或 `doctor --fix` 会补充 `guard:dynamic-code` 项目脚本和 AGENTS.md 硬性要求。该门禁没有 `enable` 或 `disable` 命令。
 
-动态代码门禁是原生只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy 和 CI full。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；门禁只返回结构化结果，console renderer 在 Registry 组合边界挂接。CI 步骤直接包含版本化 `gateResult`，其中提供 finding、metric 和诊断结果。
+动态代码门禁是原生只读 Gate Capability，稳定 ID 为 `security.dynamic-code`，支持 manual、pre-commit、CI policy、CI full 和 release-ready。CLI、doctor、pre-commit 与 CI 从同一内部 Registry 取得该能力；门禁只返回结构化结果，console renderer 在 Registry 组合边界挂接。CI 步骤直接包含版本化 `gateResult`，其中提供 finding、metric 和诊断结果。
 
 ### Vue v-html 安全门禁
 
@@ -1293,6 +1302,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.2.0
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.2.0
+repo-guard install-ci --provider gitlab --profile release-ready --dry-run
+```
+
+1.2.0 新增 `release-ready` profile。选择该 profile 前，项目必须提供 `check`、`test` scripts，package.json/package-lock.json 版本一致，`CHANGELOG.md` 包含当前版本标题，导出的 Schema 使用 draft 2020-12，且 npm pack 文件清单完整、无敏感文件。确认 dry-run 后重新安装 GitLab 模板；此过程只更新受管 CI 配置，不发布包。
 
 ## 升级到 1.1.0
 

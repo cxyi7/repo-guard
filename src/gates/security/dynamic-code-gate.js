@@ -186,7 +186,7 @@ export function buildDynamicCodeGateResult({ root, files, exceptions }) {
 export const dynamicCodeGate = defineGate({
   id: DYNAMIC_CODE_GATE_ID,
   configVersions: [1],
-  environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full'],
+  environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
   manualCommand: 'dynamic-code',

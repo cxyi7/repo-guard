@@ -68,6 +68,20 @@ export const ciFullPlan = defineExecutionPlan({
   ],
 });
 
+export const releaseReadyPlan = defineExecutionPlan({
+  id: 'release-ready',
+  environment: 'release-ready',
+  locked: true,
+  steps: [
+    ...ciPolicyPlan.steps,
+    'release.check',
+    'release.test',
+    'quality.build',
+    'quality.lighthouse',
+    'release.package',
+  ],
+});
+
 export function createProjectCiFullPlan(config, registry, { includeExternalGates = true } = {}) {
   return validateExecutionPlan(defineExecutionPlan({
     id: 'ci-full',
@@ -84,9 +98,30 @@ export function createProjectCiFullPlan(config, registry, { includeExternalGates
   }), registry);
 }
 
+export function createProjectReleaseReadyPlan(
+  config,
+  registry,
+  { includeExternalGates = true } = {},
+) {
+  return validateExecutionPlan(defineExecutionPlan({
+    id: 'release-ready',
+    environment: 'release-ready',
+    locked: true,
+    steps: [
+      ...releaseReadyPlan.steps,
+      ...config.externalGates
+        .filter((gate) => includeExternalGates
+          && gate.enabled
+          && gate.environments.includes('release-ready'))
+        .map(({ id }) => id),
+    ],
+  }), registry);
+}
+
 export const executionPlans = createExecutionPlanRegistry([
   preCommitPlan,
   prePushPlan,
   ciPolicyPlan,
   ciFullPlan,
+  releaseReadyPlan,
 ], gateRegistry);

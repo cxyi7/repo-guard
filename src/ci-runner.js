@@ -19,7 +19,11 @@ import {
   createGateContext,
 } from './core/capability/gate-context.js';
 import { createProjectGateRegistry } from './gates/registry.js';
-import { createProjectCiFullPlan, executionPlans } from './orchestration/execution-plans.js';
+import {
+  createProjectCiFullPlan,
+  createProjectReleaseReadyPlan,
+  executionPlans,
+} from './orchestration/execution-plans.js';
 import { orchestratePlan } from './orchestration/orchestrator.js';
 
 function matchingFiles(files, pattern) {
@@ -87,8 +91,8 @@ export async function runCiGate({
     console.error(`repo-guard CI configuration failed: ${error.message}`);
     return gateStatusToExitCode('configuration-error');
   }
-  if (!['policy', 'full'].includes(profile)) {
-    const error = new Error('CI profile must be policy or full');
+  if (!['policy', 'full', 'release-ready'].includes(profile)) {
+    const error = new Error('CI profile must be policy, full, or release-ready');
     writeCiReport(root, reportPath, configurationErrorReport(profile, error));
     console.error(`repo-guard CI configuration failed: ${error.message}`);
     return gateStatusToExitCode('configuration-error');
@@ -114,7 +118,7 @@ export async function runCiGate({
 
   const reportPaths = new Set([reportPath, ...config.externalGates.map(({ report }) => report.path)]);
   const projectFiles = collectProjectFiles(root)
-    .filter((file) => !reportPaths.has(file));
+    .filter((file) => !reportPaths.has(file) && !file.startsWith('reports/.npm-cache/'));
   const steps = [];
   const recordResult = (name, result, {
     includeGateResult = false,
@@ -127,11 +131,12 @@ export async function runCiGate({
     );
   };
   const registry = createProjectGateRegistry(config);
-  const ciPlan = profile === 'full'
-    ? createProjectCiFullPlan(config, registry, {
-      includeExternalGates: isTrustedExternalGateCi(env),
-    })
-    : executionPlans.get('ci-policy');
+  const includeExternalGates = isTrustedExternalGateCi(env);
+  const ciPlan = profile === 'release-ready'
+    ? createProjectReleaseReadyPlan(config, registry, { includeExternalGates })
+    : profile === 'full'
+      ? createProjectCiFullPlan(config, registry, { includeExternalGates })
+      : executionPlans.get('ci-policy');
   const changeSet = createChangeSet({
     source: 'ci',
     changes: range.changes,

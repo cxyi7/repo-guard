@@ -114,6 +114,27 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.build',
     ],
   );
+  assert.deepEqual(
+    executionPlans.get('release-ready').steps.map(({ id }) => id),
+    [
+      'repository.structured-exceptions',
+      'security.dynamic-code',
+      'security.vue-unsafe-html',
+      'security.vue-target-blank',
+      'accessibility.vue-form-label',
+      'accessibility.vue-image-alt',
+      'dependencies.policy',
+      'repository.file-placement',
+      'repository.maximum-file-lines',
+      'quality.unit-test-policy',
+      'repository.protected-files',
+      'release.check',
+      'release.test',
+      'quality.build',
+      'quality.lighthouse',
+      'release.package',
+    ],
+  );
   assert.equal(executionPlans.all.every((plan) => plan.locked), true);
   assert.equal(executionPlans.all.every((plan) => Object.isFrozen(plan.steps)), true);
 

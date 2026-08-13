@@ -399,8 +399,8 @@ export function enableQualityGates(root, requestedGates) {
 }
 
 export function configureCi(root, { profile = 'policy' } = {}) {
-  if (!['policy', 'full'].includes(profile)) {
-    throw new Error('CI profile must be policy or full');
+  if (!['policy', 'full', 'release-ready'].includes(profile)) {
+    throw new Error('CI profile must be policy, full, or release-ready');
   }
   const migration = migrateProjectConfig(root);
   const config = migration.config;

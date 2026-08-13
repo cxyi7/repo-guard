@@ -51,8 +51,8 @@ Usage:
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard doctor [--fix|--ci]
-  repo-guard install-ci --provider gitlab [--profile policy|full] [--stage <name>] [--dry-run]
-  repo-guard ci [--profile policy|full] [--base <sha>] [--head <sha>] [--report-json <path>]
+  repo-guard install-ci --provider gitlab [--profile policy|full|release-ready] [--stage <name>] [--dry-run]
+  repo-guard ci [--profile policy|full|release-ready] [--base <sha>] [--head <sha>] [--report-json <path>]
 ${EARLY_MANUAL_HELP}
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]

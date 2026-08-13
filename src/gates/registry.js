@@ -3,6 +3,7 @@ import { dynamicCodeGate } from './security/dynamic-code-gate.js';
 import { renderDynamicCodeResult } from './security/dynamic-code-renderer.js';
 import { platformCapabilities } from './platform-capabilities.js';
 import { nativePolicyGates } from './repository/native-policy-gates.js';
+import { releaseReadinessGates } from './release/release-readiness-gates.js';
 import { defineExternalGate } from './testing/external-gate.js';
 
 const registeredDynamicCodeGate = Object.freeze({
@@ -13,6 +14,7 @@ const registeredDynamicCodeGate = Object.freeze({
 export const officialGates = Object.freeze([
   registeredDynamicCodeGate,
   ...nativePolicyGates,
+  ...releaseReadinessGates,
   ...platformCapabilities.filter((gate) => !nativePolicyGates.some(({ id }) => id === gate.id)),
 ]);
 

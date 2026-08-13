@@ -78,16 +78,22 @@ function templateContent() {
   extends: .repo_guard_base
   script:
     - npx --no-install repo-guard ci --profile full
+
+.repo_guard_release_ready:
+  extends: .repo_guard_base
+  script:
+    - npx --no-install repo-guard ci --profile release-ready
 `;
 }
 
 function rootBlock(profile, stage) {
+  const templateProfile = profile.replaceAll('-', '_');
   return `${ROOT_BEGIN}
 include:
   - local: /${GITLAB_TEMPLATE_FILE}
 
 repo_guard:
-  extends: .repo_guard_${profile}
+  extends: .repo_guard_${templateProfile}
   stage: ${stage}
 ${ROOT_END}`;
 }
@@ -214,10 +220,10 @@ export function inspectGitLabCi(root, config) {
   if (rootContent && !managedBlock.includes(`local: /${GITLAB_TEMPLATE_FILE}`)) {
     problems.push(`${GITLAB_CI_FILE} does not include ${GITLAB_TEMPLATE_FILE}`);
   }
-  if (rootContent && !/extends:\s*\.repo_guard_(?:policy|full)/.test(managedBlock)) {
+  if (rootContent && !/extends:\s*\.repo_guard_(?:policy|full|release_ready)/.test(managedBlock)) {
     problems.push(`${GITLAB_CI_FILE} has no repo_guard job extending the managed template`);
   }
-  if (rootContent && !managedBlock.includes(`extends: .repo_guard_${config.ci.profile}`)) {
+  if (rootContent && !managedBlock.includes(`extends: .repo_guard_${config.ci.profile.replaceAll('-', '_')}`)) {
     problems.push(
       `${GITLAB_CI_FILE} repo_guard profile does not match ci.profile=${config.ci.profile}`,
     );
@@ -257,7 +263,9 @@ export function installGitLabCi(root, {
   stage = null,
   dryRun = false,
 } = {}) {
-  if (!['policy', 'full'].includes(profile)) throw new Error('CI profile must be policy or full');
+  if (!['policy', 'full', 'release-ready'].includes(profile)) {
+    throw new Error('CI profile must be policy, full, or release-ready');
+  }
   loadConfig(root);
   const rootPath = path.join(root, GITLAB_CI_FILE);
   const templatePath = path.join(root, GITLAB_TEMPLATE_FILE);

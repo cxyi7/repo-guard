@@ -264,6 +264,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
   assert.match(template, /repo-guard-gitlab-template:v1/);
   assert.match(template, /npx --no-install repo-guard ci --profile policy/);
+  assert.match(template, /npx --no-install repo-guard ci --profile release-ready/);
   assert.match(template, /node:22\.23\.2/);
   assert.match(template, /GIT_DEPTH: "0"/);
   assert.match(template, /REPO_GUARD_SKIP_HOOKS: "1"/);
@@ -283,6 +284,28 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   assert.equal(repeat.rootChanged, false);
   assert.equal(repeat.templateChanged, false);
   assert.equal(installedRoot, readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'));
+});
+
+test('installs the release-ready GitLab profile without embedding publish or deploy', (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  writeFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
+  );
+  const installed = installGitLabCi(fixture.root, { profile: 'release-ready' });
+  assert.equal(installed.integrated, true);
+  const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
+  const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
+  assert.match(root, /extends: \.repo_guard_release_ready/);
+  assert.match(template, /repo-guard ci --profile release-ready/);
+  assert.doesNotMatch(template, /npm publish|\bdeploy\b/);
+  const installedConfig = validateConfig(JSON.parse(readFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    'utf8',
+  )));
+  assert.equal(installedConfig.ci.profile, 'release-ready');
+  assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
 });
 
 test('generates the GitLab template but does not rewrite complex existing includes', (context) => {

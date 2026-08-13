@@ -50,7 +50,7 @@ export function containsSensitiveExternalData(value) {
     || /["']?(?:token|password|passwd|secret|cookie|authorization|api[-_]?key|access[-_]?token|refresh[-_]?token|client[-_]?secret|session[-_]?id)["']?\s*[:=]\s*["']?[^\s"',;}]+/i.test(text);
 }
 
-export async function runExactNpmScript({ root, script, signal }) {
+async function runExactNpmInvocation({ root, argumentsList, signal, env = process.env }) {
   const npmCli = npmCliPath();
   if (!npmCli) throw new Error('Unable to locate the npm CLI used by this Node.js installation');
   return await new Promise((resolve, reject) => {
@@ -61,10 +61,10 @@ export async function runExactNpmScript({ root, script, signal }) {
       settled = true;
       handler(value);
     };
-    const child = spawn(process.execPath, [npmCli, 'run', script], {
+    const child = spawn(process.execPath, [npmCli, ...argumentsList], {
       cwd: root,
       detached: process.platform !== 'win32',
-      env: process.env,
+      env,
       shell: false,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -119,4 +119,16 @@ export async function runExactNpmScript({ root, script, signal }) {
     else signal.addEventListener('abort', abort, { once: true });
     child.on('close', () => signal.removeEventListener('abort', abort));
   });
+}
+
+export async function runExactNpmScript({ root, script, signal, env }) {
+  return await runExactNpmInvocation({ root, argumentsList: ['run', script], signal, env });
+}
+
+export async function runExactNpmCommand({ root, argumentsList, signal, env }) {
+  if (!Array.isArray(argumentsList) || argumentsList.length === 0
+    || argumentsList.some((argument) => typeof argument !== 'string' || argument === '')) {
+    throw new TypeError('npm argumentsList must contain non-empty strings');
+  }
+  return await runExactNpmInvocation({ root, argumentsList, signal, env });
 }

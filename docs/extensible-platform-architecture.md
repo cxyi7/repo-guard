@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.1.0 已在原生 Gate 平台上完成严格的外部门禁脚本接入；当前主要未完成项是阶段 7 的发布准备计划，以及阶段 8 的目录依赖边界自动化。**
+结论：**1.2.0 已在原生 Gate 平台上完成只读的发布准备计划；当前主要未完成项是阶段 8 的目录依赖边界自动化。**
 
 ### 3.1 已经符合的部分
 
@@ -51,7 +51,7 @@
 | 工具所有权 | ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、LHCI 等使用消费项目安装和配置 | 符合 |
 | pre-commit | 只处理暂存内容，并通过 `lint-staged` 保留部分暂存和未暂存修改 | 符合 |
 | pre-push | 读取推送提交配置，并要求精确 HEAD 和干净工作区后运行重型门禁 | 符合 |
-| CI | 提供只读 `policy`、`full` profile 和结构化 JSON 报告 | 符合 |
+| CI | 提供只读 `policy`、`full`、`release-ready` profile 和结构化 JSON 报告 | 符合 |
 | 职责拆分 | 保护文件检查与暂存代码质量检查是独立模块 | 符合 |
 | 安全规则 | 动态代码和 Vue 硬规则不依赖消费项目 ESLint 配置 | 符合 |
 | 例外治理 | 例外精确、限时、独立审批，且不能由工具自动新增或续期 | 符合 |
@@ -386,7 +386,7 @@ repo-guard 负责检查工具是否存在、以受控参数运行、归一化结
     {
       "id": "project.api-test",
       "enabled": true,
-      "environments": ["manual", "ci-full"],
+      "environments": ["manual", "ci-full", "release-ready"],
       "script": "test:api",
       "timeoutMs": 300000,
       "report": {
@@ -403,7 +403,7 @@ repo-guard 负责检查工具是否存在、以受控参数运行、归一化结
 - 只能运行 `package.json` 中已存在的精确脚本名；
 - 不接受任意 shell 命令、命令拼接或内联脚本；
 - pre-commit 默认禁止项目脚本门禁；
-- CI 外部门禁只允许 GitLab 明确标记为受保护引用的 CI full；
+- CI 外部门禁只允许 GitLab 明确标记为受保护引用的 CI full 或 release-ready；
 - 每项门禁有超时、取消和 artifact 上限，并在固定计划中串行执行；
 - 报告必须通过版本化 Schema 校验；
 - repo-guard 不加载项目 JavaScript 作为进程内插件；
@@ -469,7 +469,7 @@ typecheck
 - `policy`：结构化例外、硬性规则、依赖策略、文件规则、变更测试策略和保护文件；
 - `full`：在 policy 基础上运行已启用的全项目 lint、类型检查、测试、架构和构建。
 
-后续可增加 `release-ready` 执行计划，但它仍然只回答“是否具备发布条件”，不执行 publish 或 deploy。典型内容包括：
+`release-ready` 执行计划只回答“是否具备发布条件”，不执行 publish 或 deploy。典型内容包括：
 
 - `npm run check`；
 - 完整测试；
@@ -618,7 +618,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 ### 阶段 0：固化当前行为
 
 - 记录所有 CLI 命令、参数、关键 console 输出和退出码；
-- 固化 pre-commit、pre-push、CI policy 和 CI full 的实际执行顺序；
+- 固化 pre-commit、pre-push、CI policy、CI full 和 release-ready 的实际执行顺序；
 - 为部分暂存、失败恢复、保护文件独立执行和精确推送快照补充特征测试；
 - 生成当前模块依赖图并记录已知反向依赖；
 - 审计包根 exports，区分已承诺公共 API 与偶然导出的内部 API；
@@ -703,6 +703,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 验收：消费项目可接入一种新的测试类型，而 repo-guard 不需要新增业务 runner。
 
 ### 阶段 7：发布准备计划
+
+实施状态：`1.2.0` 已完成。`release-ready` 是新的可选 CI profile 和锁定 Execution Plan，复用 CI policy、项目精确 `check`/`test` scripts、build、可选 Lighthouse，并通过忽略 lifecycle scripts 的 npm pack dry-run 核验版本、lockfile、changelog、Schema 和发布 artifact。该生命周期只允许只读 Gate，使用环境变量白名单移除发布/部署/云凭证，拒绝发布或部署脚本，外部门禁仅能在受保护引用上固定追加；计划不生成 tarball，不执行 publish、deploy 或凭证操作。
 
 - 在 CI 编排中增加可选 `release-ready` 计划；
 - 复用 check、test、pack、build 和外部门禁结果；
