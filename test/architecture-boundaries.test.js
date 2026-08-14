@@ -45,7 +45,6 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'prettier-runner.js',
   'quality-runner.js',
   'stylelint-runner.js',
-  'typecheck-runner.js',
   'unit-test-runner.js',
 ]);
 
@@ -246,6 +245,31 @@ test('separates build execution facts from gate decisions without a root runner'
   assert.match(
     readFileSync(setupPath, 'utf8'),
     /integrations\/npm\/build\.js/,
+  );
+});
+
+test('separates typecheck execution facts from gate decisions without a root runner', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'typecheck-runner.js')), false);
+  const integrationPath = path.join(SOURCE_ROOT, 'integrations', 'npm', 'typecheck.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'typecheck-gate.js');
+  const setupPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'typecheck-setup.js');
+  assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(gatePath), true);
+  assert.equal(existsSync(setupPath), true);
+
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|processFailureFinding|executionError)\b/,
+  );
+  assert.match(integrationSource, /export function executeProjectTypeCheck/);
+  assert.match(
+    readFileSync(gatePath, 'utf8'),
+    /integrations\/npm\/typecheck\.js/,
+  );
+  assert.match(
+    readFileSync(setupPath, 'utf8'),
+    /integrations\/npm\/typecheck\.js/,
   );
 });
 

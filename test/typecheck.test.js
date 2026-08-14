@@ -13,10 +13,10 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { runPrePush } from '../src/commands/pre-push.js';
 import {
-  detectProjectTypeCheckSetup,
   runTypeCheckGate,
-  validateTypeCheckSetup,
-} from '../src/typecheck-runner.js';
+} from '../src/gates/quality/typecheck-gate.js';
+import { detectProjectTypeCheckSetup } from '../src/gates/quality/typecheck-setup.js';
+import { validateTypeCheckSetup } from '../src/integrations/npm/typecheck.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

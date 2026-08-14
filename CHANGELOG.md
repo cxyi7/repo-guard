@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.9
+
+- 将顶层 `src/typecheck-runner.js` 按职责拆分为 `src/integrations/npm/typecheck.js`、`src/gates/quality/typecheck-gate.js` 与 `src/gates/quality/typecheck-setup.js`：integration 只验证并执行消费项目自己的 npm typecheck 脚本，gate 负责 GateResult、finding 与 diagnostic，setup 负责 init readiness。
+- 保持 TypeScript 门禁不进入 pre-commit，并保持配置、CLI、pre-push/CI 固定顺序、Windows/npm 启动方式、超时、稳定错误代码、输出脱敏和公共 exports 不变；删除旧 runner 且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 typecheck integration 不产生 GateResult 或策略 finding、quality gate 和 setup 显式消费 integration facts，并从顶层 runner/policy 待迁移清单移除 typecheck。
+
 ## 1.4.8
 
 - 将顶层 `src/build-runner.js` 按职责拆分为 `src/integrations/npm/build.js`、`src/gates/quality/build-gate.js` 与 `src/gates/quality/build-setup.js`：integration 只验证并执行消费项目自己的 npm build 脚本，gate 负责 GateResult、finding 与 diagnostic，setup 负责 init readiness。

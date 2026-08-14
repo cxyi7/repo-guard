@@ -53,7 +53,8 @@ import {
   unitTestPolicyFindings,
   validateUnitTestSetup,
 } from '../unit-test-runner.js';
-import { runTypeCheckGate, validateTypeCheckSetup } from '../typecheck-runner.js';
+import { runTypeCheckGate } from './quality/typecheck-gate.js';
+import { validateTypeCheckSetup } from '../integrations/npm/typecheck.js';
 import { skippedResult } from './native-result.js';
 
 const CONFIG_VERSION = [1];

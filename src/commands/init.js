@@ -26,7 +26,7 @@ import { detectProjectBuildSetup } from '../gates/quality/build-setup.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';
-import { detectProjectTypeCheckSetup } from '../typecheck-runner.js';
+import { detectProjectTypeCheckSetup } from '../gates/quality/typecheck-setup.js';
 import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 
