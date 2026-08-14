@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+- 新增仓库自用的 dependency-cruiser 17.4.3 架构检查，以 error 级别拒绝无法解析和循环依赖，强制 `core`、`gates`、`orchestration` 与 `integrations` 的依赖方向，并纳入标准 `npm run check`。
+- 禁止 core 反向依赖平台层、gate 依赖编排或 renderer、不同 gate 领域深层互相导入、integration 决定策略/渲染以及 orchestration 绕过 gate 直接调用 integration。
+- 新增阶段 8 防回归测试：用故意违规、无法解析和循环的临时依赖图证明全部规则可触发，冻结现有顶层 runner/policy/parser 与 gate 入口迁移清单，禁止 gate 接管进程退出或重新收集 Git 范围，并锁定已审查的包根 exports 及目标。
+- 本版本只完成目录依赖边界自动化，不批量移动现有顶层文件；后续目录迁移必须作为独立阶段逐项评审。
+
 ## 1.3.0
 
 - 消费项目工具解析现在会对缺失 package.json、缺失项目依赖和无法解析的包入口返回带稳定代码与修复步骤的 typed configuration error。

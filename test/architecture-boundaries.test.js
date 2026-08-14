@@ -1,0 +1,170 @@
+import assert from 'node:assert/strict';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { cruise } from 'dependency-cruiser';
+import dependencyCruiserConfig from '../.dependency-cruiser.cjs';
+
+const ROOT = process.cwd();
+const SOURCE_ROOT = path.join(ROOT, 'src');
+
+const EXPECTED_BOUNDARY_RULES = Object.freeze([
+  'core-does-not-depend-on-platform-layers',
+  'gate-domains-do-not-deep-import-each-other',
+  'gates-do-not-depend-on-orchestration',
+  'gates-do-not-import-report-renderers',
+  'integrations-do-not-depend-on-policy-layers',
+  'integrations-do-not-import-policy-or-rendering',
+  'no-circular-dependencies',
+  'no-unresolvable-imports',
+  'orchestration-entrypoints-do-not-call-integrations-directly',
+]);
+
+const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
+  'native-result.js',
+  'platform-capabilities.js',
+  'registry.js',
+]);
+
+const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
+  'accessibility-test-runner.js',
+  'architecture-runner.js',
+  'build-runner.js',
+  'ci-runner.js',
+  'coverage-runner.js',
+  'dependency-policy.js',
+  'eslint-runner.js',
+  'lighthouse-runner.js',
+  'prettier-runner.js',
+  'quality-runner.js',
+  'stylelint-runner.js',
+  'typecheck-runner.js',
+  'unit-test-runner.js',
+  'vue-template-parser.js',
+]);
+
+function javascriptFiles(root) {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) return javascriptFiles(target);
+    return entry.isFile() && entry.name.endsWith('.js') ? [target] : [];
+  });
+}
+
+function writeFixture(root, relativePath, source = 'export const fixture = true;\n') {
+  const target = path.join(root, relativePath);
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, source, 'utf8');
+}
+
+test('enforces every declared platform dependency direction as an error', async () => {
+  assert.deepEqual(
+    dependencyCruiserConfig.forbidden.map((rule) => rule.name).sort(),
+    EXPECTED_BOUNDARY_RULES,
+  );
+  assert.equal(
+    dependencyCruiserConfig.forbidden.every((rule) => rule.severity === 'error'),
+    true,
+  );
+
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'repo-guard-boundaries-'));
+  try {
+    const targets = [
+      'src/core/report/renderer.js',
+      'src/gates/security/gate.js',
+      'src/gates/testing/gate.js',
+      'src/integrations/npm/tool.js',
+      'src/orchestration/runner.js',
+    ];
+    for (const target of targets) writeFixture(fixtureRoot, target);
+
+    writeFixture(fixtureRoot, 'src/core/invalid.js', "import '../gates/security/gate.js';\n");
+    writeFixture(fixtureRoot, 'src/core/unresolved.js', "import './missing.js';\n");
+    writeFixture(fixtureRoot, 'src/core/cycle-a.js', "import './cycle-b.js';\n");
+    writeFixture(fixtureRoot, 'src/core/cycle-b.js', "import './cycle-a.js';\n");
+    writeFixture(fixtureRoot, 'src/gates/security/orchestration.js', "import '../../orchestration/runner.js';\n");
+    writeFixture(fixtureRoot, 'src/gates/security/report.js', "import '../../core/report/renderer.js';\n");
+    writeFixture(fixtureRoot, 'src/gates/security/cross-domain.js', "import '../testing/gate.js';\n");
+    writeFixture(fixtureRoot, 'src/integrations/npm/gate.js', "import '../../gates/testing/gate.js';\n");
+    writeFixture(fixtureRoot, 'src/integrations/npm/report.js', "import '../../core/report/renderer.js';\n");
+    writeFixture(fixtureRoot, 'src/orchestration/integration.js', "import '../integrations/npm/tool.js';\n");
+
+    const result = await cruise(['src'], {
+      ...dependencyCruiserConfig.options,
+      baseDir: fixtureRoot,
+      outputType: 'json',
+      ruleSet: { forbidden: dependencyCruiserConfig.forbidden },
+      validate: true,
+    });
+    const report = JSON.parse(result.output);
+    assert.deepEqual(
+      [...new Set(report.summary.violations.map((violation) => violation.rule.name))].sort(),
+      EXPECTED_BOUNDARY_RULES,
+    );
+    assert.equal(report.summary.error >= EXPECTED_BOUNDARY_RULES.length, true);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test('keeps architecture enforcement in the standard repository check', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(
+    packageJson.scripts['architecture:check'],
+    'depcruise --config .dependency-cruiser.cjs --output-type err-long src',
+  );
+  assert.match(packageJson.scripts.check, /npm run architecture:check/);
+  assert.equal(packageJson.devDependencies['dependency-cruiser'], '17.4.3');
+});
+
+test('does not add new top-level runner, policy, or parser files', () => {
+  const architectureFiles = readdirSync(SOURCE_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /(?:runner|policy|parser)\.js$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual(architectureFiles, LEGACY_TOP_LEVEL_ARCHITECTURE_FILES);
+
+  const topLevelGateFiles = readdirSync(path.join(SOURCE_ROOT, 'gates'), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual(topLevelGateFiles, REVIEWED_TOP_LEVEL_GATE_FILES);
+});
+
+test('keeps gates free of process ownership and Git range collection', () => {
+  for (const file of javascriptFiles(path.join(SOURCE_ROOT, 'gates'))) {
+    const source = readFileSync(file, 'utf8');
+    const relative = path.relative(ROOT, file);
+    assert.doesNotMatch(source, /\bprocess\.(?:exit|exitCode)\b/, relative);
+    assert.doesNotMatch(
+      source,
+      /\b(?:collect(?:PrePush|Revision|Staged|WorkingTree)Changes|getStagedFiles|resolveCiRange)\b/,
+      relative,
+    );
+  }
+});
+
+test('keeps package exports on reviewed contracts and schemas', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.deepEqual(packageJson.exports, {
+    '.': './src/index.js',
+    './config.schema.json': './config.schema.json',
+    './external-report.schema.json': './external-report.schema.json',
+    './gate-result.schema.json': './gate-result.schema.json',
+  });
+
+  const publicEntry = readFileSync(path.join(SOURCE_ROOT, 'index.js'), 'utf8');
+  assert.doesNotMatch(
+    publicEntry,
+    /from ['"]\.\/(?:gates|integrations|orchestration)\//,
+  );
+  assert.doesNotMatch(publicEntry, /from ['"][^'"]*(?:runner|policy|parser)\.js['"]/);
+});

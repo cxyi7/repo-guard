@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.3.0 已完成统一报告链收口；当前主要未完成项是阶段 8 的目录依赖边界自动化。**
+结论：**1.4.0 已完成阶段 8 的目录依赖边界自动化；当前主要未完成项是按独立功能逐步迁移仍位于 `src` 根目录的 runner、policy 和 parser。**
 
 ### 3.1 已经符合的部分
 
@@ -64,7 +64,7 @@
 
 | 问题 | 当前表现 | 影响 |
 | --- | --- | --- |
-| 文件结构偏平 | `src` 中 command、policy、runner、解析器和基础设施混排 | 依赖方向主要靠约定，难以自动验证 |
+| 文件结构偏平 | `src` 根目录仍保留一组迁移前 runner、policy 和 parser | 已冻结清单且不能继续扩张，但仍需随独立功能逐项迁入目标目录 |
 
 以上问题不意味着当前实现错误；它们是从“已有门禁工具”继续扩展为“门禁平台”时需要解决的结构性限制。
 
@@ -740,6 +740,8 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 验收：平台能证明“可以发布”，但不会替用户执行发布。
 
 ### 阶段 8：完成目录迁移和公共 API 收敛
+
+实施状态：`1.4.0` 已完成依赖边界自动化和公共 exports 防回归。dependency-cruiser 以 error 级别拒绝无法解析和循环依赖，并强制 `core`、`gates`、`orchestration`、`integrations` 的允许方向；迁移前的 commands/CLI 同样按 orchestration 入口约束。仓库测试用故意违规依赖图验证每条规则，禁止 gate 接管进程退出、重新收集 Git 范围或跨领域深层导入，冻结现有顶层 runner/policy/parser 与 gate 入口清单，并锁定公共 exports 的名称及目标。现有顶层文件尚未批量移动，后续迁移仍需按独立功能逐项评审。
 
 - 清理尚未随功能迁移的旧文件和临时 adapter；
 - 使用 dependency-cruiser 强制 `core`、`gates`、`orchestration`、`integrations` 的依赖方向；
