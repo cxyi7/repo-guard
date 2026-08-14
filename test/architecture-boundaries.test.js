@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -49,6 +50,11 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'typecheck-runner.js',
   'unit-test-runner.js',
   'vue-template-parser.js',
+]);
+
+const LEGACY_TOP_LEVEL_PROJECT_FILES = Object.freeze([
+  'lighthouse-project.js',
+  'stylelint-project.js',
 ]);
 
 function javascriptFiles(root) {
@@ -137,6 +143,19 @@ test('does not add new top-level runner, policy, or parser files', () => {
     .map((entry) => entry.name)
     .sort();
   assert.deepEqual(topLevelGateFiles, REVIEWED_TOP_LEVEL_GATE_FILES);
+});
+
+test('keeps project dependency discovery in core/project without a root compatibility path', () => {
+  const projectFiles = readdirSync(SOURCE_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /(?:package|project)\.js$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual(projectFiles, LEGACY_TOP_LEVEL_PROJECT_FILES);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'project-package.js')), false);
+  assert.equal(
+    existsSync(path.join(SOURCE_ROOT, 'core', 'project', 'package.js')),
+    true,
+  );
 });
 
 test('keeps gates free of process ownership and Git range collection', () => {

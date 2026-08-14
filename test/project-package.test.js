@@ -9,7 +9,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { isRepoGuardError } from '../src/core/error/repo-guard-error.js';
 import { createGateResult } from '../src/core/result/gate-result.js';
-import { resolveProjectPackageMetadata } from '../src/project-package.js';
+import { resolveProjectPackageMetadata } from '../src/core/project/package.js';
 
 function captureError(callback) {
   try {

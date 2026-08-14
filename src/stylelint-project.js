@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectPackageMetadata } from './project-package.js';
+import { resolveProjectPackageMetadata } from './core/project/package.js';
 
 export const STYLELINT_CONFIG_FILES = Object.freeze([
   'stylelint.config.js',

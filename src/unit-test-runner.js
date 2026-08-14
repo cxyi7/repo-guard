@@ -21,7 +21,7 @@ import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';
-import { resolveProjectPackageMetadata } from './project-package.js';
+import { resolveProjectPackageMetadata } from './core/project/package.js';
 import {
   analyzeVueComponentInteractionTest,
   findVueInteractionEntries,

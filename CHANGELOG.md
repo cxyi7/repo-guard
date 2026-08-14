@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.1
+
+- 将消费项目 package.json、项目依赖包清单与运行入口解析从顶层 `src/project-package.js` 迁入 `src/core/project/package.js`，所有调用方直接使用目标目录，不保留旧路径兼容转发。
+- 保持 `project-package/*` 稳定错误代码、typed configuration error、修复建议、公共 exports 和消费项目工具所有权不变；本次仅完成项目依赖解析边界归位。
+- 扩充阶段 8 静态测试，确认旧路径不存在、目标实现存在，并冻结仍待迁移的顶层 gate-specific `*-project.js` 清单，禁止项目发现基础设施重新堆回 `src` 根目录。
+
 ## 1.4.0
 
 - 新增仓库自用的 dependency-cruiser 17.4.3 架构检查，以 error 级别拒绝无法解析和循环依赖，强制 `core`、`gates`、`orchestration` 与 `integrations` 的依赖方向，并纳入标准 `npm run check`。

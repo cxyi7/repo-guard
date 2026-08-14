@@ -11,7 +11,7 @@ import { processOutputDiagnostics } from './core/execution/process-output.js';
 import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { collectProjectFiles } from './file-placement.js';
-import { resolveProjectPackageMetadata } from './project-package.js';
+import { resolveProjectPackageMetadata } from './core/project/package.js';
 import { analyzeUnitTestContent } from './unit-test-runner.js';
 
 const INTEGRATIONS = Object.freeze([

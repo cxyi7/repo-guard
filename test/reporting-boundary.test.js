@@ -138,7 +138,7 @@ test('forbids untyped Error and AggregateError construction across project bound
 });
 
 test('keeps consumer dependency resolution on typed configuration errors', () => {
-  const source = readFileSync(path.join(SOURCE_ROOT, 'project-package.js'), 'utf8');
+  const source = readFileSync(path.join(SOURCE_ROOT, 'core', 'project', 'package.js'), 'utf8');
   assert.doesNotMatch(source, /throw new Error\s*\(/);
   assert.match(source, /project-package\/missing-manifest/);
   assert.match(source, /project-package\/dependency-not-installed/);

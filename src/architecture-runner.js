@@ -11,7 +11,7 @@ import path from 'node:path';
 import { configurationError, executionError } from './core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
 import { createGateResult } from './core/result/gate-result.js';
-import { resolveProjectPackageMetadata } from './project-package.js';
+import { resolveProjectPackageMetadata } from './core/project/package.js';
 
 const ARCHITECTURE_GATE_ID = 'quality.architecture';
 

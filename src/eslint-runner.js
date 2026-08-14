@@ -5,7 +5,7 @@ import {
   restoreFileContents,
 } from './file-snapshot.js';
 import { createRepoGuardEslintConfig } from './eslint-config.js';
-import { resolveProjectPackageMetadata } from './project-package.js';
+import { resolveProjectPackageMetadata } from './core/project/package.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';

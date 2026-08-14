@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { configurationError } from './core/error/repo-guard-error.js';
+import { configurationError } from '../error/repo-guard-error.js';
 
 function dependencyRemediation(packageName) {
   return {
