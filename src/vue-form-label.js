@@ -4,7 +4,7 @@ import { findStructuredException } from './exception-registry.js';
 import {
   findVueTemplateElements,
   sourceLocation,
-} from './vue-template-parser.js';
+} from './integrations/vue/template-parser.js';
 
 export const VUE_FORM_CONTROL_LABEL_RULE = 'vue/form-control-label';
 const FORM_CONTROLS = new Set(['input', 'select', 'textarea']);

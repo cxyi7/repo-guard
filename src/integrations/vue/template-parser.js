@@ -1,3 +1,4 @@
+// Shared Vue source inspection facts; policy decisions belong to consuming gates.
 function readTag(source, start) {
   if (source.startsWith('<!--', start)) {
     const commentEnd = source.indexOf('-->', start + 4);

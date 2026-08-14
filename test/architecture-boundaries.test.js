@@ -48,7 +48,6 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'stylelint-runner.js',
   'typecheck-runner.js',
   'unit-test-runner.js',
-  'vue-template-parser.js',
 ]);
 
 const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
@@ -173,6 +172,26 @@ test('separates Stylelint project facts from gate-owned setup readiness', () => 
     readFileSync(setupPath, 'utf8'),
     /integrations\/stylelint\/project\.js/,
   );
+});
+
+test('keeps shared Vue template parsing in an integration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-template-parser.js')), false);
+  const parserPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'vue',
+    'template-parser.js',
+  );
+  assert.equal(existsSync(parserPath), true);
+
+  const parserSource = readFileSync(parserPath, 'utf8');
+  assert.doesNotMatch(
+    parserSource,
+    /\b(?:createGateResult|createFinding|configurationError|executionError)\b/,
+  );
+  assert.match(parserSource, /export function findVueTemplateAttributes/);
+  assert.match(parserSource, /export function findVueTemplateElements/);
+  assert.match(parserSource, /export function sourceLocation/);
 });
 
 test('keeps Lighthouse project inspection in its integration without a root compatibility path', () => {

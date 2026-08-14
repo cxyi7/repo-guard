@@ -4,7 +4,7 @@ import { toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import { findStructuredException } from '../../exception-registry.js';
-import { sourceLocation } from '../../vue-template-parser.js';
+import { sourceLocation } from '../../integrations/vue/template-parser.js';
 import { findDynamicCodeAstReferences } from './dynamic-code-ast.js';
 import {
   NO_EVAL_RULE,

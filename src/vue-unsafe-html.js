@@ -4,7 +4,7 @@ import { findStructuredException } from './exception-registry.js';
 import {
   findVueTemplateAttributes,
   sourceLocation,
-} from './vue-template-parser.js';
+} from './integrations/vue/template-parser.js';
 
 export const VUE_NO_V_HTML_RULE = 'vue/no-v-html';
 

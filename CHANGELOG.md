@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.7
+
+- 将共享的顶层 `src/vue-template-parser.js` 迁入 `src/integrations/vue/template-parser.js`，明确 Vue 源码标签、属性、元素层级和位置解析只提供静态事实，安全与可访问性策略仍由各自 gate 规则负责。
+- 保持模板扫描、注释与 mustache 跳过、raw-text 元素、嵌套 template、属性偏移和源码位置行为不变；所有调用方直接使用目标路径，删除旧根路径且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 integration 不创建 GateResult、finding 或分类异常，并将顶层 runner/policy/parser 待迁移清单移除 `vue-template-parser.js`。
+
 ## 1.4.6
 
 - 将顶层 `src/stylelint-project.js` 按职责拆分为 `src/integrations/stylelint/project.js` 与 `src/gates/quality/stylelint-setup.js`：integration 提供消费项目 Stylelint 包与配置事实，gate setup 将可选工具状态转换为 init readiness。

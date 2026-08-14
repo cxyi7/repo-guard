@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.6
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.7
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.7
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.7
+npx repo-guard doctor
+```
+
+1.4.7 将共享的 Vue 模板静态解析器从顶层 `src/vue-template-parser.js` 迁入内部 `integrations/vue/template-parser.js`，旧路径已删除且没有兼容转发。该 integration 只提供标签、属性、元素层级和源码位置事实，不创建门禁结果或策略 finding；动态代码、`v-html`、`target="_blank"`、图片 alt、表单 label 与组件交互规则继续拥有各自判定。模板扫描行为、配置、错误格式和公共 exports 均保持不变。
 
 ## 升级到 1.4.6
 
