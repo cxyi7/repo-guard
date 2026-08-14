@@ -51,9 +51,7 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'vue-template-parser.js',
 ]);
 
-const LEGACY_TOP_LEVEL_PROJECT_FILES = Object.freeze([
-  'stylelint-project.js',
-]);
+const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
 
 function javascriptFiles(root) {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -148,11 +146,32 @@ test('keeps project dependency discovery in core/project without a root compatib
     .filter((entry) => entry.isFile() && /(?:package|project)\.js$/.test(entry.name))
     .map((entry) => entry.name)
     .sort();
-  assert.deepEqual(projectFiles, LEGACY_TOP_LEVEL_PROJECT_FILES);
+  assert.deepEqual(projectFiles, REVIEWED_TOP_LEVEL_PROJECT_FILES);
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'project-package.js')), false);
   assert.equal(
     existsSync(path.join(SOURCE_ROOT, 'core', 'project', 'package.js')),
     true,
+  );
+});
+
+test('separates Stylelint project facts from gate-owned setup readiness', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'stylelint-project.js')), false);
+  const integrationPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'stylelint',
+    'project.js',
+  );
+  const setupPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'stylelint-setup.js');
+  assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(setupPath), true);
+  assert.doesNotMatch(
+    readFileSync(integrationPath, 'utf8'),
+    /detectProjectStylelintSetup/,
+  );
+  assert.match(
+    readFileSync(setupPath, 'utf8'),
+    /integrations\/stylelint\/project\.js/,
   );
 });
 

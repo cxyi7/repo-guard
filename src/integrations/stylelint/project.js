@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectPackageMetadata } from './core/project/package.js';
+import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 
 export const STYLELINT_CONFIG_FILES = Object.freeze([
   'stylelint.config.js',
@@ -48,21 +48,4 @@ export function findProjectStylelintConfig(root) {
   } catch {
     return null;
   }
-}
-
-export function detectProjectStylelintSetup(root) {
-  let metadata = null;
-  try {
-    metadata = resolveProjectStylelintMetadata(root);
-  } catch {
-    // Initialization reports missing optional tooling without failing the whole setup.
-  }
-
-  const configFile = findProjectStylelintConfig(root);
-  return {
-    configFile,
-    installed: Boolean(metadata),
-    metadata,
-    ready: Boolean(metadata && configFile),
-  };
 }

@@ -13,7 +13,7 @@ import { findStructuredException } from './exception-registry.js';
 import {
   findProjectStylelintConfig,
   resolveProjectStylelintMetadata,
-} from './stylelint-project.js';
+} from './integrations/stylelint/project.js';
 import { assertVueStyleLanguages } from './vue-style-languages.js';
 import { inspectUnexpectedGlobalStyles } from './style-governance.js';
 import { createGateResult } from './core/result/gate-result.js';

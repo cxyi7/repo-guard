@@ -37,7 +37,10 @@ import {
   resolveProjectPrettierConfigFile,
   resolveProjectPrettierMetadata,
 } from '../prettier-runner.js';
-import { findProjectStylelintConfig, resolveProjectStylelintMetadata } from '../stylelint-project.js';
+import {
+  findProjectStylelintConfig,
+  resolveProjectStylelintMetadata,
+} from '../integrations/stylelint/project.js';
 import {
   runStyleComplexityProject,
   runStyleGovernanceProject,

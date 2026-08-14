@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.6
+
+- 将顶层 `src/stylelint-project.js` 按职责拆分为 `src/integrations/stylelint/project.js` 与 `src/gates/quality/stylelint-setup.js`：integration 提供消费项目 Stylelint 包与配置事实，gate setup 将可选工具状态转换为 init readiness。
+- 保持 Stylelint 配置文件发现、`package.json#stylelint`、项目安装解析、ESM 入口兼容、初始化自动启用和现有错误行为不变；runner 与 platform capability 使用 integration，`commands/init` 只使用 gate-owned setup，不保留旧路径兼容转发。
+- 增加阶段 8 防回归测试，确认事实与 readiness 边界、旧根路径删除，并将顶层 `*-project.js` 审查清单正式收敛为空。
+
 ## 1.4.5
 
 - 将安装期维护 Lighthouse 与 coverage 输出忽略项的顶层 `src/lighthouse-ignore.js` 迁入 `src/orchestration/setup/lighthouse-ignore.js`，明确它属于 init/doctor/hook 安装编排，不属于运行 integration 或质量 gate。

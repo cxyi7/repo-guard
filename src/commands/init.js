@@ -25,7 +25,7 @@ import { ensureProjectConfig } from '../config-management.js';
 import { detectProjectBuildSetup } from '../build-runner.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
-import { detectProjectStylelintSetup } from '../stylelint-project.js';
+import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';
 import { detectProjectTypeCheckSetup } from '../typecheck-runner.js';
 import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
