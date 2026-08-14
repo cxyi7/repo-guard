@@ -8,7 +8,7 @@ import { configurationError, executionError } from './core/error/repo-guard-erro
 import micromatch from 'micromatch';
 import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from './config.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/report/guidance-catalog.js';
+import { processFailureFinding } from './core/result/process-failure-guidance.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { collectProjectFiles } from './file-placement.js';
 import { resolveProjectPackageMetadata } from './core/project/package.js';

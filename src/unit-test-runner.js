@@ -17,7 +17,7 @@ import {
 } from './coverage-runner.js';
 import { changeSetEntries } from './core/capability/gate-context.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/report/guidance-catalog.js';
+import { processFailureFinding } from './core/result/process-failure-guidance.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';

@@ -8,7 +8,7 @@ import {
 } from '../src/policies/managed-policies.js';
 import {
   processFailureGuidanceIds,
-} from '../src/core/report/guidance-catalog.js';
+} from '../src/core/result/process-failure-guidance.js';
 
 const SOURCE_ROOT = path.join(process.cwd(), 'src');
 const TEST_ROOT = path.join(process.cwd(), 'test');

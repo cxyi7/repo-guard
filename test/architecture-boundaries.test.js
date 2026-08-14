@@ -165,6 +165,25 @@ test('keeps Lighthouse project inspection in its integration without a root comp
   );
 });
 
+test('keeps structured process guidance with results and core/report limited to renderers', () => {
+  assert.equal(
+    existsSync(path.join(SOURCE_ROOT, 'core', 'report', 'guidance-catalog.js')),
+    false,
+  );
+  assert.equal(
+    existsSync(path.join(SOURCE_ROOT, 'core', 'result', 'process-failure-guidance.js')),
+    true,
+  );
+  const reportFiles = readdirSync(path.join(SOURCE_ROOT, 'core', 'report'), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
+  assert.ok(reportFiles.length > 0);
+  assert.ok(reportFiles.every((file) => /renderer\.js$/.test(file)));
+});
+
 test('keeps gates free of process ownership and Git range collection', () => {
   for (const file of javascriptFiles(path.join(SOURCE_ROOT, 'gates'))) {
     const source = readFileSync(file, 'utf8');

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { executionError } from './core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/report/guidance-catalog.js';
+import { processFailureFinding } from './core/result/process-failure-guidance.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { validateVueLighthouseSetup } from './integrations/lighthouse/project.js';
 

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { configurationError, executionError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/report/guidance-catalog.js';
+import { processFailureFinding } from './core/result/process-failure-guidance.js';
 import { runProjectScript } from './integrations/npm/run-script.js';
 
 export const TYPE_CHECK_GATE_ID = 'quality.typecheck';

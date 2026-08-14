@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.4.0 已完成阶段 8 的目录依赖边界自动化，1.4.1 将项目依赖解析迁入 `core/project`，1.4.2 将 Lighthouse 项目探测迁入 `integrations/lighthouse`；当前主要未完成项是按独立功能逐步迁移仍位于 `src` 根目录的 runner、policy 和 parser。**
+结论：**1.4.0 已完成阶段 8 的目录依赖边界自动化，1.4.1 将项目依赖解析迁入 `core/project`，1.4.2 将 Lighthouse 项目探测迁入 `integrations/lighthouse`，1.4.3 将结构化进程失败 guidance 归入 `core/result` 并使 `core/report` 只保留 renderer；当前主要未完成项是按独立功能逐步迁移仍位于 `src` 根目录的 runner、policy 和 parser。**
 
 ### 3.1 已经符合的部分
 
@@ -317,7 +317,7 @@ interface ActionableIssue {
 
 AI 使用 JSON `issues` 作为规范输入；console 只负责将同一字段排版为可读块，不维护另一套修复指令。
 
-写入 `AGENTS.md` 的长期 AI 约束与一次门禁执行的 finding 分属不同生命周期，但同样不能散落在 runner 或规则文件。受管块的 marker、幂等写入和 current 校验统一位于 `core/policy`，例外、架构、单元测试和 axe 的模板统一注册在 `policies/managed-policies.js`；进程失败 remediation 则由 `core/report` 的 guidance catalog 按稳定 Gate ID 提供。
+写入 `AGENTS.md` 的长期 AI 约束与一次门禁执行的 finding 分属不同生命周期，但同样不能散落在 runner 或规则文件。受管块的 marker、幂等写入和 current 校验统一位于 `core/policy`，例外、架构、单元测试和 axe 的模板统一注册在 `policies/managed-policies.js`；进程失败 remediation 则由 `core/result` 的 process failure guidance 按稳定 Gate ID 提供，`core/report` 只负责 renderer。
 
 所有官方门禁必须直接返回结构化 finding 和 metric，不得以 console 文本或数字退出码作为内部事实来源。0.x 迁移期曾使用的数字 runner adapter、旧 facade 和重复 command wrapper 已在 1.0.0 删除；后续阶段不得重新引入兼容旁路。
 
@@ -654,7 +654,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 1：统一结果模型
 
-实施状态：`0.16.0` 建立统一模型，1.0.0 删除临时 adapter，1.3.0 完成报告与提示链收口。统一模型位于 `src/core/result`，renderer 与进程修复 guidance 位于 `src/core/report`，受管策略生命周期位于 `src/core/policy`，`AGENTS.md` 模板位于 `src/policies`；所有官方门禁原生生成同一结果，消费项目子进程输出先进入 diagnostics，console 与 CI JSON 不再存在 gate/runner 专属旁路。
+实施状态：`0.16.0` 建立统一模型，1.0.0 删除临时 adapter，1.3.0 完成报告与提示链收口，1.4.3 将结构化进程失败 guidance 从 renderer 目录归入 `core/result`。统一模型与进程修复 guidance 位于 `src/core/result`，renderer 位于 `src/core/report`，受管策略生命周期位于 `src/core/policy`，`AGENTS.md` 模板位于 `src/policies`；所有官方门禁原生生成同一结果，消费项目子进程输出先进入 diagnostics，console 与 CI JSON 不再存在 gate/runner 专属旁路。
 
 - 定义 `GateStatus`、`Finding`、`Artifact` 和 `GateResult`；
 - 新模块直接创建在 `core/result` 和 `core/report`；
@@ -741,7 +741,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 8：完成目录迁移和公共 API 收敛
 
-实施状态：`1.4.0` 已完成依赖边界自动化和公共 exports 防回归。dependency-cruiser 以 error 级别拒绝无法解析和循环依赖，并强制 `core`、`gates`、`orchestration`、`integrations` 的允许方向；迁移前的 commands/CLI 同样按 orchestration 入口约束。仓库测试用故意违规依赖图验证每条规则，禁止 gate 接管进程退出、重新收集 Git 范围或跨领域深层导入，冻结现有顶层 runner/policy/parser 与 gate 入口清单，并锁定公共 exports 的名称及目标。`1.4.1` 将项目依赖包清单和入口解析迁入 `core/project/package.js`；`1.4.2` 将 Lighthouse 配置发现、Vue 项目识别和 `@lhci/cli` 解析迁入 `integrations/lighthouse/project.js`。两个版本均删除旧根路径且不保留兼容转发；其余顶层文件继续按独立功能逐项评审和迁移。
+实施状态：`1.4.0` 已完成依赖边界自动化和公共 exports 防回归。dependency-cruiser 以 error 级别拒绝无法解析和循环依赖，并强制 `core`、`gates`、`orchestration`、`integrations` 的允许方向；迁移前的 commands/CLI 同样按 orchestration 入口约束。仓库测试用故意违规依赖图验证每条规则，禁止 gate 接管进程退出、重新收集 Git 范围或跨领域深层导入，冻结现有顶层 runner/policy/parser 与 gate 入口清单，并锁定公共 exports 的名称及目标。`1.4.1` 将项目依赖包清单和入口解析迁入 `core/project/package.js`；`1.4.2` 将 Lighthouse 配置发现、Vue 项目识别和 `@lhci/cli` 解析迁入 `integrations/lighthouse/project.js`；`1.4.3` 将结构化进程失败 guidance 迁入 `core/result/process-failure-guidance.js`，并冻结 `core/report` 仅含 renderer。各版本均删除旧路径且不保留兼容转发；其余顶层文件继续按独立功能逐项评审和迁移。
 
 - 清理尚未随功能迁移的旧文件和临时 adapter；
 - 使用 dependency-cruiser 强制 `core`、`gates`、`orchestration`、`integrations` 的依赖方向；

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.3
+
+- 将仅生成结构化 finding、evidence、remediation 与 AI decision 的进程失败 guidance 从 `src/core/report/guidance-catalog.js` 迁入 `src/core/result/process-failure-guidance.js`，不保留旧路径兼容转发。
+- 保持全部进程失败规则 ID、错误代码、消息、修复步骤、约束、验证方式和 runner 行为不变；本次只纠正 guidance 的结果模型归属，使 `core/report` 专注于 console、JSON 和例外登记表 renderer。
+- 增加阶段 8 防回归测试，确认旧 guidance 路径不存在、目标结果模块存在，并要求 `core/report` 中的文件全部是 renderer，为后续 runner 迁入 `gates` 清除错误依赖边界。
+
 ## 1.4.2
 
 - 将消费项目 Lighthouse 配置发现、Vue 项目识别和 `@lhci/cli` 元数据解析从顶层 `src/lighthouse-project.js` 迁入 `src/integrations/lighthouse/project.js`，不保留旧路径兼容转发。
