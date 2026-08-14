@@ -187,6 +187,19 @@ test('separates Lighthouse execution facts from gate decisions without a root ru
   );
 });
 
+test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'lighthouse-ignore.js')), false);
+  assert.equal(
+    existsSync(path.join(
+      SOURCE_ROOT,
+      'orchestration',
+      'setup',
+      'lighthouse-ignore.js',
+    )),
+    true,
+  );
+});
+
 test('keeps structured process guidance with results and core/report limited to renderers', () => {
   assert.equal(
     existsSync(path.join(SOURCE_ROOT, 'core', 'report', 'guidance-catalog.js')),

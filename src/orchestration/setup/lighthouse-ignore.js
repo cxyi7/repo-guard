@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildManagedTextBlock } from './core/policy/managed-text-block.js';
+import { buildManagedTextBlock } from '../../core/policy/managed-text-block.js';
 
 export const LIGHTHOUSE_OUTPUT_DIRECTORY = '.lighthouseci/';
 const START_MARKER = '# repo-guard-managed:lighthouse:start';

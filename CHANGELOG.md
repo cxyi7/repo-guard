@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.5
+
+- 将安装期维护 Lighthouse 与 coverage 输出忽略项的顶层 `src/lighthouse-ignore.js` 迁入 `src/orchestration/setup/lighthouse-ignore.js`，明确它属于 init/doctor/hook 安装编排，不属于运行 integration 或质量 gate。
+- 保持 `.gitignore` managed marker、默认 `.lighthouseci/`、配置化 coverage 目录、路径规范化、幂等写入和安装结果不变；删除旧路径且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认旧根文件不存在且 setup orchestration 实现存在；Lighthouse 的项目/执行事实、结构化判定和安装期仓库状态现已分别归入 integration、gate 与 orchestration。
+
 ## 1.4.4
 
 - 将顶层 `src/lighthouse-runner.js` 按职责拆分为 `src/integrations/lighthouse/execution.js` 与 `src/gates/quality/lighthouse-gate.js`：integration 只执行消费项目 build 和 LHCI phase，gate 只负责结构化判定、finding、diagnostic 与 artifact。

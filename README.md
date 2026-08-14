@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.4
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.5
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.5
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.5
+npx repo-guard doctor
+```
+
+1.4.5 将安装期 `.gitignore` 管理从顶层 `src/lighthouse-ignore.js` 迁入内部 `orchestration/setup/lighthouse-ignore.js`，旧路径已删除且没有兼容转发。`.lighthouseci/`、配置化 coverage 报告目录、managed marker、路径规范化与幂等写入行为均保持不变。至此 Lighthouse 项目探测和外部执行归 `integrations/lighthouse`，结构化质量判定归 `gates/quality`，init、doctor 与 Hook 安装期间的仓库状态管理归 `orchestration/setup`。
 
 ## 升级到 1.4.4
 
