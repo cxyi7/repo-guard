@@ -50,10 +50,10 @@ import {
 } from '../stylelint-runner.js';
 import {
   inspectUnitTestPolicy,
-  runUnitTestGate,
   unitTestPolicyFindings,
-  validateUnitTestSetup,
-} from '../unit-test-runner.js';
+} from './testing/unit-test-policy.js';
+import { runUnitTestGate } from './testing/unit-test-gate.js';
+import { validateUnitTestSetup } from './testing/unit-test-setup.js';
 import { runTypeCheckGate } from './quality/typecheck-gate.js';
 import { validateTypeCheckSetup } from '../integrations/npm/typecheck.js';
 import { skippedResult } from './native-result.js';

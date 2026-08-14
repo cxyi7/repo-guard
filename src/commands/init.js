@@ -27,7 +27,7 @@ import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';
 import { detectProjectTypeCheckSetup } from '../gates/quality/typecheck-setup.js';
-import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
+import { detectProjectUnitTestSetup } from '../gates/testing/unit-test-setup.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 
 export function runInit(cwd = process.cwd()) {

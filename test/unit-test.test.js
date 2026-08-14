@@ -19,14 +19,16 @@ import {
   isUnitTestPolicyManaged,
 } from '../src/policies/managed-policies.js';
 import {
-  analyzeUnitTestContent,
   expectedUnitTestPath,
   expectedUnitTestPaths,
   inspectUnitTestPolicy as inspectUnitTestPolicyWithChangeSet,
-  runUnitTestGate as runUnitTestGateWithChangeSet,
   unitTestPolicyFindings,
-  validateUnitTestSetup,
-} from '../src/unit-test-runner.js';
+} from '../src/gates/testing/unit-test-policy.js';
+import { analyzeUnitTestContent } from '../src/integrations/vitest/source-analysis.js';
+import {
+  runUnitTestGate as runUnitTestGateWithChangeSet,
+} from '../src/gates/testing/unit-test-gate.js';
+import { validateUnitTestSetup } from '../src/gates/testing/unit-test-setup.js';
 import { buildManagedTextBlock } from '../src/core/policy/managed-text-block.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

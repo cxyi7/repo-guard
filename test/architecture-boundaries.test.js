@@ -41,7 +41,6 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'prettier-runner.js',
   'quality-runner.js',
   'stylelint-runner.js',
-  'unit-test-runner.js',
 ]);
 
 const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
@@ -357,6 +356,48 @@ test('separates Vitest coverage facts from testing gate decisions', () => {
     readFileSync(gatePath, 'utf8'),
     /integrations\/vitest\/coverage\.js/,
   );
+});
+
+test('separates Vitest project and execution facts from unit-test policy decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'unit-test-runner.js')), false);
+  const projectPath = path.join(SOURCE_ROOT, 'integrations', 'vitest', 'project.js');
+  const executionPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'vitest',
+    'execution.js',
+  );
+  const sourceAnalysisPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'vitest',
+    'source-analysis.js',
+  );
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'testing', 'unit-test-gate.js');
+  const policyPath = path.join(SOURCE_ROOT, 'gates', 'testing', 'unit-test-policy.js');
+  const setupPath = path.join(SOURCE_ROOT, 'gates', 'testing', 'unit-test-setup.js');
+  for (const target of [
+    projectPath,
+    executionPath,
+    sourceAnalysisPath,
+    gatePath,
+    policyPath,
+    setupPath,
+  ]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = [projectPath, executionPath, sourceAnalysisPath]
+    .map((target) => readFileSync(target, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|changeSetEntries|remediation|unitTestPolicyFindings)\b/,
+  );
+  assert.match(integrationSource, /export function executeUnitTests/);
+  assert.match(readFileSync(gatePath, 'utf8'), /integrations\/vitest\/execution\.js/);
+  assert.match(readFileSync(setupPath, 'utf8'), /integrations\/vitest\/project\.js/);
+  assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
 });
 
 test('keeps CI execution and report persistence inside orchestration', () => {

@@ -11,7 +11,7 @@ import {
   inspectAxeIntegration,
   resolveAxeIntegrationPackage,
 } from '../../integrations/axe/project.js';
-import { analyzeUnitTestContent } from '../../unit-test-runner.js';
+import { analyzeUnitTestContent } from '../../integrations/vitest/source-analysis.js';
 
 const BYPASS_PATTERNS = Object.freeze([
   Object.freeze({ expression: 'disableRules', pattern: /\.\s*disableRules\s*\(/ }),

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.14
+
+- 删除顶层 `src/unit-test-runner.js`，将消费项目包与 Vitest/Vue Test Utils 事实、测试源码调用事实解析和 npm 测试执行迁入 `src/integrations/vitest`，将 setup readiness、测试映射与绕过判定、finding 和 GateResult 判定拆入 `src/gates/testing`，不保留兼容转发。
+- 保持消费项目 Vitest、测试环境、配置和测试所有权，以及测试映射、精确 Git 范围、绕过检测、Vue 交互语义、覆盖率衔接、错误代码、pre-push/CI 顺序和公共 exports 不变。
+- 增加阶段 8 防回归测试，确认 Vitest integrations 只返回项目、执行与测试源码事实且不持有 ChangeSet、finding 或 GateResult 策略，testing policy 不执行子进程，并从顶层 runner/policy 待迁移清单移除 unit-test runner。
+
 ## 1.4.13
 
 - 删除顶层 `src/coverage-runner.js`，将 Vitest 覆盖率参数、报告文件准备、summary/LCOV 解析和变更行覆盖事实迁入 `src/integrations/vitest/coverage.js`，将阈值判定与结构化 finding 迁入 `src/gates/testing/coverage-gate.js`，不保留兼容转发。
