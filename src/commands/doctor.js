@@ -1,23 +1,22 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { configurationError } from '../core/error/repo-guard-error.js';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
-  ensureAccessibilityTestPolicy,
-} from '../accessibility-test-policy.js';
-import {
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
-} from '../architecture-policy.js';
-import { loadConfig } from '../config.js';
-import {
+  ensureAccessibilityTestPolicy,
   ensureExceptionPolicy,
   EXCEPTION_POLICY_FILE,
   isExceptionPolicyCurrent,
-} from '../exception-policy.js';
+  ensureUnitTestPolicy,
+  UNIT_TEST_POLICY_FILE,
+} from '../policies/managed-policies.js';
+import { loadConfig } from '../config.js';
+import { inspectExceptionRegistry } from '../exception-registry.js';
 import {
-  formatExceptionRegistryReport,
-  inspectExceptionRegistry,
-} from '../exception-registry.js';
+  renderExceptionRegistrySummary,
+} from '../core/report/exception-registry-renderer.js';
 import {
   ensureProjectConfig,
   migrateProjectConfig,
@@ -36,11 +35,8 @@ import {
   resolveNotificationEnvironment,
 } from '../local-env.js';
 import { loadNotificationConfig } from '../wecom.js';
-import {
-  ensureUnitTestPolicy,
-  UNIT_TEST_POLICY_FILE,
-} from '../unit-test-policy.js';
 import { createProjectGateRegistry } from '../gates/registry.js';
+import { writeConsoleMessage } from '../core/report/console-renderer.js';
 
 const PACKAGE_JSON = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
@@ -140,7 +136,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   const warnings = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
-  if (fix && ci) throw new Error('doctor --fix and --ci cannot be combined');
+  if (fix && ci) throw configurationError('doctor/conflicting-options', 'doctor --fix and --ci cannot be combined');
   const repairResult = fix
     ? repairRepository(root)
     : { repairErrors: [], repairs: [] };
@@ -176,7 +172,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
       checks.push(`${EXCEPTION_POLICY_FILE} structured exception policy`);
     }
     if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
-      errors.push(formatExceptionRegistryReport(exceptionResult));
+      errors.push(renderExceptionRegistrySummary(exceptionResult));
     } else {
       checks.push(
         `Structured exceptions (${exceptionResult.entries.length} total, `
@@ -187,7 +183,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     if (exceptionResult.expiring.length > 0
       && exceptionResult.expired.length === 0
       && exceptionResult.future.length === 0) {
-      warnings.push(formatExceptionRegistryReport(exceptionResult));
+      warnings.push(renderExceptionRegistrySummary(exceptionResult));
     }
   }
 
@@ -296,18 +292,18 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     }
   }
 
-  console.log(`repo-guard doctor: ${root}`);
+  writeConsoleMessage(`repo-guard doctor: ${root}`);
   for (const repair of repairResult.repairs) {
-    console.log(`  FIX   ${repair}`);
+    writeConsoleMessage(`  FIX   ${repair}`);
   }
   for (const check of checks) {
-    console.log(`  OK    ${check}`);
+    writeConsoleMessage(`  OK    ${check}`);
   }
   for (const warning of warnings) {
-    console.warn(`  WARN  ${warning}`);
+    writeConsoleMessage(`  WARN  ${warning}`, 'stderr');
   }
   for (const error of errors) {
-    console.error(`  ERROR ${error}`);
+    writeConsoleMessage(`  ERROR ${error}`, 'stderr');
   }
 
   return errors.length === 0 ? 0 : 1;

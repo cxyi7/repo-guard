@@ -1,19 +1,22 @@
 import path from 'node:path';
-import { ensureAccessibilityTestPolicy } from '../accessibility-test-policy.js';
-import { ensureArchitecturePolicy } from '../architecture-policy.js';
 import { CONFIG_FILE, loadConfig } from '../config.js';
 import {
   migrateProjectConfig,
   setFeaturesEnabled,
 } from '../config-management.js';
 import { findRepositoryRoot } from '../git.js';
-import { ensureUnitTestPolicy } from '../unit-test-policy.js';
+import { writeConsoleMessage } from '../core/report/console-renderer.js';
+import {
+  ensureAccessibilityTestPolicy,
+  ensureArchitecturePolicy,
+  ensureUnitTestPolicy,
+} from '../policies/managed-policies.js';
 
 export function runMigrate(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const result = migrateProjectConfig(root);
-  console.log(`repo-guard configuration: ${path.join(root, CONFIG_FILE)}`);
-  console.log(`- migration: ${result.changed ? 'updated' : 'already current'}`);
+  writeConsoleMessage(`repo-guard configuration: ${path.join(root, CONFIG_FILE)}`);
+  writeConsoleMessage(`- migration: ${result.changed ? 'updated' : 'already current'}`);
   return 0;
 }
 
@@ -22,7 +25,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const result = setFeaturesEnabled(root, requestedFeatures, enabled);
   if (enabled && requestedFeatures.includes('architecture')) {
     const policy = ensureArchitecturePolicy(root, loadConfig(root).architecture);
-    console.log(
+    writeConsoleMessage(
       `repo-guard architecture policy: ${policy.changed ? 'updated' : 'already current'}`,
     );
   }
@@ -31,7 +34,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
       root,
       loadConfig(root).accessibilityTest,
     );
-    console.log(
+    writeConsoleMessage(
       `repo-guard accessibility test policy: ${policy.changed ? 'updated' : 'already current'}`,
     );
   }
@@ -39,22 +42,22 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
     feature === 'unitTest' || feature === 'coverage' || feature === 'componentInteraction'
   ))) {
     const policy = ensureUnitTestPolicy(root, loadConfig(root).unitTest);
-    console.log(
+    writeConsoleMessage(
       `repo-guard unit test policy: ${policy.changed ? 'updated' : 'already current'}`,
     );
   }
   const state = enabled ? 'enabled' : 'disabled';
-  console.log(`repo-guard features: ${path.join(root, CONFIG_FILE)}`);
+  writeConsoleMessage(`repo-guard features: ${path.join(root, CONFIG_FILE)}`);
   if (result.migrated) {
-    console.log('- configuration: migrated');
+    writeConsoleMessage('- configuration: migrated');
   }
   for (const feature of result.changed) {
-    console.log(`- ${feature}: ${state}`);
+    writeConsoleMessage(`- ${feature}: ${state}`);
   }
   for (const feature of result.unchanged) {
-    console.log(`- ${feature}: already ${state}`);
+    writeConsoleMessage(`- ${feature}: already ${state}`);
   }
-  console.log('- run "repo-guard doctor" to verify project dependencies and configuration');
+  writeConsoleMessage('- run "repo-guard doctor" to verify project dependencies and configuration');
   return 0;
 }
 

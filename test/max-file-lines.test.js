@@ -10,8 +10,6 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   analyzeVueSections,
-  buildMaxFileLinesAiInstructions,
-  buildMaxFileLinesWarnings,
   countPhysicalLines,
   evaluateMaxFileLines,
   inspectMaxFileLines,
@@ -131,30 +129,6 @@ test('allows the exact limit and reports each file above it', (context) => {
   assert.equal(evaluateMaxFileLines({ root, files: [jsFile], config: CONFIG }).violations.length, 1);
 });
 
-test('builds standalone AI refactor instructions for Vue and JavaScript files', () => {
-  const instructions = buildMaxFileLinesAiInstructions([
-    {
-      path: 'src/views/OrderDetail.vue',
-      lineCount: 735,
-      maxLines: 700,
-      sections: { template: 286, script: 371, style: 78 },
-    },
-    { path: 'src/utils/order-handler.js', lineCount: 1086, maxLines: 1000 },
-  ]);
-
-  assert.match(instructions, /可按编号分别将完整指令复制给 AI/);
-  assert.match(instructions, /1\. 请重构 src\/views\/OrderDetail\.vue/);
-  assert.match(instructions, /当前：735 行；限制：700 行；本次至少需要减少 35 行/);
-  assert.match(instructions, /Vue 区域：template 286 行；script 371 行；style 78 行/);
-  assert.match(instructions, /script 是当前最大的有效代码区域/);
-  assert.match(instructions, /props、emits、slots、路由交互、响应式行为和 scoped 样式语义/);
-  assert.match(instructions, /2\. 请重构 src\/utils\/order-handler\.js/);
-  assert.match(instructions, /现有导出 API、调用顺序、副作用、错误处理、类型约束和运行结果/);
-  assert.match(instructions, /不要删除必要注释、压缩代码、合并可读语句、修改行数限制、关闭门禁、改扩展名或加入 exclusions/);
-  assert.match(instructions, /只修改完成本次重构所必需的文件/);
-  assert.match(instructions, /运行项目已有的 lint、测试和构建命令/);
-});
-
 test('warns at the configured percentage without blocking', (context) => {
   const root = mkdtempSync(path.join(TEST_ROOT, 'max-file-lines-warning-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -173,7 +147,6 @@ test('warns at the configured percentage without blocking', (context) => {
   assert.equal(evaluation.warnings.length, 1);
   assert.equal(evaluation.warnings[0].kind, 'near-limit');
   assert.equal(evaluation.warnings[0].warningLineCount, 8);
-  assert.match(buildMaxFileLinesWarnings(evaluation.warnings), /当前 8\/10 行（80%），剩余 2 行/);
 });
 
 test('noRegression blocks growth but allows existing over-limit files to hold or shrink', (context) => {
@@ -205,10 +178,8 @@ test('noRegression blocks growth but allows existing over-limit files to hold or
   assert.equal(evaluation.violations.length, 1);
   assert.equal(evaluation.violations[0].baselineLineCount, 4);
   assert.equal(evaluation.violations[0].passLineCount, 4);
-  assert.match(
-    buildMaxFileLinesAiInstructions(evaluation.violations),
-    /noRegression 基线：HEAD 中为 4 行；本次不得超过 4 行/,
-  );
+  assert.equal(evaluation.violations[0].baselineLineCount, 4);
+  assert.equal(evaluation.violations[0].passLineCount, 4);
 
   writeFileSync(existingFile, lines(3));
   evaluation = evaluateMaxFileLines({ root, files: [existingFile], config });

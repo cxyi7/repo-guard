@@ -4,6 +4,10 @@ import { defineExecutionPlan } from '../src/core/capability/execution-plan.js';
 import { defineGate } from '../src/core/capability/gate-definition.js';
 import { createGateRegistry } from '../src/core/capability/gate-registry.js';
 import {
+  cancellationError,
+  executionError,
+} from '../src/core/error/repo-guard-error.js';
+import {
   createChangeSet,
   createGateContext,
 } from '../src/core/capability/gate-context.js';
@@ -27,7 +31,9 @@ function result(gateId, status) {
     gateId,
     status,
     summary: `${gateId} ${status}`,
-    error: status.endsWith('-error') ? new Error(`${gateId} failed`) : null,
+    error: status.endsWith('-error')
+      ? executionError('test/fixture-gate-failure', `${gateId} failed`)
+      : null,
   });
 }
 
@@ -199,7 +205,10 @@ test('does not accept a passing result returned after cancellation', async () =>
 test('honors an upstream cancellation before starting an asynchronous step', async () => {
   const fixtureValue = fixture('ci-full');
   const controller = new AbortController();
-  controller.abort(new Error('cancelled by caller'));
+  controller.abort(cancellationError(
+    'test/caller-cancelled',
+    'cancelled by caller',
+  ));
   const context = Object.freeze({ ...fixtureValue.context, signal: controller.signal });
   let invoked = false;
   const execution = await orchestratePlan({

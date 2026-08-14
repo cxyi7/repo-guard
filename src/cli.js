@@ -8,14 +8,15 @@ import {
   runExternalManualGate,
   runRegisteredManualGate,
 } from './orchestration/cli/manual-gates.js';
-import { gateResultToExitCode, gateStatusToExitCode } from './core/result/gate-result.js';
+import { configurationError, errorStatus, toRepoGuardError } from './core/error/repo-guard-error.js';
+import { createGateResult, gateResultToExitCode } from './core/result/gate-result.js';
+import { writeConsoleMessage, writeGateResultConsole } from './core/report/console-renderer.js';
 import { runGate } from './commands/gate.js';
 import { runHookMessage } from './commands/hook-message.js';
 import { runInit, runInstallHooks } from './commands/init.js';
 import { runInstallCiCommand } from './commands/install-ci.js';
 import { runPrePush } from './commands/pre-push.js';
 import {
-  runLintFiles,
   runPreCommit,
   runQualityFileCommand,
 } from './commands/pre-commit.js';
@@ -73,7 +74,7 @@ Exit codes:
 function ensureSupportedOptions(argumentsList, supported) {
   const unknown = argumentsList.filter((argument) => argument.startsWith('-') && !supported.has(argument));
   if (unknown.length > 0) {
-    throw new Error(`Unsupported option(s): ${unknown.join(', ')}`);
+    throw configurationError('cli/unsupported-option', `Unsupported option(s): ${unknown.join(', ')}`);
   }
 }
 
@@ -87,12 +88,14 @@ function parseValuedOptions(argumentsList, { flags, values }) {
     }
     if (values.has(argument)) {
       const value = argumentsList[index + 1];
-      if (!value || value.startsWith('-')) throw new Error(`${argument} requires a value`);
+      if (!value || value.startsWith('-')) {
+        throw configurationError('cli/missing-option-value', `${argument} requires a value`);
+      }
       parsed.values[argument] = value;
       index += 1;
       continue;
     }
-    throw new Error(`Unsupported option or argument: ${argument}`);
+    throw configurationError('cli/unsupported-argument', `Unsupported option or argument: ${argument}`);
   }
   return parsed;
 }
@@ -105,7 +108,7 @@ export async function runCli(argumentsList) {
       case 'help':
       case '--help':
       case '-h':
-        console.log(HELP_TEXT);
+        writeConsoleMessage(HELP_TEXT);
         return 0;
       case 'init':
         ensureSupportedOptions(rest, new Set());
@@ -160,8 +163,6 @@ export async function runCli(argumentsList) {
           input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
           remoteName: rest[0] || 'origin',
         });
-      case 'lint-files':
-        return await runLintFiles(rest);
       case 'quality-files':
         return await runQualityFileCommand(rest);
       case 'check':
@@ -182,7 +183,10 @@ export async function runCli(argumentsList) {
         return runHookMessage(rest);
       case 'external': {
         if (rest.length !== 1 || rest[0].startsWith('-')) {
-          throw new Error('external requires one project.<kebab-case> gate id');
+          throw configurationError(
+            'cli/invalid-external-gate-arguments',
+            'external requires one project.<kebab-case> gate id',
+          );
         }
         const result = await runExternalManualGate(rest[0]);
         return gateResultToExitCode(result);
@@ -194,10 +198,20 @@ export async function runCli(argumentsList) {
           const result = await runRegisteredManualGate(command, rest);
           return gateResultToExitCode(result);
         }
-        throw new Error(`Unknown command: ${command}\n\n${HELP_TEXT}`);
+        throw configurationError('cli/unknown-command', `Unknown command: ${command}\n\n${HELP_TEXT}`);
     }
   } catch (error) {
-    console.error(`repo-guard failed: ${error.message}`);
-    return gateStatusToExitCode('execution-error');
+    const typedError = toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'cli/command-failed',
+    });
+    const result = createGateResult({
+      gateId: 'repo-guard.cli',
+      status: errorStatus(typedError),
+      summary: typedError.message,
+      error: typedError,
+    });
+    writeGateResultConsole(result, { label: 'repo-guard' });
+    return gateResultToExitCode(result);
   }
 }

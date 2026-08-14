@@ -17,16 +17,17 @@ import {
   ensureUnitTestPolicy,
   isUnitTestPolicyCurrent,
   isUnitTestPolicyManaged,
-} from '../src/unit-test-policy.js';
+} from '../src/policies/managed-policies.js';
 import {
   analyzeUnitTestContent,
   expectedUnitTestPath,
   expectedUnitTestPaths,
   inspectUnitTestPolicy as inspectUnitTestPolicyWithChangeSet,
   runUnitTestGate as runUnitTestGateWithChangeSet,
+  unitTestPolicyFindings,
   validateUnitTestSetup,
 } from '../src/unit-test-runner.js';
-import { buildManagedTextBlock } from '../src/managed-text-block.js';
+import { buildManagedTextBlock } from '../src/core/policy/managed-text-block.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -249,6 +250,18 @@ test('reports missing tests for new files and supports stricter changed files mo
   assert.equal(missing.expectedTestPath, 'src/utils/existing.spec.js');
   assert.equal(missing.reason, 'missing');
   assert.equal(missing.expectedTestPaths.includes('src/utils/existing.test.js'), true);
+  assert.deepEqual(unitTestPolicyFindings({
+    missingTests: [missing],
+    bypasses: [],
+    componentInteractions: [],
+  })[0], {
+    ruleId: 'unit-test/required-test',
+    severity: 'error',
+    message: 'src/utils/existing.js requires an effective unit test',
+    location: { path: 'src/utils/existing.js' },
+    evidence: 'Accepted test paths: src/utils/existing.spec.js, src/utils/existing.test.js, src/utils/__tests__/existing.spec.js, src/utils/__tests__/existing.test.js',
+    remediation: 'Add an executable test at src/utils/existing.spec.js with meaningful assertions.',
+  });
 
   writeFileSync(path.join(root, 'src', 'utils', 'existing.spec.js'), '// TODO\n');
   assert.equal(
@@ -465,21 +478,25 @@ test('runs the consuming project script and returns native results', (context) =
     "it('works', () => { expect(1).toBe(1); });\n",
   );
 
-  assert.equal(runUnitTestGate({
+  const passed = runUnitTestGate({
     root,
     config: unitTestConfig(),
     changes: [
       { status: 'A', oldPath: null, path: 'src/utils/money.js' },
       { status: 'A', oldPath: null, path: 'src/utils/money.spec.js' },
     ],
-  }).status, 'passed');
+  });
+  assert.equal(passed.status, 'passed');
+  assert.equal(passed.diagnostics.some(({ message }) => message.includes('unit-test-fixture')), true);
   assert.equal(readFileSync(path.join(root, 'test-calls.log'), 'utf8'), '\n');
 
   writeFileSync(path.join(root, 'fail-tests'), 'yes\n');
-  assert.equal(runUnitTestGate({
+  const failed = runUnitTestGate({
     root,
     config: unitTestConfig(),
-  }).status, 'violation');
+  });
+  assert.equal(failed.status, 'violation');
+  assert.equal(failed.diagnostics.some(({ message }) => message.includes('unit-test-fixture')), true);
 });
 
 test('requires Vue Test Utils only when component interaction semantics are enabled', (context) => {
@@ -493,7 +510,11 @@ test('requires Vue Test Utils only when component interaction semantics are enab
   });
   assert.throws(
     () => validateUnitTestSetup(root, config),
-    /Vue Test Utils is enabled but is not installed/,
+    (error) => (
+      error?.kind === 'configuration'
+      && error?.code === 'project-package/dependency-not-installed'
+      && /@vue\/test-utils/.test(error.message)
+    ),
   );
   installVueTestUtilsFixture(root);
   assert.equal(validateUnitTestSetup(root, config).vueTestUtils.version, '2.4.11');

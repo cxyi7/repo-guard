@@ -2,16 +2,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
+  ARCHITECTURE_POLICY_FILE,
   isAccessibilityTestPolicyCurrent,
-} from '../accessibility-test-policy.js';
+  isArchitecturePolicyCurrent,
+  isUnitTestPolicyCurrent,
+  UNIT_TEST_POLICY_FILE,
+} from '../policies/managed-policies.js';
 import {
   runAccessibilityTestGate,
   validateAccessibilityTestSetup,
 } from '../accessibility-test-runner.js';
-import {
-  ARCHITECTURE_POLICY_FILE,
-  isArchitecturePolicyCurrent,
-} from '../architecture-policy.js';
 import { runArchitectureGate, validateArchitectureSetup } from '../architecture-runner.js';
 import { runBuildGate, validateBuildSetup } from '../build-runner.js';
 import {
@@ -23,6 +23,7 @@ import {
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../config.js';
 import { defineGate } from '../core/capability/gate-definition.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
 import { createGateResult } from '../core/result/gate-result.js';
 import {
   runEslintFiles,
@@ -42,11 +43,10 @@ import {
   runStyleGovernanceProject,
   runStylelintFiles,
 } from '../stylelint-runner.js';
-import { isUnitTestPolicyCurrent, UNIT_TEST_POLICY_FILE } from '../unit-test-policy.js';
 import {
-  buildUnitTestAiInstructions,
   inspectUnitTestPolicy,
   runUnitTestGate,
+  unitTestPolicyFindings,
   validateUnitTestSetup,
 } from '../unit-test-runner.js';
 import { runTypeCheckGate, validateTypeCheckSetup } from '../typecheck-runner.js';
@@ -74,7 +74,9 @@ const setup = {
     if (!config.architecture.enabled) return ready('Architecture gate is disabled');
     const resolved = validateArchitectureSetup(root, config.architecture);
     if (!policyFileIsCurrent(root, ARCHITECTURE_POLICY_FILE, isArchitecturePolicyCurrent, config.architecture)) {
-      throw new Error(`${ARCHITECTURE_POLICY_FILE} is missing the current architecture policy`);
+      throw configurationError('architecture/missing-managed-policy', `${ARCHITECTURE_POLICY_FILE} is missing the current architecture policy`, {
+        details: { location: { path: ARCHITECTURE_POLICY_FILE } },
+      });
     }
     return ready(`Architecture gate (dependency-cruiser ${resolved.dependencyCruiser.version})`);
   },
@@ -92,7 +94,9 @@ const setup = {
     if (!config.unitTest.enabled) return ready('Unit test gate is disabled');
     const resolved = validateUnitTestSetup(root, config.unitTest);
     if (!policyFileIsCurrent(root, UNIT_TEST_POLICY_FILE, isUnitTestPolicyCurrent, config.unitTest)) {
-      throw new Error(`${UNIT_TEST_POLICY_FILE} is missing the current unit test policy`);
+      throw configurationError('unit-test/missing-managed-policy', `${UNIT_TEST_POLICY_FILE} is missing the current unit test policy`, {
+        details: { location: { path: UNIT_TEST_POLICY_FILE } },
+      });
     }
     return ready(`Unit test gate (Vitest ${resolved.vitest.version})`);
   },
@@ -100,7 +104,9 @@ const setup = {
     if (!config.accessibilityTest.enabled) return ready('Accessibility test gate is disabled');
     validateAccessibilityTestSetup(root, config.accessibilityTest);
     if (!policyFileIsCurrent(root, ACCESSIBILITY_TEST_POLICY_FILE, isAccessibilityTestPolicyCurrent, config.accessibilityTest)) {
-      throw new Error(`${ACCESSIBILITY_TEST_POLICY_FILE} is missing the current accessibility policy`);
+      throw configurationError('accessibility-test/missing-managed-policy', `${ACCESSIBILITY_TEST_POLICY_FILE} is missing the current accessibility policy`, {
+        details: { location: { path: ACCESSIBILITY_TEST_POLICY_FILE } },
+      });
     }
     return ready('Accessibility test gate');
   },
@@ -114,7 +120,7 @@ const setup = {
     if (!config.preCommit.prettier.enabled) return ready('Prettier gate is disabled');
     const prettier = resolveProjectPrettierMetadata(root);
     if (config.preCommit.prettier.requireConfig && !await resolveProjectPrettierConfigFile(root)) {
-      throw new Error('Prettier gate requires a project configuration file');
+      throw configurationError('prettier/missing-project-config', 'Prettier gate requires a project configuration file');
     }
     return ready(`Prettier ${prettier.version} gate`);
   },
@@ -122,7 +128,7 @@ const setup = {
     if (!config.preCommit.stylelint.enabled) return ready('Stylelint gate is disabled');
     const stylelint = resolveProjectStylelintMetadata(root);
     if (config.preCommit.stylelint.requireConfig && !findProjectStylelintConfig(root)) {
-      throw new Error('Stylelint gate requires a project configuration file');
+      throw configurationError('stylelint/missing-project-config', 'Stylelint gate requires a project configuration file');
     }
     return ready(`Stylelint ${stylelint.version} gate`);
   },
@@ -276,7 +282,7 @@ const unitTestGate = definePlatformGate({
           gateId: 'quality.unit-test',
           status: 'violation',
           summary: `Unit test policy found ${violations} violation(s)`,
-          diagnostics: [{ level: 'error', message: buildUnitTestAiInstructions({ ...policy, script: config.unitTest.script }) }],
+          findings: unitTestPolicyFindings(policy),
         });
   },
 });

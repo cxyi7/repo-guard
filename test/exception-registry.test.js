@@ -14,13 +14,15 @@ import { loadConfig } from '../src/config.js';
 import {
   assertExceptionRegistryCurrent,
   findStructuredException,
-  formatExceptionRegistryReport,
   inspectExceptionRegistry,
 } from '../src/exception-registry.js';
 import {
+  renderExceptionRegistrySummary,
+} from '../src/core/report/exception-registry-renderer.js';
+import {
   ensureExceptionPolicy,
   isExceptionPolicyCurrent,
-} from '../src/exception-policy.js';
+} from '../src/policies/managed-policies.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
@@ -88,7 +90,7 @@ test('classifies active, expiring, expired, and future-dated exceptions', () => 
     'expired',
     'future',
   ]);
-  assert.match(formatExceptionRegistryReport(result), /legacy-renderer|active/);
+  assert.match(renderExceptionRegistrySummary(result), /legacy-renderer|active/);
   assert.throws(
     () => assertExceptionRegistryCurrent(registry(result.entries), {
       now: new Date('2026-08-11T10:00:00Z'),

@@ -1,5 +1,6 @@
 import { parse } from '@babel/parser';
 import traverseModule from '@babel/traverse';
+import { executionError } from '../../core/error/repo-guard-error.js';
 
 const traverse = traverseModule.default ?? traverseModule;
 const GLOBAL_OBJECTS = new Set(['global', 'globalThis', 'self', 'window']);
@@ -50,8 +51,10 @@ export function findDynamicCodeAstReferences(source, relativePath, language = ''
     });
   } catch (error) {
     const location = error.loc ? `:${error.loc.line}:${error.loc.column + 1}` : '';
-    throw new Error(
+    throw executionError(
+      'dynamic-code/source-parse-failed',
       `Dynamic code gate could not parse ${relativePath}${location}: ${error.reasonCode ?? error.message}`,
+      { cause: error, details: { location: { path: relativePath } } },
     );
   }
 

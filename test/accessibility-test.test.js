@@ -16,7 +16,7 @@ import { runPrePush } from '../src/commands/pre-push.js';
 import {
   ensureAccessibilityTestPolicy,
   isAccessibilityTestPolicyCurrent,
-} from '../src/accessibility-test-policy.js';
+} from '../src/policies/managed-policies.js';
 import {
   analyzeAccessibilityTestContent,
   inspectAccessibilityTestSetup,
@@ -211,11 +211,15 @@ test('runs the project accessibility script and blocks failures', (context) => {
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runAccessibilityTestGate({ root, config: config() }).status, 'passed');
+  const passed = runAccessibilityTestGate({ root, config: config() });
+  assert.equal(passed.status, 'passed');
+  assert.equal(passed.diagnostics.some(({ message }) => message.includes('accessibility-fixture')), true);
   assert.equal(readFileSync(path.join(root, 'a11y-calls.log'), 'utf8'), 'run\n');
 
   writeFileSync(path.join(root, 'fail-a11y'), 'yes\n');
-  assert.equal(runAccessibilityTestGate({ root, config: config() }).status, 'violation');
+  const failed = runAccessibilityTestGate({ root, config: config() });
+  assert.equal(failed.status, 'violation');
+  assert.equal(failed.diagnostics.some(({ message }) => message.includes('accessibility-fixture')), true);
 });
 
 test('runs enabled accessibility tests from pre-push', async (context) => {

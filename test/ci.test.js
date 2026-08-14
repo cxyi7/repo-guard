@@ -15,7 +15,7 @@ import { runCiGate } from '../src/ci-runner.js';
 import { validateConfig } from '../src/config.js';
 import { runCiCommand } from '../src/commands/ci.js';
 import { runDoctor } from '../src/commands/doctor.js';
-import { ensureExceptionPolicy } from '../src/exception-policy.js';
+import { ensureExceptionPolicy } from '../src/policies/managed-policies.js';
 import {
   GITLAB_TEMPLATE_FILE,
   inspectGitLabCi,
@@ -153,17 +153,19 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   const dynamicCodeStep = report.steps.find(({ name }) => name === 'dynamic-code');
   assert.equal(dynamicCodeStep.exitCode, 0);
   assert.deepEqual(dynamicCodeStep.gateResult, {
-    schemaVersion: 1,
+    schemaVersion: 2,
     gateId: 'security.dynamic-code',
     status: 'passed',
     summary: dynamicCodeStep.gateResult.summary,
     findings: [],
+    issues: [],
     metrics: {
       checkedFiles: 2,
       approvedExceptions: 0,
       violations: 0,
     },
     artifacts: [],
+    diagnostics: dynamicCodeStep.gateResult.diagnostics,
     durationMs: dynamicCodeStep.gateResult.durationMs,
   });
   assert.equal(readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8'), before);
@@ -405,10 +407,13 @@ test('rejects report paths that could modify project files', async (context) => 
     reportPath: 'package.json',
   }), 1);
   assert.equal(readFileSync(manifestPath, 'utf8'), before);
-  assert.equal(JSON.parse(readFileSync(
+  const invalidConfigReport = JSON.parse(readFileSync(
     path.join(fixture.root, 'reports', 'repo-guard.json'),
     'utf8',
-  )).status, 'configuration-error');
+  ));
+  assert.equal(invalidConfigReport.status, 'configuration-error');
+  assert.equal(invalidConfigReport.gateResult.schemaVersion, 2);
+  assert.equal(invalidConfigReport.gateResult.issues[0].kind, 'configuration');
 
   writeFileSync(path.join(fixture.root, 'reports', 'tracked.json'), '{}\n');
   git(fixture.root, ['add', 'reports/tracked.json']);
@@ -442,10 +447,13 @@ test('writes JSON for invalid configuration and disabled CI', async (context) =>
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(path.join(fixture.root, 'repo-guard.config.json'), '{ invalid json\n');
   assert.equal(await runCiCommand(fixture.root), 1);
-  assert.equal(JSON.parse(readFileSync(
+  const invalidConfigReport = JSON.parse(readFileSync(
     path.join(fixture.root, 'reports', 'repo-guard.json'),
     'utf8',
-  )).status, 'configuration-error');
+  ));
+  assert.equal(invalidConfigReport.status, 'configuration-error');
+  assert.equal(invalidConfigReport.gateResult.schemaVersion, 2);
+  assert.equal(invalidConfigReport.gateResult.issues[0].kind, 'configuration');
 
   assert.equal(await runCiGate({
     root: fixture.root,
@@ -454,10 +462,12 @@ test('writes JSON for invalid configuration and disabled CI', async (context) =>
     head: fixture.head,
     env: {},
   }), 1);
-  assert.equal(JSON.parse(readFileSync(
+  const disabledReport = JSON.parse(readFileSync(
     path.join(fixture.root, 'reports', 'repo-guard.json'),
     'utf8',
-  )).status, 'configuration-error');
+  ));
+  assert.equal(disabledReport.status, 'configuration-error');
+  assert.equal(disabledReport.gateResult.issues[0].code, 'ci/disabled');
 });
 
 test('supports simple inline stages and defers ambiguous YAML to manual integration', (context) => {

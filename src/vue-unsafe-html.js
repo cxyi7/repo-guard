@@ -50,20 +50,3 @@ export function inspectUnsafeVueHtml({ root, files, exceptions }) {
   }
   return { approved, checkedCount, violations };
 }
-
-export function buildUnsafeVueHtmlAiInstructions(violations) {
-  const lines = ['Vue v-html 安全门禁失败，可将以下指令分别交给 AI 修复：'];
-  violations.forEach((violation, index) => {
-    lines.push(
-      '',
-      `${index + 1}. 请移除 ${violation.path} 第 ${violation.line} 行第 ${violation.column} 列的 v-html。`,
-      `   规则：${violation.rule}`,
-      '   修复要求：优先使用 Vue 模板、组件、插值或 textContent，以结构化方式渲染内容。',
-      '   富文本要求：如果业务确实需要 HTML，必须先建立可信来源和严格消毒边界，并由有权人员审查风险。',
-      '   禁止绕过：AI 不得新增、延期或修改结构化例外，不得关闭门禁、改扩展名或使用等价动态 HTML 注入方式。',
-      '   验证要求：确认页面展示、交互和可访问性保持正确，并运行项目已有的 lint、测试和构建命令。',
-    );
-  });
-  lines.push('', `共 ${violations.length} 处未经批准的 v-html，提交已停止。`);
-  return lines.join('\n');
-}

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { parse } from '@babel/parser';
 import traverseModule from '@babel/traverse';
+import { executionError } from './core/error/repo-guard-error.js';
 import { findVueTemplateAttributes } from './vue-template-parser.js';
 
 const traverse = traverseModule.default ?? traverseModule;
@@ -56,9 +57,11 @@ function parseTest(source, testPath) {
     });
   } catch (error) {
     const location = error.loc ? `:${error.loc.line}:${error.loc.column + 1}` : '';
-    throw new Error(
+    throw executionError(
+      'component-interaction/test-parse-failed',
       `Component interaction gate could not parse ${testPath}${location}: `
       + `${error.reasonCode ?? error.message}`,
+      { cause: error, details: { location: { path: testPath } } },
     );
   }
 }

@@ -8,6 +8,8 @@ import {
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { configurationError, executionError } from './core/error/repo-guard-error.js';
+import { processOutputDiagnostics } from './core/execution/process-output.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 
@@ -27,11 +29,11 @@ function resolveDependencyCruiser(root) {
       ?? packageJson.bin?.['dependency-cruise']
       ?? packageJson.bin?.depcruise;
   if (typeof bin !== 'string' || !bin.trim()) {
-    throw new Error('Installed dependency-cruiser does not expose a supported CLI binary');
+    throw configurationError('architecture/missing-cli-binary', 'Installed dependency-cruiser does not expose a supported CLI binary');
   }
   const cliPath = path.resolve(path.dirname(metadata.packagePath), bin);
   if (!existsSync(cliPath)) {
-    throw new Error(`dependency-cruiser CLI was not found: ${cliPath}`);
+    throw configurationError('architecture/cli-file-missing', 'dependency-cruiser CLI file was not found in the installed package');
   }
   return { ...metadata, cliPath };
 }
@@ -45,19 +47,20 @@ export function validateArchitectureSetup(root, config) {
   const dependencyCruiser = resolveDependencyCruiser(root);
   const optionLikeSource = config.sourcePaths.find((sourcePath) => sourcePath.startsWith('-'));
   if (optionLikeSource) {
-    throw new Error(`Architecture source path cannot start with "-": ${optionLikeSource}`);
+    throw configurationError('architecture/option-like-source', `Architecture source path cannot start with "-": ${optionLikeSource}`);
   }
   const missingSources = config.sourcePaths.filter((sourcePath) => (
     !/[?*{}[\]]/.test(sourcePath) && !existsSync(path.join(root, sourcePath))
   ));
   if (missingSources.length > 0) {
-    throw new Error(
+    throw configurationError(
+      'architecture/missing-source-path',
       `Architecture source path does not exist: ${missingSources.join(', ')}`,
     );
   }
   const tsConfig = resolveTypeScriptConfig(root, config.tsConfig);
   if (tsConfig && !existsSync(path.join(root, tsConfig))) {
-    throw new Error(`Architecture tsConfig does not exist: ${tsConfig}`);
+    throw configurationError('architecture/missing-tsconfig', `Architecture tsConfig does not exist: ${tsConfig}`);
   }
   return { dependencyCruiser, tsConfig };
 }
@@ -86,11 +89,11 @@ export function parseArchitectureReport(output) {
   try {
     report = JSON.parse(output);
   } catch (error) {
-    throw new Error(`dependency-cruiser returned invalid JSON: ${error.message}`);
+    throw executionError('architecture/invalid-json-report', `dependency-cruiser returned invalid JSON: ${error.message}`, { cause: error });
   }
   const violations = report?.summary?.violations;
   if (!Array.isArray(violations)) {
-    throw new Error('dependency-cruiser JSON report is missing summary.violations');
+    throw executionError('architecture/invalid-report-shape', 'dependency-cruiser JSON report is missing summary.violations');
   }
   return {
     modulesCruised: Number.isInteger(report.summary.totalCruised)
@@ -114,17 +117,6 @@ function formatCycle(cycle) {
   return Array.isArray(cycle) ? cycle.map(cycleModuleName).join(' -> ') : '';
 }
 
-function formatViolation(violation, index) {
-  const severity = violationSeverity(violation);
-  const ruleName = violation?.rule?.name ?? violation?.ruleName ?? 'unnamed';
-  const from = violation?.from ?? violation?.module ?? '(unknown source)';
-  const to = violation?.to ? ` -> ${violation.to}` : '';
-  const cycle = Array.isArray(violation?.cycle) && violation.cycle.length > 0
-    ? `\n     cycle: ${formatCycle(violation.cycle)}`
-    : '';
-  return `  ${index + 1}. [${severity}] ${ruleName}: ${from}${to}${cycle}`;
-}
-
 function architectureRepairAdvice(ruleName) {
   if (ruleName === 'no-circular') {
     return '梳理循环链路和模块职责，提取双方共享的低层模块，建立单向依赖，并保持现有行为与公开接口兼容。';
@@ -136,50 +128,6 @@ function architectureRepairAdvice(ruleName) {
     return '把生产代码需要复用的实现移到非测试模块，并让生产代码和测试代码分别依赖该共享模块。';
   }
   return '检查规则定义、依赖方向和相关调用方，修复违规根因并保持现有功能不变。';
-}
-
-export function buildArchitectureAiRepairInstructions({ root, violations }) {
-  const blockingViolations = violations.filter((violation) => (
-    violationSeverity(violation) === 'error'
-  ));
-  const normalizedRoot = path.resolve(root).replace(/\\/g, '/');
-  const sections = blockingViolations.map((violation, index) => {
-    const ruleName = violation?.rule?.name ?? violation?.ruleName ?? 'unnamed';
-    const from = violation?.from ?? violation?.module ?? '(unknown source)';
-    const to = violation?.to ?? '(unknown target)';
-    const cycle = formatCycle(violation?.cycle);
-    return [
-      `${index + 1}. 请修复依赖架构规则 ${ruleName} 的违规。`,
-      `   项目根目录：${normalizedRoot}`,
-      `   依赖关系：${from} -> ${to}`,
-      ...(cycle ? [`   完整循环链路：${from} -> ${cycle}`] : []),
-      `   修复建议：${architectureRepairAdvice(ruleName)}`,
-      '   修改范围：只修改解决该依赖问题所必需的源码、测试和合法解析配置，不处理无关问题。',
-      '   禁止绕过：不得关闭、删除、降级或忽略架构规则，不得缩小 sourcePaths、扩大 exclude，或伪造 dependency-cruiser 结果。',
-      '   验证要求：修复后运行 npm run guard:architecture，并运行受影响模块已有的测试和生产构建。',
-    ].join('\n');
-  });
-
-  return [
-    '依赖架构门禁失败，以下完整指令可按编号分别复制给 AI 修复：',
-    '',
-    sections.join('\n\n'),
-  ].join('\n');
-}
-
-export function formatArchitectureReport(result, version = 'unknown') {
-  const errors = result.violations.filter((violation) => (
-    violationSeverity(violation) === 'error'
-  )).length;
-  const warnings = result.violations.filter((violation) => (
-    violationSeverity(violation) === 'warn'
-  )).length;
-  return [
-    `repo-guard architecture report: dependency-cruiser ${version}, `
-      + `${result.modulesCruised} modules, ${result.violations.length} violations `
-      + `(${errors} errors, ${warnings} warnings).`,
-    ...result.violations.map(formatViolation),
-  ].join('\n');
 }
 
 export function runArchitectureGate({ root, config }) {
@@ -217,20 +165,33 @@ export function runArchitectureGate({ root, config }) {
           gateId: ARCHITECTURE_GATE_ID,
           status: 'execution-error',
           summary: `Architecture analysis exceeded ${config.timeoutMs}ms`,
-          error: execution.error,
+          error: executionError(
+            'architecture/timeout',
+            `Architecture analysis exceeded ${config.timeoutMs}ms`,
+            { cause: execution.error },
+          ),
         });
       }
-      throw new Error(`Unable to run dependency-cruiser: ${execution.error.message}`);
-    }
-    if (execution.status !== 0) {
-      const details = execution.stderr?.trim() || execution.stdout?.trim();
-      throw new Error(
-        `dependency-cruiser failed with exit code ${execution.status}`
-        + `${details ? `:\n${details}` : ''}`,
+      throw executionError(
+        'architecture/process-start-failed',
+        `Unable to run dependency-cruiser: ${execution.error.message}`,
+        { cause: execution.error },
       );
     }
+    if (execution.status !== 0) {
+      const message = `dependency-cruiser failed with exit code ${execution.status}`;
+      return createGateResult({
+        gateId: ARCHITECTURE_GATE_ID,
+        status: 'execution-error',
+        summary: message,
+        error: executionError('architecture/process-failed', message),
+        diagnostics: processOutputDiagnostics(execution, {
+          source: 'dependency-cruiser',
+          root,
+        }),
+      });
+    }
     const report = parseArchitectureReport(execution.stdout);
-    const formatted = formatArchitectureReport(report, setup.dependencyCruiser.version);
     const hasErrors = report.violations.some((violation) => (
       violationSeverity(violation) === 'error'
     ));
@@ -244,16 +205,12 @@ export function runArchitectureGate({ root, config }) {
           severity: violationSeverity(violation) === 'warn' ? 'warning' : 'error',
           message: violation.rule?.name || 'Architecture dependency violation',
           location: violation.from ? { path: violation.from } : null,
-          evidence: violation.to ? `${violation.from} -> ${violation.to}` : null,
+          evidence: [
+            violation.to ? `${violation.from} -> ${violation.to}` : null,
+            formatCycle(violation.cycle),
+          ].filter(Boolean).join('; ') || null,
+          remediation: architectureRepairAdvice(violation.rule?.name || 'dependency'),
         })),
-        diagnostics: [{
-          level: 'error',
-          message: [
-            formatted,
-            '',
-            buildArchitectureAiRepairInstructions({ root, violations: report.violations }),
-          ].join('\n'),
-        }],
         metrics: { modules: report.modulesCruised, violations: report.violations.length },
       });
     }
@@ -261,7 +218,6 @@ export function runArchitectureGate({ root, config }) {
       gateId: ARCHITECTURE_GATE_ID,
       status: 'passed',
       summary: `Architecture passed across ${report.modulesCruised} module(s)`,
-      diagnostics: [{ level: 'info', message: formatted }],
       metrics: { modules: report.modulesCruised, violations: report.violations.length },
     });
   } finally {

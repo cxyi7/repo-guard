@@ -6,7 +6,7 @@ const TYPESCRIPT_FILES = Object.freeze(['**/*.{ts,mts,cts,tsx,vue}']);
 
 function presetConfigs(value, label) {
   if (!value || (typeof value !== 'object' && !Array.isArray(value))) {
-    throw new Error(`repo-guard ESLint preset requires ${label}`);
+    throw configurationError('eslint/preset-config-missing', `repo-guard ESLint preset requires ${label}`);
   }
   return Array.isArray(value) ? value : [value];
 }
@@ -91,7 +91,7 @@ function vuePolicy(vue, typescript) {
     ? { parserOptions: { parser: typescript.parser } }
     : undefined;
   if (typescript && !typescript.parser) {
-    throw new Error('repo-guard ESLint preset requires typescript-eslint parser');
+    throw configurationError('eslint/typescript-parser-missing', 'repo-guard ESLint preset requires typescript-eslint parser');
   }
 
   return [{
@@ -114,7 +114,7 @@ function typescriptPolicy(typescript) {
     return [];
   }
   if (!typescript.plugin) {
-    throw new Error('repo-guard ESLint preset requires typescript-eslint plugin');
+    throw configurationError('eslint/typescript-plugin-missing', 'repo-guard ESLint preset requires typescript-eslint plugin');
   }
 
   return [{
@@ -142,3 +142,4 @@ export function createRepoGuardEslintConfig({
     ...typescriptPolicy(typescript),
   ];
 }
+import { configurationError } from './core/error/repo-guard-error.js';

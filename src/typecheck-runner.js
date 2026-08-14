@@ -3,7 +3,10 @@ import {
   readFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, executionError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';
+import { processOutputDiagnostics } from './core/execution/process-output.js';
+import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { runProjectScript } from './integrations/npm/run-script.js';
 
 export const TYPE_CHECK_GATE_ID = 'quality.typecheck';
@@ -11,7 +14,7 @@ export const TYPE_CHECK_GATE_ID = 'quality.typecheck';
 function readProjectPackage(root) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
-    throw new Error(`package.json was not found in repository root: ${root}`);
+    throw configurationError('typecheck/missing-package-json', 'package.json was not found in repository root');
   }
   return JSON.parse(readFileSync(target, 'utf8'));
 }
@@ -20,7 +23,8 @@ export function validateTypeCheckSetup(root, config) {
   const packageJson = readProjectPackage(root);
   const command = packageJson.scripts?.[config.script];
   if (typeof command !== 'string' || !command.trim()) {
-    throw new Error(
+    throw configurationError(
+      'typecheck/missing-script',
       `TypeScript gate requires package.json script "${config.script}"`,
     );
   }
@@ -43,10 +47,15 @@ export function runTypeCheckGate({ root, config }) {
     message: `repo-guard TypeScript: running npm script "${config.script}" (${setup.command})...`,
   }];
   const execution = runProjectScript({ root, script: config.script, timeoutMs: config.timeoutMs });
+  diagnostics.push(...processOutputDiagnostics(execution, { source: 'typescript', root }));
   if (execution.error) {
-    const error = execution.timedOut
-      ? new Error(`TypeScript type check exceeded ${config.timeoutMs}ms`)
-      : new Error(`Unable to run TypeScript type check: ${execution.error.message}`);
+    const error = executionError(
+      execution.timedOut ? 'typecheck/timeout' : 'typecheck/process-start-failed',
+      execution.timedOut
+        ? `TypeScript type check exceeded ${config.timeoutMs}ms`
+        : `Unable to run TypeScript type check: ${execution.error.message}`,
+      { cause: execution.error },
+    );
     return createGateResult({
       gateId: TYPE_CHECK_GATE_ID,
       status: 'execution-error',
@@ -57,17 +66,15 @@ export function runTypeCheckGate({ root, config }) {
     });
   }
   if (execution.status !== 0) {
-    diagnostics.push({ level: 'error', message: [
-      `TypeScript 类型检查失败（退出码 ${execution.status ?? 1}），推送已停止。`,
-      '请根据上方 tsc/vue-tsc 输出修复类型根因和相关调用方。',
-      '不得使用 any、@ts-ignore、@ts-nocheck、关闭 strict 选项或修改门禁绕过。',
-      `修复后重新运行 npm run ${config.script}。`,
-    ].join('\n') });
     return createGateResult({
       gateId: TYPE_CHECK_GATE_ID,
       status: 'violation',
       summary: 'TypeScript type check failed',
       diagnostics,
+      findings: [processFailureFinding(TYPE_CHECK_GATE_ID, {
+        exitCode: execution.status ?? 1,
+        script: config.script,
+      })],
       metrics: { processExitCode: execution.status ?? 1 },
       durationMs: Date.now() - startedAt,
     });

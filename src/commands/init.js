@@ -13,27 +13,22 @@ import {
 } from '../accessibility-test-runner.js';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
-  ensureAccessibilityTestPolicy,
-} from '../accessibility-test-policy.js';
-import {
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
-} from '../architecture-policy.js';
-import { ensureProjectConfig } from '../config-management.js';
-import {
+  ensureAccessibilityTestPolicy,
   ensureExceptionPolicy,
   EXCEPTION_POLICY_FILE,
-} from '../exception-policy.js';
+  ensureUnitTestPolicy,
+  UNIT_TEST_POLICY_FILE,
+} from '../policies/managed-policies.js';
+import { ensureProjectConfig } from '../config-management.js';
 import { detectProjectBuildSetup } from '../build-runner.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../stylelint-project.js';
 import { detectProjectTypeCheckSetup } from '../typecheck-runner.js';
-import {
-  ensureUnitTestPolicy,
-  UNIT_TEST_POLICY_FILE,
-} from '../unit-test-policy.js';
 import { detectProjectUnitTestSetup } from '../unit-test-runner.js';
+import { writeConsoleMessage } from '../core/report/console-renderer.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
@@ -73,74 +68,74 @@ export function runInit(cwd = process.cwd()) {
     ? ensureUnitTestPolicy(root, config.unitTest)
     : null;
 
-  console.log(`repo-guard initialized in ${root}`);
-  console.log(`- hooks path: ${result.hooksPath}`);
-  console.log(`- hooks: ${result.hooks.join(', ')}`);
-  console.log(`- .gitattributes: ${result.gitAttributes.changed ? 'updated' : 'preserved'}`);
-  console.log(
+  writeConsoleMessage(`repo-guard initialized in ${root}`);
+  writeConsoleMessage(`- hooks path: ${result.hooksPath}`);
+  writeConsoleMessage(`- hooks: ${result.hooks.join(', ')}`);
+  writeConsoleMessage(`- .gitattributes: ${result.gitAttributes.changed ? 'updated' : 'preserved'}`);
+  writeConsoleMessage(
     `- .gitignore: ${result.localEnvironment.gitIgnore.changed ? 'updated' : 'preserved'}`,
   );
-  console.log(
+  writeConsoleMessage(
     `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
   );
-  console.log(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
-  console.log(
+  writeConsoleMessage(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  writeConsoleMessage(
     `- ${EXCEPTION_POLICY_FILE}: ${exceptionPolicy.changed ? 'updated' : 'preserved'} `
     + '(structured exception policy)',
   );
   if (architecturePolicy) {
-    console.log(
+    writeConsoleMessage(
       `- ${ARCHITECTURE_POLICY_FILE}: ${architecturePolicy.changed ? 'updated' : 'preserved'}`,
     );
   }
   if (accessibilityTestPolicy) {
-    console.log(
+    writeConsoleMessage(
       `- ${ACCESSIBILITY_TEST_POLICY_FILE}: `
       + `${accessibilityTestPolicy.changed ? 'updated' : 'preserved'} `
       + '(axe accessibility test policy)',
     );
   }
   if (unitTestPolicy) {
-    console.log(
+    writeConsoleMessage(
       `- ${UNIT_TEST_POLICY_FILE}: ${unitTestPolicy.changed ? 'updated' : 'preserved'}`,
     );
   }
   if (configCreated && stylelintSetup.ready) {
-    console.log(
+    writeConsoleMessage(
       `- Stylelint ${stylelintSetup.metadata.version}: enabled with ${stylelintSetup.configFile}`,
     );
   } else if (configCreated) {
-    console.log('- Stylelint: disabled until the project installs Stylelint and adds a config');
+    writeConsoleMessage('- Stylelint: disabled until the project installs Stylelint and adds a config');
   }
   if (configCreated) {
-    console.log(
+    writeConsoleMessage(
       architectureSetup.ready
         ? `- Architecture: enabled with dependency-cruiser ${architectureSetup.setup.dependencyCruiser.version}`
         : '- Architecture: disabled until the project installs dependency-cruiser and provides src',
     );
-    console.log(
+    writeConsoleMessage(
       buildSetup.ready
         ? `- Build: enabled with npm script "${DEFAULT_BUILD_CONFIG.script}"`
         : '- Build: disabled until the project adds a build script',
     );
-    console.log('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
-    console.log(
+    writeConsoleMessage('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
+    writeConsoleMessage(
       typeCheckSetup.ready
         ? `- TypeScript: enabled with npm script "${DEFAULT_TYPE_CHECK_CONFIG.script}"`
         : '- TypeScript: disabled until the project adds a typecheck script',
     );
-    console.log(
+    writeConsoleMessage(
       unitTestSetup.ready
         ? `- Unit tests: enabled with npm script "${DEFAULT_UNIT_TEST_CONFIG.script}"`
         : '- Unit tests: disabled until the project installs Vitest and adds test:unit',
     );
-    console.log(
+    writeConsoleMessage(
       accessibilityTestSetup.ready
         ? `- Accessibility tests: enabled with npm script "${DEFAULT_ACCESSIBILITY_TEST_CONFIG.script}"`
         : '- Accessibility tests: disabled until the project adds a complete axe test:a11y setup',
     );
   }
-  console.log('- run "repo-guard doctor" after configuring notification environment variables');
+  writeConsoleMessage('- run "repo-guard doctor" after configuring notification environment variables');
   return 0;
 }
 
@@ -151,7 +146,7 @@ export function runInstallHooks(cwd = process.cwd()) {
     allowMissingGit: true,
   });
   if (!result.skipped) {
-    console.log(`repo-guard hooks installed in ${result.root}`);
+    writeConsoleMessage(`repo-guard hooks installed in ${result.root}`);
   }
   return 0;
 }

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { defineGate } from '../../core/capability/gate-definition.js';
-import { createGateResult, normalizeError } from '../../core/result/gate-result.js';
+import { createGateResult } from '../../core/result/gate-result.js';
 import { findStructuredException } from '../../exception-registry.js';
 import { sourceLocation } from '../../vue-template-parser.js';
 import { findDynamicCodeAstReferences } from './dynamic-code-ast.js';
@@ -172,13 +173,16 @@ export function buildDynamicCodeGateResult({ root, files, exceptions }) {
       diagnostics,
     });
   } catch (error) {
-    const normalizedError = normalizeError(error);
+    const typedError = toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'dynamic-code/analysis-failed',
+    });
     return createGateResult({
       gateId: DYNAMIC_CODE_GATE_ID,
       status: 'execution-error',
-      summary: normalizedError.message,
+      summary: typedError.message,
       durationMs: Date.now() - startedAt,
-      error: normalizedError,
+      error: typedError,
     });
   }
 }

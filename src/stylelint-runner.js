@@ -3,13 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import {
   captureFileContents,
   restoreFileContents,
 } from './file-snapshot.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { findStructuredException } from './exception-registry.js';
-import { buildStylelintAiRepairInstructions } from './stylelint-diagnostics.js';
 import {
   findProjectStylelintConfig,
   resolveProjectStylelintMetadata,
@@ -39,7 +39,8 @@ async function loadProjectStylelint(root) {
     : stylelintModule.default;
 
   if (!stylelint || typeof stylelint.lint !== 'function') {
-    throw new Error(
+    throw configurationError(
+      'stylelint/unsupported-project-api',
       `Unsupported Stylelint ${metadata.version}: the lint API is not available`,
     );
   }
@@ -113,7 +114,7 @@ async function lintComplexity(stylelint, root, files, complexity) {
   const results = await Promise.all(files.map(async (file) => {
     const projectConfig = await stylelint.resolveConfig(file, { cwd: root });
     if (!projectConfig) {
-      throw new Error(`Stylelint could not resolve project configuration for ${file}`);
+      throw configurationError('stylelint/unresolved-project-config', `Stylelint could not resolve project configuration for ${file}`);
     }
     return await stylelint.lint({
       code: readFileSync(file, 'utf8'),
@@ -138,7 +139,7 @@ async function lintGovernance(stylelint, root, files, governance) {
   const results = await Promise.all(files.map(async (file) => {
     const projectConfig = await stylelint.resolveConfig(file, { cwd: root });
     if (!projectConfig) {
-      throw new Error(`Stylelint could not resolve project configuration for ${file}`);
+      throw configurationError('stylelint/unresolved-project-config', `Stylelint could not resolve project configuration for ${file}`);
     }
     return await stylelint.lint({
       code: readFileSync(file, 'utf8'),
@@ -240,8 +241,11 @@ function stylelintFindings(root, results, maxWarnings) {
       severity: warning.severity === 'warning' ? 'warning' : 'error',
       message: warning.text || 'Stylelint violation',
       location: { path: path.relative(root, result.source).replace(/\\/g, '/'), ...(warning.line ? { line: warning.line } : {}), ...(warning.column ? { column: warning.column } : {}) },
+      remediation: warning.rule
+        ? `Fix the root cause reported by Stylelint rule ${warning.rule} without disabling the rule.`
+        : 'Correct the stylesheet syntax without weakening Stylelint verification.',
     })),
-    ...(result.invalidOptionWarnings || []).map((warning) => ({ ruleId: 'stylelint/invalid-option', severity: 'error', message: warning.text || warning.message || 'Invalid Stylelint option', location: { path: path.relative(root, result.source).replace(/\\/g, '/') } })),
+    ...(result.invalidOptionWarnings || []).map((warning) => ({ ruleId: 'stylelint/invalid-option', severity: 'error', message: warning.text || warning.message || 'Invalid Stylelint option', location: { path: path.relative(root, result.source).replace(/\\/g, '/') }, remediation: 'Correct the project Stylelint option while preserving the rule.' })),
   ]);
 }
 
@@ -268,7 +272,7 @@ export async function runStylelintFiles({
 
   const configFile = findProjectStylelintConfig(root);
   if (requireConfig && !configFile) {
-    throw new Error('Stylelint staged gate requires a project Stylelint configuration file');
+    throw configurationError('stylelint/missing-project-config', 'Stylelint staged gate requires a project Stylelint configuration file');
   }
 
   const { stylelint, version } = await loadProjectStylelint(root);
@@ -314,7 +318,7 @@ export async function runStylelintFiles({
   }
 
   if (!fix) {
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: stylelintFindings(root, initial.results, maxWarnings), diagnostics: [{ level: 'error', message: buildStylelintAiRepairInstructions({ root, results: initial.results, maxWarnings }) }], metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: stylelintFindings(root, initial.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
   }
 
   const originalContents = captureFileContents(normalizedFiles);
@@ -340,13 +344,16 @@ export async function runStylelintFiles({
     );
   } catch (error) {
     restoreFileContents(originalContents);
-    throw error;
+    throw toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'stylelint/execution-failed',
+    });
   }
 
   const finalSummary = summarize(final.results);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: stylelintFindings(root, final.results, maxWarnings), diagnostics: [{ level: 'error', message: buildStylelintAiRepairInstructions({ root, results: final.results, maxWarnings }) }], metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: stylelintFindings(root, final.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
   }
 
   return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${version} auto-fix and verification passed`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });

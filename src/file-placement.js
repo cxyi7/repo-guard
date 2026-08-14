@@ -62,35 +62,6 @@ export function inspectFilePlacement({ changes, config, files = null }) {
   return { checkedCount, violations };
 }
 
-export function buildFilePlacementAiInstructions(
-  violations,
-  { conclusion = '提交已停止。' } = {},
-) {
-  const lines = [
-    '文件位置规范检查失败，可将以下指令分别交给 AI 修复：',
-  ];
-
-  violations.forEach((violation, index) => {
-    const current = violation.oldPath
-      ? `${violation.oldPath} -> ${violation.path}`
-      : violation.path;
-    lines.push(
-      '',
-      `${index + 1}. 请移动位置不符合规范的${violation.rule.name}。`,
-      `   当前文件：${current}`,
-      `   建议目标：${violation.suggestedPath}`,
-      '   允许位置：',
-      ...violation.rule.allowedPatterns.map((pattern) => `   - ${pattern}`),
-      '   修改要求：移动文件后，同步更新 Vue、JavaScript、CSS、HTML 和 Markdown 中的全部引用路径。',
-      '   验证要求：确认没有失效引用或重复资源，并运行项目已有的 lint、测试和构建命令。',
-      '   禁止绕过：不要复制出重复文件，不要修改门禁规则、关闭开关或加入 exceptions。',
-      '   完成后重新暂存移动后的文件、原路径删除记录和全部引用修改。',
-    );
-  });
-
-  lines.push('', `共 ${violations.length} 个文件位置不符合规范，${conclusion}`);
-  return lines.join('\n');
-}
 
 export function collectProjectFiles(root) {
   const parsePaths = (output) => output

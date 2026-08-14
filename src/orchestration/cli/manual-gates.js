@@ -1,7 +1,7 @@
 import { loadConfig } from '../../config.js';
 import { createChangeSet, createGateContext } from '../../core/capability/gate-context.js';
 import { defineExecutionPlan } from '../../core/capability/execution-plan.js';
-import { createGateRegistry } from '../../core/capability/gate-registry.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { collectProjectFiles } from '../../file-placement.js';
 import { createProjectGateRegistry, gateRegistry } from '../../gates/registry.js';
@@ -47,13 +47,6 @@ async function runManualGate(gate, {
       return await gate.run({ ...invocationContext, plan: gatePlan });
     },
     onResult: ({ result }) => {
-      if (gate.renderConsole) {
-        for (const line of gate.renderConsole(result)) {
-          if (line.stream === 'stderr') console.error(line.message);
-          else console.log(line.message);
-        }
-        return;
-      }
       writeGateResultConsole(result, { label: gate.manualCommand ?? gate.id });
     },
   });
@@ -61,22 +54,15 @@ async function runManualGate(gate, {
 }
 
 export async function runExternalManualGate(gateId, cwd = process.cwd()) {
-  if (!gateId.startsWith('project.')) throw new Error(`${gateId} is not an external project gate`);
+  if (!gateId.startsWith('project.')) throw configurationError('manual-gate/not-external-gate', `${gateId} is not an external project gate`);
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
   const registry = createProjectGateRegistry(config);
   const gate = registry.get(gateId);
   if (!gate.environments.includes('manual')) {
-    throw new Error(`External gate ${gateId} does not support manual execution`);
+    throw configurationError('manual-gate/unsupported-environment', `External gate ${gateId} does not support manual execution`);
   }
   return await runManualGate(gate, { cwd, registry });
-}
-
-export async function runNativeManualGate(gate, cwd = process.cwd()) {
-  return await runManualGate(gate, {
-    cwd,
-    registry: createGateRegistry([gate]),
-  });
 }
 
 export async function runRegisteredManualGate(

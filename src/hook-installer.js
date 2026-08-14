@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, securityError } from './core/error/repo-guard-error.js';
 import { gateRegistry } from './gates/registry.js';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,6 +14,7 @@ import {
   loadConfig,
 } from './config.js';
 import { ensureGitAttributes } from './git-attributes.js';
+import { writeConsoleMessage } from './core/report/console-renderer.js';
 import { findRepositoryRoot, gitValue, runGit } from './git.js';
 import { ensureLocalEnvironment } from './local-env.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
@@ -69,7 +71,9 @@ function ensureManagedFile(target, content) {
   if (existsSync(target)) {
     const existing = readFileSync(target, 'utf8');
     if (!isManagedHook(existing)) {
-      throw new Error(`Refusing to overwrite non-managed Git hook: ${target}`);
+      throw securityError('hooks/non-managed-hook', `Refusing to overwrite non-managed Git hook: ${target}`, {
+        decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
+      });
     }
   }
 
@@ -80,7 +84,9 @@ function ensureManagedFile(target, content) {
 function ensurePackageScripts(root) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
-    throw new Error('package.json was not found in the repository root');
+    throw configurationError('hooks/missing-package-manifest', 'package.json was not found in the repository root', {
+      details: { location: { path: 'package.json' } },
+    });
   }
 
   const packageJson = JSON.parse(readFileSync(target, 'utf8'));
@@ -115,9 +121,10 @@ function ensurePackageScripts(root) {
   if (!packageJson.scripts.prepare) {
     packageJson.scripts.prepare = 'repo-guard install-hooks';
   } else if (!packageJson.scripts.prepare.includes('repo-guard install-hooks')) {
-    console.warn(
+    writeConsoleMessage(
       'repo-guard warning: package.json already has a prepare script; '
       + 'add "repo-guard install-hooks" to it manually.',
+      'stderr',
     );
   }
 
@@ -131,20 +138,22 @@ export function installHooks({
   env = process.env,
 } = {}) {
   if (env.REPO_GUARD_SKIP_HOOKS === '1') {
-    console.log('repo-guard: hook installation skipped by REPO_GUARD_SKIP_HOOKS=1.');
+    writeConsoleMessage('repo-guard: hook installation skipped by REPO_GUARD_SKIP_HOOKS=1.');
     return { skipped: true, root: null };
   }
   const root = findRepositoryRoot(cwd, { allowMissing: allowMissingGit });
   if (!root) {
-    console.log('repo-guard: no Git repository detected; hook installation skipped.');
+    writeConsoleMessage('repo-guard: no Git repository detected; hook installation skipped.');
     return { skipped: true, root: null };
   }
 
   const configuredHooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
   if (configuredHooksPath && configuredHooksPath !== HOOKS_DIRECTORY) {
-    throw new Error(
+    throw securityError(
+      'hooks/existing-hooks-path',
       `core.hooksPath is already configured as "${configuredHooksPath}"; `
       + `refusing to replace it with "${HOOKS_DIRECTORY}"`,
+      { decision: { aiAction: 'request-human-review', humanApprovalRequired: true } },
     );
   }
 
@@ -153,7 +162,9 @@ export function installHooks({
   for (const hookName of Object.keys(HOOK_COMMANDS)) {
     const target = path.join(hooksPath, hookName);
     if (existsSync(target) && !isManagedHook(readFileSync(target, 'utf8'))) {
-      throw new Error(`Refusing to overwrite non-managed Git hook: ${target}`);
+      throw securityError('hooks/non-managed-hook', `Refusing to overwrite non-managed Git hook: ${target}`, {
+        decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
+      });
     }
   }
 

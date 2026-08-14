@@ -3,7 +3,10 @@ import {
   readFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, executionError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';
+import { processOutputDiagnostics } from './core/execution/process-output.js';
+import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { runProjectScript } from './integrations/npm/run-script.js';
 
 export const BUILD_GATE_ID = 'quality.build';
@@ -11,7 +14,7 @@ export const BUILD_GATE_ID = 'quality.build';
 function readProjectPackage(root) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
-    throw new Error(`package.json was not found in repository root: ${root}`);
+    throw configurationError('build/missing-package-json', 'package.json was not found in repository root');
   }
   return JSON.parse(readFileSync(target, 'utf8'));
 }
@@ -20,7 +23,10 @@ export function validateBuildSetup(root, config) {
   const packageJson = readProjectPackage(root);
   const command = packageJson.scripts?.[config.script];
   if (typeof command !== 'string' || !command.trim()) {
-    throw new Error(`Build gate requires package.json script "${config.script}"`);
+    throw configurationError(
+      'build/missing-script',
+      `Build gate requires package.json script "${config.script}"`,
+    );
   }
   return { command: command.trim() };
 }
@@ -41,10 +47,15 @@ export function runBuildGate({ root, config }) {
     message: `repo-guard build: running npm script "${config.script}" (${setup.command})...`,
   }];
   const execution = runProjectScript({ root, script: config.script, timeoutMs: config.timeoutMs });
+  diagnostics.push(...processOutputDiagnostics(execution, { source: 'build', root }));
   if (execution.error) {
-    const error = execution.timedOut
-      ? new Error(`Project build exceeded ${config.timeoutMs}ms`)
-      : new Error(`Unable to run project build: ${execution.error.message}`);
+    const error = executionError(
+      execution.timedOut ? 'build/timeout' : 'build/process-start-failed',
+      execution.timedOut
+        ? `Project build exceeded ${config.timeoutMs}ms`
+        : `Unable to run project build: ${execution.error.message}`,
+      { cause: execution.error },
+    );
     return createGateResult({
       gateId: BUILD_GATE_ID,
       status: 'execution-error',
@@ -55,17 +66,15 @@ export function runBuildGate({ root, config }) {
     });
   }
   if (execution.status !== 0) {
-    diagnostics.push({ level: 'error', message: [
-      `项目构建失败（退出码 ${execution.status ?? 1}），推送已停止。`,
-      '请根据上方构建输出修复源码、配置、依赖或资源问题。',
-      '不得把构建脚本改为空操作、忽略构建错误、关闭生产优化或修改门禁绕过。',
-      `修复后重新运行 npm run ${config.script}。`,
-    ].join('\n') });
     return createGateResult({
       gateId: BUILD_GATE_ID,
       status: 'violation',
       summary: 'Project build failed',
       diagnostics,
+      findings: [processFailureFinding(BUILD_GATE_ID, {
+        exitCode: execution.status ?? 1,
+        script: config.script,
+      })],
       metrics: { processExitCode: execution.status ?? 1 },
       durationMs: Date.now() - startedAt,
     });

@@ -7,6 +7,7 @@ import {
 import path from 'node:path';
 import { configureCi } from './config-management.js';
 import { loadConfig } from './config.js';
+import { configurationError, securityError } from './core/error/repo-guard-error.js';
 
 export const GITLAB_CI_FILE = '.gitlab-ci.yml';
 export const GITLAB_TEMPLATE_FILE = '.gitlab/ci/repo-guard.yml';
@@ -151,11 +152,11 @@ function selectStage(content, requestedStage) {
   const { stages } = declaration;
   if (requestedStage) {
     if (parseStageScalar(requestedStage) !== requestedStage) {
-      throw new Error(`GitLab CI stage is invalid: ${requestedStage}`);
+      throw configurationError('gitlab-ci/invalid-stage', `GitLab CI stage is invalid: ${requestedStage}`);
     }
     const availableStages = declaration.present ? stages : DEFAULT_GITLAB_STAGES;
     if (!availableStages.includes(requestedStage)) {
-      throw new Error(`GitLab CI stage is not declared: ${requestedStage}`);
+      throw configurationError('gitlab-ci/undeclared-stage', `GitLab CI stage is not declared: ${requestedStage}`);
     }
     return { conflict: null, stage: requestedStage };
   }
@@ -264,7 +265,7 @@ export function installGitLabCi(root, {
   dryRun = false,
 } = {}) {
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    throw new Error('CI profile must be policy, full, or release-ready');
+    throw configurationError('gitlab-ci/invalid-profile', 'CI profile must be policy, full, or release-ready');
   }
   loadConfig(root);
   const rootPath = path.join(root, GITLAB_CI_FILE);
@@ -272,7 +273,15 @@ export function installGitLabCi(root, {
   const currentRoot = existsSync(rootPath) ? readFileSync(rootPath, 'utf8') : '';
   const currentTemplate = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : '';
   if (currentTemplate && !isManagedTemplate(currentTemplate)) {
-    throw new Error(`Refusing to overwrite non-managed GitLab template: ${GITLAB_TEMPLATE_FILE}`);
+    throw securityError(
+      'gitlab-ci/non-managed-template',
+      `Refusing to overwrite non-managed GitLab template: ${GITLAB_TEMPLATE_FILE}`,
+      {
+        details: { location: { path: GITLAB_TEMPLATE_FILE } },
+        expected: 'repo-guard 只更新带当前或已知旧版受管标记的 GitLab 模板。',
+        decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
+      },
+    );
   }
 
   const selection = selectStage(currentRoot, stage);

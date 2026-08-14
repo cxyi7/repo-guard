@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import micromatch from 'micromatch';
+import { configurationError, executionError } from '../../core/error/repo-guard-error.js';
 import { runExactNpmCommand } from '../../integrations/npm/external-script.js';
 import { releaseEnvironment } from '../../integrations/npm/release-environment.js';
 
@@ -9,11 +10,16 @@ const SENSITIVE_PACKAGE_PATH = /(?:^|\/)(?:\.env(?:\.|$)|\.npmrc$|\.pypirc$|cred
 
 function readJson(root, relativePath) {
   const target = path.join(root, relativePath);
-  if (!existsSync(target)) throw new Error(`${relativePath} is required for release readiness`);
+  if (!existsSync(target)) throw configurationError('release-readiness/missing-json-file', `${relativePath} is required for release readiness`, {
+    details: { location: { path: relativePath } },
+  });
   try {
     return JSON.parse(readFileSync(target, 'utf8'));
   } catch (error) {
-    throw new Error(`${relativePath} must contain valid JSON: ${error.message}`);
+    throw configurationError('release-readiness/invalid-json-file', `${relativePath} must contain valid JSON: ${error.message}`, {
+      cause: error,
+      details: { location: { path: relativePath } },
+    });
   }
 }
 
@@ -133,10 +139,10 @@ export async function inspectPackageReadiness({ root, signal, cacheDirectory = n
   try {
     packReport = JSON.parse(execution.stdout);
   } catch (error) {
-    throw new Error(`npm pack --dry-run returned invalid JSON: ${error.message}`);
+    throw executionError('release-readiness/invalid-pack-json', `npm pack --dry-run returned invalid JSON: ${error.message}`, { cause: error });
   }
   if (!Array.isArray(packReport) || packReport.length !== 1 || !Array.isArray(packReport[0]?.files)) {
-    throw new Error('npm pack --dry-run must return exactly one package with a file manifest');
+    throw executionError('release-readiness/invalid-pack-manifest', 'npm pack --dry-run must return exactly one package with a file manifest');
   }
   const packageEntry = packReport[0];
   const packedFiles = new Set(packageEntry.files.map(({ path: file }) => normalizedTarget(file)));

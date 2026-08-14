@@ -4,10 +4,10 @@ import {
   captureFileContents,
   restoreFileContents,
 } from './file-snapshot.js';
-import { buildEslintAiRepairInstructions } from './eslint-diagnostics.js';
 import { createRepoGuardEslintConfig } from './eslint-config.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
+import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';
 
 export const ESLINT_GATE_ID = 'quality.eslint';
@@ -24,7 +24,8 @@ async function loadProjectEslint(root) {
   const ESLint = eslintModule.ESLint || eslintModule.default?.ESLint;
 
   if (typeof ESLint !== 'function') {
-    throw new Error(
+    throw configurationError(
+      'eslint/unsupported-project-api',
       `Unsupported ESLint ${metadata.version}: the ESLint class is not available`,
     );
   }
@@ -44,10 +45,13 @@ async function loadProjectIntegration(root, packageName, displayName, required) 
   try {
     metadata = resolveProjectPackageMetadata(root, packageName, displayName);
   } catch (error) {
-    if (!required && /is enabled but is not installed/.test(error.message)) {
+    if (!required && error?.code === 'project-package/dependency-not-installed') {
       return null;
     }
-    throw error;
+    throw toRepoGuardError(error, {
+      kind: 'configuration',
+      code: 'eslint/integration-resolution-failed',
+    });
   }
 
   const imported = await import(pathToFileURL(metadata.entryPath).href);
@@ -66,7 +70,8 @@ function supportsRepoGuardPreset(version) {
 
 export async function resolveRepoGuardEslintPreset(root, eslintVersion) {
   if (!supportsRepoGuardPreset(eslintVersion)) {
-    throw new Error(
+    throw configurationError(
+      'eslint/unsupported-project-version',
       `repo-guard ESLint preset requires ESLint >=9.19; project has ${eslintVersion}`,
     );
   }
@@ -138,6 +143,9 @@ function blockingFindings(root, results, maxWarnings) {
         ...(message.line ? { line: message.line } : {}),
         ...(message.column ? { column: message.column } : {}),
       },
+      remediation: message.ruleId
+        ? `Fix the root cause reported by ESLint rule ${message.ruleId} without disabling the rule.`
+        : 'Correct the syntax or parser configuration without weakening ESLint verification.',
     })));
 }
 
@@ -177,7 +185,7 @@ export async function runEslintFiles({
   }
 
   if (!fix) {
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: blockingFindings(root, initialResults, maxWarnings), diagnostics: [{ level: 'error', message: buildEslintAiRepairInstructions({ root, results: initialResults, maxWarnings }) }], metrics: { checkedFiles: lintableFiles.length, errors: initialSummary.errors, warnings: initialSummary.warnings } });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: blockingFindings(root, initialResults, maxWarnings), metrics: { checkedFiles: lintableFiles.length, errors: initialSummary.errors, warnings: initialSummary.warnings } });
   }
 
   const fixingEslint = new ESLint(eslintOptions(true));
@@ -193,13 +201,16 @@ export async function runEslintFiles({
     finalResults = await finalEslint.lintFiles(lintableFiles);
   } catch (error) {
     restoreFileContents(originalContents);
-    throw error;
+    throw toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'eslint/execution-failed',
+    });
   }
 
   const finalSummary = summarize(finalResults);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: blockingFindings(root, finalResults, maxWarnings), diagnostics: [{ level: 'error', message: buildEslintAiRepairInstructions({ root, results: finalResults, maxWarnings }) }], metrics: { checkedFiles: lintableFiles.length, errors: finalSummary.errors, warnings: finalSummary.warnings } });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: blockingFindings(root, finalResults, maxWarnings), metrics: { checkedFiles: lintableFiles.length, errors: finalSummary.errors, warnings: finalSummary.warnings } });
   }
 
   return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${version} auto-fix and verification passed`, metrics: { checkedFiles: lintableFiles.length, errors: 0, warnings: finalSummary.warnings } });

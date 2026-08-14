@@ -45,7 +45,7 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.equal(dynamicCode.supportsFix, false);
   assert.equal(dynamicCode.supportsCancellation, false);
   assert.equal('renderConsole' in dynamicCodeGate, false);
-  assert.equal(typeof dynamicCode.renderConsole, 'function');
+  assert.equal('renderConsole' in dynamicCode, false);
   assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
   assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 1 } }), {
     status: 'ready',

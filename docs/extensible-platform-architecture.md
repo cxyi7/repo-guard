@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.2.0 已在原生 Gate 平台上完成只读的发布准备计划；当前主要未完成项是阶段 8 的目录依赖边界自动化。**
+结论：**1.3.0 已完成统一报告链收口；当前主要未完成项是阶段 8 的目录依赖边界自动化。**
 
 ### 3.1 已经符合的部分
 
@@ -65,7 +65,6 @@
 | 问题 | 当前表现 | 影响 |
 | --- | --- | --- |
 | 文件结构偏平 | `src` 中 command、policy、runner、解析器和基础设施混排 | 依赖方向主要靠约定，难以自动验证 |
-| 发布准备计划未实现 | 当前只有 `policy` 与 `full` CI 计划 | 尚不能独立证明版本、changelog、Schema 和 artifact 已可发布 |
 
 以上问题不意味着当前实现错误；它们是从“已有门禁工具”继续扩展为“门禁平台”时需要解决的结构性限制。
 
@@ -129,6 +128,10 @@ pre-commit 自动修复是受控例外，必须继续通过 `lint-staged` 隔离
 
 CLI 再将内部状态稳定映射为现有退出码，避免每个 runner 自己解释数字。
 
+所有失败统一进入 `GateResult` JSON v2。规则违规返回 `kind: violation` finding；配置、执行、范围、安全、内部和取消异常由 `RepoGuardError` 分类。面向 AI 的 `issues` 必须自包含稳定代码、相对位置、证据、预期、结构化修复步骤/约束/验证、审批要求和指纹。原始工具输出只能作为带来源、流、脱敏和截断元数据的 diagnostics，不能替代可操作问题。
+
+仓库维护的 `src` 与 `test` 禁止构造裸 `Error`/`AggregateError` 或直接重抛未分类异常。第三方异常必须在最接近其语义的边界转换；只有不可进入业务报告的参数契约可以在静态白名单内使用 `TypeError`。递归静态测试排除 `.tmp`、构建缓存和第三方依赖，防止仓库自有代码退回泛化错误。
+
 ## 5. 目标模块结构
 
 目标结构保持一个 npm 包，但仅包含 Node.js 门禁平台能力：
@@ -143,6 +146,7 @@ CLI 再将内部状态稳定映射为现有退出码，避免每个 runner 自�
 │  ├─ changes/                  staged、push、revision 变更范围
 │  ├─ result/                   状态、finding、artifact 和摘要
 │  ├─ report/                   console、JSON、JUnit 等 renderer
+│  ├─ policy/                   受管文本块和策略生命周期
 │  ├─ project/                  根目录、路径、依赖和工具发现
 │  └─ security/                 Secret 脱敏、路径和 artifact 安全
 │
@@ -156,6 +160,8 @@ CLI 再将内部状态稳定映射为现有退出码，避免每个 runner 自�
 │  ├─ testing/                  单测策略、覆盖率、外部测试报告
 │  ├─ build/                    typecheck 和 build 脚本
 │  └─ performance/              Lighthouse 和性能报告预算
+│
+├─ policies/                    集中的 AGENTS.md 受管提示目录
 │
 ├─ orchestration/
 │  ├─ cli/                      命令解析和展示
@@ -282,16 +288,36 @@ interface GateResult {
   status: GateStatus;
   summary: string;
   findings: Finding[];
+  issues: ActionableIssue[];
   artifacts: Artifact[];
   metrics: Record<string, number>;
+  diagnostics: Diagnostic[];
   durationMs: number;
   error?: NormalizedError;
 }
+
+interface ActionableIssue {
+  id: string;
+  kind: 'violation' | 'configuration' | 'execution' | 'range' | 'security' | 'internal' | 'cancellation';
+  gateId: string;
+  ruleId: string;
+  code: string;
+  severity: 'info' | 'warning' | 'error';
+  location: Location | null;
+  message: string;
+  evidence: Evidence[];
+  expected: string;
+  remediation: { goal: string; steps: string[]; constraints: string[]; verification: string[] };
+  decision: { aiAction: string; humanApprovalRequired: boolean };
+  fingerprint: string;
+}
 ```
 
-`Finding` 至少包含稳定规则 ID、严重级别、消息、可选文件位置、证据和修复建议。console、JSON 和未来 JUnit 由 renderer 根据同一结果生成，避免规则同时维护多套文案和结构。
+`Finding` 是 `kind: violation` 的 `ActionableIssue`。console、JSON 和未来 JUnit 由 renderer 根据同一结果生成，避免规则同时维护多套文案和结构。
 
-AI 修复指令是 finding 的一种 renderer，不应成为门禁唯一输出。
+AI 使用 JSON `issues` 作为规范输入；console 只负责将同一字段排版为可读块，不维护另一套修复指令。
+
+写入 `AGENTS.md` 的长期 AI 约束与一次门禁执行的 finding 分属不同生命周期，但同样不能散落在 runner 或规则文件。受管块的 marker、幂等写入和 current 校验统一位于 `core/policy`，例外、架构、单元测试和 axe 的模板统一注册在 `policies/managed-policies.js`；进程失败 remediation 则由 `core/report` 的 guidance catalog 按稳定 Gate ID 提供。
 
 所有官方门禁必须直接返回结构化 finding 和 metric，不得以 console 文本或数字退出码作为内部事实来源。0.x 迁移期曾使用的数字 runner adapter、旧 facade 和重复 command wrapper 已在 1.0.0 删除；后续阶段不得重新引入兼容旁路。
 
@@ -628,7 +654,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 1：统一结果模型
 
-实施状态：`0.16.0` 建立统一模型；1.0.0 已删除该阶段的临时 adapter。统一模型位于 `src/core/result`，renderer 位于 `src/core/report`，所有官方门禁原生生成同一结果。
+实施状态：`0.16.0` 建立统一模型，1.0.0 删除临时 adapter，1.3.0 完成报告与提示链收口。统一模型位于 `src/core/result`，renderer 与进程修复 guidance 位于 `src/core/report`，受管策略生命周期位于 `src/core/policy`，`AGENTS.md` 模板位于 `src/policies`；所有官方门禁原生生成同一结果，消费项目子进程输出先进入 diagnostics，console 与 CI JSON 不再存在 gate/runner 专属旁路。
 
 - 定义 `GateStatus`、`Finding`、`Artifact` 和 `GateResult`；
 - 新模块直接创建在 `core/result` 和 `core/report`；

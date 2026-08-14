@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+- 消费项目工具解析现在会对缺失 package.json、缺失项目依赖和无法解析的包入口返回带稳定代码与修复步骤的 typed configuration error。
+- Git 变更收集现在会将不完整的普通、重命名和复制记录报告为带协议证据的 typed execution error，不再依赖编排层生成泛化错误。
+- 清理仓库维护的 `src` 与 `test` 中全部裸 `Error`/`AggregateError` 和未分类重抛：配置、Git/CI、Hook、外部门禁、工具 runner、通知与发布准备边界现在直接产生带稳定代码的 typed error；仅允许白名单内的 API 参数契约使用 `TypeError`，并由排除生成目录与第三方代码的递归静态测试防回归。
+- 将内部 JSON 报告升级为 `GateResult` schema v2：新增面向 AI 的统一 `issues`，每项固定包含问题类型、稳定代码、仓库相对位置、结构化证据、预期、修复目标/步骤/约束/验证、AI 决策和去重指纹；新增可发布的 `gate-result.schema.json`。
+- 新增 `RepoGuardError` 分类与稳定状态映射，配置、执行、范围、安全、内部、取消和超时错误不再按调用阶段猜测；规则违规继续返回 finding，不使用异常代替策略结果。
+- diagnostics 统一携带 `source/stream/level/redacted/truncated`，所有子进程文本经过同一凭据脱敏、仓库根路径替换和长度限制；Vue 图片、表单 label 与 axe 设置问题移除 `reason/repair` 兼容字段。
+- 将官方门禁输出收口为统一 `GateResult` 报告链：规则与 runner 只产生结构化 finding、diagnostic、metric 和 artifact，console/CI JSON 由 `core/report` 统一渲染，JSON `gateResult` 现在完整保留 diagnostics。
+- TypeScript、build、单元测试、axe 与 Lighthouse 子进程改为捕获 stdout/stderr 后写入 diagnostics，不再通过继承 stdio 或 runner 内部 console 绕过报告层；配置、执行和范围错误也使用同一状态与 console renderer。
+- 将例外、架构、单元测试和 axe 的 `AGENTS.md` 提示模板收口到统一 managed-policy catalog；进程失败修复建议由 guidance catalog 生成，coverage 与架构不再维护专属文本 formatter，源码中的 console 写入也只允许出现在共享 renderer。
+- 删除各规则专属 AI/console renderer、隐藏的 `lint-files` 命令、未使用 exceptions command 与保护文件直调旁路；新增输出依赖边界测试，并保持 pre-commit 固定顺序、消费项目工具所有权和 Lighthouse 生命周期不变。
+
 ## 1.2.0
 
 - 新增只读 `release-ready` CI profile 与固定 Execution Plan，复用 CI policy、项目 `check`/`test`、build、可选 Lighthouse，并在官方步骤末尾追加显式声明且仅限受保护引用的外部门禁。

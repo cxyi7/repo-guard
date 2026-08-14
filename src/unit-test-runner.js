@@ -4,17 +4,20 @@ import {
   readFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, executionError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from './config.js';
 import {
   buildCoverageArguments,
-  formatCoverageReport,
+  coverageFindings,
   inspectCoverageReports,
   isCoverageEnabled,
   isStructuredCoverage,
   prepareCoverageReports,
 } from './coverage-runner.js';
 import { changeSetEntries } from './core/capability/gate-context.js';
+import { processOutputDiagnostics } from './core/execution/process-output.js';
+import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { createGateResult } from './core/result/gate-result.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';
@@ -38,7 +41,7 @@ const EXECUTING_TEST_PROPERTIES = new Set([
 function readProjectPackage(root) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
-    throw new Error(`package.json was not found in repository root: ${root}`);
+    throw configurationError('unit-test/missing-package-json', 'package.json was not found in repository root');
   }
   return JSON.parse(readFileSync(target, 'utf8'));
 }
@@ -47,7 +50,8 @@ export function validateUnitTestSetup(root, config) {
   const packageJson = readProjectPackage(root);
   const command = packageJson.scripts?.[config.script];
   if (typeof command !== 'string' || !command.trim()) {
-    throw new Error(
+    throw configurationError(
+      'unit-test/missing-script',
       `Unit test gate requires package.json script "${config.script}"`,
     );
   }
@@ -93,8 +97,13 @@ export function expectedUnitTestPaths(
     matches(normalizedSource, [sourcePattern])
   ));
   if (!mapping) {
-    throw new Error(
+    throw configurationError(
+      'unit-test/missing-source-mapping',
       `Unit test source mapping was not found for: ${normalizedSource}.`,
+      {
+        details: { location: { path: normalizedSource } },
+        expected: '每个受单元测试策略约束的源文件都匹配一条 unitTest.mappings 规则。',
+      },
     );
   }
 
@@ -484,71 +493,45 @@ export function inspectUnitTestPolicy({ root, changes, config }) {
   };
 }
 
-export function buildUnitTestAiInstructions({
+export function unitTestPolicyFindings({
   bypasses,
   componentInteractions = [],
   missingTests,
-  script = 'test:unit',
 }) {
-  const lines = ['单元测试门禁失败，可将以下指令交给 AI 修复：'];
-  let index = 1;
-  for (const missing of missingTests) {
-    const action = missing.reason === 'empty'
-      ? `请补全 ${missing.expectedTestPath} 中的有效单元测试。`
-      : `请为 ${missing.sourcePath} 新增单元测试。`;
-    lines.push(
-      '',
-      `${index}. ${action}`,
-      `   预期文件：${missing.expectedTestPath}`,
-      ...(missing.expectedTestPaths?.length > 1
-        ? [`   允许位置：${missing.expectedTestPaths.join('、')}`]
-        : []),
-      '   覆盖要求：测试公开输入输出、正常路径、边界条件和失败路径；Bug 修复需包含回归用例。',
-      '   Vue 组件应验证 Props、用户交互、渲染结果和 emit；API 必须 Mock 网络。',
-      '   禁止绕过：不要修改门禁、加入 exclusions、创建空测试或删除必要断言。',
-      `   完成后运行 npm run ${script}。`,
-    );
-    index += 1;
-  }
-  for (const bypass of bypasses) {
-    lines.push(
-      '',
-      `${index}. 请移除 ${bypass.filePath} 第 ${bypass.line} 行的测试绕过：${bypass.expression}`,
-      '   修复或补全该测试，使其正常参与执行；不得改用其他 skip/only 形式规避。',
-      `   完成后运行 npm run ${script}。`,
-    );
-    index += 1;
-  }
-  for (const issue of componentInteractions) {
-    const best = issue.analyses.reduce((current, candidate) => {
-      const score = Number(candidate.componentImport)
-        + Number(candidate.mount)
-        + Number(candidate.interaction)
-        + Number(candidate.assertion);
-      return !current || score > current.score ? { ...candidate, score } : current;
-    }, null);
-    const missing = [
-      ...(!best?.componentImport ? ['直接导入被测 Vue 组件'] : []),
-      ...(!best?.mount ? ['使用 @vue/test-utils 的 mount 真实挂载该组件'] : []),
-      ...(!best?.interaction ? ['通过 wrapper.trigger/setValue/setChecked/setSelected 执行用户交互'] : []),
-      ...(!best?.assertion ? ['在交互后断言 DOM、可见状态、emit、Props、路由、Store 或 Mock 调用结果'] : []),
-    ];
-    lines.push(
-      '',
-      `${index}. 请为 ${issue.sourcePath} 补全 Vue 组件交互测试。`,
-      `   交互入口：${issue.entries.map(({ name }) => name).join('、')}。`,
-      `   当前测试：${issue.testPaths.join('、')}。`,
-      `   缺少步骤：${missing.join('；')}。`,
-      '   测试要求：在同一个正常执行的 it/test 用例中，依次完成组件导入、mount、真实用户交互和交互结果断言。',
-      '   结果断言：优先验证用户可见 DOM/状态或组件 emit；涉及路由、Store、定时器或外部回调时，验证对应状态或 Mock 调用参数。',
-      '   禁止弱测试：仅断言组件已定义、wrapper.exists()、mount 不抛错、快照或交互前初始状态不能替代交互结果断言。',
-      '   禁止绕过：不得删除模板交互、改成动态写法、关闭 componentInteraction、扩大 componentPatterns/exclusions，或使用 skip/only/todo。',
-      `   完成后运行 npm run ${script}，并确认组件交互、普通单元测试和覆盖率门禁全部通过。`,
-    );
-    index += 1;
-  }
-  lines.push('', '提交或推送已停止。');
-  return lines.join('\n');
+  return [
+    ...missingTests.map((missing) => ({
+      ruleId: missing.reason === 'empty' ? 'unit-test/non-empty-test' : 'unit-test/required-test',
+      severity: 'error',
+      message: missing.sourcePath
+        ? `${missing.sourcePath} requires an effective unit test`
+        : `${missing.expectedTestPath} does not contain an effective unit test`,
+      location: { path: missing.sourcePath ?? missing.expectedTestPath },
+      evidence: missing.expectedTestPaths?.length
+        ? `Accepted test paths: ${missing.expectedTestPaths.join(', ')}`
+        : null,
+      remediation: `Add an executable test at ${missing.expectedTestPath} with meaningful assertions.`,
+    })),
+    ...bypasses.map((bypass) => ({
+      ruleId: 'unit-test/no-bypass',
+      severity: 'error',
+      message: `Unit test bypass detected: ${bypass.expression}`,
+      location: {
+        path: bypass.filePath,
+        ...(bypass.line ? { line: bypass.line } : {}),
+      },
+      remediation: 'Remove the skip, todo, or only bypass and make the test pass normally.',
+    })),
+    ...componentInteractions.map((issue) => ({
+      ruleId: 'unit-test/vue-component-interaction',
+      severity: 'error',
+      message: `${issue.sourcePath} lacks a complete component interaction test`,
+      location: { path: issue.sourcePath },
+      evidence: issue.testPaths.length > 0
+        ? `Inspected tests: ${issue.testPaths.join(', ')}`
+        : null,
+      remediation: 'Import and mount the component, perform a real user interaction, then assert its observable result in the same test.',
+    })),
+  ];
 }
 
 function runNpmScript(root, config) {
@@ -568,7 +551,8 @@ function runNpmScript(root, config) {
   return spawnSync(command, args, {
     cwd: root,
     env: process.env,
-    stdio: 'inherit',
+    stdio: 'pipe',
+    encoding: 'utf8',
     timeout: config.timeoutMs,
     windowsHide: true,
   });
@@ -581,14 +565,11 @@ export function runUnitTestGate({ root, config, changes }) {
   if (policy.missingTests.length > 0
     || policy.bypasses.length > 0
     || policy.componentInteractions.length > 0) {
-    console.error(buildUnitTestAiInstructions({
-      ...policy,
-      script: config.script,
-    }));
     return createGateResult({
       gateId: 'quality.unit-test',
       status: 'violation',
       summary: 'Unit test policy failed',
+      findings: unitTestPolicyFindings(policy),
       metrics: {
         missingTests: policy.missingTests.length,
         bypasses: policy.bypasses.length,
@@ -597,36 +578,50 @@ export function runUnitTestGate({ root, config, changes }) {
     });
   }
 
-  console.log(
+  const diagnostics = [{ level: 'info', message:
     `repo-guard unit tests: Vitest ${setup.vitest.version}, `
     + `running npm script "${config.script}"`
-    + `${isCoverageEnabled(config.coverage) ? ' with coverage' : ''}...`,
-  );
+    + `${isCoverageEnabled(config.coverage) ? ' with coverage' : ''}...` }];
   prepareCoverageReports(root, config.coverage);
   const result = runNpmScript(root, config);
+  diagnostics.push(...processOutputDiagnostics(result, { source: 'vitest', root }));
   if (result.error) {
     if (result.error.code === 'ETIMEDOUT') {
-      console.error(`单元测试超过 ${config.timeoutMs}ms，推送已停止。`);
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',
         summary: `Unit tests exceeded ${config.timeoutMs}ms`,
-        error: result.error,
+        error: executionError(
+          'unit-test/timeout',
+          `Unit tests exceeded ${config.timeoutMs}ms`,
+          { cause: result.error },
+        ),
+        diagnostics,
       });
     }
-    throw new Error(`Unable to run unit tests: ${result.error.message}`);
+    const error = executionError(
+      'unit-test/process-start-failed',
+      `Unable to run unit tests: ${result.error.message}`,
+      { cause: result.error },
+    );
+    return createGateResult({
+      gateId: 'quality.unit-test',
+      status: 'execution-error',
+      summary: error.message,
+      error,
+      diagnostics,
+    });
   }
   if (result.status !== 0) {
-    console.error([
-      `单元测试失败（退出码 ${result.status ?? 1}），推送已停止。`,
-      '请根据上方 Vitest 输出修复根因和对应代码或测试。',
-      '不得删除失败测试、降低必要断言、使用 .skip/.skipIf/.todo/.only 或修改门禁绕过。',
-      `修复后重新运行 npm run ${config.script}。`,
-    ].join('\n'));
     return createGateResult({
       gateId: 'quality.unit-test',
       status: 'violation',
       summary: `Unit tests failed with exit code ${result.status ?? 1}`,
+      diagnostics,
+      findings: [processFailureFinding('quality.unit-test', {
+        exitCode: result.status ?? 1,
+        script: config.script,
+      })],
     });
   }
   if (isStructuredCoverage(config.coverage)) {
@@ -634,38 +629,38 @@ export function runUnitTestGate({ root, config, changes }) {
     try {
       coverageResult = inspectCoverageReports({ root, config, changes });
     } catch (error) {
-      console.error([
-        `Coverage gate failed: ${error.message}`,
-        'Ensure the configured Vitest coverage provider can generate json-summary and lcov reports.',
-        'Do not reuse stale reports, disable the gate, or reduce thresholds to bypass the failure.',
-      ].join('\n'));
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',
         summary: 'Coverage report inspection failed',
-        error,
+        error: toRepoGuardError(error, {
+          kind: 'execution',
+          code: 'coverage/report-inspection-failed',
+        }),
+        diagnostics,
+        findings: [processFailureFinding('quality.unit-test', {
+          phase: 'coverage-report',
+          script: config.script,
+        })],
       });
     }
-    const report = formatCoverageReport(coverageResult, root);
-    console.log(report);
+    const findings = coverageFindings(coverageResult, root);
     if (!coverageResult.passed) {
-      console.error([
-        'Coverage or changed-line coverage is below the configured hard threshold.',
-        'Add effective tests for the uncovered behavior and changed lines, then run the unit-test gate again.',
-        'Do not exclude production files or reduce thresholds to bypass the gate.',
-      ].join('\n'));
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'violation',
         summary: 'Coverage threshold failed',
+        diagnostics,
+        findings,
       });
     }
   }
-  console.log('repo-guard unit tests passed.');
+  diagnostics.push({ level: 'info', message: 'repo-guard unit tests passed.' });
   return createGateResult({
     gateId: 'quality.unit-test',
     status: 'passed',
     summary: `Unit tests passed with Vitest ${setup.vitest.version}`,
+    diagnostics,
     metrics: { coverageEnabled: isCoverageEnabled(config.coverage) ? 1 : 0 },
   });
 }

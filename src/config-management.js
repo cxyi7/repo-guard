@@ -4,6 +4,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError } from './core/error/repo-guard-error.js';
 import { gateRegistry } from './gates/registry.js';
 import { assertExceptionRegistryCurrent } from './exception-registry.js';
 import {
@@ -219,7 +220,7 @@ function readProjectConfig(root) {
   try {
     return JSON.parse(readFileSync(configPath(root), 'utf8'));
   } catch (error) {
-    throw new Error(`Unable to read ${CONFIG_FILE}: ${error.message}`);
+    throw configurationError('config/management-invalid', `Unable to read ${CONFIG_FILE}: ${error.message}`);
   }
 }
 
@@ -329,23 +330,23 @@ function featureConfig(config, feature) {
     return gate.configKey.split('.').reduce((current, key) => current[key], config);
   }
   if (feature === 'ci' || feature === 'notification') return config[feature];
-  throw new Error(`Unsupported configurable feature: ${feature}`);
+  throw configurationError('config/management-invalid', `Unsupported configurable feature: ${feature}`);
 }
 
 export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (typeof enabled !== 'boolean') {
-    throw new Error('Feature state must be a boolean');
+    throw configurationError('config/management-invalid', 'Feature state must be a boolean');
   }
   const uniqueFeatures = [...new Set(requestedFeatures)];
   if (uniqueFeatures.length === 0) {
-    throw new Error(`Choose at least one feature: ${CONFIGURABLE_FEATURES.join(', ')}`);
+    throw configurationError('config/management-invalid', `Choose at least one feature: ${CONFIGURABLE_FEATURES.join(', ')}`);
   }
 
   const unsupported = uniqueFeatures.filter(
     (feature) => !CONFIGURABLE_FEATURES.includes(feature),
   );
   if (unsupported.length > 0) {
-    throw new Error(`Unsupported feature(s): ${unsupported.join(', ')}`);
+    throw configurationError('config/management-invalid', `Unsupported feature(s): ${unsupported.join(', ')}`);
   }
   const requiredFeatures = [];
   if (enabled && uniqueFeatures.includes('coverage')) requiredFeatures.push('unitTest');
@@ -388,7 +389,7 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
 export function enableQualityGates(root, requestedGates) {
   const unsupported = requestedGates.filter((gate) => !QUALITY_GATES.includes(gate));
   if (unsupported.length > 0) {
-    throw new Error(`Unsupported quality gate(s): ${unsupported.join(', ')}`);
+    throw configurationError('config/management-invalid', `Unsupported quality gate(s): ${unsupported.join(', ')}`);
   }
   const result = setFeaturesEnabled(root, requestedGates, true);
   return {
@@ -400,7 +401,7 @@ export function enableQualityGates(root, requestedGates) {
 
 export function configureCi(root, { profile = 'policy' } = {}) {
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    throw new Error('CI profile must be policy, full, or release-ready');
+    throw configurationError('config/management-invalid', 'CI profile must be policy, full, or release-ready');
   }
   const migration = migrateProjectConfig(root);
   const config = migration.config;

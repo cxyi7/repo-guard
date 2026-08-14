@@ -7,6 +7,18 @@ export {
 export { defineGate } from './core/capability/gate-definition.js';
 export { createGateRegistry } from './core/capability/gate-registry.js';
 export {
+  cancellationError,
+  configurationError,
+  errorStatus,
+  executionError,
+  internalError,
+  isRepoGuardError,
+  rangeError,
+  RepoGuardError,
+  securityError,
+  toRepoGuardError,
+} from './core/error/repo-guard-error.js';
+export {
   createArtifact,
   createFinding,
   createGateResult,

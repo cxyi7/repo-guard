@@ -1,6 +1,15 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import {
+  cancellationError,
+  executionError,
+  toRepoGuardError,
+} from '../../core/error/repo-guard-error.js';
+import {
+  containsSensitiveOutput,
+  redactOutput,
+} from '../../core/execution/output-safety.js';
 
 const OUTPUT_LIMIT = 1024 * 1024;
 
@@ -24,7 +33,10 @@ async function terminateProcessTree(child) {
       killer.on('error', reject);
       killer.on('close', (status) => {
         if (status === 0 || child.exitCode != null || child.signalCode != null) resolve();
-        else reject(new Error(`Unable to terminate external gate process tree (taskkill exit ${status})`));
+        else reject(executionError(
+          'external-gate/process-tree-termination-failed',
+          `Unable to terminate external gate process tree (taskkill exit ${status})`,
+        ));
       });
     });
     return;
@@ -32,27 +44,26 @@ async function terminateProcessTree(child) {
   try {
     process.kill(-child.pid, 'SIGKILL');
   } catch (error) {
-    if (child.exitCode == null && child.signalCode == null && !child.kill('SIGKILL')) throw error;
+    if (child.exitCode == null && child.signalCode == null && !child.kill('SIGKILL')) {
+      throw toRepoGuardError(error, {
+        kind: 'execution',
+        code: 'external-gate/process-tree-termination-failed',
+      });
+    }
   }
 }
 
 export function redactExternalOutput(value) {
-  return String(value)
-    .replace(/-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH PRIVATE KEY)-----[\s\S]*?-----END [^-]*(?:PRIVATE KEY|OPENSSH PRIVATE KEY)-----/gi, '[REDACTED PRIVATE KEY]')
-    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/-]+=*/gi, '$1 [REDACTED]')
-    .replace(/\b(token|password|passwd|secret|cookie|authorization|api[-_]?key|access[-_]?token|refresh[-_]?token|client[-_]?secret|session[-_]?id)\b\s*[:=]\s*([^\s,;]+)/gi, '$1=[REDACTED]');
+  return redactOutput(value);
 }
 
 export function containsSensitiveExternalData(value) {
-  const text = String(value);
-  return /-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH PRIVATE KEY)-----/i.test(text)
-    || /\bBearer\s+[A-Za-z0-9._~+/-]+=*/i.test(text)
-    || /["']?(?:token|password|passwd|secret|cookie|authorization|api[-_]?key|access[-_]?token|refresh[-_]?token|client[-_]?secret|session[-_]?id)["']?\s*[:=]\s*["']?[^\s"',;}]+/i.test(text);
+  return containsSensitiveOutput(value);
 }
 
 async function runExactNpmInvocation({ root, argumentsList, signal, env = process.env }) {
   const npmCli = npmCliPath();
-  if (!npmCli) throw new Error('Unable to locate the npm CLI used by this Node.js installation');
+  if (!npmCli) throw executionError('npm/cli-not-found', 'Unable to locate the npm CLI used by this Node.js installation');
   return await new Promise((resolve, reject) => {
     let settled = false;
     let terminating = false;
@@ -79,9 +90,13 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
         await terminateProcessTree(child);
         finish(reject, reason);
       } catch (error) {
-        finish(reject, new AggregateError(
-          [reason, error],
+        finish(reject, executionError(
+          'external-gate/termination-failed',
           `${reason.message}; ${error.message}`,
+          {
+            cause: error,
+            details: { evidence: [{ type: 'termination-reason', message: reason.message }] },
+          },
         ));
       }
     };
@@ -89,7 +104,10 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
       if (settled || terminating) return;
       size += chunk.length;
       if (size > OUTPUT_LIMIT) {
-        void terminate(new Error(`External gate output exceeded ${OUTPUT_LIMIT} bytes`));
+        void terminate(executionError(
+          'external-gate/output-limit-exceeded',
+          `External gate output exceeded ${OUTPUT_LIMIT} bytes`,
+        ));
         return;
       }
       if (stream === 'stdout') stdout += chunk.toString('utf8');
@@ -98,7 +116,10 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
     child.stdout.on('data', collect('stdout'));
     child.stderr.on('data', collect('stderr'));
     child.on('error', (error) => {
-      if (!terminating) finish(reject, error);
+      if (!terminating) finish(reject, toRepoGuardError(error, {
+        kind: 'execution',
+        code: 'external-gate/process-start-failed',
+      }));
     });
     child.on('close', (status, closeSignal) => {
       if (terminating) return;
@@ -112,7 +133,7 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
     const abort = () => {
       const error = signal.reason instanceof Error
         ? signal.reason
-        : new Error('External gate execution was cancelled');
+        : cancellationError('external-gate/cancelled', 'External gate execution was cancelled');
       void terminate(error);
     };
     if (signal.aborted) abort();

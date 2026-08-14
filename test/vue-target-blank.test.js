@@ -147,7 +147,7 @@ test('exposes a full-project target-blank CLI with unified reporting', (context)
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/target-blank-security/);
-  assert.match(result.stderr, /noopener, noreferrer/);
+  assert.match(result.stderr, /rel="noopener noreferrer"/);
   assert.match(result.stderr, /rel="noopener noreferrer"/);
 
   const [finding] = findVueTargetBlankIssues(source, 'src/Links.vue');

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { assertExceptionRegistryCurrent } from './exception-registry.js';
+import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 
 export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
@@ -274,6 +275,26 @@ export const DEFAULT_EXCEPTIONS_CONFIG = Object.freeze({
   entries: Object.freeze([]),
 });
 
+function configValidationError(message) {
+  return configurationError('config/invalid-value', message, {
+    details: {
+      location: { path: CONFIG_FILE },
+      evidence: [{
+        type: 'configuration-validation',
+        message,
+        location: { path: CONFIG_FILE },
+      }],
+    },
+    expected: `${CONFIG_FILE} 中对应字段满足当前配置 Schema。`,
+    remediation: {
+      goal: '修正报告中指出的配置字段，同时保留已启用门禁的约束强度',
+      steps: ['根据字段路径、当前值要求和 config.schema.json 修正配置'],
+      constraints: ['不得仅通过关闭门禁来绕过配置校验'],
+      verification: ['运行 npm run guard:check 并确认配置门禁通过'],
+    },
+  });
+}
+
 export function normalizeGitPath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
 }
@@ -285,24 +306,24 @@ function escapeRegExp(value) {
 function assertKnownProperties(value, allowed, label) {
   const unknown = Object.keys(value).filter((key) => !allowed.has(key));
   if (unknown.length > 0) {
-    throw new Error(`${label} has unsupported properties: ${unknown.join(', ')}`);
+    throw configValidationError(`${label} has unsupported properties: ${unknown.join(', ')}`);
   }
 }
 
 function normalizeIsoDate(value, label) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error(`${label} must use YYYY-MM-DD`);
+    throw configValidationError(`${label} must use YYYY-MM-DD`);
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw new Error(`${label} must be a valid calendar date`);
+    throw configValidationError(`${label} must be a valid calendar date`);
   }
   return value;
 }
 
 function normalizeRelativePattern(value, label) {
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error(`${label} must be a non-empty string`);
+    throw configValidationError(`${label} must be a non-empty string`);
   }
   const pattern = normalizeGitPath(value.trim());
   if (
@@ -312,7 +333,7 @@ function normalizeRelativePattern(value, label) {
     || pattern.startsWith('!')
     || pattern.split('/').includes('..')
   ) {
-    throw new Error(`${label} must stay inside the repository`);
+    throw configValidationError(`${label} must stay inside the repository`);
   }
   return pattern;
 }
@@ -320,14 +341,14 @@ function normalizeRelativePattern(value, label) {
 export function validateCiReportPath(value, label = 'CI report path') {
   const reportPath = normalizeRelativePattern(value, label);
   if (!/^reports\/.+\.json$/.test(reportPath)) {
-    throw new Error(`${label} must be a JSON file inside reports/`);
+    throw configValidationError(`${label} must be a JSON file inside reports/`);
   }
   return reportPath;
 }
 
 function normalizePatternList(value, label, { allowEmpty = false } = {}) {
   if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
-    throw new Error(`${label} must be ${allowEmpty ? 'an array' : 'a non-empty array'}`);
+    throw configValidationError(`${label} must be ${allowEmpty ? 'an array' : 'a non-empty array'}`);
   }
   return value.map((pattern, index) => (
     normalizeRelativePattern(pattern, `${label} item ${index + 1}`)
@@ -364,9 +385,9 @@ export function globToRegExp(pattern) {
   return new RegExp(`^${expression}$`);
 }
 
-export function validateConfig(value, configPath = CONFIG_FILE) {
+function validateConfigValue(value, configPath = CONFIG_FILE) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`${configPath} must contain a JSON object`);
+    throw configValidationError(`${configPath} must contain a JSON object`);
   }
   assertKnownProperties(
     value,
@@ -391,13 +412,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     configPath,
   );
   if (value.version !== 1) {
-    throw new Error(`${configPath} uses unsupported version: ${String(value.version)}`);
+    throw configValidationError(`${configPath} uses unsupported version: ${String(value.version)}`);
   }
   if (!Array.isArray(value.rules) || value.rules.length === 0) {
-    throw new Error(`${configPath} must define at least one rule`);
+    throw configValidationError(`${configPath} must define at least one rule`);
   }
   if (value.exclusions != null && !Array.isArray(value.exclusions)) {
-    throw new Error(`${configPath} exclusions must be an array`);
+    throw configValidationError(`${configPath} exclusions must be an array`);
   }
 
   const notificationValue = value.notification ?? {};
@@ -406,7 +427,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     || typeof notificationValue !== 'object'
     || Array.isArray(notificationValue)
   ) {
-    throw new Error(`${configPath} notification must be an object`);
+    throw configValidationError(`${configPath} notification must be an object`);
   }
   assertKnownProperties(
     notificationValue,
@@ -417,12 +438,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     notificationValue.enabled != null
     && typeof notificationValue.enabled !== 'boolean'
   ) {
-    throw new Error(`${configPath} notification.enabled must be a boolean`);
+    throw configValidationError(`${configPath} notification.enabled must be a boolean`);
   }
 
   const ciValue = value.ci ?? {};
   if (!ciValue || typeof ciValue !== 'object' || Array.isArray(ciValue)) {
-    throw new Error(`${configPath} ci must be an object`);
+    throw configValidationError(`${configPath} ci must be an object`);
   }
   assertKnownProperties(
     ciValue,
@@ -430,10 +451,10 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} ci`,
   );
   if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} ci.enabled must be a boolean`);
+    throw configValidationError(`${configPath} ci.enabled must be a boolean`);
   }
   if (ciValue.profile != null && !['policy', 'full', 'release-ready'].includes(ciValue.profile)) {
-    throw new Error(`${configPath} ci.profile must be policy, full, or release-ready`);
+    throw configValidationError(`${configPath} ci.profile must be policy, full, or release-ready`);
   }
   const ciReportPath = validateCiReportPath(
     ciValue.reportPath ?? DEFAULT_CI_CONFIG.reportPath,
@@ -442,7 +463,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const ciProtectedFilesValue = ciValue.protectedFiles ?? {};
   if (!ciProtectedFilesValue || typeof ciProtectedFilesValue !== 'object'
     || Array.isArray(ciProtectedFilesValue)) {
-    throw new Error(`${configPath} ci.protectedFiles must be an object`);
+    throw configValidationError(`${configPath} ci.protectedFiles must be an object`);
   }
   assertKnownProperties(
     ciProtectedFilesValue,
@@ -452,19 +473,19 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const ciProtectedFilesAction = ciProtectedFilesValue.action
     ?? DEFAULT_CI_CONFIG.protectedFiles.action;
   if (!['report', 'fail'].includes(ciProtectedFilesAction)) {
-    throw new Error(`${configPath} ci.protectedFiles.action must be report or fail`);
+    throw configValidationError(`${configPath} ci.protectedFiles.action must be report or fail`);
   }
 
   const externalGatesValue = value.externalGates ?? [];
   if (!Array.isArray(externalGatesValue)) {
-    throw new Error(`${configPath} externalGates must be an array`);
+    throw configValidationError(`${configPath} externalGates must be an array`);
   }
   const externalGateIds = new Set();
   const externalReportPaths = new Set();
   const externalGates = externalGatesValue.map((entry, index) => {
     const label = `${configPath} externalGates item ${index + 1}`;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(
       entry,
@@ -472,33 +493,33 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       label,
     );
     for (const field of ['id', 'enabled', 'environments', 'script', 'timeoutMs', 'report']) {
-      if (!Object.hasOwn(entry, field)) throw new Error(`${label}.${field} is required`);
+      if (!Object.hasOwn(entry, field)) throw configValidationError(`${label}.${field} is required`);
     }
     if (typeof entry.id !== 'string' || !/^project\.[a-z][a-z0-9-]*$/.test(entry.id)) {
-      throw new Error(`${label}.id must use the project.<kebab-case> namespace`);
+      throw configValidationError(`${label}.id must use the project.<kebab-case> namespace`);
     }
     if (externalGateIds.has(entry.id)) {
-      throw new Error(`${configPath} external gate id is duplicated: ${entry.id}`);
+      throw configValidationError(`${configPath} external gate id is duplicated: ${entry.id}`);
     }
     externalGateIds.add(entry.id);
-    if (typeof entry.enabled !== 'boolean') throw new Error(`${label}.enabled must be a boolean`);
+    if (typeof entry.enabled !== 'boolean') throw configValidationError(`${label}.enabled must be a boolean`);
     if (!Array.isArray(entry.environments) || entry.environments.length === 0
       || entry.environments.some((environment) => !['manual', 'ci-full', 'release-ready'].includes(environment))
       || new Set(entry.environments).size !== entry.environments.length) {
-      throw new Error(`${label}.environments must contain unique manual, ci-full, or release-ready values`);
+      throw configValidationError(`${label}.environments must contain unique manual, ci-full, or release-ready values`);
     }
     if (typeof entry.script !== 'string' || !/^[A-Za-z0-9:_-]+$/.test(entry.script)) {
-      throw new Error(`${label}.script must be an exact npm script name`);
+      throw configValidationError(`${label}.script must be an exact npm script name`);
     }
     if (!Number.isInteger(entry.timeoutMs) || entry.timeoutMs < 1000 || entry.timeoutMs > 1800000) {
-      throw new Error(`${label}.timeoutMs must be between 1000 and 1800000`);
+      throw configValidationError(`${label}.timeoutMs must be between 1000 and 1800000`);
     }
     if (!entry.report || typeof entry.report !== 'object' || Array.isArray(entry.report)) {
-      throw new Error(`${label}.report must be an object`);
+      throw configValidationError(`${label}.report must be an object`);
     }
     assertKnownProperties(entry.report, new Set(['format', 'path']), `${label}.report`);
     if (entry.report.format !== 'repo-guard-json-v1') {
-      throw new Error(`${label}.report.format must be repo-guard-json-v1`);
+      throw configValidationError(`${label}.report.format must be repo-guard-json-v1`);
     }
     const reportSegments = typeof entry.report.path === 'string'
       ? entry.report.path.split('/')
@@ -509,12 +530,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/.test(segment)
         || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(segment)
       ))) {
-      throw new Error(`${label}.report.path must use a normalized path inside reports/`);
+      throw configValidationError(`${label}.report.path must use a normalized path inside reports/`);
     }
     const reportPath = validateCiReportPath(entry.report.path, `${label}.report.path`);
     const reportPathKey = reportPath.toLowerCase();
     if (externalReportPaths.has(reportPathKey)) {
-      throw new Error(`${configPath} external gate report path is duplicated: ${reportPath}`);
+      throw configValidationError(`${configPath} external gate report path is duplicated: ${reportPath}`);
     }
     externalReportPaths.add(reportPathKey);
     return {
@@ -527,13 +548,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     };
   });
   if (externalReportPaths.has(ciReportPath.toLowerCase())) {
-    throw new Error(`${configPath} external gate report path must differ from ci.reportPath`);
+    throw configValidationError(`${configPath} external gate report path must differ from ci.reportPath`);
   }
 
   const exceptionsValue = value.exceptions ?? {};
   if (!exceptionsValue || typeof exceptionsValue !== 'object'
     || Array.isArray(exceptionsValue)) {
-    throw new Error(`${configPath} exceptions must be an object`);
+    throw configValidationError(`${configPath} exceptions must be an object`);
   }
   assertKnownProperties(
     exceptionsValue,
@@ -544,26 +565,26 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     ?? DEFAULT_EXCEPTIONS_CONFIG.warningDays;
   const exceptionMaxDays = exceptionsValue.maxDays ?? DEFAULT_EXCEPTIONS_CONFIG.maxDays;
   if (!Number.isInteger(exceptionWarningDays) || exceptionWarningDays < 0) {
-    throw new Error(`${configPath} exceptions.warningDays must be a non-negative integer`);
+    throw configValidationError(`${configPath} exceptions.warningDays must be a non-negative integer`);
   }
   if (!Number.isInteger(exceptionMaxDays) || exceptionMaxDays <= 0
     || exceptionMaxDays > 365) {
-    throw new Error(`${configPath} exceptions.maxDays must be between 1 and 365`);
+    throw configValidationError(`${configPath} exceptions.maxDays must be between 1 and 365`);
   }
   if (exceptionWarningDays >= exceptionMaxDays) {
-    throw new Error(`${configPath} exceptions.warningDays must be less than maxDays`);
+    throw configValidationError(`${configPath} exceptions.warningDays must be less than maxDays`);
   }
   const exceptionEntriesValue = exceptionsValue.entries
     ?? DEFAULT_EXCEPTIONS_CONFIG.entries;
   if (!Array.isArray(exceptionEntriesValue)) {
-    throw new Error(`${configPath} exceptions.entries must be an array`);
+    throw configValidationError(`${configPath} exceptions.entries must be an array`);
   }
   const exceptionIds = new Set();
   const exceptionTargets = new Set();
   const exceptionEntries = exceptionEntriesValue.map((entry, index) => {
     const label = `${configPath} exception ${index + 1}`;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(
       entry,
@@ -583,41 +604,41 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       label,
     );
     if (typeof entry.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(entry.id)) {
-      throw new Error(`${label}.id must be a kebab-case identifier`);
+      throw configValidationError(`${label}.id must be a kebab-case identifier`);
     }
     if (exceptionIds.has(entry.id)) {
-      throw new Error(`${configPath} exception id is duplicated: ${entry.id}`);
+      throw configValidationError(`${configPath} exception id is duplicated: ${entry.id}`);
     }
     exceptionIds.add(entry.id);
     if (typeof entry.rule !== 'string'
       || !/^[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)+$/.test(entry.rule)) {
-      throw new Error(`${label}.rule must be a namespaced kebab-case rule id`);
+      throw configValidationError(`${label}.rule must be a namespaced kebab-case rule id`);
     }
     const exceptionPath = normalizeRelativePattern(entry.path, `${label}.path`);
     if (exceptionPath === '.' || /[!*?{}[\]]/.test(exceptionPath)
       || exceptionPath.endsWith('/')) {
-      throw new Error(`${label}.path must be one exact repository-relative file`);
+      throw configValidationError(`${label}.path must be one exact repository-relative file`);
     }
     for (const position of ['line', 'column']) {
       if (!Number.isInteger(entry[position]) || entry[position] <= 0) {
-        throw new Error(`${label}.${position} must be a positive integer`);
+        throw configValidationError(`${label}.${position} must be a positive integer`);
       }
     }
     const stringFields = ['reason', 'owner', 'approvedBy', 'ticket'];
     const strings = Object.fromEntries(stringFields.map((field) => {
       if (typeof entry[field] !== 'string' || !entry[field].trim()) {
-        throw new Error(`${label}.${field} must be a non-empty string`);
+        throw configValidationError(`${label}.${field} must be a non-empty string`);
       }
       return [field, entry[field].trim()];
     }));
     if (strings.reason.length < 10) {
-      throw new Error(`${label}.reason must contain at least 10 characters`);
+      throw configValidationError(`${label}.reason must contain at least 10 characters`);
     }
     if (strings.ticket.length < 3) {
-      throw new Error(`${label}.ticket must contain at least 3 characters`);
+      throw configValidationError(`${label}.ticket must contain at least 3 characters`);
     }
     if (strings.owner.toLocaleLowerCase() === strings.approvedBy.toLocaleLowerCase()) {
-      throw new Error(`${label}.approvedBy must be different from owner`);
+      throw configValidationError(`${label}.approvedBy must be different from owner`);
     }
     const createdOn = normalizeIsoDate(entry.createdOn, `${label}.createdOn`);
     const expiresOn = normalizeIsoDate(entry.expiresOn, `${label}.expiresOn`);
@@ -626,13 +647,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       - Date.parse(`${createdOn}T00:00:00.000Z`)
     ) / (24 * 60 * 60 * 1000);
     if (lifetimeDays <= 0 || lifetimeDays > exceptionMaxDays) {
-      throw new Error(
+      throw configValidationError(
         `${label} lifetime must be between 1 and ${exceptionMaxDays} days`,
       );
     }
     const target = `${entry.rule}\0${exceptionPath}\0${entry.line}\0${entry.column}`;
     if (exceptionTargets.has(target)) {
-      throw new Error(`${configPath} exception target is duplicated: ${entry.rule} ${exceptionPath}:${entry.line}:${entry.column}`);
+      throw configValidationError(`${configPath} exception target is duplicated: ${entry.rule} ${exceptionPath}:${entry.line}:${entry.column}`);
     }
     exceptionTargets.add(target);
     return {
@@ -650,7 +671,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const dependencyPolicyValue = value.dependencyPolicy ?? {};
   if (!dependencyPolicyValue || typeof dependencyPolicyValue !== 'object'
     || Array.isArray(dependencyPolicyValue)) {
-    throw new Error(`${configPath} dependencyPolicy must be an object`);
+    throw configValidationError(`${configPath} dependencyPolicy must be an object`);
   }
   assertKnownProperties(
     dependencyPolicyValue,
@@ -666,19 +687,19 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   for (const property of ['enabled', 'requireExactVersions', 'requireLockfile']) {
     if (dependencyPolicyValue[property] != null
       && typeof dependencyPolicyValue[property] !== 'boolean') {
-      throw new Error(`${configPath} dependencyPolicy.${property} must be a boolean`);
+      throw configValidationError(`${configPath} dependencyPolicy.${property} must be a boolean`);
     }
   }
   const dependencyAllowedProtocolsValue = dependencyPolicyValue.allowedProtocols
     ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.allowedProtocols;
   if (!Array.isArray(dependencyAllowedProtocolsValue)) {
-    throw new Error(`${configPath} dependencyPolicy.allowedProtocols must be an array`);
+    throw configValidationError(`${configPath} dependencyPolicy.allowedProtocols must be an array`);
   }
   const dependencyAllowedProtocols = [...new Set(
     dependencyAllowedProtocolsValue.map((protocol, index) => {
       if (typeof protocol !== 'string'
         || !/^[a-z][a-z0-9+.-]*$/.test(protocol.trim().toLowerCase())) {
-        throw new Error(
+        throw configValidationError(
           `${configPath} dependencyPolicy.allowedProtocols item ${index + 1} `
           + 'must be a protocol name without a colon',
         );
@@ -689,29 +710,29 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const bannedPackagesValue = dependencyPolicyValue.bannedPackages
     ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages;
   if (!Array.isArray(bannedPackagesValue)) {
-    throw new Error(`${configPath} dependencyPolicy.bannedPackages must be an array`);
+    throw configValidationError(`${configPath} dependencyPolicy.bannedPackages must be an array`);
   }
   const bannedPackageNames = new Set();
   const dependencyBannedPackages = bannedPackagesValue.map((item, index) => {
     const label = `${configPath} dependencyPolicy.bannedPackages item ${index + 1}`;
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(item, new Set(['name', 'reason', 'replacement']), label);
     if (typeof item.name !== 'string' || !item.name.trim()) {
-      throw new Error(`${label}.name must be a non-empty package name`);
+      throw configValidationError(`${label}.name must be a non-empty package name`);
     }
     const name = item.name.trim();
     if (bannedPackageNames.has(name)) {
-      throw new Error(`${configPath} banned package is duplicated: ${name}`);
+      throw configValidationError(`${configPath} banned package is duplicated: ${name}`);
     }
     bannedPackageNames.add(name);
     if (typeof item.reason !== 'string' || item.reason.trim().length < 10) {
-      throw new Error(`${label}.reason must contain at least 10 characters`);
+      throw configValidationError(`${label}.reason must contain at least 10 characters`);
     }
     if (item.replacement != null
       && (typeof item.replacement !== 'string' || !item.replacement.trim())) {
-      throw new Error(`${label}.replacement must be null or a non-empty string`);
+      throw configValidationError(`${label}.replacement must be null or a non-empty string`);
     }
     return {
       name,
@@ -723,7 +744,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const architectureValue = value.architecture ?? {};
   if (!architectureValue || typeof architectureValue !== 'object'
     || Array.isArray(architectureValue)) {
-    throw new Error(`${configPath} architecture must be an object`);
+    throw configValidationError(`${configPath} architecture must be an object`);
   }
   assertKnownProperties(
     architectureValue,
@@ -731,11 +752,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} architecture`,
   );
   if (architectureValue.enabled != null && typeof architectureValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} architecture.enabled must be a boolean`);
+    throw configValidationError(`${configPath} architecture.enabled must be a boolean`);
   }
   if (architectureValue.timeoutMs != null
     && (!Number.isInteger(architectureValue.timeoutMs) || architectureValue.timeoutMs <= 0)) {
-    throw new Error(`${configPath} architecture.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} architecture.timeoutMs must be a positive integer`);
   }
   const architectureSourcePaths = normalizePatternList(
     architectureValue.sourcePaths ?? DEFAULT_ARCHITECTURE_CONFIG.sourcePaths,
@@ -754,25 +775,25 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     : architectureValue.exclude;
   if (architectureExclude !== null
     && (typeof architectureExclude !== 'string' || !architectureExclude.trim())) {
-    throw new Error(`${configPath} architecture.exclude must be null or a non-empty regex`);
+    throw configValidationError(`${configPath} architecture.exclude must be null or a non-empty regex`);
   }
   if (architectureExclude !== null) {
     try {
       new RegExp(architectureExclude);
     } catch (error) {
-      throw new Error(`${configPath} architecture.exclude must be a valid regex: ${error.message}`);
+      throw configValidationError(`${configPath} architecture.exclude must be a valid regex: ${error.message}`);
     }
   }
   const architectureRulesValue = architectureValue.rules
     ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
   if (!Array.isArray(architectureRulesValue) || architectureRulesValue.length === 0) {
-    throw new Error(`${configPath} architecture.rules must be a non-empty array`);
+    throw configValidationError(`${configPath} architecture.rules must be a non-empty array`);
   }
   const architectureRuleNames = new Set();
   const architectureRules = architectureRulesValue.map((rule, index) => {
     const label = `${configPath} architecture rule ${index + 1}`;
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(
       rule,
@@ -780,23 +801,23 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       label,
     );
     if (typeof rule.name !== 'string' || !/^[a-z][a-z0-9-]*$/.test(rule.name)) {
-      throw new Error(`${label}.name must be a kebab-case identifier`);
+      throw configValidationError(`${label}.name must be a kebab-case identifier`);
     }
     if (architectureRuleNames.has(rule.name)) {
-      throw new Error(`${configPath} architecture rule name is duplicated: ${rule.name}`);
+      throw configValidationError(`${configPath} architecture rule name is duplicated: ${rule.name}`);
     }
     architectureRuleNames.add(rule.name);
     if (rule.comment != null && (typeof rule.comment !== 'string' || !rule.comment.trim())) {
-      throw new Error(`${label}.comment must be a non-empty string`);
+      throw configValidationError(`${label}.comment must be a non-empty string`);
     }
     const severity = rule.severity ?? 'error';
     if (!['error', 'warn', 'info', 'ignore'].includes(severity)) {
-      throw new Error(`${label}.severity must be error, warn, info, or ignore`);
+      throw configValidationError(`${label}.severity must be error, warn, info, or ignore`);
     }
     for (const conditionName of ['from', 'to']) {
       const condition = rule[conditionName];
       if (!condition || typeof condition !== 'object' || Array.isArray(condition)) {
-        throw new Error(`${label}.${conditionName} must be an object`);
+        throw configValidationError(`${label}.${conditionName} must be an object`);
       }
       for (const regexField of ['path', 'pathNot']) {
         if (condition[regexField] == null) continue;
@@ -806,13 +827,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         if (patterns.length === 0 || patterns.some((pattern) => (
           typeof pattern !== 'string' || !pattern
         ))) {
-          throw new Error(`${label}.${conditionName}.${regexField} must contain regex strings`);
+          throw configValidationError(`${label}.${conditionName}.${regexField} must contain regex strings`);
         }
         for (const pattern of patterns) {
           try {
             new RegExp(pattern);
           } catch (error) {
-            throw new Error(
+            throw configValidationError(
               `${label}.${conditionName}.${regexField} must be a valid regex: ${error.message}`,
             );
           }
@@ -830,7 +851,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const buildValue = value.build ?? {};
   if (!buildValue || typeof buildValue !== 'object' || Array.isArray(buildValue)) {
-    throw new Error(`${configPath} build must be an object`);
+    throw configValidationError(`${configPath} build must be an object`);
   }
   assertKnownProperties(
     buildValue,
@@ -838,7 +859,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} build`,
   );
   if (buildValue.enabled != null && typeof buildValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} build.enabled must be a boolean`);
+    throw configValidationError(`${configPath} build.enabled must be a boolean`);
   }
   if (
     buildValue.script != null
@@ -847,18 +868,18 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || !/^[A-Za-z0-9:_-]+$/.test(buildValue.script.trim())
     )
   ) {
-    throw new Error(`${configPath} build.script must be an npm script name`);
+    throw configValidationError(`${configPath} build.script must be an npm script name`);
   }
   if (
     buildValue.timeoutMs != null
     && (!Number.isInteger(buildValue.timeoutMs) || buildValue.timeoutMs <= 0)
   ) {
-    throw new Error(`${configPath} build.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} build.timeoutMs must be a positive integer`);
   }
 
   const lighthouseValue = value.lighthouse ?? {};
   if (!lighthouseValue || typeof lighthouseValue !== 'object' || Array.isArray(lighthouseValue)) {
-    throw new Error(`${configPath} lighthouse must be an object`);
+    throw configValidationError(`${configPath} lighthouse must be an object`);
   }
   assertKnownProperties(
     lighthouseValue,
@@ -866,7 +887,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} lighthouse`,
   );
   if (lighthouseValue.enabled != null && typeof lighthouseValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} lighthouse.enabled must be a boolean`);
+    throw configValidationError(`${configPath} lighthouse.enabled must be a boolean`);
   }
   for (const field of ['configFile', 'buildScript']) {
     const fieldValue = lighthouseValue[field];
@@ -874,25 +895,25 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       fieldValue != null
       && (typeof fieldValue !== 'string' || !fieldValue.trim())
     ) {
-      throw new Error(`${configPath} lighthouse.${field} must be null or a non-empty string`);
+      throw configValidationError(`${configPath} lighthouse.${field} must be null or a non-empty string`);
     }
   }
   if (
     typeof lighthouseValue.buildScript === 'string'
     && !/^[A-Za-z0-9:_-]+$/.test(lighthouseValue.buildScript.trim())
   ) {
-    throw new Error(`${configPath} lighthouse.buildScript must be an npm script name`);
+    throw configValidationError(`${configPath} lighthouse.buildScript must be an npm script name`);
   }
   if (
     lighthouseValue.timeoutMs != null
     && (!Number.isInteger(lighthouseValue.timeoutMs) || lighthouseValue.timeoutMs <= 0)
   ) {
-    throw new Error(`${configPath} lighthouse.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} lighthouse.timeoutMs must be a positive integer`);
   }
 
   const typeCheckValue = value.typeCheck ?? {};
   if (!typeCheckValue || typeof typeCheckValue !== 'object' || Array.isArray(typeCheckValue)) {
-    throw new Error(`${configPath} typeCheck must be an object`);
+    throw configValidationError(`${configPath} typeCheck must be an object`);
   }
   assertKnownProperties(
     typeCheckValue,
@@ -900,7 +921,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} typeCheck`,
   );
   if (typeCheckValue.enabled != null && typeof typeCheckValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} typeCheck.enabled must be a boolean`);
+    throw configValidationError(`${configPath} typeCheck.enabled must be a boolean`);
   }
   if (
     typeCheckValue.script != null
@@ -909,13 +930,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || !/^[A-Za-z0-9:_-]+$/.test(typeCheckValue.script.trim())
     )
   ) {
-    throw new Error(`${configPath} typeCheck.script must be an npm script name`);
+    throw configValidationError(`${configPath} typeCheck.script must be an npm script name`);
   }
   if (
     typeCheckValue.timeoutMs != null
     && (!Number.isInteger(typeCheckValue.timeoutMs) || typeCheckValue.timeoutMs <= 0)
   ) {
-    throw new Error(`${configPath} typeCheck.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} typeCheck.timeoutMs must be a positive integer`);
   }
 
   const accessibilityTestValue = value.accessibilityTest ?? {};
@@ -924,7 +945,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     || typeof accessibilityTestValue !== 'object'
     || Array.isArray(accessibilityTestValue)
   ) {
-    throw new Error(`${configPath} accessibilityTest must be an object`);
+    throw configValidationError(`${configPath} accessibilityTest must be an object`);
   }
   assertKnownProperties(
     accessibilityTestValue,
@@ -935,7 +956,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     accessibilityTestValue.enabled != null
     && typeof accessibilityTestValue.enabled !== 'boolean'
   ) {
-    throw new Error(`${configPath} accessibilityTest.enabled must be a boolean`);
+    throw configValidationError(`${configPath} accessibilityTest.enabled must be a boolean`);
   }
   if (
     accessibilityTestValue.script != null
@@ -944,7 +965,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || !/^[A-Za-z0-9:_-]+$/.test(accessibilityTestValue.script.trim())
     )
   ) {
-    throw new Error(`${configPath} accessibilityTest.script must be an npm script name`);
+    throw configValidationError(`${configPath} accessibilityTest.script must be an npm script name`);
   }
   if (
     accessibilityTestValue.timeoutMs != null
@@ -953,7 +974,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || accessibilityTestValue.timeoutMs <= 0
     )
   ) {
-    throw new Error(`${configPath} accessibilityTest.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} accessibilityTest.timeoutMs must be a positive integer`);
   }
   const accessibilityTestPatterns = normalizePatternList(
     accessibilityTestValue.testPatterns ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns,
@@ -962,7 +983,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const unitTestValue = value.unitTest ?? {};
   if (!unitTestValue || typeof unitTestValue !== 'object' || Array.isArray(unitTestValue)) {
-    throw new Error(`${configPath} unitTest must be an object`);
+    throw configValidationError(`${configPath} unitTest must be an object`);
   }
   assertKnownProperties(
     unitTestValue,
@@ -982,7 +1003,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   );
   for (const field of ['enabled']) {
     if (unitTestValue[field] != null && typeof unitTestValue[field] !== 'boolean') {
-      throw new Error(`${configPath} unitTest.${field} must be a boolean`);
+      throw configValidationError(`${configPath} unitTest.${field} must be a boolean`);
     }
   }
   if (
@@ -992,19 +1013,19 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || !/^[A-Za-z0-9:_-]+$/.test(unitTestValue.script.trim())
     )
   ) {
-    throw new Error(`${configPath} unitTest.script must be an npm script name`);
+    throw configValidationError(`${configPath} unitTest.script must be an npm script name`);
   }
   if (
     unitTestValue.timeoutMs != null
     && (!Number.isInteger(unitTestValue.timeoutMs) || unitTestValue.timeoutMs <= 0)
   ) {
-    throw new Error(`${configPath} unitTest.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} unitTest.timeoutMs must be a positive integer`);
   }
   const coverageValue = unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
   let unitTestCoverage;
   {
     if (!coverageValue || typeof coverageValue !== 'object' || Array.isArray(coverageValue)) {
-      throw new Error(`${configPath} unitTest.coverage must be an object`);
+      throw configValidationError(`${configPath} unitTest.coverage must be an object`);
     }
     assertKnownProperties(
       coverageValue,
@@ -1012,7 +1033,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       `${configPath} unitTest.coverage`,
     );
     if (coverageValue.enabled != null && typeof coverageValue.enabled !== 'boolean') {
-      throw new Error(`${configPath} unitTest.coverage.enabled must be a boolean`);
+      throw configValidationError(`${configPath} unitTest.coverage.enabled must be a boolean`);
     }
     const reportsDirectory = normalizeRelativePattern(
       coverageValue.reportsDirectory
@@ -1024,14 +1045,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || reportsDirectory === '.'
       || !/coverage/i.test(path.posix.basename(reportsDirectory))
     ) {
-      throw new Error(
+      throw configValidationError(
         `${configPath} unitTest.coverage.reportsDirectory must be a dedicated coverage directory`,
       );
     }
     const thresholdsValue = coverageValue.thresholds
       ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds;
     if (!thresholdsValue || typeof thresholdsValue !== 'object' || Array.isArray(thresholdsValue)) {
-      throw new Error(`${configPath} unitTest.coverage.thresholds must be an object`);
+      throw configValidationError(`${configPath} unitTest.coverage.thresholds must be an object`);
     }
     const thresholdNames = [
       'lines',
@@ -1050,7 +1071,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
         ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.thresholds[name];
       if (typeof threshold !== 'number' || !Number.isFinite(threshold)
         || threshold < 0 || threshold > 100) {
-        throw new Error(
+        throw configValidationError(
           `${configPath} unitTest.coverage.thresholds.${name} must be between 0 and 100`,
         );
       }
@@ -1067,7 +1088,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   if (!componentInteractionValue
     || typeof componentInteractionValue !== 'object'
     || Array.isArray(componentInteractionValue)) {
-    throw new Error(`${configPath} unitTest.componentInteraction must be an object`);
+    throw configValidationError(`${configPath} unitTest.componentInteraction must be an object`);
   }
   assertKnownProperties(
     componentInteractionValue,
@@ -1076,7 +1097,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   );
   if (componentInteractionValue.enabled != null
     && typeof componentInteractionValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} unitTest.componentInteraction.enabled must be a boolean`);
+    throw configValidationError(`${configPath} unitTest.componentInteraction.enabled must be a boolean`);
   }
   const componentInteractionPatterns = normalizePatternList(
     componentInteractionValue.componentPatterns
@@ -1087,7 +1108,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const componentInteractionEnabled = componentInteractionValue.enabled
     ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.enabled;
   if (componentInteractionEnabled && !unitTestEnabled) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} unitTest.componentInteraction.enabled requires unitTest.enabled`,
     );
   }
@@ -1095,7 +1116,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     unitTestValue.requireTests != null
     && !['newFiles', 'changedFiles'].includes(unitTestValue.requireTests)
   ) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} unitTest.requireTests must be newFiles or changedFiles`,
     );
   }
@@ -1103,13 +1124,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const normalizePatterns = (field, defaults, { allowEmpty = false } = {}) => {
     const patterns = unitTestValue[field] ?? defaults;
     if (!Array.isArray(patterns) || (!allowEmpty && patterns.length === 0)) {
-      throw new Error(
+      throw configValidationError(
         `${configPath} unitTest.${field} must be ${allowEmpty ? 'an' : 'a non-empty'} array`,
       );
     }
     return patterns.map((pattern, index) => {
       if (typeof pattern !== 'string' || !pattern.trim()) {
-        throw new Error(
+        throw configValidationError(
           `${configPath} unitTest.${field} item ${index + 1} must be a non-empty string`,
         );
       }
@@ -1132,13 +1153,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const unitTestMappingsValue = unitTestValue.mappings
     ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
   if (!Array.isArray(unitTestMappingsValue) || unitTestMappingsValue.length === 0) {
-    throw new Error(`${configPath} unitTest.mappings must be a non-empty array`);
+    throw configValidationError(`${configPath} unitTest.mappings must be a non-empty array`);
   }
   const allowedTemplatePlaceholders = /\{(?:dir|ext|name|path)\}/g;
   const unitTestMappings = unitTestMappingsValue.map((mapping, index) => {
     const label = `${configPath} unitTest.mappings item ${index + 1}`;
     if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(
       mapping,
@@ -1155,12 +1176,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     ).map((template) => {
       const remainingBraces = template.replace(allowedTemplatePlaceholders, '');
       if (remainingBraces.includes('{') || remainingBraces.includes('}')) {
-        throw new Error(
+        throw configValidationError(
           `${label}.testTemplates contains an unsupported placeholder: ${template}`,
         );
       }
       if (!template.includes('{path}') && !template.includes('{name}')) {
-        throw new Error(
+        throw configValidationError(
           `${label}.testTemplates must contain {path} or {name}: ${template}`,
         );
       }
@@ -1171,7 +1192,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const preCommitValue = value.preCommit ?? {};
   if (!preCommitValue || typeof preCommitValue !== 'object' || Array.isArray(preCommitValue)) {
-    throw new Error(`${configPath} preCommit must be an object`);
+    throw configValidationError(`${configPath} preCommit must be an object`);
   }
   assertKnownProperties(
     preCommitValue,
@@ -1185,7 +1206,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     || typeof filePlacementValue !== 'object'
     || Array.isArray(filePlacementValue)
   ) {
-    throw new Error(`${configPath} preCommit.filePlacement must be an object`);
+    throw configValidationError(`${configPath} preCommit.filePlacement must be an object`);
   }
   assertKnownProperties(
     filePlacementValue,
@@ -1196,25 +1217,25 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     filePlacementValue.enabled != null
     && typeof filePlacementValue.enabled !== 'boolean'
   ) {
-    throw new Error(`${configPath} preCommit.filePlacement.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.filePlacement.enabled must be a boolean`);
   }
   if (
     filePlacementValue.mode != null
     && !['newFiles', 'changedFiles'].includes(filePlacementValue.mode)
   ) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.filePlacement.mode must be newFiles or changedFiles`,
     );
   }
   const filePlacementRulesValue = filePlacementValue.rules
     ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
   if (!Array.isArray(filePlacementRulesValue) || filePlacementRulesValue.length === 0) {
-    throw new Error(`${configPath} preCommit.filePlacement.rules must be a non-empty array`);
+    throw configValidationError(`${configPath} preCommit.filePlacement.rules must be a non-empty array`);
   }
   const filePlacementRules = filePlacementRulesValue.map((rule, index) => {
     const label = `${configPath} preCommit.filePlacement rule ${index + 1}`;
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(
       rule,
@@ -1228,7 +1249,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       label,
     );
     if (typeof rule.name !== 'string' || !rule.name.trim()) {
-      throw new Error(`${label}.name must be a non-empty string`);
+      throw configValidationError(`${label}.name must be a non-empty string`);
     }
     const suggestedDirectory = normalizeRelativePattern(
       rule.suggestedDirectory,
@@ -1237,7 +1258,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     if (['*', '?', '{', '}', '[', ']', '!'].some((character) => (
       suggestedDirectory.includes(character)
     ))) {
-      throw new Error(`${label}.suggestedDirectory must be a concrete directory`);
+      throw configValidationError(`${label}.suggestedDirectory must be a concrete directory`);
     }
     return {
       name: rule.name.trim(),
@@ -1261,7 +1282,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     || typeof maxFileLinesValue !== 'object'
     || Array.isArray(maxFileLinesValue)
   ) {
-    throw new Error(`${configPath} preCommit.maxFileLines must be an object`);
+    throw configValidationError(`${configPath} preCommit.maxFileLines must be an object`);
   }
   assertKnownProperties(
     maxFileLinesValue,
@@ -1272,13 +1293,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     maxFileLinesValue.enabled != null
     && typeof maxFileLinesValue.enabled !== 'boolean'
   ) {
-    throw new Error(`${configPath} preCommit.maxFileLines.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.maxFileLines.enabled must be a boolean`);
   }
   if (
     maxFileLinesValue.mode != null
     && !['strict', 'noRegression'].includes(maxFileLinesValue.mode)
   ) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.maxFileLines.mode must be strict or noRegression`,
     );
   }
@@ -1291,25 +1312,25 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       || maxFileLinesValue.warnAt > 1
     )
   ) {
-    throw new Error(`${configPath} preCommit.maxFileLines.warnAt must be greater than 0 and at most 1`);
+    throw configValidationError(`${configPath} preCommit.maxFileLines.warnAt must be greater than 0 and at most 1`);
   }
 
   const maxFileLineRulesValue = maxFileLinesValue.rules
     ?? DEFAULT_MAX_FILE_LINES_CONFIG.rules;
   if (!Array.isArray(maxFileLineRulesValue) || maxFileLineRulesValue.length === 0) {
-    throw new Error(`${configPath} preCommit.maxFileLines.rules must be a non-empty array`);
+    throw configValidationError(`${configPath} preCommit.maxFileLines.rules must be a non-empty array`);
   }
   const maxFileLineRules = maxFileLineRulesValue.map((rule, index) => {
     const label = `${configPath} preCommit.maxFileLines rule ${index + 1}`;
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-      throw new Error(`${label} must be an object`);
+      throw configValidationError(`${label} must be an object`);
     }
     assertKnownProperties(rule, new Set(['pattern', 'maxLines']), label);
     if (typeof rule.pattern !== 'string' || !rule.pattern.trim()) {
-      throw new Error(`${label}.pattern must be a non-empty string`);
+      throw configValidationError(`${label}.pattern must be a non-empty string`);
     }
     if (!Number.isInteger(rule.maxLines) || rule.maxLines <= 0) {
-      throw new Error(`${label}.maxLines must be a positive integer`);
+      throw configValidationError(`${label}.maxLines must be a positive integer`);
     }
     return {
       pattern: normalizeGitPath(rule.pattern.trim()),
@@ -1320,11 +1341,11 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const maxFileLineExclusionsValue = maxFileLinesValue.exclusions
     ?? DEFAULT_MAX_FILE_LINES_CONFIG.exclusions;
   if (!Array.isArray(maxFileLineExclusionsValue)) {
-    throw new Error(`${configPath} preCommit.maxFileLines.exclusions must be an array`);
+    throw configValidationError(`${configPath} preCommit.maxFileLines.exclusions must be an array`);
   }
   const maxFileLineExclusions = maxFileLineExclusionsValue.map((pattern, index) => {
     if (typeof pattern !== 'string' || !pattern.trim()) {
-      throw new Error(
+      throw configValidationError(
         `${configPath} preCommit.maxFileLines exclusion ${index + 1} must be a non-empty string`,
       );
     }
@@ -1333,7 +1354,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const stylelintValue = preCommitValue.stylelint ?? {};
   if (!stylelintValue || typeof stylelintValue !== 'object' || Array.isArray(stylelintValue)) {
-    throw new Error(`${configPath} preCommit.stylelint must be an object`);
+    throw configValidationError(`${configPath} preCommit.stylelint must be an object`);
   }
   assertKnownProperties(
     stylelintValue,
@@ -1349,33 +1370,33 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} preCommit.stylelint`,
   );
   if (stylelintValue.enabled != null && typeof stylelintValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} preCommit.stylelint.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.stylelint.enabled must be a boolean`);
   }
   if (
     stylelintValue.pattern != null
     && (typeof stylelintValue.pattern !== 'string' || !stylelintValue.pattern.trim())
   ) {
-    throw new Error(`${configPath} preCommit.stylelint.pattern must be a non-empty string`);
+    throw configValidationError(`${configPath} preCommit.stylelint.pattern must be a non-empty string`);
   }
   if (stylelintValue.fix != null && typeof stylelintValue.fix !== 'boolean') {
-    throw new Error(`${configPath} preCommit.stylelint.fix must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.stylelint.fix must be a boolean`);
   }
   if (
     stylelintValue.maxWarnings != null
     && (!Number.isInteger(stylelintValue.maxWarnings) || stylelintValue.maxWarnings < 0)
   ) {
-    throw new Error(`${configPath} preCommit.stylelint.maxWarnings must be a non-negative integer`);
+    throw configValidationError(`${configPath} preCommit.stylelint.maxWarnings must be a non-negative integer`);
   }
   if (
     stylelintValue.requireConfig != null
     && typeof stylelintValue.requireConfig !== 'boolean'
   ) {
-    throw new Error(`${configPath} preCommit.stylelint.requireConfig must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.stylelint.requireConfig must be a boolean`);
   }
   const styleComplexityValue = stylelintValue.complexity ?? {};
   if (!styleComplexityValue || typeof styleComplexityValue !== 'object'
     || Array.isArray(styleComplexityValue)) {
-    throw new Error(`${configPath} preCommit.stylelint.complexity must be an object`);
+    throw configValidationError(`${configPath} preCommit.stylelint.complexity must be an object`);
   }
   assertKnownProperties(
     styleComplexityValue,
@@ -1384,13 +1405,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   );
   if (styleComplexityValue.enabled != null
     && typeof styleComplexityValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} preCommit.stylelint.complexity.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.stylelint.complexity.enabled must be a boolean`);
   }
   for (const property of ['maxCompoundSelectors', 'maxNestingDepth']) {
     if (styleComplexityValue[property] != null
       && (!Number.isInteger(styleComplexityValue[property])
         || styleComplexityValue[property] < 0)) {
-      throw new Error(
+      throw configValidationError(
         `${configPath} preCommit.stylelint.complexity.${property} `
         + 'must be a non-negative integer',
       );
@@ -1398,7 +1419,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   }
   if ((styleComplexityValue.enabled ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.enabled)
     && !(stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled)) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.stylelint.complexity.enabled requires `
       + 'preCommit.stylelint.enabled',
     );
@@ -1406,7 +1427,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   const styleGovernanceValue = stylelintValue.governance ?? {};
   if (!styleGovernanceValue || typeof styleGovernanceValue !== 'object'
     || Array.isArray(styleGovernanceValue)) {
-    throw new Error(`${configPath} preCommit.stylelint.governance must be an object`);
+    throw configValidationError(`${configPath} preCommit.stylelint.governance must be an object`);
   }
   assertKnownProperties(
     styleGovernanceValue,
@@ -1421,12 +1442,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   );
   if (styleGovernanceValue.enabled != null
     && typeof styleGovernanceValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} preCommit.stylelint.governance.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.stylelint.governance.enabled must be a boolean`);
   }
   if (styleGovernanceValue.maxSpecificity != null
     && (typeof styleGovernanceValue.maxSpecificity !== 'string'
       || !/^\d+,\d+,\d+$/.test(styleGovernanceValue.maxSpecificity.trim()))) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.stylelint.governance.maxSpecificity `
       + 'must use the "id,class,type" format, for example "0,3,0"',
     );
@@ -1434,14 +1455,14 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   if (styleGovernanceValue.maxIdSelectors != null
     && (!Number.isInteger(styleGovernanceValue.maxIdSelectors)
       || styleGovernanceValue.maxIdSelectors < 0)) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.stylelint.governance.maxIdSelectors `
       + 'must be a non-negative integer',
     );
   }
   if (styleGovernanceValue.disallowImportant != null
     && typeof styleGovernanceValue.disallowImportant !== 'boolean') {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.stylelint.governance.disallowImportant must be a boolean`,
     );
   }
@@ -1452,7 +1473,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   );
   if ((styleGovernanceValue.enabled ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.enabled)
     && !(stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled)) {
-    throw new Error(
+    throw configValidationError(
       `${configPath} preCommit.stylelint.governance.enabled requires `
       + 'preCommit.stylelint.enabled',
     );
@@ -1460,7 +1481,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const prettierValue = preCommitValue.prettier ?? {};
   if (!prettierValue || typeof prettierValue !== 'object' || Array.isArray(prettierValue)) {
-    throw new Error(`${configPath} preCommit.prettier must be an object`);
+    throw configValidationError(`${configPath} preCommit.prettier must be an object`);
   }
   assertKnownProperties(
     prettierValue,
@@ -1468,27 +1489,27 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} preCommit.prettier`,
   );
   if (prettierValue.enabled != null && typeof prettierValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} preCommit.prettier.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.prettier.enabled must be a boolean`);
   }
   if (
     prettierValue.pattern != null
     && (typeof prettierValue.pattern !== 'string' || !prettierValue.pattern.trim())
   ) {
-    throw new Error(`${configPath} preCommit.prettier.pattern must be a non-empty string`);
+    throw configValidationError(`${configPath} preCommit.prettier.pattern must be a non-empty string`);
   }
   if (prettierValue.fix != null && typeof prettierValue.fix !== 'boolean') {
-    throw new Error(`${configPath} preCommit.prettier.fix must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.prettier.fix must be a boolean`);
   }
   if (
     prettierValue.requireConfig != null
     && typeof prettierValue.requireConfig !== 'boolean'
   ) {
-    throw new Error(`${configPath} preCommit.prettier.requireConfig must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.prettier.requireConfig must be a boolean`);
   }
 
   const eslintValue = preCommitValue.eslint ?? {};
   if (!eslintValue || typeof eslintValue !== 'object' || Array.isArray(eslintValue)) {
-    throw new Error(`${configPath} preCommit.eslint must be an object`);
+    throw configValidationError(`${configPath} preCommit.eslint must be an object`);
   }
   assertKnownProperties(
     eslintValue,
@@ -1496,30 +1517,30 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     `${configPath} preCommit.eslint`,
   );
   if (eslintValue.enabled != null && typeof eslintValue.enabled !== 'boolean') {
-    throw new Error(`${configPath} preCommit.eslint.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.enabled must be a boolean`);
   }
   if (eslintValue.preset != null && typeof eslintValue.preset !== 'boolean') {
-    throw new Error(`${configPath} preCommit.eslint.preset must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.preset must be a boolean`);
   }
   if (
     eslintValue.pattern != null
     && (typeof eslintValue.pattern !== 'string' || !eslintValue.pattern.trim())
   ) {
-    throw new Error(`${configPath} preCommit.eslint.pattern must be a non-empty string`);
+    throw configValidationError(`${configPath} preCommit.eslint.pattern must be a non-empty string`);
   }
   if (eslintValue.fix != null && typeof eslintValue.fix !== 'boolean') {
-    throw new Error(`${configPath} preCommit.eslint.fix must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.fix must be a boolean`);
   }
   if (
     eslintValue.maxWarnings != null
     && (!Number.isInteger(eslintValue.maxWarnings) || eslintValue.maxWarnings < 0)
   ) {
-    throw new Error(`${configPath} preCommit.eslint.maxWarnings must be a non-negative integer`);
+    throw configValidationError(`${configPath} preCommit.eslint.maxWarnings must be a non-negative integer`);
   }
 
   const rules = value.rules.map((rule, index) => {
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-      throw new Error(`${configPath} rule ${index + 1} must be an object`);
+      throw configValidationError(`${configPath} rule ${index + 1} must be an object`);
     }
     assertKnownProperties(
       rule,
@@ -1527,13 +1548,13 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
       `${configPath} rule ${index + 1}`,
     );
     if (typeof rule.pattern !== 'string' || !rule.pattern.trim()) {
-      throw new Error(`${configPath} rule ${index + 1} has no pattern`);
+      throw configValidationError(`${configPath} rule ${index + 1} has no pattern`);
     }
     if (typeof rule.category !== 'string' || !rule.category.trim()) {
-      throw new Error(`${configPath} rule ${index + 1} has no category`);
+      throw configValidationError(`${configPath} rule ${index + 1} has no category`);
     }
     if (!SUPPORTED_LEVELS.has(rule.level)) {
-      throw new Error(
+      throw configValidationError(
         `${configPath} rule ${index + 1} has unsupported level: ${String(rule.level)}`,
       );
     }
@@ -1549,7 +1570,7 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
 
   const exclusions = (value.exclusions || []).map((pattern, index) => {
     if (typeof pattern !== 'string' || !pattern.trim()) {
-      throw new Error(`${configPath} exclusion ${index + 1} must be a non-empty string`);
+      throw configValidationError(`${configPath} exclusion ${index + 1} must be a non-empty string`);
     }
     const normalized = normalizeGitPath(pattern.trim());
     return {
@@ -1693,6 +1714,24 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
   };
 }
 
+export function validateConfig(value, configPath = CONFIG_FILE) {
+  try {
+    return validateConfigValue(value, configPath);
+  } catch (error) {
+    throw toRepoGuardError(error, {
+      kind: 'configuration',
+      code: 'config/invalid',
+      expected: `${configPath} must match the supported repo-guard configuration contract.`,
+      remediation: {
+        goal: `Correct ${configPath} without weakening enabled gates or policies.`,
+        steps: ['Use the reported field path and validation message to correct the invalid value.'],
+        constraints: ['Do not disable a gate solely to bypass configuration validation.'],
+        verification: ['Run npm run guard:check after updating the configuration.'],
+      },
+    });
+  }
+}
+
 export function loadConfig(root, {
   allowExpiredExceptions = false,
   now = new Date(),
@@ -1703,14 +1742,35 @@ export function loadConfig(root, {
   try {
     parsed = JSON.parse(readFileSync(configPath, 'utf8'));
   } catch (error) {
-    throw new Error(`Unable to read ${CONFIG_FILE}: ${error.message}`);
+    throw configurationError(
+      'config/read-failed',
+      `Unable to read ${CONFIG_FILE}: ${error.message}`,
+      {
+        details: { location: { path: CONFIG_FILE } },
+        expected: `${CONFIG_FILE} must exist at the repository root and contain valid JSON.`,
+        remediation: {
+          goal: `Restore a readable, valid ${CONFIG_FILE}.`,
+          steps: ['Create or correct the configuration file using the documented schema.'],
+          constraints: ['Do not remove required policy sections to bypass validation.'],
+          verification: ['Run npm run guard:check.'],
+        },
+        cause: error,
+      },
+    );
   }
 
-  const config = validateConfig(parsed, CONFIG_FILE);
-  if (!allowExpiredExceptions) {
-    assertExceptionRegistryCurrent(config.exceptions, { now });
+  try {
+    const config = validateConfig(parsed, CONFIG_FILE);
+    if (!allowExpiredExceptions) {
+      assertExceptionRegistryCurrent(config.exceptions, { now });
+    }
+    return config;
+  } catch (error) {
+    throw toRepoGuardError(error, {
+      kind: 'configuration',
+      code: 'config/invalid',
+    });
   }
-  return config;
 }
 
 export function matchRule(filePath, config) {

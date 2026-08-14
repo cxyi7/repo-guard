@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.2.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.3.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -423,7 +423,15 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 
 `release-ready` 使用固定计划依次执行 CI policy、消费项目精确的 `check` 与 `test` npm scripts、已启用的 build、可选 Lighthouse，以及必须精确等于 `npm pack --dry-run --json --ignore-scripts` 的 `pack:check` script。最后一步校验 package/lockfile 版本、`CHANGELOG.md` 版本标题、已导出的 draft 2020-12 Schema、exports/bin 和实际打包文件的一致性，并拒绝敏感发布文件。它不会生成 tarball，不运行 lifecycle scripts，不执行 `npm publish` 或 deploy，也不会把发布、部署和云凭证传给 `check`、`test` 或 pack 子进程。项目外部门禁只有显式声明 `release-ready` 且运行在 GitLab protected ref 时，才会固定追加在全部官方步骤之后。
 
-退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码，CI 每个非跳过步骤的 `exitCode` 也遵循这套映射，不再保留 runner 自己的历史数字语义。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码。规则与 runner 只返回结构化 findings、diagnostics、metrics 和 artifacts；console 与 CI JSON 由统一报告层生成。消费项目脚本的 stdout/stderr 会先被捕获为 diagnostics，CI `gateResult` 也完整保留 diagnostics，不再存在 runner 直接输出或继承 stdio 的旁路。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+
+内部 `GateResult` JSON 使用 `schemaVersion: 2`。`issues` 是交给 AI 的规范入口：每项都包含稳定的 `id/kind/gateId/ruleId/code/severity`、仓库相对 `location`、明确的 `message/evidence/expected`、结构化 `remediation`、`decision.aiAction`、是否需要人工批准以及用于去重的 `fingerprint`。`findings` 保留规则发现集合，错误状态会把同结构的 typed error 追加到 `issues`；规则违规使用 `kind: violation`，配置、执行、范围、安全、内部和取消错误不会伪装成规则违规。CI 在尚未进入执行计划时发生的配置或范围错误，也会把同一结构写入顶层报告的 `gateResult`，不再只留下一个错误字符串。完整 Schema 可从 `@cxyi7/repo-guard/gate-result.schema.json` 引用。
+
+规则不满足必须返回 finding，不能 `throw`。仓库维护的 `src` 与 `test` 禁止构造裸 `Error`/`AggregateError`，也禁止直接重抛未分类的 `error`；配置、解析、Git、项目工具、外部门禁、通知、Gate 编排、CLI 和 CI 边界必须直接产生或转换为 `RepoGuardError`。只有统一结果模型、Capability 构造器和少数明确列入静态白名单的参数契约可以使用 `TypeError`。递归边界测试排除 `.tmp`、构建缓存和第三方依赖，但不给仓库自有文件增加例外。`createGateResult` 仍会拒绝直接传入原生错误，因此第三方工具异常也不能绕过分类、稳定代码和统一 renderer。消费项目缺少 `package.json`、没有安装所需工具或工具运行入口无法解析时，依赖解析边界会分别保留稳定错误码、结构化证据和修复步骤，不再降级为笼统执行异常。
+
+Git 变更收集同样属于领域边界。`git diff --name-status -z` 返回不完整的普通、重命名或复制记录时，报告会使用稳定的 `git-changes/*` execution error，并明确指出协议记录类型、预期字段和验证方式；不得把无法解析的记录当作空变更继续执行。
+
+`diagnostics` 与可操作问题分离，每条固定包含 `source`、`stream`、`level`、`message`、`redacted` 和 `truncated`。所有项目工具输出在进入 renderer 前都会统一脱敏、将当前仓库根路径替换为 `<repo>` 并限制长度；finding、error、artifact 与 evidence 的位置只保留仓库相对路径或明确的 `<absolute>/<outside>` 占位。console 只根据相同数据生成中文标签块，不拥有独立错误文案。
 
 ### 外部门禁脚本
 
@@ -485,9 +493,7 @@ repo-guard external project.api-contract
 | `exceptions` | 按规则定义 | 明确允许跳过的文件路径 glob |
 | `suggestedDirectory` | 按规则定义 | 失败提示提供给 AI 的建议目标目录，必须是具体目录而不是 glob |
 
-提交失败时会按文件输出可直接交给 AI 的中文指令，包括当前路径、建议目标、允许位置、引用路径更新、
-验证命令和禁止绕过要求。移动文件本身不是自动完成的，因为 AI 还需要同步修改 Vue、JavaScript、CSS、
-HTML 和 Markdown 中的引用。
+提交失败时会输出统一结构化 finding，包括当前路径和建议目标；console renderer 负责统一编号与修复建议排版，CI JSON 保留相同字段。移动文件本身不是自动完成的，修改者仍需同步更新 Vue、JavaScript、CSS、HTML 和 Markdown 中的引用。
 
 新增文件类型只需要在配置中增加规则，不需要改 npm 包代码。例如要求 Figma 和 Sketch 源文件统一放在
 `design/**`，可将下面的规则对象追加到现有 `preCommit.filePlacement.rules` 数组：
@@ -551,12 +557,7 @@ npx repo-guard file-placement
 达到 `warnAt`（默认 85%）但尚未超限时，门禁会输出剩余行数和提前拆分建议，但不会阻止
 提交。存量超限文件在 `noRegression` 下持平或缩短时也会持续预警，直到低于正式限制。
 
-超过限制时提交会被阻止，并为每个文件输出一段可单独复制给 AI 的完整重构指令。指令会
-列出文件、当前行数、限制和至少需要减少的行数，并根据 Vue/JS/TS 文件给出不同拆分方向；
-Vue 文件还会分别统计 `template`、`script`、`style` 的有效内容行数，指出最大的区域和
-优先拆分方向。多个同类 Vue 区块会合并统计，标签外围的空白行不会计入区域数据。
-同时要求保持接口和行为、限制修改范围、执行项目验证，并禁止通过删除必要注释、压缩代码、
-修改阈值、关闭门禁、修改扩展名或增加排除项绕过检查。自动生成且无法合理拆分的文件可以显式排除，例如：
+超过限制时提交会被阻止，并为每个文件输出包含当前行数、限制、通过目标和修复建议的结构化 finding；console 与 CI JSON 使用同一份数据。Vue 区域统计仍用于规则判断和预警分析。禁止通过删除必要注释、压缩代码、修改阈值、关闭门禁、修改扩展名或增加排除项绕过检查。自动生成且无法合理拆分的文件可以显式排除，例如：
 
 ```json
 {
@@ -781,7 +782,7 @@ repo-guard 始终检查 Vue 根模板中的原生 `<img>`，要求图片具有�
 
 门禁会拒绝缺少 `alt`、无法静态证明的动态 `alt`、没有明确装饰角色的空 `alt`、与非空 `alt` 冲突的 `none`/`presentation` 角色，以及 `图片`、`icon`、`image`、`photo.jpg` 或空白字符引用等无意义文本。重复 `alt`/`role` 和无参数 `v-bind="attrs"` 也会失败，避免运行时对象覆盖已检查的语义。简单绑定字面量可以解析；运行时表达式若确实无法改为静态语义，必须由负责人登记精确、限期的结构化例外。
 
-未经批准的问题使用规则 ID `vue/img-alt`，发现位置指向原生 `img` 标签名。AI 报告会同时给出失败原因、针对性修复、兼容边界、禁止绕过项和验证要求；不得用 `title`、`aria-label` 或动态绑定代替合适的 `alt`。
+未经批准的问题使用规则 ID `vue/img-alt`，发现位置指向原生 `img` 标签名。统一 finding 会同时给出失败原因和针对性 remediation，并由 console/CI JSON renderer 一致展示；不得用 `title`、`aria-label` 或动态绑定代替合适的 `alt`。
 
 全项目检查命令为：
 
@@ -830,7 +831,7 @@ dependency-cruiser 自身的 Node.js 要求随大版本变化；repo-guard 的�
 
 默认三条 error 规则禁止循环依赖、无法解析的导入以及生产代码导入测试代码。`rules` 使用 dependency-cruiser 的 `from`/`to` 条件；`error` 会阻止推送，`warn` 和 `info` 只进入统一报告，`ignore` 不执行。启用时还会在 `AGENTS.md` 增量维护与当前配置一致的 AI 架构要求。
 
-架构错误会按编号输出可独立复制给 AI 的完整中文修复指令。每段包含项目根目录、规则名、依赖关系、完整循环链路、针对性修复建议、修改范围、禁止绕过要求，以及架构检查、测试和生产构建验证命令。dependency-cruiser 16 的字符串循环链路与 17/18 的对象循环链路都会格式化为可读路径。
+架构错误会输出结构化 finding：规则名和源文件位于稳定字段，依赖关系及完整循环链路位于 evidence，针对性调整方向位于 remediation；console 与 CI JSON 从同一结果渲染。dependency-cruiser 16 的字符串循环链路与 17/18 的对象循环链路都会格式化为可读路径。
 
 | 字段 | 默认值 | 说明 |
 |---|---:|---|
@@ -962,12 +963,11 @@ repo-guard doctor
 repo-guard unit-test
 ```
 
-缺少测试时会列出源码路径、建议测试路径和全部允许位置，并输出可以直接交给 AI 的要求；测试失败时
-保留 Vitest 原始输出，再明确要求修复代码或用例，禁止删除测试、降低必要断言或关闭门禁。
+缺少测试时会用结构化 finding 列出源码路径、建议测试路径和允许位置；测试失败时 Vitest 原始输出会作为 diagnostics 进入同一报告，再明确要求修复代码或用例，禁止删除测试、降低必要断言或关闭门禁。
 
 ### axe 组件与 E2E 可访问性测试门禁
 
-`accessibilityTest` 是独立的 pre-push 硬门禁，支持 Vue 组件测试和 Playwright/Cypress E2E。业务项目拥有测试框架、浏览器环境、页面启动和具体用例；repo-guard 负责验证测试不是空壳、执行项目脚本并统一输出 AI 修复要求。
+`accessibilityTest` 是独立的 pre-push 硬门禁，支持 Vue 组件测试和 Playwright/Cypress E2E。业务项目拥有测试框架、浏览器环境、页面启动和具体用例；repo-guard 负责验证测试不是空壳、执行项目脚本，并把设置问题作为 findings、脚本输出作为 diagnostics 交给统一报告层。
 
 支持直接使用 `vitest-axe`、`jest-axe`、`@axe-core/playwright`、`cypress-axe` 或 `axe-core`。项目应提供独立脚本，例如：
 
@@ -1135,8 +1135,7 @@ disable 注释、覆盖规则、扩大 ignore 或自行登记例外。
 
 同一个 Vue 文件可以包含多个相同语言的 `<style>` 块，但不能混用不同语言；例如
 同时出现 `<style>` 和 `<style lang="scss">` 时，提交会在调用 Stylelint 前直接失败。
-自动修复后 repo-guard 会再次只读检查；仍有问题时恢复 Stylelint 修改并输出编号式
-中文 AI 修复指令。所有处理都限定在暂存文件，部分暂存文件的未暂存内容会被保留。
+自动修复后 repo-guard 会再次只读检查；仍有问题时恢复 Stylelint 修改，并通过统一 renderer 输出带规则、位置、原始消息和修复建议的 findings。所有处理都限定在暂存文件，部分暂存文件的未暂存内容会被保留。
 
 ### ESLint 配置
 
@@ -1203,9 +1202,7 @@ npm install --save-dev eslint @eslint/js
 不要把全项目 `npm run lint:fix` 配置成 Hook 命令。repo-guard 只对暂存文件
 执行修复，避免把同一文件中的未暂存内容或其他任务改动带入提交。
 
-如果 ESLint 自动修复后仍有问题，repo-guard 会按 `1.`、`2.` 编号输出每一个
-问题。每段都包含文件、行列、规则、原始错误和修复约束，可单独完整复制给 AI；
-提示会明确要求 AI 不得关闭 ESLint 规则或修改无关文件。
+如果 ESLint 自动修复后仍有问题，repo-guard 会返回带文件、行列、规则、原始错误和修复建议的结构化 findings；console renderer 统一编号，CI JSON 保留同一字段。修复建议明确要求不得关闭 ESLint 规则。
 
 ### Prettier 配置
 
@@ -1302,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.3.0
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.3.0
+npx repo-guard doctor
+```
+
+1.3.0 将官方门禁的 console 与 CI JSON 输出统一到 `GateResult` renderer。消费项目工具的 stdout/stderr 现在作为带来源、流、脱敏和截断元数据的 diagnostics 被捕获；JSON `schemaVersion: 2` 新增统一 `issues`，每个问题提供稳定代码、类型、位置、结构化证据、预期、修复步骤/约束/验证、AI 决策和指纹。配置、执行、范围、取消与内部异常使用 typed error 决定状态，不再按发生阶段猜测；规则违规仍返回 finding，不通过 `throw` 表达。例外、架构、单元测试和 axe 写入 `AGENTS.md` 的受管提示由同一个 policy catalog 定义，进程失败修复建议由统一 guidance catalog 生成；runner、规则和命令不再直接写 console，也不再保留专属 AI/报告 formatter。命令退出码和配置格式仍保持不变，但依赖旧版专属中文 console 文案、GateResult JSON v1 或旧 string evidence/remediation 的严格快照需要更新。
 
 ## 升级到 1.2.0
 

@@ -7,6 +7,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { configurationError } from './core/error/repo-guard-error.js';
 import { findStructuredException } from './exception-registry.js';
 import { runGit } from './git.js';
 
@@ -28,12 +29,20 @@ function parseJsonFile(target, label) {
   try {
     source = readFileSync(target, 'utf8');
   } catch (error) {
-    throw new Error(`Unable to read ${label}: ${error.message}`);
+    throw configurationError(
+      'dependency-policy/package-metadata-read-failed',
+      `Unable to read ${label}: ${error.message}`,
+      { cause: error, details: { location: { path: label } }, expected: `${label} exists and is readable.` },
+    );
   }
   try {
     return { source, value: JSON.parse(source) };
   } catch (error) {
-    throw new Error(`${label} must contain valid JSON: ${error.message}`);
+    throw configurationError(
+      'dependency-policy/package-metadata-invalid-json',
+      `${label} must contain valid JSON: ${error.message}`,
+      { cause: error, details: { location: { path: label } }, expected: `${label} contains valid JSON package metadata.` },
+    );
   }
 }
 
@@ -313,22 +322,6 @@ export function inspectDependencyPolicy({ root, config, exceptions }) {
   return { approved, violations };
 }
 
-export function buildDependencyPolicyAiInstructions(violations) {
-  const lines = ['依赖治理门禁失败，可将以下指令分别交给 AI 修复：'];
-  violations.forEach((violation, index) => {
-    lines.push(
-      '',
-      `${index + 1}. 请修复 ${violation.path} 第 ${violation.line} 行第 ${violation.column} 列的依赖问题。`,
-      `   规则：${violation.rule}`,
-      `   问题：${violation.message}`,
-      '   修复要求：使用项目 npm 命令更新 package.json 与 package-lock.json，保持依赖分组、版本来源和锁文件根声明一致。',
-      '   禁止绕过：不得删除锁文件、改用浮动版本或未批准来源，不得关闭门禁、扩大允许协议，或新增、延期、修改结构化例外。',
-      '   验证要求：运行 npm install --package-lock-only、repo-guard dependencies，以及项目已有的测试和生产构建。',
-    );
-  });
-  lines.push('', `共 ${violations.length} 个依赖治理问题，提交已停止。`);
-  return lines.join('\n');
-}
 
 export function inspectStagedDependencyPolicy({ root, config, exceptions }) {
   const packageResult = runGit(['show', ':package.json'], {

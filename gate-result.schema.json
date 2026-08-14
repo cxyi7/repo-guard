@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cxyi7.github.io/repo-guard/gate-result-v2.schema.json",
+  "title": "repo-guard GateResult JSON report v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "gateId", "status", "summary", "findings", "issues", "metrics", "artifacts", "diagnostics", "durationMs"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "gateId": { "type": "string", "pattern": "\\S" },
+    "status": { "enum": ["passed", "skipped", "violation", "configuration-error", "execution-error", "range-error"] },
+    "summary": { "type": "string", "pattern": "\\S" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    },
+    "issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    },
+    "metrics": {
+      "type": "object",
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": { "type": "number" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "error": { "$ref": "#/$defs/issue" }
+  },
+  "$defs": {
+    "location": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^(?!/)(?![A-Za-z]:/)(?!\\.\\.(?:/|$))[^\\\\]+$" },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endColumn": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "message", "location"],
+      "properties": {
+        "type": { "type": "string", "pattern": "\\S" },
+        "message": { "type": "string", "pattern": "\\S" },
+        "location": { "$ref": "#/$defs/location" },
+        "source": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal", "steps", "constraints", "verification"],
+      "properties": {
+        "goal": { "type": "string", "pattern": "\\S" },
+        "steps": { "type": "array", "items": { "type": "string", "pattern": "\\S" } },
+        "constraints": { "type": "array", "items": { "type": "string", "pattern": "\\S" } },
+        "verification": { "type": "array", "items": { "type": "string", "pattern": "\\S" } }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aiAction", "humanApprovalRequired"],
+      "properties": {
+        "aiAction": { "type": "string", "pattern": "\\S" },
+        "humanApprovalRequired": { "type": "boolean" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "gateId", "ruleId", "code", "severity", "message", "location", "evidence", "expected", "remediation", "decision", "fingerprint"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^issue-[a-f0-9]{12}$" },
+        "kind": { "enum": ["violation", "configuration", "execution", "range", "security", "internal", "cancellation"] },
+        "gateId": { "type": "string", "pattern": "\\S" },
+        "ruleId": { "type": "string", "pattern": "\\S" },
+        "code": { "type": "string", "pattern": "\\S" },
+        "severity": { "enum": ["info", "warning", "error"] },
+        "message": { "type": "string", "pattern": "\\S" },
+        "location": { "$ref": "#/$defs/location" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "expected": { "type": "string", "pattern": "\\S" },
+        "remediation": { "$ref": "#/$defs/remediation" },
+        "decision": { "$ref": "#/$defs/decision" },
+        "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "name": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "type", "description"],
+      "properties": {
+        "path": { "type": "string", "pattern": "\\S" },
+        "type": { "type": "string", "pattern": "\\S" },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "stream", "level", "message", "redacted", "truncated"],
+      "properties": {
+        "source": { "type": "string", "pattern": "\\S" },
+        "stream": { "enum": ["stdout", "stderr"] },
+        "level": { "enum": ["log", "info", "warn", "error"] },
+        "message": { "type": "string" },
+        "redacted": { "type": "boolean" },
+        "truncated": { "type": "boolean" }
+      }
+    }
+  }
+}

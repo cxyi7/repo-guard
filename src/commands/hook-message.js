@@ -5,6 +5,7 @@ import {
   prepareCommitMessage,
 } from '../commit-message.js';
 import { findRepositoryRoot } from '../git.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
 
 export function runHookMessage(argumentsList, cwd = process.cwd()) {
   const [mode, messageFile = '', source = '', sourceCommit = ''] = argumentsList;
@@ -16,7 +17,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
   }
 
   if (!messageFile) {
-    throw new Error(`hook-message ${mode || '<missing>'} requires a commit message file`);
+    throw configurationError('hook-message/missing-file', `hook-message ${mode || '<missing>'} requires a commit message file`);
   }
 
   const config = loadConfig(root);
@@ -29,5 +30,5 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     return 0;
   }
 
-  throw new Error(`Unsupported hook-message mode: ${mode || '<missing>'}`);
+  throw configurationError('hook-message/unsupported-mode', `Unsupported hook-message mode: ${mode || '<missing>'}`);
 }

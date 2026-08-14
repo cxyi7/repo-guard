@@ -10,7 +10,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  buildVueFormLabelAiInstructions,
   findVueFormLabelIssues,
   inspectVueFormLabels,
   VUE_FORM_CONTROL_LABEL_RULE,
@@ -142,30 +141,6 @@ test('requires a statically verifiable accessible name for native Vue form contr
   ]);
 });
 
-test('builds specific self-contained AI repair instructions for each label failure', () => {
-  const source = [
-    '<template>',
-    '  <label for="empty"></label><input id="empty">',
-    '  <select :aria-label="computed"></select>',
-    '  <span id="empty-reference"></span>',
-    '  <textarea aria-labelledby="missing empty-reference"></textarea>',
-    '</template>',
-  ].join('\n');
-  const findings = findVueFormLabelIssues(source, 'src/Form.vue');
-  const instructions = buildVueFormLabelAiInstructions(findings);
-
-  assert.match(instructions, /id="empty" 已被 <label for="empty"> 关联，但该 label 没有可读文本/);
-  assert.match(instructions, /在 <label for="empty"> 中补充/);
-  assert.match(instructions, /aria-label 使用动态表达式/);
-  assert.match(instructions, /改为非空静态文本或可静态解析的绑定字面量/);
-  assert.match(instructions, /不存在的 id：missing/);
-  assert.match(instructions, /没有可读文本的 id：empty-reference/);
-  assert.match(instructions, /删除无效或自引用 token/);
-  assert.match(instructions, /兼容要求：保持控件原有 v-model、事件、校验/);
-  assert.match(instructions, /禁止绕过：不得用 placeholder、title/);
-  assert.match(instructions, /验证要求：确认可见 label 与控件语义一致/);
-});
-
 test('requires an exact active structured exception for an unlabeled control', (context) => {
   const source = '<template>\n  <input placeholder="Legacy">\n</template>\n';
   const root = createFixture(source);
@@ -201,9 +176,8 @@ test('exposes a full-project form-labels CLI with unified reporting', (context) 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/form-control-label/);
   assert.match(result.stderr, /<label>/);
-  assert.match(result.stderr, /placeholder/);
-  assert.match(result.stderr, /针对性修复/);
-  assert.match(result.stderr, /保持控件原有 v-model、事件、校验/);
+  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /非空静态 aria-label/);
 
   const [finding] = findVueFormLabelIssues(source, 'src/Form.vue');
   writeFileSync(

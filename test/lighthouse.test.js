@@ -108,7 +108,9 @@ test('builds a Vue project and runs Lighthouse collect then assert', (context) =
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }).status, 'passed');
+  const result = runVueLighthouse({ root, config: lighthouseConfig() });
+  assert.equal(result.status, 'passed');
+  assert.equal(result.diagnostics.some(({ message }) => message.includes('vue-lighthouse-fixture')), true);
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\nassert\n');
 });
 

@@ -5,15 +5,19 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, securityError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { resolveCiRange } from './ci-changes.js';
 import { validateCiReportPath } from './config.js';
 import { classifyChanges } from './git-changes.js';
 import { runGit } from './git.js';
 import { collectProjectFiles } from './file-placement.js';
-import { gateStatusToExitCode } from './core/result/gate-result.js';
-import { writeGateResultConsole } from './core/report/console-renderer.js';
-import { renderCiStep } from './core/report/json-renderer.js';
+import { createGateResult, gateStatusToExitCode } from './core/result/gate-result.js';
+import {
+  writeConsoleMessage,
+  writeGateResultConsole,
+} from './core/report/console-renderer.js';
+import { renderCiStep, renderGateResultJson } from './core/report/json-renderer.js';
 import {
   createChangeSet,
   createGateContext,
@@ -38,7 +42,10 @@ function assertNoSymlinkPath(root, reportPath) {
   for (const segment of reportPath.split('/')) {
     current = path.join(current, segment);
     if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
-      throw new Error(`CI report path must not traverse a symbolic link: ${reportPath}`);
+      throw securityError('ci-report/symlink-traversal', `CI report path must not traverse a symbolic link: ${reportPath}`, {
+        details: { location: { path: reportPath } },
+        expected: 'CI 报告路径的每个现有目录都是真实目录而非符号链接。',
+      });
     }
   }
 }
@@ -54,7 +61,10 @@ export function writeCiReport(root, reportPath, report) {
     allowFailure: true,
     cwd: root,
   }).status === 0;
-  if (tracked) throw new Error(`CI report path must not overwrite a tracked file: ${normalized}`);
+  if (tracked) throw securityError('ci-report/tracked-file-overwrite', `CI report path must not overwrite a tracked file: ${normalized}`, {
+    details: { location: { path: normalized } },
+    expected: 'CI 报告仅写入未跟踪的 reports/ 生成文件。',
+  });
   const target = path.resolve(root, normalized);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -72,6 +82,22 @@ function configurationErrorReport(profile, error) {
   };
 }
 
+function writeCiLifecycleError(gateId, status, error) {
+  const kind = status.slice(0, -6);
+  const typedError = toRepoGuardError(error, {
+    kind,
+    code: `ci/${kind}-failed`,
+  });
+  const result = createGateResult({
+    gateId,
+    status,
+    summary: typedError.message,
+    error: typedError,
+  });
+  writeGateResultConsole(result, { label: gateId });
+  return renderGateResultJson(result);
+}
+
 export async function runCiGate({
   root,
   config,
@@ -84,17 +110,27 @@ export async function runCiGate({
   reportPath ||= config.ci.reportPath;
   reportPath = validateCiReportPath(reportPath);
   if (!config.ci.enabled) {
-    const error = new Error(
+    const error = configurationError(
+      'ci/disabled',
       'CI gate is disabled. Run repo-guard install-ci or repo-guard enable ci.',
     );
-    writeCiReport(root, reportPath, configurationErrorReport(profile, error));
-    console.error(`repo-guard CI configuration failed: ${error.message}`);
+    const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
+    writeCiReport(root, reportPath, {
+      ...configurationErrorReport(profile, error),
+      gateResult,
+    });
     return gateStatusToExitCode('configuration-error');
   }
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    const error = new Error('CI profile must be policy, full, or release-ready');
-    writeCiReport(root, reportPath, configurationErrorReport(profile, error));
-    console.error(`repo-guard CI configuration failed: ${error.message}`);
+    const error = configurationError(
+      'ci/invalid-profile',
+      'CI profile must be policy, full, or release-ready',
+    );
+    const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
+    writeCiReport(root, reportPath, {
+      ...configurationErrorReport(profile, error),
+      gateResult,
+    });
     return gateStatusToExitCode('configuration-error');
   }
 
@@ -111,8 +147,8 @@ export async function runCiGate({
       steps: [],
       error: error.message,
     };
+    report.gateResult = writeCiLifecycleError('ci.range', 'range-error', error);
     writeCiReport(root, reportPath, report);
-    console.error(`repo-guard CI range failed: ${error.message}`);
     return gateStatusToExitCode('range-error');
   }
 
@@ -120,15 +156,9 @@ export async function runCiGate({
   const projectFiles = collectProjectFiles(root)
     .filter((file) => !reportPaths.has(file) && !file.startsWith('reports/.npm-cache/'));
   const steps = [];
-  const recordResult = (name, result, {
-    includeGateResult = false,
-    includeDiagnostics = true,
-  } = {}) => {
+  const recordResult = (name, result, { includeGateResult = false } = {}) => {
     steps.push(renderCiStep(result, { name, includeGateResult }));
-    writeGateResultConsole(
-      includeDiagnostics ? result : { ...result, diagnostics: [] },
-      { label: name },
-    );
+    writeGateResultConsole(result, { label: name });
   };
   const registry = createProjectGateRegistry(config);
   const includeExternalGates = isTrustedExternalGateCi(env);
@@ -172,11 +202,7 @@ export async function runCiGate({
         const gate = registry.get(step.gateId);
         const gatePlan = await gate.plan(stepContext);
         const result = await gate.run({ ...stepContext, plan: gatePlan });
-        for (const line of gate.renderConsole(result)) {
-          if (line.stream === 'stderr') console.error(line.message);
-          else console.log(line.message);
-        }
-        return { name: 'dynamic-code', result, recordOptions: { includeGateResult: true, includeDiagnostics: false } };
+        return { name: 'dynamic-code', result, recordOptions: { includeGateResult: true } };
       }
       case 'quality.unit-test-policy':
         {
@@ -218,11 +244,7 @@ export async function runCiGate({
         const gate = registry.get(step.gateId);
         const gatePlan = await gate.plan(stepContext);
         const result = await gate.run({ ...stepContext, plan: gatePlan });
-        for (const line of gate.renderConsole?.(result) ?? []) {
-          if (line.stream === 'stderr') console.error(line.message);
-          else console.log(line.message);
-        }
-        return { name: step.id, result, recordOptions: { includeGateResult: true, includeDiagnostics: false } };
+        return { name: step.id, result, recordOptions: { includeGateResult: true } };
       }
       }
     },
@@ -254,6 +276,6 @@ export async function runCiGate({
     steps,
   };
   writeCiReport(root, reportPath, report);
-  console.log(`repo-guard CI report: ${reportPath} (${status}).`);
+  writeConsoleMessage(`repo-guard CI report: ${reportPath} (${status}).`);
   return execution.exitCode;
 }

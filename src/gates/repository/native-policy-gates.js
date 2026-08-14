@@ -1,15 +1,15 @@
 import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
-import { buildDependencyPolicyAiInstructions, inspectDependencyPolicy, inspectStagedDependencyPolicy } from '../../dependency-policy.js';
-import { formatExceptionRegistryReport, inspectExceptionRegistry } from '../../exception-registry.js';
-import { buildFilePlacementAiInstructions, inspectFilePlacement } from '../../file-placement.js';
-import { buildMaxFileLinesAiInstructions, buildMaxFileLinesWarnings, evaluateMaxFileLines, selectMaxFileLineFiles } from '../../max-file-lines.js';
+import { inspectDependencyPolicy, inspectStagedDependencyPolicy } from '../../dependency-policy.js';
+import { inspectExceptionRegistry } from '../../exception-registry.js';
+import { inspectFilePlacement } from '../../file-placement.js';
+import { evaluateMaxFileLines, selectMaxFileLineFiles } from '../../max-file-lines.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
-import { buildUnsafeVueHtmlAiInstructions, inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';
-import { buildVueTargetBlankAiInstructions, inspectVueTargetBlank, VUE_TARGET_BLANK_RULE } from '../../vue-target-blank.js';
-import { buildVueFormLabelAiInstructions, inspectVueFormLabels, VUE_FORM_CONTROL_LABEL_RULE } from '../../vue-form-label.js';
-import { buildVueImageAltAiInstructions, inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
+import { inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';
+import { inspectVueTargetBlank, VUE_TARGET_BLANK_RULE } from '../../vue-target-blank.js';
+import { inspectVueFormLabels, VUE_FORM_CONTROL_LABEL_RULE } from '../../vue-form-label.js';
+import { inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
 import { classifyChanges } from '../../git-changes.js';
 import { createStagedFingerprint } from '../../fingerprint.js';
 import { assertLocalEnvironmentNotStaged, resolveNotificationEnvironment } from '../../local-env.js';
@@ -27,13 +27,13 @@ function projectFiles(context) {
   });
 }
 
-function policyFinding(item, fallbackRule) {
+function policyFinding(item, fallbackRule, fallbackRemediation = null) {
   return findingFromPolicy({ ...item, rule: item.rule ?? fallbackRule }, {
-    remediation: item.repair ?? null,
+    remediation: item.remediation ?? fallbackRemediation,
   });
 }
 
-function vueGate({ id, rule, inspect, instructions, summary, manualCommand, manualOrder, doctorOrder }) {
+function vueGate({ id, rule, inspect, remediation, summary, manualCommand, manualOrder, doctorOrder }) {
   return defineGate({
     id,
     configVersions: CONFIG_VERSION,
@@ -66,12 +66,9 @@ function vueGate({ id, rule, inspect, instructions, summary, manualCommand, manu
         return passedResult(id, `${summary} passed`, { diagnostics: approvedDiagnostics, metrics });
       }
       return violationResult(id, `${summary} found ${result.violations.length} violation(s)`, {
-        findings: result.violations.map((item) => policyFinding(item, rule)),
+        findings: result.violations.map((item) => policyFinding(item, rule, remediation)),
         metrics,
-        diagnostics: [
-          ...approvedDiagnostics,
-          { level: 'error', message: instructions(result.violations) },
-        ],
+        diagnostics: approvedDiagnostics,
       });
     },
   });
@@ -79,22 +76,24 @@ function vueGate({ id, rule, inspect, instructions, summary, manualCommand, manu
 
 export const unsafeHtmlGate = vueGate({
   id: 'security.vue-unsafe-html', rule: VUE_NO_V_HTML_RULE,
-  inspect: inspectUnsafeVueHtml, instructions: buildUnsafeVueHtmlAiInstructions,
+  inspect: inspectUnsafeVueHtml,
+  remediation: 'Replace v-html with Vue templates, components, interpolation, or textContent; if trusted rich HTML is essential, establish a reviewed sanitization boundary.',
   summary: 'Vue v-html gate', manualCommand: 'unsafe-html', manualOrder: 80, doctorOrder: 80,
 });
 export const targetBlankGate = vueGate({
   id: 'security.vue-target-blank', rule: VUE_TARGET_BLANK_RULE,
-  inspect: inspectVueTargetBlank, instructions: buildVueTargetBlankAiInstructions,
+  inspect: inspectVueTargetBlank,
+  remediation: 'Use a statically verifiable rel="noopener noreferrer" on the same target="_blank" element.',
   summary: 'Vue target=_blank gate', manualCommand: 'target-blank', manualOrder: 90, doctorOrder: 90,
 });
 export const formLabelGate = vueGate({
   id: 'accessibility.vue-form-label', rule: VUE_FORM_CONTROL_LABEL_RULE,
-  inspect: inspectVueFormLabels, instructions: buildVueFormLabelAiInstructions,
+  inspect: inspectVueFormLabels,
   summary: 'Vue form label gate', manualCommand: 'form-labels', manualOrder: 100, doctorOrder: 100,
 });
 export const imageAltGate = vueGate({
   id: 'accessibility.vue-image-alt', rule: VUE_IMAGE_ALT_RULE,
-  inspect: inspectVueImageAlts, instructions: buildVueImageAltAiInstructions,
+  inspect: inspectVueImageAlts,
   summary: 'Vue image alt gate', manualCommand: 'image-alt', manualOrder: 110, doctorOrder: 110,
 });
 
@@ -108,8 +107,12 @@ export const exceptionRegistryGate = defineGate({
     const invalid = [...result.expired, ...result.future];
     if (invalid.length === 0) return passedResult('repository.structured-exceptions', `Structured exceptions are current (${result.active.length} active)`, { metrics: { entries: result.entries.length, active: result.active.length, expiring: result.expiring.length } });
     return violationResult('repository.structured-exceptions', 'Structured exceptions contain invalid dates', {
-      diagnostics: [{ level: 'error', message: formatExceptionRegistryReport(result) }],
-      findings: invalid.map((entry) => ({ ruleId: 'exceptions/invalid-date', severity: 'error', message: `Exception ${entry.id} is ${result.expired.includes(entry) ? 'expired' : 'future-dated'}` })),
+      findings: invalid.map((entry) => ({
+        ruleId: 'exceptions/invalid-date',
+        severity: 'error',
+        message: `Exception ${entry.id} is ${result.expired.includes(entry) ? 'expired' : 'future-dated'}`,
+        remediation: 'Remove the exception or replace its dates through human review.',
+      })),
     });
   },
 });
@@ -131,8 +134,11 @@ export const dependencyPolicyGate = defineGate({
       : inspectDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions });
     if (result.violations.length === 0) return passedResult('dependencies.policy', 'Dependency policy passed', { metrics: { approvedExceptions: result.approved.length } });
     return violationResult('dependencies.policy', `Dependency policy found ${result.violations.length} violation(s)`, {
-      findings: result.violations.map((item) => policyFinding(item, item.rule)),
-      diagnostics: [{ level: 'error', message: buildDependencyPolicyAiInstructions(result.violations) }],
+      findings: result.violations.map((item) => policyFinding(
+        item,
+        item.rule,
+        'Update package.json, run npm install --package-lock-only, and commit the synchronized package-lock.json; preserve exact versions, approved sources, and lockfile integrity.',
+      )),
       metrics: { violations: result.violations.length, approvedExceptions: result.approved.length },
     });
   },
@@ -155,7 +161,7 @@ export const filePlacementGate = defineGate({
     if (result.violations.length === 0) return passedResult('repository.file-placement', 'File placement passed', { diagnostics: [{ level: 'info', message: `File placement project check passed: ${result.checkedCount} file(s) matched rules.` }], metrics: { checkedFiles: result.checkedCount } });
     return violationResult('repository.file-placement', `File placement found ${result.violations.length} violation(s)`, {
       findings: result.violations.map((item) => ({ ruleId: 'repository/file-placement', severity: 'error', message: `${item.path} must be placed under an allowed directory`, location: { path: item.path }, remediation: `Move it to ${item.suggestedPath}` })),
-      diagnostics: [{ level: 'error', message: buildFilePlacementAiInstructions(result.violations) }], metrics: { checkedFiles: result.checkedCount, violations: result.violations.length },
+      metrics: { checkedFiles: result.checkedCount, violations: result.violations.length },
     });
   },
 });
@@ -173,11 +179,17 @@ export const maximumFileLinesGate = defineGate({
   run({ root, config, plan }) {
     if (!plan.enabled || plan.files.length === 0) return skippedResult('repository.maximum-file-lines', 'Maximum file lines has no applicable files');
     const result = evaluateMaxFileLines({ root, files: plan.files, config: config.preCommit.maxFileLines, baselineRef: plan.baselineRef, changes: plan.changes });
-    const diagnostics = result.warnings.length ? [{ level: 'warn', message: buildMaxFileLinesWarnings(result.warnings) }] : [];
-    if (result.violations.length === 0) return passedResult('repository.maximum-file-lines', 'Maximum file lines passed', { diagnostics, metrics: { checkedFiles: plan.files.length, warnings: result.warnings.length } });
+    const warningFindings = result.warnings.map((item) => ({
+      ruleId: 'repository/maximum-file-lines',
+      severity: 'warning',
+      message: `${item.path} has ${item.lineCount} lines; maximum is ${item.maxLines}`,
+      location: { path: item.path },
+      remediation: 'Split the file before it grows beyond the configured limit.',
+    }));
+    if (result.violations.length === 0) return passedResult('repository.maximum-file-lines', 'Maximum file lines passed', { findings: warningFindings, metrics: { checkedFiles: plan.files.length, warnings: result.warnings.length } });
     return violationResult('repository.maximum-file-lines', `Maximum file lines found ${result.violations.length} violation(s)`, {
-      findings: result.violations.map((item) => ({ ruleId: 'repository/maximum-file-lines', severity: 'error', message: `${item.path} has ${item.lineCount} lines; maximum is ${item.maxLines}`, location: { path: item.path } })),
-      diagnostics: [...diagnostics, { level: 'error', message: buildMaxFileLinesAiInstructions(result.violations) }], metrics: { checkedFiles: plan.files.length, violations: result.violations.length },
+      findings: result.violations.map((item) => ({ ruleId: 'repository/maximum-file-lines', severity: 'error', message: `${item.path} has ${item.lineCount} lines; maximum is ${item.maxLines}`, location: { path: item.path }, remediation: `Refactor the file to ${item.passLineCount ?? item.maxLines} lines or fewer without weakening the configured rule.` })),
+      metrics: { checkedFiles: plan.files.length, violations: result.violations.length },
     });
   },
 });

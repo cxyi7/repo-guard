@@ -10,7 +10,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  buildVueImageAltAiInstructions,
   findVueImageAltIssues,
   inspectVueImageAlts,
   VUE_IMAGE_ALT_RULE,
@@ -117,27 +116,6 @@ test('requires an appropriate statically verifiable alt for native Vue images', 
   ]);
 });
 
-test('builds self-contained AI repair instructions for every image failure', () => {
-  const source = [
-    '<template>',
-    '  <img src="missing.jpg">',
-    '  <img src="dynamic.jpg" :alt="description">',
-    '  <img src="generic.svg" alt="icon">',
-    '</template>',
-  ].join('\n');
-  const instructions = buildVueImageAltAiInstructions(
-    findVueImageAltIssues(source, 'src/Gallery.vue'),
-  );
-
-  assert.match(instructions, /原生 <img> 缺少 alt 属性/);
-  assert.match(instructions, /加载、空数据、异常数据等所有运行状态/);
-  assert.match(instructions, /只是“图片\/图像\/icon\/image”等泛化占位词/);
-  assert.match(instructions, /语义要求：alt 应表达图片在当前页面中的信息或功能/);
-  assert.match(instructions, /兼容要求：保留原有 src、srcset、sizes、懒加载、尺寸、样式、事件、路由和布局行为/);
-  assert.match(instructions, /不得用 title、aria-label、文件名、泛化占位词/);
-  assert.match(instructions, /屏幕阅读器能读出内容图片用途并忽略装饰图片/);
-});
-
 test('requires an exact active structured exception for an invalid image alt', (context) => {
   const source = '<template>\n  <img src="legacy.jpg">\n</template>\n';
   const root = createFixture(source);
@@ -172,8 +150,9 @@ test('exposes a full-project image-alt CLI with unified reporting', (context) =>
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/img-alt/);
-  assert.match(result.stderr, /针对性修复/);
-  assert.match(result.stderr, /不得用 title、aria-label、文件名、泛化占位词/);
+  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /alt=""/);
+  assert.match(result.stderr, /role="presentation"/);
 
   const [finding] = findVueImageAltIssues(source, 'src/Gallery.vue');
   writeFileSync(

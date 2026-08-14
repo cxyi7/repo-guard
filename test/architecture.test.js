@@ -11,10 +11,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  buildArchitectureAiRepairInstructions,
   createDependencyCruiserConfig,
   detectProjectArchitectureSetup,
-  formatArchitectureReport,
   parseArchitectureReport,
   runArchitectureGate,
   validateArchitectureSetup,
@@ -22,7 +20,7 @@ import {
 import {
   ensureArchitecturePolicy,
   isArchitecturePolicyCurrent,
-} from '../src/architecture-policy.js';
+} from '../src/policies/managed-policies.js';
 import { runPrePush } from '../src/commands/pre-push.js';
 import { runDoctor } from '../src/commands/doctor.js';
 
@@ -165,8 +163,9 @@ test('parses dependency-cruiser JSON and blocks error violations', (context) => 
   })).violations.length, 0);
 });
 
-test('builds standalone AI repair instructions and formats dependency-cruiser 17 cycles', () => {
-  const root = path.resolve('fixture');
+test('returns dependency-cruiser 17 cycles as structured finding evidence', (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
   const violations = [
     {
       type: 'cycle',
@@ -193,22 +192,15 @@ test('builds standalone AI repair instructions and formats dependency-cruiser 17
     },
   ];
 
-  const report = formatArchitectureReport({ modulesCruised: 4, violations }, '17.4.3');
-  const instructions = buildArchitectureAiRepairInstructions({ root, violations });
-
+  writeReport(root, violations);
+  const result = runArchitectureGate({ root, config: architectureConfig() });
+  const cycleFinding = result.findings.find(({ ruleId }) => ruleId === 'architecture/no-circular');
+  assert.equal(result.status, 'violation');
   assert.match(
-    report,
-    /cycle: src\/lib\/axios\.js -> src\/store\/user\.js -> src\/api\/message\.js/,
+    cycleFinding.evidence[0].message,
+    /src\/lib\/axios\.js -> src\/store\/user\.js -> src\/api\/message\.js/,
   );
-  assert.doesNotMatch(report, /\[object Object\]/);
-  assert.match(instructions, /1\. 请修复依赖架构规则 no-circular 的违规/);
-  assert.match(instructions, /项目根目录：.+fixture/);
-  assert.match(instructions, /完整循环链路：src\/api\/message\.js -> src\/lib\/axios\.js/);
-  assert.match(instructions, /2\. 请修复依赖架构规则 no-unresolved 的违规/);
-  assert.match(instructions, /architecture\.tsConfig/);
-  assert.doesNotMatch(instructions, /legacy-review/);
-  assert.match(instructions, /npm run guard:architecture/);
-  assert.match(instructions, /不得关闭、删除、降级或忽略架构规则/);
+  assert.doesNotMatch(cycleFinding.evidence[0].message, /\[object Object\]/);
 });
 
 test('reports warnings without weakening the hard error gate', (context) => {

@@ -1,26 +1,33 @@
 import {
   createGateResult,
   gateResultToExitCode,
-  normalizeError,
 } from '../core/result/gate-result.js';
+import {
+  cancellationError,
+  configurationError,
+  errorStatus,
+  executionError,
+  internalError,
+  toRepoGuardError,
+} from '../core/error/repo-guard-error.js';
 
-function resultFromFailure(gateId, error) {
-  const normalized = normalizeError(error);
+function resultFromFailure(gateId, error, {
+  fallbackKind = 'execution',
+  code = `gate/${gateId}/execution-failed`,
+} = {}) {
+  const typedError = toRepoGuardError(error, { kind: fallbackKind, code });
   return createGateResult({
     gateId,
-    status: 'execution-error',
-    summary: normalized.message,
-    error: normalized,
+    status: errorStatus(typedError),
+    summary: typedError.message,
+    error: typedError,
   });
 }
 
 function resultFromConfigurationFailure(gateId, error) {
-  const normalized = normalizeError(error);
-  return createGateResult({
-    gateId,
-    status: 'configuration-error',
-    summary: normalized.message,
-    error: normalized,
+  return resultFromFailure(gateId, error, {
+    fallbackKind: 'configuration',
+    code: `gate/${gateId}/invalid-setup`,
   });
 }
 
@@ -30,10 +37,13 @@ function resultFromOutcome(outcome) {
 
 function validateResult(gate, result) {
   if (!result || typeof result !== 'object') {
-    throw new TypeError(`Gate ${gate.id} must return a GateResult`);
+    throw internalError('orchestration/invalid-gate-result', `Gate ${gate.id} must return a GateResult`);
   }
   if (result.gateId !== gate.id) {
-    throw new TypeError(`Gate ${gate.id} returned a result for ${String(result.gateId)}`);
+    throw internalError(
+      'orchestration/mismatched-gate-result',
+      `Gate ${gate.id} returned a result for ${String(result.gateId)}`,
+    );
   }
   return createGateResult(result);
 }
@@ -57,10 +67,13 @@ function shouldStop(result, stopOnFailure) {
 }
 
 function abortError(reason, fallback) {
-  if (reason instanceof Error) return reason;
-  const error = new Error(fallback);
-  error.name = 'AbortError';
-  return error;
+  if (reason instanceof Error) {
+    return toRepoGuardError(reason, {
+      kind: 'cancellation',
+      code: 'orchestration/cancelled',
+    });
+  }
+  return cancellationError('orchestration/cancelled', fallback);
 }
 
 async function executeWithTimeout({ context, gate, step, executeStep }) {
@@ -77,10 +90,19 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
     throw abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`);
   }
 
-  const timeoutError = new Error(
+  const timeoutError = executionError(
+    'orchestration/gate-timeout',
     `Gate ${gate.id} exceeded its ${gate.defaultTimeoutMs}ms timeout`,
+    {
+      details: { timeoutMs: gate.defaultTimeoutMs },
+      remediation: {
+        goal: '让门禁在配置的时限内完成，或基于可复现的执行数据调整超时配置。',
+        steps: ['检查诊断输出定位阻塞步骤。', '修复阻塞或性能问题后重新运行同一门禁。'],
+        constraints: ['不要通过吞掉失败或跳过门禁规避超时。'],
+        verification: [`重新运行 ${gate.id} 并确认在 ${gate.defaultTimeoutMs}ms 内完成。`],
+      },
+    },
   );
-  timeoutError.name = 'TimeoutError';
   const timeout = setTimeout(() => controller.abort(timeoutError), gate.defaultTimeoutMs);
   const stepContext = Object.freeze({ ...context, signal: controller.signal });
   let cancellationCleanupTimeout = null;
@@ -93,7 +115,10 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
           return;
         }
         cancellationCleanupTimeout = setTimeout(
-          () => reject(new Error(`Gate ${gate.id} did not stop within 5000ms after cancellation`)),
+          () => reject(executionError(
+            'orchestration/cancellation-timeout',
+            `Gate ${gate.id} did not stop within 5000ms after cancellation`,
+          )),
           5000,
         );
       },
@@ -112,7 +137,10 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
         if (setup && setup.status !== 'ready') {
           return resultFromConfigurationFailure(
             gate.id,
-            new Error(`${gate.id} setup is ${setup.status}: ${setup.summary}`),
+            configurationError(
+              `gate/${gate.id}/setup-${setup.status}`,
+              `${gate.id} setup is ${setup.status}: ${setup.summary}`,
+            ),
           );
         }
         const outcome = await executeStep({

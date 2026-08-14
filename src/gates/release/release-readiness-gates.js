@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { configurationError, executionError } from '../../core/error/repo-guard-error.js';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import { runExactNpmScript } from '../../integrations/npm/external-script.js';
@@ -21,14 +22,18 @@ function releaseCacheDirectory(root) {
 
 function projectManifest(root) {
   const manifestPath = path.join(root, 'package.json');
-  if (!existsSync(manifestPath)) throw new Error('package.json is required for release readiness');
+  if (!existsSync(manifestPath)) throw configurationError('release-readiness/missing-package-manifest', 'package.json is required for release readiness', {
+    details: { location: { path: 'package.json' } },
+  });
   return JSON.parse(readFileSync(manifestPath, 'utf8'));
 }
 
 function inspectReleaseScript(root, script) {
   const scripts = projectManifest(root).scripts ?? {};
   if (typeof scripts[script] !== 'string' || scripts[script].trim() === '') {
-    throw new Error(`Release readiness requires package.json script ${script}`);
+    throw configurationError('release-readiness/missing-script', `Release readiness requires package.json script ${script}`, {
+      details: { location: { path: 'package.json' } },
+    });
   }
   assertReleaseScriptReadOnly(scripts, script);
   return { status: 'ready', summary: `Release readiness npm script (${script})` };
@@ -95,9 +100,11 @@ const packageGate = defineGate({
     const manifest = projectManifest(root);
     const packScript = manifest.scripts?.['pack:check'];
     if (packScript !== 'npm pack --dry-run --json --ignore-scripts') {
-      throw new Error(
+      throw configurationError(
+        'release-readiness/unsafe-pack-check-script',
         'Release readiness requires package.json script pack:check '
         + 'to equal "npm pack --dry-run --json --ignore-scripts"',
+        { details: { location: { path: 'package.json' } } },
       );
     }
     return { status: 'ready', summary: 'npm package release metadata' };
@@ -117,7 +124,10 @@ const packageGate = defineGate({
         status: 'execution-error',
         summary: 'npm pack --dry-run failed',
         durationMs,
-        error: new Error(result.execution.stderr.trim() || 'npm pack --dry-run failed'),
+        error: executionError(
+          'release/npm-pack-failed',
+          result.execution.stderr.trim() || 'npm pack --dry-run failed',
+        ),
       });
     }
     const metrics = {

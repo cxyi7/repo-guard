@@ -1,3 +1,5 @@
+import { internalError } from '../error/repo-guard-error.js';
+
 const PLAN_ENVIRONMENTS = [
   'manual',
   'pre-commit',
@@ -56,7 +58,7 @@ export function defineExecutionPlan({ id, environment, locked = true, steps }) {
   const normalizedSteps = steps.map(normalizeStep);
   const stepIds = normalizedSteps.map((step) => step.id);
   if (new Set(stepIds).size !== stepIds.length) {
-    throw new Error(`Execution plan ${id} contains duplicate step ids`);
+    throw internalError('capability/invalid-execution-plan', `Execution plan ${id} contains duplicate step ids`);
   }
   return Object.freeze({
     id,
@@ -73,23 +75,23 @@ export function validateExecutionPlan(plan, registry) {
   for (const [index, step] of plan.steps.entries()) {
     const gate = registry.get(step.gateId);
     if (!gate.environments.includes(plan.environment)) {
-      throw new Error(
+      throw internalError('capability/invalid-execution-plan',
         `Execution plan ${plan.id} uses ${gate.id} in unsupported environment `
         + plan.environment,
       );
     }
     const mutation = step.mutation ?? gate.mutation;
     if (!MUTATIONS.includes(mutation)) {
-      throw new Error(`Execution plan ${plan.id} uses unsupported mutation ${mutation}`);
+      throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} uses unsupported mutation ${mutation}`);
     }
     if (!gate.allowedMutations.includes(mutation)) {
-      throw new Error(
+      throw internalError('capability/invalid-execution-plan',
         `Execution plan ${plan.id} cannot relabel ${step.id} as ${mutation}; `
         + `${gate.id} allows ${gate.allowedMutations.join(', ')}`,
       );
     }
     if (!ALLOWED_MUTATIONS[plan.environment].includes(mutation)) {
-      throw new Error(
+      throw internalError('capability/invalid-execution-plan',
         `Execution plan ${plan.id} cannot run ${step.id} with ${mutation} in `
         + plan.environment,
       );
@@ -101,27 +103,27 @@ export function validateExecutionPlan(plan, registry) {
     for (const dependency of gate.requires) {
       const dependencyPosition = firstPositions.get(dependency);
       if (dependencyPosition == null) {
-        throw new Error(`Execution plan ${plan.id} omits dependency ${dependency} for ${gate.id}`);
+        throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} omits dependency ${dependency} for ${gate.id}`);
       }
       if (dependencyPosition >= firstPositions.get(gate.id)) {
-        throw new Error(`Execution plan ${plan.id} runs ${gate.id} before ${dependency}`);
+        throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} runs ${gate.id} before ${dependency}`);
       }
     }
     for (const predecessor of gate.after) {
       const predecessorPosition = firstPositions.get(predecessor);
       if (predecessorPosition != null && predecessorPosition >= firstPositions.get(gate.id)) {
-        throw new Error(`Execution plan ${plan.id} runs ${gate.id} before ${predecessor}`);
+        throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} runs ${gate.id} before ${predecessor}`);
       }
     }
     for (const successor of gate.before) {
       const successorPosition = firstPositions.get(successor);
       if (successorPosition != null && successorPosition <= firstPositions.get(gate.id)) {
-        throw new Error(`Execution plan ${plan.id} runs ${gate.id} after ${successor}`);
+        throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} runs ${gate.id} after ${successor}`);
       }
     }
     for (const conflict of gate.conflicts) {
       if (firstPositions.has(conflict)) {
-        throw new Error(`Execution plan ${plan.id} contains conflicting gates ${gate.id} and ${conflict}`);
+        throw internalError('capability/invalid-execution-plan', `Execution plan ${plan.id} contains conflicting gates ${gate.id} and ${conflict}`);
       }
     }
   }
@@ -132,7 +134,7 @@ export function createExecutionPlanRegistry(plans, gateRegistry) {
   if (!Array.isArray(plans)) throw new TypeError('Execution plans must be an array');
   const byId = new Map();
   for (const plan of plans) {
-    if (byId.has(plan.id)) throw new Error(`Duplicate execution plan id: ${plan.id}`);
+    if (byId.has(plan.id)) throw internalError('capability/invalid-execution-plan', `Duplicate execution plan id: ${plan.id}`);
     validateExecutionPlan(plan, gateRegistry);
     byId.set(plan.id, plan);
   }
@@ -140,7 +142,7 @@ export function createExecutionPlanRegistry(plans, gateRegistry) {
     all: Object.freeze([...plans]),
     get(id) {
       const plan = byId.get(id);
-      if (!plan) throw new Error(`Unknown execution plan: ${id}`);
+      if (!plan) throw internalError('capability/invalid-execution-plan', `Unknown execution plan: ${id}`);
       return plan;
     },
   });

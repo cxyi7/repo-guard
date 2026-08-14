@@ -1,3 +1,5 @@
+import { configurationError } from '../error/repo-guard-error.js';
+
 function markerIndexes(lines, marker) {
   return lines
     .map((line, index) => (line === marker ? index : -1))
@@ -6,17 +8,13 @@ function markerIndexes(lines, marker) {
 
 function trimLeadingBlankLines(lines) {
   const copy = [...lines];
-  while (copy[0] === '') {
-    copy.shift();
-  }
+  while (copy[0] === '') copy.shift();
   return copy;
 }
 
 function trimTrailingBlankLines(lines) {
   const copy = [...lines];
-  while (copy.at(-1) === '') {
-    copy.pop();
-  }
+  while (copy.at(-1) === '') copy.pop();
   return copy;
 }
 
@@ -33,7 +31,10 @@ export function buildManagedTextBlock({
   const ends = markerIndexes(lines, endMarker);
 
   if (starts.length !== ends.length || starts.length > 1) {
-    throw new Error(`${target} contains malformed repo-guard managed markers`);
+    throw configurationError('managed-text/malformed-markers', `${target} contains malformed repo-guard managed markers`, {
+      details: { location: { path: target } },
+      expected: `${target} contains at most one correctly ordered managed marker pair.`,
+    });
   }
 
   const block = [startMarker, ...managedLines, endMarker];
@@ -43,7 +44,10 @@ export function buildManagedTextBlock({
   }
 
   if (ends[0] <= starts[0]) {
-    throw new Error(`${target} contains malformed repo-guard managed markers`);
+    throw configurationError('managed-text/malformed-markers', `${target} contains malformed repo-guard managed markers`, {
+      details: { location: { path: target } },
+      expected: `${target} contains a start marker before its matching end marker.`,
+    });
   }
 
   const before = trimTrailingBlankLines(lines.slice(0, starts[0]));

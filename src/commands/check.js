@@ -2,10 +2,12 @@ import { loadConfig } from '../config.js';
 import {
   classifyChanges,
   collectWorkingTreeChanges,
+  displayPath,
 } from '../git-changes.js';
 import { findRepositoryRoot } from '../git.js';
 import { assertLocalEnvironmentNotStaged } from '../local-env.js';
-import { printProtectedChanges } from '../report.js';
+import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
+import { writeGateResultConsole } from '../core/report/console-renderer.js';
 
 export function runCheck(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
@@ -16,13 +18,29 @@ export function runCheck(cwd = process.cwd()) {
   );
   const protectedChanges = classifyChanges(changes, config);
 
-  console.log(`Repository: ${root}`);
   if (protectedChanges.length === 0) {
-    console.log('repo-guard check passed: no protected working tree changes.');
-    return 0;
+    const result = createGateResult({
+      gateId: 'repository.protected-files',
+      status: 'passed',
+      summary: 'No protected working tree changes',
+      diagnostics: [{ level: 'info', message: `Repository: ${root}` }],
+    });
+    writeGateResultConsole(result, { label: 'check' });
+    return gateStatusToExitCode(result.status);
   }
-
-  console.log(`repo-guard found ${protectedChanges.length} protected working tree change(s):`);
-  printProtectedChanges(protectedChanges, { includeStates: true });
-  return 2;
+  const result = createGateResult({
+    gateId: 'repository.protected-files',
+    status: 'violation',
+    summary: `Found ${protectedChanges.length} protected working tree change(s)`,
+    findings: protectedChanges.map((change) => ({
+      ruleId: `repository/protected-${change.category}`,
+      severity: 'error',
+      message: `${change.status} ${displayPath(change)} is protected`,
+      location: { path: change.path },
+      evidence: change.states?.length ? `Git states: ${change.states.join('/')}` : null,
+      remediation: 'Review the protected change and obtain the required human approval before proceeding.',
+    })),
+  });
+  writeGateResultConsole(result, { label: 'check' });
+  return gateStatusToExitCode(result.status);
 }

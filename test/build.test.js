@@ -93,9 +93,13 @@ test('runs the consuming project build script and blocks failures', (context) =>
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(runBuildGate({ root, config: buildConfig() }).status, 'passed');
+  const passed = runBuildGate({ root, config: buildConfig() });
+  assert.equal(passed.status, 'passed');
+  assert.equal(passed.diagnostics.some(({ message }) => message.includes('build-fixture')), true);
   writeFileSync(path.join(root, 'fail-build'), 'fail\n');
-  assert.equal(runBuildGate({ root, config: buildConfig() }).status, 'violation');
+  const failed = runBuildGate({ root, config: buildConfig() });
+  assert.equal(failed.status, 'violation');
+  assert.equal(failed.diagnostics.some(({ message }) => message.includes('build-fixture')), true);
   assert.equal(
     readFileSync(path.join(root, 'build-calls.log'), 'utf8'),
     'build\nbuild\n',

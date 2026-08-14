@@ -2,6 +2,7 @@ import { createGateResult } from '../core/result/gate-result.js';
 
 export function passedResult(gateId, summary, {
   diagnostics = [],
+  findings = [],
   metrics = {},
   artifacts = [],
   durationMs = 0,
@@ -11,6 +12,7 @@ export function passedResult(gateId, summary, {
     status: 'passed',
     summary,
     diagnostics,
+    findings,
     metrics,
     artifacts,
     durationMs,
@@ -44,11 +46,13 @@ export function findingFromPolicy(item, {
   severity = 'error',
   evidence = null,
   remediation = null,
+  expected = null,
 } = {}) {
   return {
     ruleId: item.rule,
+    code: item.issue ?? item.rule,
     severity,
-    message: item.message ?? item.reason ?? `Violation of ${item.rule}`,
+    message: item.message ?? `Violation of ${item.rule}`,
     location: item.path
       ? {
           path: item.path,
@@ -56,7 +60,9 @@ export function findingFromPolicy(item, {
           ...(item.column ? { column: item.column } : {}),
         }
       : null,
-    evidence,
-    remediation,
+    evidence: evidence ?? item.evidence ?? null,
+    expected: expected ?? item.expected ?? null,
+    remediation: remediation ?? item.remediation ?? null,
+    decision: item.decision ?? null,
   };
 }

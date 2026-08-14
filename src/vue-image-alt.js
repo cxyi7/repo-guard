@@ -60,8 +60,8 @@ function resolvedAttribute(element, name) {
     : { attribute, kind: 'bound-literal', value };
 }
 
-function invalidStatus(code, reason, repair) {
-  return { code, reason, repair, valid: false };
+function invalidStatus(code, message, remediation) {
+  return { code, message, remediation, valid: false };
 }
 
 function imageAltStatus(element) {
@@ -183,8 +183,8 @@ export function findVueImageAltIssues(source, relativePath = 'component.vue') {
         offset: element.start + 1,
         path: relativePath,
         issue: status.code,
-        reason: status.reason,
-        repair: status.repair,
+        message: status.message,
+        remediation: status.remediation,
         rule: VUE_IMAGE_ALT_RULE,
         tagName: element.name,
       }];
@@ -217,23 +217,4 @@ export function inspectVueImageAlts({ root, files, exceptions }) {
     }
   }
   return { approved, checkedCount, violations };
-}
-
-export function buildVueImageAltAiInstructions(violations) {
-  const lines = ['Vue 图片 alt 门禁失败，可将以下指令分别交给 AI 修复：'];
-  violations.forEach((violation, index) => {
-    lines.push(
-      '',
-      `${index + 1}. 请修复 ${violation.path} 第 ${violation.line} 行第 ${violation.column} 列的 <img>。`,
-      `   规则：${violation.rule}`,
-      `   原因：${violation.reason}。`,
-      `   针对性修复：${violation.repair}。`,
-      '   语义要求：alt 应表达图片在当前页面中的信息或功能，而不是机械复述“图片”；装饰图片必须同时具有 alt="" 和静态 none/presentation 角色。',
-      '   兼容要求：保留原有 src、srcset、sizes、懒加载、尺寸、样式、事件、路由和布局行为；只修改建立正确图片替代语义所必需的模板及相关测试。',
-      '   禁止绕过：不得用 title、aria-label、文件名、泛化占位词或无法静态验证的动态绑定冒充合适 alt，不得关闭门禁或自行新增、延期、修改结构化例外。',
-      '   验证要求：确认图片正常与加载失败时语义都正确，屏幕阅读器能读出内容图片用途并忽略装饰图片；再运行项目已有的 lint、Vue 组件测试和构建命令。',
-    );
-  });
-  lines.push('', `共 ${violations.length} 个图片 alt 问题，提交已停止。`);
-  return lines.join('\n');
 }

@@ -5,7 +5,7 @@ import {
 } from './file-snapshot.js';
 import { normalizeStagedFiles } from './staged-files.js';
 import { gateRegistry } from './gates/registry.js';
-import { renderDynamicCodeResult } from './gates/security/dynamic-code-renderer.js';
+import { writeGateResultConsole } from './core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
 } from './max-file-lines.js';
@@ -15,6 +15,7 @@ import {
   createGateContext,
 } from './core/capability/gate-context.js';
 import { createGateResult } from './core/result/gate-result.js';
+import { internalError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import { orchestratePlan } from './orchestration/orchestrator.js';
 import { preCommitQualityPlan } from './orchestration/pre-commit/protected-plan.js';
 
@@ -100,7 +101,6 @@ export async function runQualityExecution({ root, files, config }) {
   );
 
   if (relevantFiles.length === 0 && !filePlacementConfig.enabled) {
-    console.log('repo-guard quality gate: no staged files matched the configured patterns.');
     return Object.freeze({
       planId: preCommitQualityPlan.id,
       status: 'passed',
@@ -168,23 +168,8 @@ export async function runQualityExecution({ root, files, config }) {
           }
         case 'security.dynamic-code':
           if (dynamicCodeFiles.length > 0) {
-            try {
-              const gatePlan = await gate.plan(stepContext);
-              const result = await gate.run({ ...stepContext, plan: gatePlan });
-              for (const line of renderDynamicCodeResult(result)) {
-                if (line.stream === 'stderr') console.error(line.message);
-                else console.log(line.message);
-              }
-              return result;
-            } catch (error) {
-              if (!String(error.message).startsWith('Dynamic code gate could not parse ')) throw error;
-              console.warn(`${error.message}. Dynamic-code inspection was deferred for this invalid or unsupported script; when ESLint is enabled, its completed result remains authoritative.`);
-              return createGateResult({
-                gateId: step.gateId,
-                status: 'passed',
-                summary: 'Dynamic-code inspection deferred to ESLint',
-              });
-            }
+            const gatePlan = await gate.plan(stepContext);
+            return await gate.run({ ...stepContext, plan: gatePlan });
           }
           break;
         case 'security.vue-unsafe-html':
@@ -203,29 +188,19 @@ export async function runQualityExecution({ root, files, config }) {
             return await gate.run({ ...stepContext, plan: gatePlan });
           }
         default:
-          throw new Error(`Unsupported protected pre-commit quality step: ${step.id}`);
+          throw internalError('pre-commit/unsupported-quality-step', `Unsupported protected pre-commit quality step: ${step.id}`);
       }
         return skipped(step, `${step.id} has no matching staged files or is disabled`);
       },
+      onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
     });
     if (execution.exitCode !== 0) restoreFileContents(originalContents);
     return execution;
   } catch (error) {
     restoreFileContents(originalContents);
-    throw error;
+    throw toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'pre-commit/quality-execution-failed',
+    });
   }
-}
-
-export async function runQualityFiles(options) {
-  const execution = await runQualityExecution(options);
-  if (execution.status.endsWith('-error')) {
-    const error = new Error(
-      execution.decisiveResult?.error?.message ?? 'Quality gate could not complete',
-    );
-    if (execution.decisiveResult?.error?.code) {
-      error.code = execution.decisiveResult.error.code;
-    }
-    throw error;
-  }
-  return execution.exitCode === 0 ? 0 : 1;
 }

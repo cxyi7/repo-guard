@@ -4,18 +4,33 @@ import {
   validateCiReportPath,
 } from '../config.js';
 import { runCiGate, writeCiReport } from '../ci-runner.js';
-import { gateStatusToExitCode } from '../core/result/gate-result.js';
+import { toRepoGuardError } from '../core/error/repo-guard-error.js';
+import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
+import { writeGateResultConsole } from '../core/report/console-renderer.js';
+import { renderGateResultJson } from '../core/report/json-renderer.js';
 import { findRepositoryRoot } from '../git.js';
 
-function errorReport(options, error) {
+function errorReport(options, error, {
+  gateId = 'ci.configuration',
+  status = 'configuration-error',
+} = {}) {
+  const kind = status.slice(0, -6);
+  const typedError = toRepoGuardError(error, { kind, code: `ci/${kind}-failed` });
+  const gateResult = createGateResult({
+    gateId,
+    status,
+    summary: typedError.message,
+    error: typedError,
+  });
   return {
     version: 1,
-    status: 'configuration-error',
+    status,
     profile: options.profile ?? null,
     base: options.base ?? null,
     head: options.head ?? null,
     steps: [],
-    error: error.message,
+    error: typedError.message,
+    gateResult: renderGateResultJson(gateResult),
   };
 }
 
@@ -29,10 +44,24 @@ function tryWriteErrorReport(root, preferredPath, report) {
       writeCiReport(root, reportPath, report);
       return reportPath;
     } catch (error) {
-      console.error(`repo-guard could not write CI report ${reportPath}: ${error.message}`);
+      writeCommandError('ci.report', error, 'execution-error');
     }
   }
   return null;
+}
+
+function writeCommandError(gateId, error, status = 'configuration-error') {
+  const kind = status.slice(0, -6);
+  const typedError = toRepoGuardError(error, {
+    kind,
+    code: `ci/${kind}-failed`,
+  });
+  writeGateResultConsole(createGateResult({
+    gateId,
+    status,
+    summary: typedError.message,
+    error: typedError,
+  }), { label: gateId });
 }
 
 export async function runCiCommand(cwd = process.cwd(), options = {}) {
@@ -44,7 +73,7 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
       : validateCiReportPath(options.reportPath, '--report-json');
   } catch (error) {
     tryWriteErrorReport(root, null, errorReport(options, error));
-    console.error(`repo-guard CI configuration failed: ${error.message}`);
+    writeCommandError('ci.configuration', error);
     return gateStatusToExitCode('configuration-error');
   }
 
@@ -53,7 +82,7 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     config = loadConfig(root, { allowExpiredExceptions: true });
   } catch (error) {
     tryWriteErrorReport(root, reportPath, errorReport(options, error));
-    console.error(`repo-guard CI configuration failed: ${error.message}`);
+    writeCommandError('ci.configuration', error);
     return gateStatusToExitCode('configuration-error');
   }
   try {
@@ -62,9 +91,12 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     tryWriteErrorReport(
       root,
       reportPath ?? config.ci.reportPath,
-      { ...errorReport(options, error), status: 'execution-error' },
+      errorReport(options, error, {
+        gateId: 'ci.execution',
+        status: 'execution-error',
+      }),
     );
-    console.error(`repo-guard CI execution failed: ${error.message}`);
+    writeCommandError('ci.execution', error, 'execution-error');
     return gateStatusToExitCode('execution-error');
   }
 }

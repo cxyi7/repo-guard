@@ -69,8 +69,8 @@ function hasTextContent(source, element) {
   return content.length > 0;
 }
 
-function invalidStatus(code, reason, repair) {
-  return { code, reason, repair, valid: false };
+function invalidStatus(code, message, remediation) {
+  return { code, message, remediation, valid: false };
 }
 
 function accessibleNameStatus(source, element, labelsByFor, ids, elementsByStart) {
@@ -210,8 +210,8 @@ export function findVueFormLabelIssues(source, relativePath = 'component.vue') {
         offset: element.start + 1,
         path: relativePath,
         issue: status.code,
-        reason: status.reason,
-        repair: status.repair,
+        message: status.message,
+        remediation: status.remediation,
         rule: VUE_FORM_CONTROL_LABEL_RULE,
         tagName: element.name,
       }];
@@ -244,22 +244,4 @@ export function inspectVueFormLabels({ root, files, exceptions }) {
     }
   }
   return { approved, checkedCount, violations };
-}
-
-export function buildVueFormLabelAiInstructions(violations) {
-  const lines = ['Vue 表单控件 label 门禁失败，可将以下指令分别交给 AI 修复：'];
-  violations.forEach((violation, index) => {
-    lines.push(
-      '',
-      `${index + 1}. 请修复 ${violation.path} 第 ${violation.line} 行第 ${violation.column} 列的 <${violation.tagName}>。`,
-      `   规则：${violation.rule}`,
-      `   原因：${violation.reason}。`,
-      `   针对性修复：${violation.repair}。`,
-      '   兼容要求：保持控件原有 v-model、事件、校验、禁用状态、自动填充和业务交互不变；只修改建立无障碍名称所必需的模板及相关测试。',
-      '   禁止绕过：不得用 placeholder、title、空字符串或无法静态验证的动态绑定冒充 label，不得关闭门禁或新增、延期、修改结构化例外。',
-      '   验证要求：确认可见 label 与控件语义一致，点击 label 能聚焦对应控件，屏幕阅读器能读出名称；再运行项目已有的 lint、组件测试和构建命令。',
-    );
-  });
-  lines.push('', `共 ${violations.length} 个表单控件缺少可验证 label，提交已停止。`);
-  return lines.join('\n');
 }

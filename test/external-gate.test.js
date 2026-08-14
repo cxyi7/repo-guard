@@ -265,7 +265,9 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
   const trackedRoot = createFixture({ report: passedReport(), trackReport: true });
   context.after(() => rmSync(trackedRoot, { recursive: true, force: true }));
   const tracked = await runExternalManualGate('project.api-contract', trackedRoot);
-  assert.equal(tracked.status, 'configuration-error');
+  assert.equal(tracked.status, 'execution-error');
+  assert.equal(tracked.error.kind, 'security');
+  assert.equal(tracked.error.code, 'external-gate/tracked-file-overwrite');
   assert.match(tracked.summary, /must not overwrite a tracked file/);
 });
 

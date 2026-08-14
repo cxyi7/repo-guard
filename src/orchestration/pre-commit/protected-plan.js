@@ -3,6 +3,7 @@ import {
   validateExecutionPlan,
 } from '../../core/capability/execution-plan.js';
 import { gateRegistry } from '../../gates/registry.js';
+import { internalError } from '../../core/error/repo-guard-error.js';
 
 export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'quality.stylelint-fix', gateId: 'quality.stylelint', mutation: 'working-tree-fix' }),
@@ -42,15 +43,15 @@ function sameStep(actual, expected) {
 
 export function validateProtectedPreCommitPlan(plan, registry = gateRegistry) {
   if (plan.id !== 'pre-commit' || plan.environment !== 'pre-commit' || !plan.locked) {
-    throw new Error('Protected pre-commit plan must be locked to the pre-commit lifecycle');
+    throw internalError('pre-commit/invalid-protected-plan', 'Protected pre-commit plan must be locked to the pre-commit lifecycle');
   }
   const forbidden = plan.steps.find(({ gateId }) => FORBIDDEN_PRE_COMMIT_GATE_IDS.includes(gateId));
   if (forbidden) {
-    throw new Error(`Protected pre-commit plan forbids project-wide, type-check, test, build, and network gate ${forbidden.gateId}`);
+    throw internalError('pre-commit/invalid-protected-plan', `Protected pre-commit plan forbids project-wide, type-check, test, build, and network gate ${forbidden.gateId}`);
   }
   if (plan.steps.length !== PROTECTED_PRE_COMMIT_STEPS.length
     || plan.steps.some((step, index) => !sameStep(step, PROTECTED_PRE_COMMIT_STEPS[index]))) {
-    throw new Error('Protected pre-commit plan order and mutation contract cannot be changed');
+    throw internalError('pre-commit/invalid-protected-plan', 'Protected pre-commit plan order and mutation contract cannot be changed');
   }
   return validateExecutionPlan(plan, registry);
 }

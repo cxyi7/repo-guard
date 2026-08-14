@@ -4,8 +4,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { configurationError, securityError } from './core/error/repo-guard-error.js';
 import { runGit } from './git.js';
-import { buildManagedTextBlock } from './managed-text-block.js';
+import { buildManagedTextBlock } from './core/policy/managed-text-block.js';
 
 export const LOCAL_ENV_FILE = '.env.config';
 export const GIT_IGNORE_FILE = '.gitignore';
@@ -25,6 +26,26 @@ REPO_GUARD_WECOM_WEBHOOK=
 # 需要提醒的手机号，多个号码使用英文逗号分隔
 REPO_GUARD_MENTION_MOBILES=
 `;
+
+function localEnvironmentError(code, message, line = null) {
+  return configurationError(code, message, {
+    details: {
+      location: { path: LOCAL_ENV_FILE, ...(line == null ? {} : { line }) },
+      evidence: [{
+        type: 'local-environment-configuration',
+        message,
+        location: { path: LOCAL_ENV_FILE, ...(line == null ? {} : { line }) },
+      }],
+    },
+    expected: `${LOCAL_ENV_FILE} 只包含受支持且唯一的 KEY=VALUE 通知配置。`,
+    remediation: {
+      goal: `修正本地 ${LOCAL_ENV_FILE}，且不暴露其中的凭据`,
+      steps: ['根据报告行号修正语法、变量名或重复定义'],
+      constraints: ['不得把该文件或其中的值提交到版本库'],
+      verification: ['运行 repo-guard doctor 并确认本地通知配置通过'],
+    },
+  });
+}
 
 function ensureLocalEnvTemplate(root) {
   const target = path.join(root, LOCAL_ENV_FILE);
@@ -78,7 +99,11 @@ function parseValue(rawValue, lineNumber) {
     return value;
   }
   if (value.at(-1) !== quote) {
-    throw new Error(`${LOCAL_ENV_FILE} line ${lineNumber} has an unterminated quoted value`);
+    throw localEnvironmentError(
+      'local-env/unterminated-quoted-value',
+      `${LOCAL_ENV_FILE} line ${lineNumber} has an unterminated quoted value`,
+      lineNumber,
+    );
   }
   return value.slice(1, -1);
 }
@@ -101,15 +126,27 @@ export function loadLocalEnvironment(root) {
 
     const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/.exec(trimmed);
     if (!match) {
-      throw new Error(`${LOCAL_ENV_FILE} line ${index + 1} is not a valid KEY=VALUE entry`);
+      throw localEnvironmentError(
+        'local-env/invalid-entry',
+        `${LOCAL_ENV_FILE} line ${index + 1} is not a valid KEY=VALUE entry`,
+        index + 1,
+      );
     }
 
     const [, key, rawValue] = match;
     if (!allowed.has(key)) {
-      throw new Error(`${LOCAL_ENV_FILE} line ${index + 1} uses unsupported variable: ${key}`);
+      throw localEnvironmentError(
+        'local-env/unsupported-variable',
+        `${LOCAL_ENV_FILE} line ${index + 1} uses unsupported variable: ${key}`,
+        index + 1,
+      );
     }
     if (Object.hasOwn(output, key)) {
-      throw new Error(`${LOCAL_ENV_FILE} defines ${key} more than once`);
+      throw localEnvironmentError(
+        'local-env/duplicate-variable',
+        `${LOCAL_ENV_FILE} defines ${key} more than once`,
+        index + 1,
+      );
     }
     output[key] = parseValue(rawValue, index + 1);
   });
@@ -166,9 +203,27 @@ export function assertLocalEnvironmentNotStaged(changes) {
     return;
   }
 
-  throw new Error(
+  throw securityError(
+    'local-env/staged-secret-file',
     `${LOCAL_ENV_FILE} contains local secrets and must not be committed.\n`
     + `Run "git restore --staged -- ${LOCAL_ENV_FILE}". If it was already tracked, `
     + `run "git rm --cached -- ${LOCAL_ENV_FILE}".`,
+    {
+      details: {
+        location: { path: LOCAL_ENV_FILE },
+        evidence: [{
+          type: 'staged-secret-file',
+          message: `${LOCAL_ENV_FILE} is present in the staged change set`,
+          location: { path: LOCAL_ENV_FILE },
+        }],
+      },
+      expected: `${LOCAL_ENV_FILE} remains local, ignored, and absent from every commit.`,
+      remediation: {
+        goal: '从暂存区移除本地凭据文件，但保留需要的本地副本',
+        steps: [`运行 git restore --staged -- ${LOCAL_ENV_FILE}`],
+        constraints: ['不得读取、打印或提交文件中的凭据'],
+        verification: [`运行 git status --short -- ${LOCAL_ENV_FILE} 并确认它未被暂存`],
+      },
+    },
   );
 }

@@ -1,4 +1,5 @@
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
+import { configurationError, internalError, rangeError } from '../core/error/repo-guard-error.js';
 import { findRepositoryRoot, gitValue, runGit } from '../git.js';
 import {
   collectPrePushChanges,
@@ -10,7 +11,10 @@ import {
   createGateContext,
 } from '../core/capability/gate-context.js';
 import { gateStatusToExitCode } from '../core/result/gate-result.js';
-import { writeGateResultConsole } from '../core/report/console-renderer.js';
+import {
+  writeConsoleMessage,
+  writeGateResultConsole,
+} from '../core/report/console-renderer.js';
 import { gateRegistry } from '../gates/registry.js';
 import { prePushPlan } from '../orchestration/execution-plans.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';
@@ -30,7 +34,8 @@ function loadConfigAtRevision(root, revision) {
   try {
     parsed = JSON.parse(result.stdout);
   } catch (error) {
-    throw new Error(
+    throw configurationError(
+      'pre-push/invalid-pushed-config',
       `Unable to parse ${CONFIG_FILE} from pushed commit ${revision.slice(0, 12)}: `
       + error.message,
     );
@@ -57,7 +62,7 @@ function assertExactPushSnapshot(root, revision) {
     root,
   );
   if (!head || !pushedCommit || head !== pushedCommit) {
-    throw new Error([
+    throw rangeError('pre-push/snapshot-mismatch', [
       'Pre-push quality gates can only verify the currently checked-out HEAD.',
       `Pushed commit: ${(pushedCommit || revision).slice(0, 12)}; `
       + `checked-out HEAD: ${head.slice(0, 12) || 'unknown'}.`,
@@ -71,7 +76,7 @@ function assertExactPushSnapshot(root, revision) {
   ).stdout.trim();
   if (status) {
     const changed = status.split(/\r?\n/).slice(0, 10);
-    throw new Error([
+    throw rangeError('pre-push/dirty-working-tree', [
       'Pre-push quality gates require a clean working tree so they test the exact pushed commit.',
       ...changed.map((line) => `- ${line}`),
       ...(status.split(/\r?\n/).length > changed.length ? ['- ...'] : []),
@@ -113,7 +118,8 @@ function resolvePushConfig(root, input) {
     return { config, skip: false };
   }
   if (revisions.length !== 1) {
-    throw new Error(
+    throw rangeError(
+      'pre-push/multiple-revisions',
       'Pre-push quality gates cannot safely verify multiple different commits at once. '
       + 'Push each branch or tag separately.',
     );
@@ -130,7 +136,7 @@ export async function runPrePush(cwd = process.cwd(), {
   const root = findRepositoryRoot(cwd);
   const resolved = resolvePushConfig(root, input);
   if (resolved.skip) {
-    console.log(`repo-guard pre-push: ${resolved.skipMessage}; quality gates skipped.`);
+    writeConsoleMessage(`repo-guard pre-push: ${resolved.skipMessage}; quality gates skipped.`);
     return gateStatusToExitCode('skipped');
   }
   const { config } = resolved;
@@ -162,7 +168,10 @@ export async function runPrePush(cwd = process.cwd(), {
           return await gate.run({ ...stepContext, plan: gatePlan });
         }
       default:
-        throw new Error(`Unsupported pre-push execution step: ${step.id}`);
+        throw internalError(
+          'pre-push/unsupported-plan-step',
+          `Unsupported pre-push execution step: ${step.id}`,
+        );
       }
     },
     onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),

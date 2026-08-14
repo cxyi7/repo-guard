@@ -3,7 +3,7 @@ import {
   loadConfig,
   validateConfig,
 } from '../config.js';
-import { runEslintFiles } from '../eslint-runner.js';
+import { configurationError, internalError, toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { findRepositoryRoot, runGit } from '../git.js';
 import { collectStagedChanges } from '../git-changes.js';
 import { runQualityGate } from '../quality-gate.js';
@@ -12,6 +12,7 @@ import {
   createChangeSet,
   createGateContext,
 } from '../core/capability/gate-context.js';
+import { writeGateResultConsole } from '../core/report/console-renderer.js';
 import { gateRegistry } from '../gates/registry.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';
 import { preCommitPolicyPlan } from '../orchestration/pre-commit/protected-plan.js';
@@ -25,7 +26,11 @@ function loadStagedConfig(root) {
   try {
     return validateConfig(JSON.parse(result.stdout), `${CONFIG_FILE} (staged)`);
   } catch (error) {
-    throw new Error(`Invalid staged ${CONFIG_FILE}: ${error.message}`);
+    throw configurationError(
+      'pre-commit/invalid-staged-config',
+      `Invalid staged ${CONFIG_FILE}: ${error.message}`,
+      { cause: error },
+    );
   }
 }
 
@@ -64,38 +69,25 @@ export async function runPreCommit(cwd = process.cwd()) {
             return await gate.run({ ...stepContext, plan: gatePlan });
           }
         default:
-          throw new Error(`Unsupported protected pre-commit policy step: ${step.id}`);
+          throw internalError(
+            'pre-commit/unsupported-plan-step',
+            `Unsupported protected pre-commit policy step: ${step.id}`,
+          );
       }
     },
+    onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
   });
   if (execution.status.endsWith('-error')) {
-    const error = new Error(
-      execution.decisiveResult?.error?.message ?? 'Pre-commit policy could not complete',
+    const decisiveError = execution.decisiveResult?.error;
+    throw toRepoGuardError(
+      decisiveError?.message ?? 'Pre-commit policy could not complete',
+      {
+      kind: decisiveError?.kind ?? 'execution',
+      code: decisiveError?.code ?? 'pre-commit/policy-failed',
+      },
     );
-    if (execution.decisiveResult?.error?.code) {
-      error.code = execution.decisiveResult.error.code;
-    }
-    throw error;
   }
   return execution.exitCode === 0 ? 0 : 1;
-}
-
-export async function runLintFiles(files, cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
-  const eslintConfig = config.preCommit.eslint;
-
-  if (!eslintConfig.enabled) {
-    throw new Error('ESLint staged-file gate is disabled by project configuration');
-  }
-
-  return await runEslintFiles({
-    root,
-    files,
-    fix: eslintConfig.fix,
-    maxWarnings: eslintConfig.maxWarnings,
-    preset: eslintConfig.preset,
-  });
 }
 
 export async function runQualityFileCommand(files, cwd = process.cwd()) {
@@ -103,13 +95,14 @@ export async function runQualityFileCommand(files, cwd = process.cwd()) {
   const config = loadConfig(root);
   const execution = await runQualityExecution({ root, files, config });
   if (execution.status.endsWith('-error')) {
-    const error = new Error(
-      execution.decisiveResult?.error?.message ?? 'Quality gate could not complete',
+    const decisiveError = execution.decisiveResult?.error;
+    throw toRepoGuardError(
+      decisiveError?.message ?? 'Quality gate could not complete',
+      {
+      kind: decisiveError?.kind ?? 'execution',
+      code: decisiveError?.code ?? 'pre-commit/quality-failed',
+      },
     );
-    if (execution.decisiveResult?.error?.code) {
-      error.code = execution.decisiveResult.error.code;
-    }
-    throw error;
   }
   return execution.exitCode === 0 ? 0 : 1;
 }

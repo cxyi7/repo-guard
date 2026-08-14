@@ -10,10 +10,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { DEFAULT_FILE_PLACEMENT_CONFIG } from '../src/config.js';
-import {
-  buildFilePlacementAiInstructions,
-  inspectFilePlacement,
-} from '../src/file-placement.js';
+import { inspectFilePlacement } from '../src/file-placement.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = path.join(process.cwd(), 'bin', 'repo-guard.js');
@@ -90,7 +87,7 @@ test('supports project-defined file types and directories', () => {
   );
 });
 
-test('changedFiles mode checks modified legacy files and builds standalone AI instructions', () => {
+test('changedFiles mode checks modified legacy files and supplies a suggested target', () => {
   const config = {
     ...DEFAULT_FILE_PLACEMENT_CONFIG,
     mode: 'changedFiles',
@@ -99,13 +96,9 @@ test('changedFiles mode checks modified legacy files and builds standalone AI in
     config,
     changes: [change('src/components/legacy.svg', 'M')],
   });
-  const output = buildFilePlacementAiInstructions(result.violations);
-
   assert.equal(result.violations.length, 1);
-  assert.match(output, /src\/components\/legacy\.svg/);
-  assert.match(output, /src\/assets\/legacy\.svg/);
-  assert.match(output, /同步更新 Vue、JavaScript、CSS、HTML 和 Markdown/);
-  assert.match(output, /不要修改门禁规则/);
+  assert.equal(result.violations[0].path, 'src/components/legacy.svg');
+  assert.equal(result.violations[0].suggestedPath, 'src/assets/legacy.svg');
 });
 
 test('full-project inspection checks tracked and non-ignored untracked files regardless of mode', (context) => {

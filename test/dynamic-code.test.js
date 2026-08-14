@@ -170,18 +170,25 @@ test('returns native structured findings and metrics from the registered capabil
     approvedExceptions: 0,
     violations: 1,
   });
-  assert.deepEqual(result.findings[0], {
+  assert.deepEqual({
+    ruleId: result.findings[0].ruleId,
+    severity: result.findings[0].severity,
+    message: result.findings[0].message,
+    location: result.findings[0].location,
+  }, {
     ruleId: NO_EVAL_RULE,
     severity: 'error',
     message: 'eval dynamically executes runtime text',
     location: { path: 'src/runtime.ts', line: 1, column: 33 },
-    evidence: result.findings[0].evidence,
-    remediation: result.findings[0].remediation,
   });
+  assert.equal(result.findings[0].kind, 'violation');
+  assert.equal(result.findings[0].code, NO_EVAL_RULE);
+  assert.equal(result.findings[0].evidence[0].type, 'observation');
+  assert.equal(typeof result.findings[0].remediation.goal, 'string');
   assert.deepEqual(renderGateResultJson(result).findings, result.findings);
 });
 
-test('exposes a full-project CLI with actionable AI repair instructions', (context) => {
+test('exposes a full-project CLI with structured findings', (context) => {
   const source = 'export const run = (payload) => window.eval(payload);\n';
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -191,10 +198,9 @@ test('exposes a full-project CLI with actionable AI repair instructions', (conte
     encoding: 'utf8',
   });
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /security\/no-eval/);
-  assert.match(result.stderr, /src\/runtime\.ts 第 1 行第 40 列/);
-  assert.match(result.stderr, /风险原因/);
-  assert.match(result.stderr, /不得改用别名、间接调用/);
+  assert.match(result.stderr, /\[security\/no-eval\] src\/runtime\.ts:1:40/);
+  assert.match(result.stderr, /Evidence:/);
+  assert.match(result.stderr, /Remediation:/);
 
   const [finding] = findDynamicCodeExecution(source, 'src/runtime.ts');
   writeFileSync(

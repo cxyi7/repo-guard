@@ -1,4 +1,6 @@
 import { findRepositoryRoot } from '../git.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
+import { writeConsoleMessage } from '../core/report/console-renderer.js';
 import {
   GITLAB_CI_FILE,
   GITLAB_TEMPLATE_FILE,
@@ -11,18 +13,18 @@ export function runInstallCiCommand(cwd = process.cwd(), {
   stage,
   dryRun,
 } = {}) {
-  if (provider !== 'gitlab') throw new Error('Only the gitlab CI provider is supported');
+  if (provider !== 'gitlab') throw configurationError('install-ci/unsupported-provider', 'Only the gitlab CI provider is supported');
   const root = findRepositoryRoot(cwd);
   const result = installGitLabCi(root, { profile, stage, dryRun });
-  console.log(`repo-guard GitLab CI ${dryRun ? 'preview' : 'installation'}:`);
-  console.log(`- template: ${GITLAB_TEMPLATE_FILE} (${result.templateChanged ? 'updated' : 'current'})`);
-  console.log(`- profile: ${result.profile}`);
+  writeConsoleMessage(`repo-guard GitLab CI ${dryRun ? 'preview' : 'installation'}:`);
+  writeConsoleMessage(`- template: ${GITLAB_TEMPLATE_FILE} (${result.templateChanged ? 'updated' : 'current'})`);
+  writeConsoleMessage(`- profile: ${result.profile}`);
   if (result.integrated) {
-    console.log(`- ${GITLAB_CI_FILE}: integrated at stage ${result.stage}`);
+    writeConsoleMessage(`- ${GITLAB_CI_FILE}: integrated at stage ${result.stage}`);
   } else {
-    console.warn(`- ${GITLAB_CI_FILE}: not modified because ${result.conflict}`);
-    console.warn('Add this reviewed snippet to the existing GitLab CI configuration:');
-    console.warn(result.manualSnippet);
+    writeConsoleMessage(`- ${GITLAB_CI_FILE}: not modified because ${result.conflict}`, 'stderr');
+    writeConsoleMessage('Add this reviewed snippet to the existing GitLab CI configuration:', 'stderr');
+    writeConsoleMessage(result.manualSnippet, 'stderr');
   }
   return 0;
 }

@@ -11,6 +11,7 @@ import {
 } from './file-snapshot.js';
 import { resolveProjectPackageMetadata } from './project-package.js';
 import { normalizeStagedFiles } from './staged-files.js';
+import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import { createGateResult } from './core/result/gate-result.js';
 
 export const PRETTIER_GATE_ID = 'quality.prettier';
@@ -27,7 +28,8 @@ async function loadProjectPrettier(root) {
     : prettierModule.default;
 
   if (!prettier || typeof prettier.format !== 'function') {
-    throw new Error(
+    throw configurationError(
+      'prettier/unsupported-project-api',
       `Unsupported Prettier ${metadata.version}: the format API is not available`,
     );
   }
@@ -70,7 +72,8 @@ async function prepareFormatting(prettier, root, files, requireConfig) {
 
     const config = await prettier.resolveConfig(file, { editorconfig: true });
     if (requireConfig && config === null) {
-      throw new Error(
+      throw configurationError(
+        'prettier/missing-project-config',
         `Prettier configuration was not found for staged file: ${path.relative(root, file)}`,
       );
     }
@@ -82,7 +85,8 @@ async function prepareFormatting(prettier, root, files, requireConfig) {
       });
     }
     if (!fileInfo.inferredParser) {
-      throw new Error(
+      throw configurationError(
+        'prettier/parser-not-inferred',
         `Prettier could not infer a parser for staged file: ${path.relative(root, file)}`,
       );
     }
@@ -141,7 +145,10 @@ export async function runPrettierFiles({
     }
   } catch (error) {
     restoreFileContents(originalContents);
-    throw error;
+    throw toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'prettier/execution-failed',
+    });
   }
 
   return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${version} formatted ${changed.length} file(s)`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });

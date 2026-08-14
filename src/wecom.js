@@ -1,5 +1,10 @@
 import https from 'node:https';
 import path from 'node:path';
+import {
+  configurationError,
+  executionError,
+  toRepoGuardError,
+} from './core/error/repo-guard-error.js';
 import { displayPath } from './git-changes.js';
 import { gitValue } from './git.js';
 
@@ -12,14 +17,14 @@ export function loadNotificationConfig(environment = process.env) {
   const rawMobiles = environment.REPO_GUARD_MENTION_MOBILES?.trim() || '';
 
   if (!rawWebhook) {
-    throw new Error('REPO_GUARD_WECOM_WEBHOOK is not configured');
+    throw configurationError('wecom/missing-webhook', 'REPO_GUARD_WECOM_WEBHOOK is not configured');
   }
 
   let webhook;
   try {
     webhook = new URL(rawWebhook);
   } catch {
-    throw new Error('REPO_GUARD_WECOM_WEBHOOK is not a valid URL');
+    throw configurationError('wecom/invalid-webhook-url', 'REPO_GUARD_WECOM_WEBHOOK is not a valid URL');
   }
 
   if (
@@ -28,7 +33,7 @@ export function loadNotificationConfig(environment = process.env) {
     || webhook.pathname !== WECOM_PATH
     || !webhook.searchParams.get('key')
   ) {
-    throw new Error('REPO_GUARD_WECOM_WEBHOOK does not target the trusted WeCom endpoint');
+    throw configurationError('wecom/untrusted-webhook-endpoint', 'REPO_GUARD_WECOM_WEBHOOK does not target the trusted WeCom endpoint');
   }
 
   const mentionMobiles = [...new Set(
@@ -39,10 +44,10 @@ export function loadNotificationConfig(environment = process.env) {
   )];
 
   if (mentionMobiles.length === 0) {
-    throw new Error('REPO_GUARD_MENTION_MOBILES is not configured');
+    throw configurationError('wecom/missing-mention-mobiles', 'REPO_GUARD_MENTION_MOBILES is not configured');
   }
   if (mentionMobiles.some((mobile) => !/^1\d{10}$/.test(mobile))) {
-    throw new Error('REPO_GUARD_MENTION_MOBILES contains an invalid mobile number');
+    throw configurationError('wecom/invalid-mention-mobile', 'REPO_GUARD_MENTION_MOBILES contains an invalid mobile number');
   }
 
   return { webhook, mentionMobiles };
@@ -150,13 +155,14 @@ export function sendWecomNotification(webhook, content, mentionMobiles) {
           try {
             result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
           } catch {
-            reject(new Error('WeCom returned a non-JSON response'));
+            reject(executionError('wecom/invalid-response', 'WeCom returned a non-JSON response'));
             return;
           }
 
           if (result.errcode !== 0) {
             reject(
-              new Error(
+              executionError(
+                'wecom/api-rejected-notification',
                 `WeCom notification failed: errcode=${result.errcode}, `
                 + `errmsg=${result.errmsg || 'unknown error'}`,
               ),
@@ -169,8 +175,12 @@ export function sendWecomNotification(webhook, content, mentionMobiles) {
       },
     );
 
-    request.on('timeout', () => request.destroy(new Error('WeCom request timed out')));
-    request.on('error', (error) => reject(new Error(`WeCom notification failed: ${error.message}`)));
+    request.on('timeout', () => request.destroy(executionError('wecom/timeout', 'WeCom request timed out')));
+    request.on('error', (error) => reject(toRepoGuardError(error, {
+      kind: 'execution',
+      code: 'wecom/request-failed',
+      message: `WeCom notification failed: ${error.message}`,
+    })));
     request.end(payload);
   });
 }

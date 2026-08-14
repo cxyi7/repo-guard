@@ -1,26 +1,28 @@
+import { internalError } from '../error/repo-guard-error.js';
+
 function validateRegistry(gates) {
   const ids = new Set();
   const commands = new Set();
   const configKeys = new Set();
   const featureNames = new Set();
   for (const gate of gates) {
-    if (ids.has(gate.id)) throw new Error(`Duplicate gate id: ${gate.id}`);
+    if (ids.has(gate.id)) throw internalError('capability/invalid-registry', `Duplicate gate id: ${gate.id}`);
     ids.add(gate.id);
     if (gate.configKey) {
       if (configKeys.has(gate.configKey)) {
-        throw new Error(`Duplicate gate config key: ${gate.configKey}`);
+        throw internalError('capability/invalid-registry', `Duplicate gate config key: ${gate.configKey}`);
       }
       configKeys.add(gate.configKey);
     }
     if (gate.featureName) {
       if (featureNames.has(gate.featureName)) {
-        throw new Error(`Duplicate gate feature name: ${gate.featureName}`);
+        throw internalError('capability/invalid-registry', `Duplicate gate feature name: ${gate.featureName}`);
       }
       featureNames.add(gate.featureName);
     }
     if (gate.manualCommand) {
       if (commands.has(gate.manualCommand)) {
-        throw new Error(`Duplicate gate manual command: ${gate.manualCommand}`);
+        throw internalError('capability/invalid-registry', `Duplicate gate manual command: ${gate.manualCommand}`);
       }
       commands.add(gate.manualCommand);
     }
@@ -34,10 +36,10 @@ function validateRegistry(gates) {
     })) {
       for (const reference of references) {
         if (!ids.has(reference)) {
-          throw new Error(`Gate ${gate.id} ${relation} unknown gate ${reference}`);
+          throw internalError('capability/invalid-registry', `Gate ${gate.id} ${relation} unknown gate ${reference}`);
         }
         if (reference === gate.id) {
-          throw new Error(`Gate ${gate.id} cannot ${relation} itself`);
+          throw internalError('capability/invalid-registry', `Gate ${gate.id} cannot ${relation} itself`);
         }
       }
     }
@@ -52,7 +54,7 @@ function validateRegistry(gates) {
     for (const successor of gate.before) prerequisites.get(successor).add(gate.id);
   }
   const visit = (gateId) => {
-    if (visiting.has(gateId)) throw new Error(`Gate dependency cycle detected at ${gateId}`);
+    if (visiting.has(gateId)) throw internalError('capability/invalid-registry', `Gate dependency cycle detected at ${gateId}`);
     if (visited.has(gateId)) return;
     visiting.add(gateId);
     for (const dependency of prerequisites.get(gateId)) visit(dependency);
@@ -84,7 +86,7 @@ export function createGateRegistry(gates) {
     ),
     get(id) {
       const gate = byId.get(id);
-      if (!gate) throw new Error(`Unknown gate: ${id}`);
+      if (!gate) throw internalError('capability/invalid-registry', `Unknown gate: ${id}`);
       return gate;
     },
     findByManualCommand(command) {

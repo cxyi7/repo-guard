@@ -1,4 +1,5 @@
 import { parseNameStatus } from './git-changes.js';
+import { rangeError } from './core/error/repo-guard-error.js';
 import { gitValue, runGit } from './git.js';
 
 const ZERO_SHA = /^0+$/;
@@ -11,7 +12,14 @@ export function parsePrePushUpdates(input) {
     .map((line) => {
       const [localRef, localSha, remoteRef, remoteSha] = line.trim().split(/\s+/);
       if (!localRef || !localSha || !remoteRef || !remoteSha) {
-        throw new Error(`Unable to parse pre-push update: ${line}`);
+        throw rangeError(
+          'pre-push/malformed-update',
+          'Git pre-push 输入记录不完整，无法确定待推送范围',
+          {
+            details: { evidence: [{ type: 'pre-push-protocol', message: 'expected localRef localSha remoteRef remoteSha' }] },
+            expected: '每条 pre-push 输入包含本地引用、本地 SHA、远端引用和远端 SHA。',
+          },
+        );
       }
       return { localRef, localSha, remoteRef, remoteSha };
     });

@@ -29,7 +29,15 @@ export function assertReleaseScriptReadOnly(scripts, script) {
     visited.add(current);
     const command = scripts[current];
     if (FORBIDDEN_RELEASE_OPERATION.test(command)) {
-      throw new Error(`Release readiness script ${current} must not publish or deploy`);
+      throw securityError(
+        'release-readiness/forbidden-operation',
+        `Release readiness script ${current} must not publish or deploy`,
+        {
+          details: { location: { path: 'package.json' } },
+          expected: 'release-ready 仅执行只读检查，不发布、不部署且不改变外部状态。',
+          decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
+        },
+      );
     }
     for (const match of command.matchAll(/\bnpm\s+run\s+([A-Za-z0-9:_-]+)/g)) {
       pending.push(`pre${match[1]}`, match[1], `post${match[1]}`);
@@ -45,3 +53,4 @@ export function releaseEnvironment(env = process.env, cacheDirectory = null) {
   filtered.npm_config_userconfig = process.platform === 'win32' ? 'NUL' : '/dev/null';
   return filtered;
 }
+import { securityError } from '../../core/error/repo-guard-error.js';

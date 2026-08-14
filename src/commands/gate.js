@@ -1,10 +1,22 @@
 import { loadConfig } from '../config.js';
 import { createChangeSet, createGateContext } from '../core/capability/gate-context.js';
-import { gateResultToExitCode } from '../core/result/gate-result.js';
+import { defineExecutionPlan, validateExecutionPlan } from '../core/capability/execution-plan.js';
+import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';
 import { collectStagedChanges } from '../git-changes.js';
 import { findRepositoryRoot } from '../git.js';
-import { protectedFilesGate } from '../gates/repository/native-policy-gates.js';
+import { gateRegistry } from '../gates/registry.js';
+import { orchestratePlan } from '../orchestration/orchestrator.js';
+
+const protectedFilesManualPlan = validateExecutionPlan(defineExecutionPlan({
+  id: 'manual:protected-files',
+  environment: 'pre-commit',
+  steps: [{
+    id: 'repository.protected-files',
+    gateId: 'repository.protected-files',
+    mutation: 'external-write',
+  }],
+}), gateRegistry);
 
 export async function runGate({
   cwd = process.cwd(),
@@ -28,14 +40,20 @@ export async function runGate({
     ...gateContext,
     dryRun,
     forceNotify,
-    step: Object.freeze({
-      id: protectedFilesGate.id,
-      gateId: protectedFilesGate.id,
-      mutation: protectedFilesGate.mutation,
-    }),
   });
-  const plan = protectedFilesGate.plan(invocationContext);
-  const result = await protectedFilesGate.run({ ...invocationContext, plan });
-  writeGateResultConsole(result, { label: 'protected-files' });
-  return gateResultToExitCode(result);
+  const execution = await orchestratePlan({
+    plan: protectedFilesManualPlan,
+    registry: gateRegistry,
+    context: invocationContext,
+    stopOnFailure: true,
+    onResult: ({ result }) => writeGateResultConsole(result, { label: 'protected-files' }),
+  });
+  if (execution.status.endsWith('-error')) {
+    const decisiveError = execution.decisiveResult?.error;
+    throw toRepoGuardError(decisiveError?.message ?? 'Protected-file gate could not complete', {
+      kind: decisiveError?.kind ?? 'execution',
+      code: decisiveError?.code ?? 'protected-files/execution-failed',
+    });
+  }
+  return execution.exitCode;
 }

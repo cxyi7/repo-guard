@@ -4,6 +4,7 @@ import {
   rmSync,
 } from 'node:fs';
 import path from 'node:path';
+import { executionError } from './core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { normalizeGitPath } from './config.js';
 import { changeSetEntries } from './core/capability/gate-context.js';
@@ -66,13 +67,13 @@ export function buildCoverageArguments(config) {
 
 function parsePercentage(metric, label) {
   if (!metric || typeof metric !== 'object') {
-    throw new Error(`coverage summary is missing total.${label}`);
+    throw executionError('coverage/missing-total-metric', `coverage summary is missing total.${label}`);
   }
   const covered = Number(metric.covered);
   const total = Number(metric.total);
   const percentage = total === 0 ? 100 : Number(metric.pct);
   if (![covered, total, percentage].every(Number.isFinite)) {
-    throw new Error(`coverage summary contains invalid total.${label} values`);
+    throw executionError('coverage/invalid-total-metric', `coverage summary contains invalid total.${label} values`);
   }
   return { covered, percentage, total };
 }
@@ -82,7 +83,7 @@ export function parseCoverageSummary(content) {
   try {
     parsed = JSON.parse(content);
   } catch (error) {
-    throw new Error(`unable to parse coverage-summary.json: ${error.message}`);
+    throw executionError('coverage/invalid-summary-json', `unable to parse coverage-summary.json: ${error.message}`, { cause: error });
   }
   return Object.fromEntries(GLOBAL_METRICS.map((name) => (
     [name, parsePercentage(parsed.total?.[name], name)]
@@ -260,7 +261,7 @@ export function inspectCoverageReports({ root, config, changes }) {
       !existsSync(reports.summary) ? path.relative(root, reports.summary) : null,
       !existsSync(reports.lcov) ? path.relative(root, reports.lcov) : null,
     ].filter(Boolean);
-    throw new Error(`coverage reports were not generated: ${missing.join(', ')}`);
+    throw executionError('coverage/reports-not-generated', `coverage reports were not generated: ${missing.join(', ')}`);
   }
   const summary = parseCoverageSummary(readFileSync(reports.summary, 'utf8'));
   const global = Object.fromEntries(GLOBAL_METRICS.map((name) => {
@@ -286,31 +287,40 @@ export function inspectCoverageReports({ root, config, changes }) {
   };
 }
 
-function metricLine(label, metric) {
-  const status = metric.passed ? 'PASS' : 'FAIL';
-  return `  ${status}  ${label}: ${metric.percentage.toFixed(2)}% `
-    + `(${metric.covered}/${metric.total}, threshold=${metric.threshold}%)`;
+function coverageFinding(ruleId, label, metric, evidence = null) {
+  return {
+    ruleId,
+    severity: 'error',
+    message: `${label} coverage is ${metric.percentage.toFixed(2)}%; required ${metric.threshold}%`,
+    evidence: evidence ?? `${metric.covered}/${metric.total} items are covered.`,
+    remediation: (
+      'Add effective tests for the uncovered behavior without excluding production code, '
+      + 'reusing stale reports, or reducing the configured threshold.'
+    ),
+  };
 }
 
-export function formatCoverageReport(result, root) {
-  const lines = ['repo-guard coverage report:'];
-  for (const name of GLOBAL_METRICS) {
-    lines.push(metricLine(name, result.global[name]));
+export function coverageFindings(result, root) {
+  const findings = GLOBAL_METRICS
+    .filter((name) => !result.global[name].passed)
+    .map((name) => coverageFinding(`coverage/${name}`, name, result.global[name]));
+
+  if (!result.changed.passed) {
+    const details = [
+      result.changed.missingFiles.length > 0
+        ? `Missing LCOV files: ${result.changed.missingFiles.join(', ')}`
+        : null,
+      result.changed.uncovered.length > 0
+        ? `Uncovered changed lines: ${result.changed.uncovered.slice(0, 30).join(', ')}`
+        : null,
+      `Reports: ${normalizeGitPath(path.relative(root, result.reports.directory))}`,
+    ].filter(Boolean).join('; ');
+    findings.push(coverageFinding(
+      'coverage/changed-lines',
+      'changed-line',
+      result.changed,
+      details,
+    ));
   }
-  lines.push(metricLine('changed lines', result.changed));
-  if (result.changed.missingFiles.length > 0) {
-    lines.push('  Missing LCOV data:');
-    lines.push(...result.changed.missingFiles.map((filePath) => `  - ${filePath}`));
-  }
-  if (result.changed.uncovered.length > 0) {
-    lines.push('  Uncovered changed lines:');
-    lines.push(...result.changed.uncovered.slice(0, 30).map((entry) => `  - ${entry}`));
-    if (result.changed.uncovered.length > 30) {
-      lines.push(`  - ... and ${result.changed.uncovered.length - 30} more`);
-    }
-  }
-  lines.push(
-    `  Reports: ${normalizeGitPath(path.relative(root, result.reports.directory))}`,
-  );
-  return lines.join('\n');
+  return findings;
 }
