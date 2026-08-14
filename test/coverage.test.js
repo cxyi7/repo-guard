@@ -10,17 +10,17 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { createChangeSet } from '../src/core/capability/gate-context.js';
 import {
-  inspectCoverageReports as inspectCoverageReportsWithChangeSet,
   parseChangedLineNumbers,
   parseCoverageSummary,
   parseLcov,
-} from '../src/coverage-runner.js';
+} from '../src/integrations/vitest/coverage.js';
+import { inspectCoverageGate } from '../src/gates/testing/coverage-gate.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
 function inspectCoverageReports(options) {
-  return inspectCoverageReportsWithChangeSet({
+  return inspectCoverageGate({
     ...options,
     changes: createChangeSet({
       source: 'test',

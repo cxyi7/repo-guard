@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'coverage-runner.js',
   'dependency-policy.js',
   'eslint-runner.js',
   'prettier-runner.js',
@@ -334,6 +333,30 @@ test('separates axe project and execution facts from accessibility test decision
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/npm\/accessibility\.js/);
   assert.match(readFileSync(gatePath, 'utf8'), /\.\/accessibility-test-setup\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/axe\/project\.js/);
+});
+
+test('separates Vitest coverage facts from testing gate decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'coverage-runner.js')), false);
+  const integrationPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'vitest',
+    'coverage.js',
+  );
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'testing', 'coverage-gate.js');
+  assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(gatePath), true);
+
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:coverageFinding|remediation|threshold|passed)\b/,
+  );
+  assert.match(integrationSource, /export function inspectCoverageReports/);
+  assert.match(
+    readFileSync(gatePath, 'utf8'),
+    /integrations\/vitest\/coverage\.js/,
+  );
 });
 
 test('keeps CI execution and report persistence inside orchestration', () => {

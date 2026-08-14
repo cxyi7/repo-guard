@@ -9,12 +9,14 @@ import micromatch from 'micromatch';
 import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from './config.js';
 import {
   buildCoverageArguments,
-  coverageFindings,
-  inspectCoverageReports,
   isCoverageEnabled,
   isStructuredCoverage,
   prepareCoverageReports,
-} from './coverage-runner.js';
+} from './integrations/vitest/coverage.js';
+import {
+  coverageFindings,
+  inspectCoverageGate,
+} from './gates/testing/coverage-gate.js';
 import { changeSetEntries } from './core/capability/gate-context.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
 import { processFailureFinding } from './core/result/process-failure-guidance.js';
@@ -627,7 +629,7 @@ export function runUnitTestGate({ root, config, changes }) {
   if (isStructuredCoverage(config.coverage)) {
     let coverageResult;
     try {
-      coverageResult = inspectCoverageReports({ root, config, changes });
+      coverageResult = inspectCoverageGate({ root, config, changes });
     } catch (error) {
       return createGateResult({
         gateId: 'quality.unit-test',

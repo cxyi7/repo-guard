@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.13
+
+- 删除顶层 `src/coverage-runner.js`，将 Vitest 覆盖率参数、报告文件准备、summary/LCOV 解析和变更行覆盖事实迁入 `src/integrations/vitest/coverage.js`，将阈值判定与结构化 finding 迁入 `src/gates/testing/coverage-gate.js`，不保留兼容转发。
+- 保持消费项目 Vitest、coverage provider、配置和报告目录所有权，以及 coverage 配置、全局与变更行阈值算法、错误代码、单元测试执行顺序、pre-push/CI 顺序和公共 exports 不变。
+- 增加阶段 8 防回归测试，确认 integration 不持有阈值通过判定或修复建议、testing gate 显式消费覆盖率事实，并从顶层 runner/policy 待迁移清单移除 coverage runner。
+
 ## 1.4.12
 
 - 删除顶层 `src/ci-runner.js`，将 policy/full/release-ready 执行计划编排迁入 `src/orchestration/ci/runner.js`，将 CI 报告路径安全检查与 JSON 持久化拆入 `src/orchestration/ci/report.js`。

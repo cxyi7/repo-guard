@@ -4,13 +4,12 @@ import {
   rmSync,
 } from 'node:fs';
 import path from 'node:path';
-import { executionError } from './core/error/repo-guard-error.js';
+import { executionError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { normalizeGitPath } from './config.js';
-import { changeSetEntries } from './core/capability/gate-context.js';
-import { runGit } from './git.js';
+import { normalizeGitPath } from '../../config.js';
+import { runGit } from '../../git.js';
 
-const GLOBAL_METRICS = Object.freeze([
+export const COVERAGE_METRICS = Object.freeze([
   'lines',
   'statements',
   'functions',
@@ -85,7 +84,7 @@ export function parseCoverageSummary(content) {
   } catch (error) {
     throw executionError('coverage/invalid-summary-json', `unable to parse coverage-summary.json: ${error.message}`, { cause: error });
   }
-  return Object.fromEntries(GLOBAL_METRICS.map((name) => (
+  return Object.fromEntries(COVERAGE_METRICS.map((name) => (
     [name, parsePercentage(parsed.total?.[name], name)]
   )));
 }
@@ -238,14 +237,11 @@ function inspectChangedCoverage(root, changes, config, lcovFiles) {
   }
 
   const percentage = total === 0 ? 100 : (covered / total) * 100;
-  const threshold = config.coverage.thresholds.changedLines;
   return {
     covered,
     eligibleFiles: sourceChanges.size,
     missingFiles,
-    passed: missingFiles.length === 0 && percentage >= threshold,
     percentage,
-    threshold,
     total,
     uncovered,
   };
@@ -263,64 +259,17 @@ export function inspectCoverageReports({ root, config, changes }) {
     ].filter(Boolean);
     throw executionError('coverage/reports-not-generated', `coverage reports were not generated: ${missing.join(', ')}`);
   }
-  const summary = parseCoverageSummary(readFileSync(reports.summary, 'utf8'));
-  const global = Object.fromEntries(GLOBAL_METRICS.map((name) => {
-    const threshold = config.coverage.thresholds[name];
-    return [name, {
-      ...summary[name],
-      passed: summary[name].percentage >= threshold,
-      threshold,
-    }];
-  }));
+  const global = parseCoverageSummary(readFileSync(reports.summary, 'utf8'));
   const lcovFiles = parseLcov(readFileSync(reports.lcov, 'utf8'), root);
   const changed = inspectChangedCoverage(
     root,
-    changeSetEntries(changes, 'Coverage changes'),
+    changes,
     config,
     lcovFiles,
   );
   return {
     changed,
     global,
-    passed: Object.values(global).every(({ passed }) => passed) && changed.passed,
     reports,
   };
-}
-
-function coverageFinding(ruleId, label, metric, evidence = null) {
-  return {
-    ruleId,
-    severity: 'error',
-    message: `${label} coverage is ${metric.percentage.toFixed(2)}%; required ${metric.threshold}%`,
-    evidence: evidence ?? `${metric.covered}/${metric.total} items are covered.`,
-    remediation: (
-      'Add effective tests for the uncovered behavior without excluding production code, '
-      + 'reusing stale reports, or reducing the configured threshold.'
-    ),
-  };
-}
-
-export function coverageFindings(result, root) {
-  const findings = GLOBAL_METRICS
-    .filter((name) => !result.global[name].passed)
-    .map((name) => coverageFinding(`coverage/${name}`, name, result.global[name]));
-
-  if (!result.changed.passed) {
-    const details = [
-      result.changed.missingFiles.length > 0
-        ? `Missing LCOV files: ${result.changed.missingFiles.join(', ')}`
-        : null,
-      result.changed.uncovered.length > 0
-        ? `Uncovered changed lines: ${result.changed.uncovered.slice(0, 30).join(', ')}`
-        : null,
-      `Reports: ${normalizeGitPath(path.relative(root, result.reports.directory))}`,
-    ].filter(Boolean).join('; ');
-    findings.push(coverageFinding(
-      'coverage/changed-lines',
-      'changed-line',
-      result.changed,
-      details,
-    ));
-  }
-  return findings;
 }
