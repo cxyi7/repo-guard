@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.2
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.2
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.2
+npx repo-guard doctor
+```
+
+1.4.2 将 Lighthouse 项目识别、配置发现和 `@lhci/cli` 解析迁入内部 `integrations/lighthouse` 边界，旧的 `src/lighthouse-project.js` 已删除且没有兼容转发。此调整不改变公共 exports、配置格式、`lighthouse/invalid-setup` 错误代码或运行行为；Lighthouse 仍严格使用消费 Vue 项目安装的 Lighthouse CI、Chrome 环境、路由和 assertions，且不会隐式上传报告。静态测试会阻止旧路径恢复，阶段 8 待迁移的顶层 `*-project.js` 清单现在只剩 `stylelint-project.js`。
 
 ## 升级到 1.4.1
 

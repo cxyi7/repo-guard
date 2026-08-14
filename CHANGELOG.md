@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2
+
+- 将消费项目 Lighthouse 配置发现、Vue 项目识别和 `@lhci/cli` 元数据解析从顶层 `src/lighthouse-project.js` 迁入 `src/integrations/lighthouse/project.js`，不保留旧路径兼容转发。
+- 保持 `lighthouse/invalid-setup` 错误代码、配置格式、Lighthouse runner 行为和“必须使用消费项目 Lighthouse CI/Chrome 环境”的所有权不变；本次仅完成 Lighthouse 外部事实边界归位。
+- 扩充阶段 8 静态测试，确认旧路径不存在、Lighthouse integration 实现存在，并将待迁移的顶层 `*-project.js` 清单收敛为 `stylelint-project.js`。
+
 ## 1.4.1
 
 - 将消费项目 package.json、项目依赖包清单与运行入口解析从顶层 `src/project-package.js` 迁入 `src/core/project/package.js`，所有调用方直接使用目标目录，不保留旧路径兼容转发。

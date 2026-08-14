@@ -53,7 +53,6 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_PROJECT_FILES = Object.freeze([
-  'lighthouse-project.js',
   'stylelint-project.js',
 ]);
 
@@ -154,6 +153,14 @@ test('keeps project dependency discovery in core/project without a root compatib
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'project-package.js')), false);
   assert.equal(
     existsSync(path.join(SOURCE_ROOT, 'core', 'project', 'package.js')),
+    true,
+  );
+});
+
+test('keeps Lighthouse project inspection in its integration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'lighthouse-project.js')), false);
+  assert.equal(
+    existsSync(path.join(SOURCE_ROOT, 'integrations', 'lighthouse', 'project.js')),
     true,
   );
 });

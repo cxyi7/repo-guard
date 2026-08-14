@@ -4,7 +4,7 @@ import { executionError } from './core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from './core/execution/process-output.js';
 import { processFailureFinding } from './core/report/guidance-catalog.js';
 import { createGateResult } from './core/result/gate-result.js';
-import { validateVueLighthouseSetup } from './lighthouse-project.js';
+import { validateVueLighthouseSetup } from './integrations/lighthouse/project.js';
 
 function runProcess(command, args, { root, timeoutMs }) {
   const result = spawnSync(command, args, {

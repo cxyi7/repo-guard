@@ -30,7 +30,7 @@ import {
   resolveProjectEslintMetadata,
   resolveRepoGuardEslintPreset,
 } from '../eslint-runner.js';
-import { validateVueLighthouseSetup } from '../lighthouse-project.js';
+import { validateVueLighthouseSetup } from '../integrations/lighthouse/project.js';
 import { runVueLighthouse } from '../lighthouse-runner.js';
 import {
   runPrettierFiles,
