@@ -7,7 +7,7 @@ import {
   DEFAULT_UNIT_TEST_CONFIG,
   loadConfig,
 } from '../config.js';
-import { detectProjectArchitectureSetup } from '../architecture-runner.js';
+import { detectProjectArchitectureSetup } from '../gates/quality/architecture-setup.js';
 import {
   detectProjectAccessibilityTestSetup,
 } from '../accessibility-test-runner.js';

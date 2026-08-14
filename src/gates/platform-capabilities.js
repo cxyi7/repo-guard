@@ -12,7 +12,8 @@ import {
   runAccessibilityTestGate,
   validateAccessibilityTestSetup,
 } from '../accessibility-test-runner.js';
-import { runArchitectureGate, validateArchitectureSetup } from '../architecture-runner.js';
+import { runArchitectureGate } from './quality/architecture-gate.js';
+import { validateArchitectureSetup } from '../integrations/dependency-cruiser/architecture.js';
 import { runBuildGate } from './quality/build-gate.js';
 import { validateBuildSetup } from '../integrations/npm/build.js';
 import {

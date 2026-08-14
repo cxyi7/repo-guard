@@ -37,7 +37,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'accessibility-test-runner.js',
-  'architecture-runner.js',
   'ci-runner.js',
   'coverage-runner.js',
   'dependency-policy.js',
@@ -270,6 +269,37 @@ test('separates typecheck execution facts from gate decisions without a root run
   assert.match(
     readFileSync(setupPath, 'utf8'),
     /integrations\/npm\/typecheck\.js/,
+  );
+});
+
+test('separates dependency-cruiser execution facts from architecture gate decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'architecture-runner.js')), false);
+  const integrationPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'dependency-cruiser',
+    'architecture.js',
+  );
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'architecture-gate.js');
+  const setupPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'architecture-setup.js');
+  assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(gatePath), true);
+  assert.equal(existsSync(setupPath), true);
+
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|architectureRepairAdvice|processOutputDiagnostics)\b/,
+  );
+  assert.match(integrationSource, /export function executeArchitectureAnalysis/);
+  assert.match(integrationSource, /export function parseArchitectureReport/);
+  assert.match(
+    readFileSync(gatePath, 'utf8'),
+    /integrations\/dependency-cruiser\/architecture\.js/,
+  );
+  assert.match(
+    readFileSync(setupPath, 'utf8'),
+    /integrations\/dependency-cruiser\/architecture\.js/,
   );
 });
 

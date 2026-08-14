@@ -12,11 +12,11 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   createDependencyCruiserConfig,
-  detectProjectArchitectureSetup,
   parseArchitectureReport,
-  runArchitectureGate,
   validateArchitectureSetup,
-} from '../src/architecture-runner.js';
+} from '../src/integrations/dependency-cruiser/architecture.js';
+import { runArchitectureGate } from '../src/gates/quality/architecture-gate.js';
+import { detectProjectArchitectureSetup } from '../src/gates/quality/architecture-setup.js';
 import {
   ensureArchitecturePolicy,
   isArchitecturePolicyCurrent,
@@ -195,12 +195,17 @@ test('returns dependency-cruiser 17 cycles as structured finding evidence', (con
   writeReport(root, violations);
   const result = runArchitectureGate({ root, config: architectureConfig() });
   const cycleFinding = result.findings.find(({ ruleId }) => ruleId === 'architecture/no-circular');
+  const unresolvedFinding = result.findings.find(({ ruleId }) => ruleId === 'architecture/no-unresolved');
   assert.equal(result.status, 'violation');
   assert.match(
     cycleFinding.evidence[0].message,
     /src\/lib\/axios\.js -> src\/store\/user\.js -> src\/api\/message\.js/,
   );
   assert.doesNotMatch(cycleFinding.evidence[0].message, /\[object Object\]/);
+  assert.equal(
+    unresolvedFinding.remediation.goal,
+    '检查导入拼写、目标文件、包安装和路径别名；若属于别名解析配置缺失，应正确补全 architecture.tsConfig，不能用排除规则掩盖。',
+  );
 });
 
 test('reports warnings without weakening the hard error gate', (context) => {
