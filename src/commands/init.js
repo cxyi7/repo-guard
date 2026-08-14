@@ -10,7 +10,7 @@ import {
 import { detectProjectArchitectureSetup } from '../gates/quality/architecture-setup.js';
 import {
   detectProjectAccessibilityTestSetup,
-} from '../accessibility-test-runner.js';
+} from '../gates/testing/accessibility-test-setup.js';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
   ARCHITECTURE_POLICY_FILE,

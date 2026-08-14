@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'accessibility-test-runner.js',
   'ci-runner.js',
   'coverage-runner.js',
   'dependency-policy.js',
@@ -301,6 +300,41 @@ test('separates dependency-cruiser execution facts from architecture gate decisi
     readFileSync(setupPath, 'utf8'),
     /integrations\/dependency-cruiser\/architecture\.js/,
   );
+});
+
+test('separates axe project and execution facts from accessibility test decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'accessibility-test-runner.js')), false);
+  const axeProjectPath = path.join(SOURCE_ROOT, 'integrations', 'axe', 'project.js');
+  const executionPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'npm',
+    'accessibility.js',
+  );
+  const gatePath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'testing',
+    'accessibility-test-gate.js',
+  );
+  const setupPath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'testing',
+    'accessibility-test-setup.js',
+  );
+  for (const target of [axeProjectPath, executionPath, gatePath, setupPath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = `${readFileSync(axeProjectPath, 'utf8')}\n${readFileSync(executionPath, 'utf8')}`;
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|processFailureFinding|remediation|problems)\b/,
+  );
+  assert.match(readFileSync(gatePath, 'utf8'), /integrations\/npm\/accessibility\.js/);
+  assert.match(readFileSync(gatePath, 'utf8'), /\.\/accessibility-test-setup\.js/);
+  assert.match(readFileSync(setupPath, 'utf8'), /integrations\/axe\/project\.js/);
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {

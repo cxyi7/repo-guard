@@ -20,8 +20,10 @@ import {
 import {
   analyzeAccessibilityTestContent,
   inspectAccessibilityTestSetup,
+} from '../src/gates/testing/accessibility-test-setup.js';
+import {
   runAccessibilityTestGate,
-} from '../src/accessibility-test-runner.js';
+} from '../src/gates/testing/accessibility-test-gate.js';
 
 const TEST_ROOT = path.join(tmpdir(), 'repo-guard-accessibility-test');
 mkdirSync(TEST_ROOT, { recursive: true });

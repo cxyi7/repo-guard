@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.11
+
+- 将顶层 `src/accessibility-test-runner.js` 按职责拆分为 axe 项目 integration、npm 执行 integration、testing setup 与 testing gate；外部事实、准备检查和结构化判定不再混在同一 runner。
+- 保持支持的 axe 集成、扫描与零违规断言规则、绕过检测、消费项目依赖与脚本所有权、managed AGENTS policy、CLI、pre-push/CI 顺序、超时、错误代码、输出脱敏和公共 exports 不变；删除旧 runner 且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 integrations 不生成 GateResult、finding 或策略修复建议，testing gate/setup 显式消费 integration facts，并从顶层 runner/policy 待迁移清单移除 accessibility-test。
+
 ## 1.4.10
 
 - 将顶层 `src/architecture-runner.js` 按职责拆分为 `src/integrations/dependency-cruiser/architecture.js`、`src/gates/quality/architecture-gate.js` 与 `src/gates/quality/architecture-setup.js`：integration 负责消费项目 dependency-cruiser 的解析、配置、执行和 JSON 协议事实，gate 负责结构化判定、finding 与 diagnostic，setup 负责 init readiness。

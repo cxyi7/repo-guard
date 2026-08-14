@@ -1,57 +1,17 @@
-import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   readFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { configurationError, executionError } from './core/error/repo-guard-error.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from './config.js';
-import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/result/process-failure-guidance.js';
-import { createGateResult } from './core/result/gate-result.js';
-import { collectProjectFiles } from './file-placement.js';
-import { resolveProjectPackageMetadata } from './core/project/package.js';
-import { analyzeUnitTestContent } from './unit-test-runner.js';
-
-const INTEGRATIONS = Object.freeze([
-  Object.freeze({
-    id: 'vitest-axe',
-    packageName: 'vitest-axe',
-    displayName: 'vitest-axe',
-    scan: /\baxe\s*\(/,
-    assertion: /\btoHaveNoViolations\s*\(/,
-  }),
-  Object.freeze({
-    id: 'jest-axe',
-    packageName: 'jest-axe',
-    displayName: 'jest-axe',
-    scan: /\baxe\s*\(/,
-    assertion: /\btoHaveNoViolations\s*\(/,
-  }),
-  Object.freeze({
-    id: 'playwright',
-    packageName: '@axe-core/playwright',
-    displayName: '@axe-core/playwright',
-    scan: /\bnew\s+AxeBuilder\s*\([^)]*\)[\s\S]*?\.analyze\s*\(/,
-    assertion: /\.violations\b[\s\S]{0,300}?(?:toEqual\s*\(\s*\[\s*\]\s*\)|toHaveLength\s*\(\s*0\s*\))|(?:toEqual\s*\(\s*\[\s*\]\s*\)|toHaveLength\s*\(\s*0\s*\))[\s\S]{0,300}?\.violations\b/,
-  }),
-  Object.freeze({
-    id: 'cypress',
-    packageName: 'cypress-axe',
-    displayName: 'cypress-axe',
-    scan: /\bcy\s*\.\s*checkA11y\s*\(/,
-    assertion: /\bcy\s*\.\s*checkA11y\s*\(/,
-    setup: /\bcy\s*\.\s*injectAxe\s*\(/,
-  }),
-  Object.freeze({
-    id: 'axe-core',
-    packageName: 'axe-core',
-    displayName: 'axe-core',
-    scan: /\baxe\s*\.\s*run\s*\(/,
-    assertion: /\.violations\b[\s\S]{0,300}?(?:toEqual\s*\(\s*\[\s*\]\s*\)|toHaveLength\s*\(\s*0\s*\))|(?:toEqual\s*\(\s*\[\s*\]\s*\)|toHaveLength\s*\(\s*0\s*\))[\s\S]{0,300}?\.violations\b/,
-  }),
-]);
+import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../../config.js';
+import { collectProjectFiles } from '../../file-placement.js';
+import {
+  inspectAxeIntegration,
+  resolveAxeIntegrationPackage,
+} from '../../integrations/axe/project.js';
+import { analyzeUnitTestContent } from '../../unit-test-runner.js';
 
 const BYPASS_PATTERNS = Object.freeze([
   Object.freeze({ expression: 'disableRules', pattern: /\.\s*disableRules\s*\(/ }),
@@ -155,14 +115,6 @@ function maskStringsAndComments(source) {
   return output;
 }
 
-function importedIntegration(code) {
-  return INTEGRATIONS.find(({ packageName }) => (
-    new RegExp(
-      `(?:from\\s*|import\\s*(?:\\(|)|require\\s*\\()\\s*['"]${packageName.replace('/', '\\/')}['"]`,
-    ).test(code)
-  ));
-}
-
 function sourceLine(source, offset) {
   return source.slice(0, offset).split(/\r?\n/).length;
 }
@@ -171,7 +123,7 @@ export function analyzeAccessibilityTestContent(source) {
   const imports = stripComments(source);
   const code = maskStringsAndComments(source);
   const testAnalysis = analyzeUnitTestContent(source);
-  const integration = importedIntegration(imports);
+  const integration = inspectAxeIntegration(imports, code);
   const bypasses = [...testAnalysis.bypasses];
   for (const candidate of BYPASS_PATTERNS) {
     const match = candidate.pattern.exec(code);
@@ -183,13 +135,13 @@ export function analyzeAccessibilityTestContent(source) {
     }
   }
   return {
-    assertion: Boolean(integration?.assertion.test(code)),
+    assertion: integration?.assertion ?? false,
     bypasses,
     hasTestCase: testAnalysis.hasTestCase,
     integration: integration?.id ?? null,
     packageName: integration?.packageName ?? null,
-    scan: Boolean(integration?.scan.test(code)),
-    setup: integration?.setup ? integration.setup.test(code) : true,
+    scan: integration?.scan ?? false,
+    setup: integration?.setup ?? true,
   };
 }
 
@@ -293,13 +245,8 @@ export function inspectAccessibilityTestSetup(
   }
 
   for (const packageName of integrations.keys()) {
-    const definition = INTEGRATIONS.find((item) => item.packageName === packageName);
     try {
-      integrations.set(packageName, resolveProjectPackageMetadata(
-        root,
-        packageName,
-        definition.displayName,
-      ));
+      integrations.set(packageName, resolveAxeIntegrationPackage(root, packageName));
     } catch (error) {
       problems.push({
         code: 'missing-integration-package',
@@ -352,110 +299,4 @@ export function detectProjectAccessibilityTestSetup(root, config) {
   } catch (error) {
     return { ready: false, error };
   }
-}
-
-
-function runNpmScript(root, config) {
-  const command = process.platform === 'win32'
-    ? process.env.ComSpec || 'cmd.exe'
-    : 'npm';
-  const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', `npm run ${config.script}`]
-    : ['run', config.script];
-  return spawnSync(command, args, {
-    cwd: root,
-    env: process.env,
-    stdio: 'pipe',
-    encoding: 'utf8',
-    timeout: config.timeoutMs,
-    windowsHide: true,
-  });
-}
-
-export function runAccessibilityTestGate({ root, config }) {
-  const inspection = inspectAccessibilityTestSetup(root, config);
-  if (inspection.problems.length > 0) {
-    return createGateResult({
-      gateId: 'quality.accessibility-test',
-      status: 'configuration-error',
-      summary: `Accessibility test setup has ${inspection.problems.length} problem(s)`,
-      error: configurationError(
-        'accessibility-test/invalid-setup',
-        'Accessibility test setup is invalid',
-      ),
-      findings: inspection.problems.map((problem) => ({
-        kind: 'configuration',
-        ruleId: `accessibility-test/${problem.code}`,
-        code: problem.code,
-        severity: 'error',
-        message: problem.message,
-        location: {
-          path: problem.path,
-          ...(problem.line ? { line: problem.line } : {}),
-        },
-        expected: '可访问性测试必须具有可执行的 axe 扫描、零违规断言和完整依赖。',
-        remediation: problem.remediation,
-        decision: {
-          aiAction: 'update-tests-or-configuration',
-          humanApprovalRequired: false,
-        },
-      })),
-    });
-  }
-  const integrations = inspection.integrations
-    .map(({ name, version }) => `${name} ${version}`)
-    .join(', ');
-  const diagnostics = [{ level: 'info', message:
-    `repo-guard accessibility tests: ${integrations}; `
-    + `${inspection.files.length} file(s), running npm script "${config.script}"...` }];
-  const result = runNpmScript(root, config);
-  diagnostics.push(...processOutputDiagnostics(result, { source: 'axe', root }));
-  if (result.error) {
-    if (result.error.code === 'ETIMEDOUT') {
-      return createGateResult({
-        gateId: 'quality.accessibility-test',
-        status: 'execution-error',
-        summary: `Accessibility tests exceeded ${config.timeoutMs}ms`,
-        error: executionError(
-          'accessibility-test/timeout',
-          `Accessibility tests exceeded ${config.timeoutMs}ms`,
-          { cause: result.error },
-        ),
-        diagnostics,
-      });
-    }
-    const error = executionError(
-      'accessibility-test/process-start-failed',
-      `Unable to run accessibility tests: ${result.error.message}`,
-      { cause: result.error },
-    );
-    return createGateResult({
-      gateId: 'quality.accessibility-test',
-      status: 'execution-error',
-      summary: error.message,
-      error,
-      diagnostics,
-    });
-  }
-  if (result.status !== 0) {
-    return createGateResult({
-      gateId: 'quality.accessibility-test',
-      status: 'violation',
-      summary: `Accessibility tests failed with exit code ${result.status ?? 1}`,
-      diagnostics,
-      findings: [processFailureFinding('quality.accessibility-test', {
-        exitCode: result.status ?? 1,
-        script: config.script,
-      })],
-      metrics: { testFiles: inspection.files.length },
-    });
-  }
-  diagnostics.push({ level: 'info', message: 'repo-guard accessibility tests passed.' });
-  return createGateResult({
-    gateId: 'quality.accessibility-test',
-    status: 'passed',
-    summary: `Accessibility tests passed (${integrations}; ${inspection.files.length} file(s))`,
-    diagnostics,
-    metrics: { testFiles: inspection.files.length },
-  });
 }

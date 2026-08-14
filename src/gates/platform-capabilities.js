@@ -8,10 +8,10 @@ import {
   isUnitTestPolicyCurrent,
   UNIT_TEST_POLICY_FILE,
 } from '../policies/managed-policies.js';
+import { runAccessibilityTestGate } from './testing/accessibility-test-gate.js';
 import {
-  runAccessibilityTestGate,
   validateAccessibilityTestSetup,
-} from '../accessibility-test-runner.js';
+} from './testing/accessibility-test-setup.js';
 import { runArchitectureGate } from './quality/architecture-gate.js';
 import { validateArchitectureSetup } from '../integrations/dependency-cruiser/architecture.js';
 import { runBuildGate } from './quality/build-gate.js';
