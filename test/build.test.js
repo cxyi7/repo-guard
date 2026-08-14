@@ -11,10 +11,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  detectProjectBuildSetup,
   runBuildGate,
-  validateBuildSetup,
-} from '../src/build-runner.js';
+} from '../src/gates/quality/build-gate.js';
+import { detectProjectBuildSetup } from '../src/gates/quality/build-setup.js';
+import { validateBuildSetup } from '../src/integrations/npm/build.js';
 import { runPrePush } from '../src/commands/pre-push.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

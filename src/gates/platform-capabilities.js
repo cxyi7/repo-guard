@@ -13,7 +13,8 @@ import {
   validateAccessibilityTestSetup,
 } from '../accessibility-test-runner.js';
 import { runArchitectureGate, validateArchitectureSetup } from '../architecture-runner.js';
-import { runBuildGate, validateBuildSetup } from '../build-runner.js';
+import { runBuildGate } from './quality/build-gate.js';
+import { validateBuildSetup } from '../integrations/npm/build.js';
 import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,

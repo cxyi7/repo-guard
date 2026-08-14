@@ -41,7 +41,7 @@
 
 ## 3. 当前架构是否符合
 
-结论：**1.4.0 已完成阶段 8 的目录依赖边界自动化，1.4.1 将项目依赖解析迁入 `core/project`，1.4.2 至 1.4.5 完成 Lighthouse integration、quality gate 与 setup orchestration 归位，1.4.3 同时纠正结构化进程失败 guidance 的结果模型归属，1.4.6 将 Stylelint 项目事实与 setup readiness 分别归入 integration 和 quality gate，1.4.7 将共享 Vue 模板静态解析事实迁入 `integrations/vue`；顶层 `*-project.js` 已清空，当前主要未完成项是按独立功能逐步迁移仍位于 `src` 根目录的 runner 和 policy。**
+结论：**1.4.0 已完成阶段 8 的目录依赖边界自动化，1.4.1 将项目依赖解析迁入 `core/project`，1.4.2 至 1.4.5 完成 Lighthouse integration、quality gate 与 setup orchestration 归位，1.4.3 同时纠正结构化进程失败 guidance 的结果模型归属，1.4.6 将 Stylelint 项目事实与 setup readiness 分别归入 integration 和 quality gate，1.4.7 将共享 Vue 模板静态解析事实迁入 `integrations/vue`，1.4.8 将 build 执行、结构化判定与初始化 readiness 分别归入 npm integration 和 quality gate；顶层 `*-project.js` 已清空，当前主要未完成项是按独立功能逐步迁移仍位于 `src` 根目录的 runner 和 policy。**
 
 ### 3.1 已经符合的部分
 
@@ -742,7 +742,7 @@ doctor 应从每个 Gate Capability 的 `inspectSetup` 聚合诊断，统一状�
 
 ### 阶段 8：完成目录迁移和公共 API 收敛
 
-实施状态：`1.4.0` 已完成依赖边界自动化和公共 exports 防回归。dependency-cruiser 以 error 级别拒绝无法解析和循环依赖，并强制 `core`、`gates`、`orchestration`、`integrations` 的允许方向；迁移前的 commands/CLI 同样按 orchestration 入口约束。仓库测试用故意违规依赖图验证每条规则，禁止 gate 接管进程退出、重新收集 Git 范围或跨领域深层导入，冻结现有顶层 runner/policy/parser 与 gate 入口清单，并锁定公共 exports 的名称及目标。`1.4.1` 将项目依赖包清单和入口解析迁入 `core/project/package.js`；`1.4.2` 至 `1.4.5` 依次将 Lighthouse 项目发现与执行、结构化判定和安装期 ignore 状态归入 integration、quality gate 与 setup orchestration，并将进程失败 guidance 纠正到 `core/result`；`1.4.6` 将 Stylelint 包/配置事实迁入 `integrations/stylelint/project.js`，将 init readiness 迁入 `gates/quality/stylelint-setup.js`，顶层 `*-project.js` 清单收敛为空；`1.4.7` 将共享 Vue 模板标签、属性、元素和位置事实迁入 `integrations/vue/template-parser.js`，从顶层迁移清单移除最后一个 parser。各版本均删除旧路径且不保留兼容转发；其余顶层文件继续按独立功能逐项评审和迁移。
+实施状态：`1.4.0` 已完成依赖边界自动化和公共 exports 防回归。dependency-cruiser 以 error 级别拒绝无法解析和循环依赖，并强制 `core`、`gates`、`orchestration`、`integrations` 的允许方向；迁移前的 commands/CLI 同样按 orchestration 入口约束。仓库测试用故意违规依赖图验证每条规则，禁止 gate 接管进程退出、重新收集 Git 范围或跨领域深层导入，冻结现有顶层 runner/policy/parser 与 gate 入口清单，并锁定公共 exports 的名称及目标。`1.4.1` 将项目依赖包清单和入口解析迁入 `core/project/package.js`；`1.4.2` 至 `1.4.5` 依次将 Lighthouse 项目发现与执行、结构化判定和安装期 ignore 状态归入 integration、quality gate 与 setup orchestration，并将进程失败 guidance 纠正到 `core/result`；`1.4.6` 将 Stylelint 包/配置事实迁入 `integrations/stylelint/project.js`，将 init readiness 迁入 `gates/quality/stylelint-setup.js`，顶层 `*-project.js` 清单收敛为空；`1.4.7` 将共享 Vue 模板标签、属性、元素和位置事实迁入 `integrations/vue/template-parser.js`，从顶层迁移清单移除最后一个 parser；`1.4.8` 将消费项目 build 脚本验证与执行迁入 `integrations/npm/build.js`，将结构化判定与 init readiness 分别迁入 `gates/quality/build-gate.js` 和 `build-setup.js`，从顶层迁移清单移除 build runner。各版本均删除旧路径且不保留兼容转发；其余顶层文件继续按独立功能逐项评审和迁移。
 
 - 清理尚未随功能迁移的旧文件和临时 adapter；
 - 使用 dependency-cruiser 强制 `core`、`gates`、`orchestration`、`integrations` 的依赖方向；

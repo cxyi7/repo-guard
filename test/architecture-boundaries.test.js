@@ -38,7 +38,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'accessibility-test-runner.js',
   'architecture-runner.js',
-  'build-runner.js',
   'ci-runner.js',
   'coverage-runner.js',
   'dependency-policy.js',
@@ -222,6 +221,31 @@ test('separates Lighthouse execution facts from gate decisions without a root ru
   assert.match(
     readFileSync(gatePath, 'utf8'),
     /integrations\/lighthouse\/execution\.js/,
+  );
+});
+
+test('separates build execution facts from gate decisions without a root runner', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'build-runner.js')), false);
+  const integrationPath = path.join(SOURCE_ROOT, 'integrations', 'npm', 'build.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'build-gate.js');
+  const setupPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'build-setup.js');
+  assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(gatePath), true);
+  assert.equal(existsSync(setupPath), true);
+
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|processFailureFinding|executionError)\b/,
+  );
+  assert.match(integrationSource, /export function executeProjectBuild/);
+  assert.match(
+    readFileSync(gatePath, 'utf8'),
+    /integrations\/npm\/build\.js/,
+  );
+  assert.match(
+    readFileSync(setupPath, 'utf8'),
+    /integrations\/npm\/build\.js/,
   );
 });
 

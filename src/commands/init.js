@@ -22,7 +22,7 @@ import {
   UNIT_TEST_POLICY_FILE,
 } from '../policies/managed-policies.js';
 import { ensureProjectConfig } from '../config-management.js';
-import { detectProjectBuildSetup } from '../build-runner.js';
+import { detectProjectBuildSetup } from '../gates/quality/build-setup.js';
 import { findRepositoryRoot } from '../git.js';
 import { installHooks } from '../hook-installer.js';
 import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';

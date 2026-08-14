@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.8
+
+- 将顶层 `src/build-runner.js` 按职责拆分为 `src/integrations/npm/build.js`、`src/gates/quality/build-gate.js` 与 `src/gates/quality/build-setup.js`：integration 只验证并执行消费项目自己的 npm build 脚本，gate 负责 GateResult、finding 与 diagnostic，setup 负责 init readiness。
+- 保持 build 配置、CLI、pre-push/CI/release-ready 固定顺序、Windows/npm 启动方式、超时、稳定错误代码、输出脱敏和公共 exports 不变；删除旧 runner 且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 build integration 不产生 GateResult 或策略 finding、quality gate 和 setup 显式消费 integration facts，并从顶层 runner/policy 待迁移清单移除 build。
+
 ## 1.4.7
 
 - 将共享的顶层 `src/vue-template-parser.js` 迁入 `src/integrations/vue/template-parser.js`，明确 Vue 源码标签、属性、元素层级和位置解析只提供静态事实，安全与可访问性策略仍由各自 gate 规则负责。
