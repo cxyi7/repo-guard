@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'ci-runner.js',
   'coverage-runner.js',
   'dependency-policy.js',
   'eslint-runner.js',
@@ -335,6 +334,21 @@ test('separates axe project and execution facts from accessibility test decision
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/npm\/accessibility\.js/);
   assert.match(readFileSync(gatePath, 'utf8'), /\.\/accessibility-test-setup\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/axe\/project\.js/);
+});
+
+test('keeps CI execution and report persistence inside orchestration', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'ci-runner.js')), false);
+  const runnerPath = path.join(SOURCE_ROOT, 'orchestration', 'ci', 'runner.js');
+  const reportPath = path.join(SOURCE_ROOT, 'orchestration', 'ci', 'report.js');
+  assert.equal(existsSync(runnerPath), true);
+  assert.equal(existsSync(reportPath), true);
+
+  const runnerSource = readFileSync(runnerPath, 'utf8');
+  const reportSource = readFileSync(reportPath, 'utf8');
+  assert.match(runnerSource, /\.\/report\.js/);
+  assert.doesNotMatch(runnerSource, /\b(?:mkdirSync|writeFileSync|lstatSync)\b/);
+  assert.match(reportSource, /export function writeCiReport/);
+  assert.doesNotMatch(reportSource, /\b(?:orchestratePlan|createProjectGateRegistry)\b/);
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {

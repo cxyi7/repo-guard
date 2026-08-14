@@ -11,7 +11,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { validateConfig } from '../src/config.js';
-import { runCiGate } from '../src/ci-runner.js';
+import { runCiGate } from '../src/orchestration/ci/runner.js';
 import { createProjectGateRegistry } from '../src/gates/registry.js';
 import { createProjectCiFullPlan } from '../src/orchestration/execution-plans.js';
 import { runExternalManualGate } from '../src/orchestration/cli/manual-gates.js';

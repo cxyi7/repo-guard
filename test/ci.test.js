@@ -11,7 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { resolveCiRange } from '../src/ci-changes.js';
-import { runCiGate } from '../src/ci-runner.js';
+import { runCiGate } from '../src/orchestration/ci/runner.js';
 import { validateConfig } from '../src/config.js';
 import { runCiCommand } from '../src/commands/ci.js';
 import { runDoctor } from '../src/commands/doctor.js';

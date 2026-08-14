@@ -3,7 +3,8 @@ import {
   loadConfig,
   validateCiReportPath,
 } from '../config.js';
-import { runCiGate, writeCiReport } from '../ci-runner.js';
+import { runCiGate } from '../orchestration/ci/runner.js';
+import { writeCiReport } from '../orchestration/ci/report.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';

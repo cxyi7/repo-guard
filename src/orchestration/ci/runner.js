@@ -1,34 +1,28 @@
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  writeFileSync,
-} from 'node:fs';
 import path from 'node:path';
-import { configurationError, securityError, toRepoGuardError } from './core/error/repo-guard-error.js';
+import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { resolveCiRange } from './ci-changes.js';
-import { validateCiReportPath } from './config.js';
-import { classifyChanges } from './git-changes.js';
-import { runGit } from './git.js';
-import { collectProjectFiles } from './file-placement.js';
-import { createGateResult, gateStatusToExitCode } from './core/result/gate-result.js';
+import { resolveCiRange } from '../../ci-changes.js';
+import { validateCiReportPath } from '../../config.js';
+import { classifyChanges } from '../../git-changes.js';
+import { collectProjectFiles } from '../../file-placement.js';
+import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
 import {
   writeConsoleMessage,
   writeGateResultConsole,
-} from './core/report/console-renderer.js';
-import { renderCiStep, renderGateResultJson } from './core/report/json-renderer.js';
+} from '../../core/report/console-renderer.js';
+import { renderCiStep, renderGateResultJson } from '../../core/report/json-renderer.js';
 import {
   createChangeSet,
   createGateContext,
-} from './core/capability/gate-context.js';
-import { createProjectGateRegistry } from './gates/registry.js';
+} from '../../core/capability/gate-context.js';
+import { createProjectGateRegistry } from '../../gates/registry.js';
 import {
   createProjectCiFullPlan,
   createProjectReleaseReadyPlan,
   executionPlans,
-} from './orchestration/execution-plans.js';
-import { orchestratePlan } from './orchestration/orchestrator.js';
+} from '../execution-plans.js';
+import { orchestratePlan } from '../orchestrator.js';
+import { writeCiReport } from './report.js';
 
 function matchingFiles(files, pattern) {
   return files.filter((file) => micromatch.isMatch(file, pattern, {
@@ -37,37 +31,8 @@ function matchingFiles(files, pattern) {
   }));
 }
 
-function assertNoSymlinkPath(root, reportPath) {
-  let current = root;
-  for (const segment of reportPath.split('/')) {
-    current = path.join(current, segment);
-    if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
-      throw securityError('ci-report/symlink-traversal', `CI report path must not traverse a symbolic link: ${reportPath}`, {
-        details: { location: { path: reportPath } },
-        expected: 'CI 报告路径的每个现有目录都是真实目录而非符号链接。',
-      });
-    }
-  }
-}
-
 function isTrustedExternalGateCi(env) {
   return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
-}
-
-export function writeCiReport(root, reportPath, report) {
-  const normalized = validateCiReportPath(reportPath);
-  assertNoSymlinkPath(root, normalized);
-  const tracked = runGit(['ls-files', '--error-unmatch', '--', normalized], {
-    allowFailure: true,
-    cwd: root,
-  }).status === 0;
-  if (tracked) throw securityError('ci-report/tracked-file-overwrite', `CI report path must not overwrite a tracked file: ${normalized}`, {
-    details: { location: { path: normalized } },
-    expected: 'CI 报告仅写入未跟踪的 reports/ 生成文件。',
-  });
-  const target = path.resolve(root, normalized);
-  mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 }
 
 function configurationErrorReport(profile, error) {

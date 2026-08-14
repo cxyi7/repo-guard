@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { runCiGate } from '../src/ci-runner.js';
+import { runCiGate } from '../src/orchestration/ci/runner.js';
 import { validateConfig } from '../src/config.js';
 import { createChangeSet, createGateContext } from '../src/core/capability/gate-context.js';
 import { createProjectGateRegistry } from '../src/gates/registry.js';

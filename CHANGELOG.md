@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.12
+
+- 删除顶层 `src/ci-runner.js`，将 policy/full/release-ready 执行计划编排迁入 `src/orchestration/ci/runner.js`，将 CI 报告路径安全检查与 JSON 持久化拆入 `src/orchestration/ci/report.js`。
+- 保持 Gate Registry、固定步骤顺序、可信外部门禁条件、变更范围、报告格式、符号链接与 tracked-file 防护、状态、退出码、控制台输出和公共 exports 不变；旧路径不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 CI runner 不直接持有文件写入，report 模块不接管 Gate 编排，并从顶层 runner/policy 待迁移清单移除 ci-runner。
+
 ## 1.4.11
 
 - 将顶层 `src/accessibility-test-runner.js` 按职责拆分为 axe 项目 integration、npm 执行 integration、testing setup 与 testing gate；外部事实、准备检查和结构化判定不再混在同一 runner。
