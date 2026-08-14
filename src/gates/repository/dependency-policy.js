@@ -1,15 +1,10 @@
+import { findStructuredException } from '../../exception-registry.js';
+import { readStagedPackageMetadata } from '../../integrations/git/staged-package-metadata.js';
 import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { configurationError } from './core/error/repo-guard-error.js';
-import { findStructuredException } from './exception-registry.js';
-import { runGit } from './git.js';
+  parsePackageMetadata,
+  readOptionalPackageMetadataFile,
+  readPackageMetadataFile,
+} from '../../integrations/npm/package-metadata.js';
 
 const DECLARATION_SECTIONS = Object.freeze([
   'dependencies',
@@ -23,28 +18,6 @@ const LOCKED_SECTIONS = Object.freeze([
   'optionalDependencies',
 ]);
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-
-function parseJsonFile(target, label) {
-  let source;
-  try {
-    source = readFileSync(target, 'utf8');
-  } catch (error) {
-    throw configurationError(
-      'dependency-policy/package-metadata-read-failed',
-      `Unable to read ${label}: ${error.message}`,
-      { cause: error, details: { location: { path: label } }, expected: `${label} exists and is readable.` },
-    );
-  }
-  try {
-    return { source, value: JSON.parse(source) };
-  } catch (error) {
-    throw configurationError(
-      'dependency-policy/package-metadata-invalid-json',
-      `${label} must contain valid JSON: ${error.message}`,
-      { cause: error, details: { location: { path: label } }, expected: `${label} contains valid JSON package metadata.` },
-    );
-  }
-}
 
 function skipJsonString(source, start) {
   let cursor = start + 1;
@@ -289,13 +262,10 @@ function compareLockfile(packageJson, lockfile, lockSource) {
   return findings;
 }
 
-export function inspectDependencyPolicy({ root, config, exceptions }) {
-  const packagePath = path.join(root, 'package.json');
-  const packageFile = parseJsonFile(packagePath, 'package.json');
+function inspectPackageMetadata({ packageFile, lockFile, config, exceptions }) {
   let findings = inspectDeclarations(packageFile.value, packageFile.source, config);
-  const lockPath = path.join(root, 'package-lock.json');
   if (config.requireLockfile) {
-    if (!existsSync(lockPath)) {
+    if (!lockFile) {
       findings.push({
         line: 1,
         column: 1,
@@ -304,7 +274,6 @@ export function inspectDependencyPolicy({ root, config, exceptions }) {
         rule: 'dependencies/missing-lockfile',
       });
     } else {
-      const lockFile = parseJsonFile(lockPath, 'package-lock.json');
       findings = findings.concat(compareLockfile(
         packageFile.value,
         lockFile.value,
@@ -322,13 +291,20 @@ export function inspectDependencyPolicy({ root, config, exceptions }) {
   return { approved, violations };
 }
 
+export function inspectDependencyPolicy({ root, config, exceptions }) {
+  return inspectPackageMetadata({
+    packageFile: readPackageMetadataFile(root, 'package.json'),
+    lockFile: config.requireLockfile
+      ? readOptionalPackageMetadataFile(root, 'package-lock.json')
+      : null,
+    config,
+    exceptions,
+  });
+}
 
 export function inspectStagedDependencyPolicy({ root, config, exceptions }) {
-  const packageResult = runGit(['show', ':package.json'], {
-    allowFailure: true,
-    cwd: root,
-  });
-  if (packageResult.status !== 0) {
+  const staged = readStagedPackageMetadata(root);
+  if (staged.packageJson == null) {
     return { approved: [], violations: [{
       line: 1,
       column: 1,
@@ -337,23 +313,12 @@ export function inspectStagedDependencyPolicy({ root, config, exceptions }) {
       rule: 'dependencies/missing-manifest',
     }] };
   }
-
-  const snapshotRoot = mkdtempSync(path.join(tmpdir(), 'repo-guard-dependencies-'));
-  try {
-    writeFileSync(path.join(snapshotRoot, 'package.json'), packageResult.stdout, 'utf8');
-    const lockResult = runGit(['show', ':package-lock.json'], {
-      allowFailure: true,
-      cwd: root,
-    });
-    if (lockResult.status === 0) {
-      writeFileSync(path.join(snapshotRoot, 'package-lock.json'), lockResult.stdout, 'utf8');
-    }
-    return inspectDependencyPolicy({
-      root: snapshotRoot,
-      config,
-      exceptions,
-    });
-  } finally {
-    rmSync(snapshotRoot, { recursive: true, force: true });
-  }
+  return inspectPackageMetadata({
+    packageFile: parsePackageMetadata(staged.packageJson, 'package.json'),
+    lockFile: config.requireLockfile && staged.lockfile != null
+      ? parsePackageMetadata(staged.lockfile, 'package-lock.json')
+      : null,
+    config,
+    exceptions,
+  });
 }

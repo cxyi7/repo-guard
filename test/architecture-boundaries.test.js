@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'dependency-policy.js',
   'eslint-runner.js',
   'prettier-runner.js',
   'quality-runner.js',
@@ -398,6 +397,43 @@ test('separates Vitest project and execution facts from unit-test policy decisio
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/vitest\/execution\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/vitest\/project\.js/);
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
+});
+
+test('separates package and staged metadata facts from dependency policy decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'dependency-policy.js')), false);
+  const npmPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'npm',
+    'package-metadata.js',
+  );
+  const gitPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'git',
+    'staged-package-metadata.js',
+  );
+  const gatePath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'repository',
+    'dependency-policy.js',
+  );
+  for (const target of [npmPath, gitPath, gatePath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = `${readFileSync(npmPath, 'utf8')}\n${readFileSync(gitPath, 'utf8')}`;
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:findStructuredException|inspectDeclarations|compareLockfile|remediation)\b/,
+  );
+  assert.match(integrationSource, /export function readStagedPackageMetadata/);
+  assert.match(integrationSource, /export function readPackageMetadataFile/);
+  const gateSource = readFileSync(gatePath, 'utf8');
+  assert.match(gateSource, /integrations\/git\/staged-package-metadata\.js/);
+  assert.match(gateSource, /integrations\/npm\/package-metadata\.js/);
+  assert.doesNotMatch(gateSource, /\b(?:mkdtempSync|writeFileSync|rmSync|runGit)\b/);
 });
 
 test('keeps CI execution and report persistence inside orchestration', () => {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.15
+
+- 删除顶层 `src/dependency-policy.js`，将 package/lock JSON 与 Git index 暂存元数据事实分别迁入 `src/integrations/npm/package-metadata.js` 和 `src/integrations/git/staged-package-metadata.js`，将依赖治理与结构化例外判定迁入 `src/gates/repository/dependency-policy.js`，不保留兼容转发。
+- 暂存依赖门禁改为直接消费只读 Git index 内容，不再创建临时目录或写入快照；保持声明、来源、精确版本、分组、lockfile 一致性规则、位置、错误代码、例外语义、pre-commit 顺序、CLI 和公共 exports 不变。
+- 增加阶段 8 防回归测试，确认 integrations 不持有依赖策略或例外判定、gate 不直接运行 Git 或写临时文件，并从顶层 runner/policy 待迁移清单移除 dependency policy。
+
 ## 1.4.14
 
 - 删除顶层 `src/unit-test-runner.js`，将消费项目包与 Vitest/Vue Test Utils 事实、测试源码调用事实解析和 npm 测试执行迁入 `src/integrations/vitest`，将 setup readiness、测试映射与绕过判定、finding 和 GateResult 判定拆入 `src/gates/testing`，不保留兼容转发。

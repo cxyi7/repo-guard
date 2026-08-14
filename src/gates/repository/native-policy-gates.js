@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
-import { inspectDependencyPolicy, inspectStagedDependencyPolicy } from '../../dependency-policy.js';
+import { inspectDependencyPolicy, inspectStagedDependencyPolicy } from './dependency-policy.js';
 import { inspectExceptionRegistry } from '../../exception-registry.js';
 import { inspectFilePlacement } from '../../file-placement.js';
 import { evaluateMaxFileLines, selectMaxFileLineFiles } from '../../max-file-lines.js';

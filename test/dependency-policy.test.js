@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   inspectDependencyPolicy,
-} from '../src/dependency-policy.js';
+  inspectStagedDependencyPolicy,
+} from '../src/gates/repository/dependency-policy.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
@@ -180,6 +181,29 @@ test('still rejects unapproved sources when exact-version enforcement is disable
       'dependencies/disallowed-source',
     ],
   );
+});
+
+test('ignores invalid staged lock metadata when lockfile enforcement is disabled', (context) => {
+  const packageJson = {
+    name: 'fixture',
+    version: '1.0.0',
+    dependencies: { axios: '1.7.0' },
+  };
+  const dependencyPolicy = policy({ requireLockfile: false });
+  const root = createFixture(packageJson, null, dependencyPolicy);
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, 'package-lock.json'), '{ invalid json\n');
+  const staged = spawnSync('git', ['add', 'package.json', 'package-lock.json'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  assert.equal(staged.status, 0, staged.stderr);
+
+  assert.deepEqual(inspectStagedDependencyPolicy({
+    root,
+    config: dependencyPolicy,
+    exceptions: registry(),
+  }), { approved: [], violations: [] });
 });
 
 test('reports the exact root declaration when a package name also appears in scripts', (context) => {
