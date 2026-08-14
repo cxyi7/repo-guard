@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.4
+
+- 将顶层 `src/lighthouse-runner.js` 按职责拆分为 `src/integrations/lighthouse/execution.js` 与 `src/gates/quality/lighthouse-gate.js`：integration 只执行消费项目 build 和 LHCI phase，gate 只负责结构化判定、finding、diagnostic 与 artifact。
+- 保持 Windows/npm 启动方式、build/collect/assert 顺序、skip-build、超时和失败状态、`lighthouse/*` 错误代码、Lighthouse 输出与消费项目工具所有权不变；删除旧 runner 且不保留兼容转发。
+- 增加阶段 8 防回归测试，确认 execution integration 不产生 GateResult 或策略 finding、quality gate 显式消费 execution facts，并从待迁移顶层 runner 清单移除 Lighthouse。
+
 ## 1.4.3
 
 - 将仅生成结构化 finding、evidence、remediation 与 AI decision 的进程失败 guidance 从 `src/core/report/guidance-catalog.js` 迁入 `src/core/result/process-failure-guidance.js`，不保留旧路径兼容转发。

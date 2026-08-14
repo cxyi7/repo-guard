@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { runPrePush } from '../src/commands/pre-push.js';
-import { runVueLighthouse } from '../src/lighthouse-runner.js';
+import { runVueLighthouse } from '../src/gates/quality/lighthouse-gate.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

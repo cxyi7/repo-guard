@@ -1,42 +1,13 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { executionError } from './core/error/repo-guard-error.js';
-import { processOutputDiagnostics } from './core/execution/process-output.js';
-import { processFailureFinding } from './core/result/process-failure-guidance.js';
-import { createGateResult } from './core/result/gate-result.js';
-import { validateVueLighthouseSetup } from './integrations/lighthouse/project.js';
-
-function runProcess(command, args, { root, timeoutMs }) {
-  const result = spawnSync(command, args, {
-    cwd: root,
-    env: process.env,
-    stdio: 'pipe',
-    encoding: 'utf8',
-    timeout: timeoutMs,
-    windowsHide: true,
-  });
-
-  return result;
-}
-
-function runNpmScript(root, script, timeoutMs) {
-  if (process.platform === 'win32') {
-    return runProcess(
-      process.env.ComSpec || 'cmd.exe',
-      ['/d', '/s', '/c', `npm run ${script}`],
-      { root, timeoutMs },
-    );
-  }
-  return runProcess('npm', ['run', script], { root, timeoutMs });
-}
-
-function runLhci(root, metadata, configFile, phase, timeoutMs) {
-  return runProcess(
-    process.execPath,
-    [metadata.binPath, phase, `--config=${configFile}`],
-    { root, timeoutMs },
-  );
-}
+import { executionError } from '../../core/error/repo-guard-error.js';
+import { processOutputDiagnostics } from '../../core/execution/process-output.js';
+import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
+import { createGateResult } from '../../core/result/gate-result.js';
+import {
+  runLighthouseBuild,
+  runLighthousePhase,
+} from '../../integrations/lighthouse/execution.js';
+import { validateVueLighthouseSetup } from '../../integrations/lighthouse/project.js';
 
 export function runVueLighthouse({ root, config, skipBuild = false }) {
   const setup = validateVueLighthouseSetup(root, config);
@@ -66,7 +37,7 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
 
   if (!skipBuild && config.buildScript) {
     diagnostics.push({ level: 'info', message: `repo-guard Lighthouse: running npm script "${config.buildScript}"...` });
-    const execution = runNpmScript(root, config.buildScript, config.timeoutMs);
+    const execution = runLighthouseBuild(root, config.buildScript, config.timeoutMs);
     diagnostics.push(...processOutputDiagnostics(execution, { source: 'lighthouse-build', root }));
     const failedExecution = resultForExecutionFailure(execution, 'Lighthouse build');
     if (failedExecution) return failedExecution;
@@ -87,7 +58,7 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
   }
 
   diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse: collecting configured Vue page results...' });
-  const collectExecution = runLhci(
+  const collectExecution = runLighthousePhase(
     root,
     setup.lighthouse,
     setup.configFile,
@@ -116,7 +87,7 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
   }
 
   diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse: checking project assertions...' });
-  const assertExecution = runLhci(
+  const assertExecution = runLighthousePhase(
     root,
     setup.lighthouse,
     setup.configFile,

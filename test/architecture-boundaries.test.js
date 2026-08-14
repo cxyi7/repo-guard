@@ -43,7 +43,6 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'coverage-runner.js',
   'dependency-policy.js',
   'eslint-runner.js',
-  'lighthouse-runner.js',
   'prettier-runner.js',
   'quality-runner.js',
   'stylelint-runner.js',
@@ -162,6 +161,29 @@ test('keeps Lighthouse project inspection in its integration without a root comp
   assert.equal(
     existsSync(path.join(SOURCE_ROOT, 'integrations', 'lighthouse', 'project.js')),
     true,
+  );
+});
+
+test('separates Lighthouse execution facts from gate decisions without a root runner', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'lighthouse-runner.js')), false);
+  const executionPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'lighthouse',
+    'execution.js',
+  );
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'lighthouse-gate.js');
+  assert.equal(existsSync(executionPath), true);
+  assert.equal(existsSync(gatePath), true);
+
+  const executionSource = readFileSync(executionPath, 'utf8');
+  assert.doesNotMatch(
+    executionSource,
+    /\b(?:createGateResult|processFailureFinding|executionError)\b/,
+  );
+  assert.match(
+    readFileSync(gatePath, 'utf8'),
+    /integrations\/lighthouse\/execution\.js/,
   );
 });
 
