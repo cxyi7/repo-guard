@@ -1352,6 +1352,42 @@ test('keeps file placement configuration validation in the config module', () =>
   );
 });
 
+test('keeps maximum file line configuration validation in the config module', () => {
+  const maxFileLinesValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'max-file-lines-validation.js',
+  );
+  assert.equal(existsSync(maxFileLinesValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const maxFileLinesValidationSource = readFileSync(
+    maxFileLinesValidationPath,
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/max-file-lines-validation\.js['"]/);
+  assert.match(
+    configSource,
+    /validateMaxFileLinesConfiguration\(preCommitValue, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const maxFileLinesValue =/);
+  assert.match(
+    maxFileLinesValidationSource,
+    /export function validateMaxFileLinesConfiguration/,
+  );
+  assert.match(maxFileLinesValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(maxFileLinesValidationSource, /from ['"]\.\/path-matching\.js['"]/);
+  assert.match(
+    maxFileLinesValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    maxFileLinesValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

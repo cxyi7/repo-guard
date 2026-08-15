@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.61
+
+- 将 pre-commit 单文件行数配置验证从 `validateConfigValue` 迁入 `src/config/max-file-lines-validation.js`，由领域模块直接返回规范化后的 `maxFileLines`，主配置验证器只负责编排该结果。
+- 保持对象与开关校验、严格/不回退模式、预警比例、文件匹配规则、最大行数、排除路径、字符串清洗及默认值不变；file-placement、Stylelint、Prettier、ESLint、其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.60
 
 - 将 pre-commit 文件归位配置验证从 `validateConfigValue` 迁入 `src/config/file-placement-validation.js`，由领域模块直接返回规范化后的 `filePlacement`，主配置验证器只负责编排该结果。
