@@ -1,17 +1,17 @@
 import path from 'node:path';
-import { loadConfig } from '../config/configuration-loader.js';
-import { CONFIG_FILE } from '../config/validation-primitives.js';
+import { loadConfig } from '../../config/configuration-loader.js';
+import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import {
   migrateProjectConfig,
   setFeaturesEnabled,
-} from '../orchestration/setup/config-management.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { writeConsoleMessage } from '../core/report/console-renderer.js';
+} from '../setup/config-management.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import {
   ensureAccessibilityTestPolicy,
   ensureArchitecturePolicy,
   ensureUnitTestPolicy,
-} from '../policies/managed-policies.js';
+} from '../../policies/managed-policies.js';
 
 export function runMigrate(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);

@@ -39,6 +39,12 @@ const CLI_CHECK_PATH = path.join(
   'cli',
   'check.js',
 );
+const CLI_CONFIGURATION_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'configuration.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2278,6 +2284,22 @@ test('keeps protected working tree checks in CLI orchestration without a command
   assert.match(cliCheckSource, /collectWorkingTreeChanges/);
   assert.match(cliCheckSource, /writeGateResultConsole/);
   assert.doesNotMatch(cliCheckSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps configuration lifecycle commands in CLI orchestration without a command facade', () => {
+  assert.equal(existsSync(CLI_CONFIGURATION_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'configure.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const cliConfigurationSource = readFileSync(CLI_CONFIGURATION_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\/configuration\.js['"]/);
+  assert.match(cliConfigurationSource, /export function runMigrate/);
+  assert.match(cliConfigurationSource, /export function runEnable/);
+  assert.match(cliConfigurationSource, /export function runDisable/);
+  assert.match(cliConfigurationSource, /from ['"]\.\.\/setup\/config-management\.js['"]/);
+  assert.match(cliConfigurationSource, /from ['"]\.\.\/\.\.\/policies\/managed-policies\.js['"]/);
+  assert.doesNotMatch(cliConfigurationSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.75
+
+- 将只服务 CLI 的配置迁移、功能启用和功能禁用编排从 `src/commands/configure.js` 迁入 `src/orchestration/cli/configuration.js`，CLI runner 直接调用同层模块；删除旧命令路径且不保留兼容转发。
+- 保持配置迁移、功能开关、架构/可访问性/单元测试 AI 策略同步、控制台输出、配置、Hook、CI、公共 exports 和退出码不变，并增加配置 CLI 归属与旧路径防回归测试。
+
 ## 1.4.74
 
 - 将仅服务手动 CLI 的受保护工作区检查从 `src/commands/check.js` 迁入 `src/orchestration/cli/check.js`，CLI runner 直接调用所属编排模块；删除旧命令路径且不保留兼容转发。
