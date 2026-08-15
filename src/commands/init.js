@@ -5,7 +5,7 @@ import {
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../config/defaults.js';
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
 import { CONFIG_FILE } from '../config/validation-primitives.js';
 import { detectProjectArchitectureSetup } from '../gates/quality/architecture-setup.js';
 import {

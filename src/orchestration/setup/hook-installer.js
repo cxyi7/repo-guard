@@ -9,7 +9,7 @@ import path from 'node:path';
 import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from '../../config.js';
+import { loadConfig } from '../../config/configuration-loader.js';
 import { DEFAULT_UNIT_TEST_COVERAGE_CONFIG } from '../../config/defaults.js';
 import { ensureGitAttributes } from './git-attributes.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';

@@ -1,4 +1,4 @@
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
 import { createChangeSet, createGateContext } from '../core/capability/gate-context.js';
 import { defineExecutionPlan, validateExecutionPlan } from '../core/capability/execution-plan.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';

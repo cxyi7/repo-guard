@@ -1,4 +1,4 @@
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
 import {
   cleanupCommitMessage,
   finalizeCommitMessage,

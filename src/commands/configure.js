@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
 import { CONFIG_FILE } from '../config/validation-primitives.js';
 import {
   migrateProjectConfig,

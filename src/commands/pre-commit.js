@@ -1,7 +1,5 @@
-import {
-  loadConfig,
-  validateConfig,
-} from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
+import { validateConfig } from '../config/configuration-validation.js';
 import { CONFIG_FILE } from '../config/validation-primitives.js';
 import { configurationError, internalError, toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { runGit } from '../git/execution.js';

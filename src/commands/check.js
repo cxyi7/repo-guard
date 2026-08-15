@@ -1,4 +1,4 @@
-import { loadConfig } from '../config.js';
+import { loadConfig } from '../config/configuration-loader.js';
 import { collectWorkingTreeChanges } from '../git/change-collection.js';
 import { classifyChanges, displayPath } from '../policies/change-classification.js';
 import { findRepositoryRoot } from '../git/repository.js';

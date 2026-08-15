@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { resolveCiRange } from '../src/orchestration/ci/change-range.js';
 import { runCiGate } from '../src/orchestration/ci/runner.js';
-import { validateConfig } from '../src/config.js';
+import { validateConfig } from '../src/config/configuration-validation.js';
 import { runCiCommand } from '../src/commands/ci.js';
 import { runDoctor } from '../src/commands/doctor.js';
 import { ensureExceptionPolicy } from '../src/policies/managed-policies.js';

@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/config/configuration-loader.js';
 import {
   assertExceptionRegistryCurrent,
   findStructuredException,

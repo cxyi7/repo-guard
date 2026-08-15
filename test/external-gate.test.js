@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { validateConfig } from '../src/config.js';
+import { validateConfig } from '../src/config/configuration-validation.js';
 import { runCiGate } from '../src/orchestration/ci/runner.js';
 import { createProjectGateRegistry } from '../src/gates/registry.js';
 import { createProjectCiFullPlan } from '../src/orchestration/execution-plans.js';

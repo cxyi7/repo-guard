@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import test from 'node:test';
 import { runCiGate } from '../src/orchestration/ci/runner.js';
-import { validateConfig } from '../src/config.js';
+import { validateConfig } from '../src/config/configuration-validation.js';
 import { createChangeSet, createGateContext } from '../src/core/capability/gate-context.js';
 import { createProjectGateRegistry } from '../src/gates/registry.js';
 import { releaseEnvironment } from '../src/integrations/npm/release-environment.js';

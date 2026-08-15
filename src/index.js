@@ -1,4 +1,5 @@
-export { loadConfig, validateConfig } from './config.js';
+export { loadConfig } from './config/configuration-loader.js';
+export { validateConfig } from './config/configuration-validation.js';
 export { matchRule } from './config/path-matching.js';
 export {
   createChangeSet,

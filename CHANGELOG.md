@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.72
+
+- 删除根级 `src/config.js`，将完整配置验证与结构化错误包装归入 `src/config/configuration-validation.js`，将配置文件读取和过期例外检查归入 `src/config/configuration-loader.js`；内部消费者直接依赖所需模块，不保留兼容转发。
+- 保持 npm 根入口的 `loadConfig`/`validateConfig` 对象身份、配置结果、读取与错误行为、过期例外阻断、schema、CLI、Hook、CI、输出和退出码不变，并增加配置生命周期归属与根目录防回归测试。
+
 ## 1.4.71
 
 - 删除 `src/config.js` 对默认值、路径匹配、验证基础符号和 `SUPPORTED_LEVELS` 的内部兼容转发，仓库内部消费者与测试改为直接依赖各符号的所属配置模块；配置入口只保留加载和完整配置验证职责。

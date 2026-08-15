@@ -6,7 +6,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { configureCi } from './config-management.js';
-import { loadConfig } from '../../config.js';
+import { loadConfig } from '../../config/configuration-loader.js';
 import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
 
 export const GITLAB_CI_FILE = '.gitlab-ci.yml';

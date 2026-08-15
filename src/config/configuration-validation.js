@@ -1,3 +1,4 @@
+import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { validateAccessibilityConfiguration } from './accessibility-validation.js';
 import { validateArchitectureConfiguration } from './architecture-validation.js';
 import { validateCiConfiguration } from './ci-validation.js';
@@ -58,4 +59,22 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     rules,
     exclusions,
   };
+}
+
+export function validateConfig(value, configPath = CONFIG_FILE) {
+  try {
+    return validateConfigValue(value, configPath);
+  } catch (error) {
+    throw toRepoGuardError(error, {
+      kind: 'configuration',
+      code: 'config/invalid',
+      expected: `${configPath} must match the supported repo-guard configuration contract.`,
+      remediation: {
+        goal: `Correct ${configPath} without weakening enabled gates or policies.`,
+        steps: ['Use the reported field path and validation message to correct the invalid value.'],
+        constraints: ['Do not disable a gate solely to bypass configuration validation.'],
+        verification: ['Run npm run guard:check after updating the configuration.'],
+      },
+    });
+  }
 }

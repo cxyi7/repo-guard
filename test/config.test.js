@@ -17,9 +17,12 @@ import {
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../src/config/defaults.js';
-import * as configFacade from '../src/config.js';
-
-const { validateConfig } = configFacade;
+import { loadConfig } from '../src/config/configuration-loader.js';
+import { validateConfig } from '../src/config/configuration-validation.js';
+import {
+  loadConfig as publicLoadConfig,
+  validateConfig as publicValidateConfig,
+} from '../src/index.js';
 
 function baseConfig(extra = {}) {
   return {
@@ -36,8 +39,9 @@ function baseConfig(extra = {}) {
   };
 }
 
-test('limits the config facade to configuration lifecycle functions', () => {
-  assert.deepEqual(Object.keys(configFacade).sort(), ['loadConfig', 'validateConfig']);
+test('preserves public configuration lifecycle exports from their owning modules', () => {
+  assert.equal(publicLoadConfig, loadConfig);
+  assert.equal(publicValidateConfig, validateConfig);
 });
 
 test('sparse version 1 configs use the current platform defaults', () => {
