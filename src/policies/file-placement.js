@@ -1,6 +1,6 @@
 import path from 'node:path';
 import micromatch from 'micromatch';
-import { runGit } from './git.js';
+import { runGit } from '../git.js';
 
 function matches(filePath, patterns, { nocase = false } = {}) {
   return micromatch.isMatch(filePath, patterns, {

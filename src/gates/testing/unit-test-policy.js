@@ -8,7 +8,7 @@ import micromatch from 'micromatch';
 import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from '../../config.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { runGit } from '../../git.js';
-import { collectProjectFiles } from '../../file-placement.js';
+import { collectProjectFiles } from '../../policies/file-placement.js';
 import { analyzeUnitTestContent } from '../../integrations/vitest/source-analysis.js';
 import {
   analyzeVueComponentInteractionTest,

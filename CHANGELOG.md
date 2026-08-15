@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.37
+
+- 删除顶层 `src/file-placement.js`，将文件归位规则判断与全项目 Git 文件范围收集迁入 `src/policies/file-placement.js`，不保留兼容转发。
+- 保持 `newFiles`/`changedFiles` 模式、大小写不敏感的规则匹配、exceptions/allowedPatterns、建议目录、删除文件跳过，以及 tracked 与非忽略 untracked 文件收集并排除已删除文件不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.36
 
 - 删除顶层 `src/commit-message.js`，将 `prepare-commit-msg`、`commit-msg` 与 `post-commit` 使用的受管提交信息摘要策略迁入 `src/policies/commit-message-summary.js`，不保留兼容转发。

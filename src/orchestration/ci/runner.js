@@ -4,7 +4,7 @@ import micromatch from 'micromatch';
 import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config.js';
 import { classifyChanges } from '../../git-changes.js';
-import { collectProjectFiles } from '../../file-placement.js';
+import { collectProjectFiles } from '../../policies/file-placement.js';
 import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
 import {
   writeConsoleMessage,

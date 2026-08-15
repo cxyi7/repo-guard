@@ -3,7 +3,7 @@ import { defineGate } from '../../core/capability/gate-definition.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { inspectDependencyPolicy, inspectStagedDependencyPolicy } from './dependency-policy.js';
 import { inspectExceptionRegistry } from '../../exception-registry.js';
-import { inspectFilePlacement } from '../../file-placement.js';
+import { inspectFilePlacement } from '../../policies/file-placement.js';
 import { evaluateMaxFileLines, selectMaxFileLineFiles } from '../../max-file-lines.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
 import { inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';

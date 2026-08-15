@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { DEFAULT_FILE_PLACEMENT_CONFIG } from '../src/config.js';
-import { inspectFilePlacement } from '../src/file-placement.js';
+import { inspectFilePlacement } from '../src/policies/file-placement.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = path.join(process.cwd(), 'bin', 'repo-guard.js');

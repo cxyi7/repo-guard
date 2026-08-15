@@ -77,7 +77,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'config-management.js',
   'config.js',
   'exception-registry.js',
-  'file-placement.js',
   'git-changes.js',
   'git.js',
   'index.js',
@@ -957,6 +956,26 @@ test('keeps local environment governance in policies without a root helper', () 
   assert.doesNotMatch(
     localEnvironmentSource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
+});
+
+test('keeps file placement rules and project scope in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'file-placement.js')), false);
+  const filePlacementPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'file-placement.js',
+  );
+  assert.equal(existsSync(filePlacementPath), true);
+
+  const filePlacementSource = readFileSync(filePlacementPath, 'utf8');
+  assert.match(filePlacementSource, /export function inspectFilePlacement/);
+  assert.match(filePlacementSource, /export function collectProjectFiles/);
+  assert.match(filePlacementSource, /micromatch\.isMatch/);
+  assert.match(filePlacementSource, /\['ls-files', '--cached', '--others'/);
+  assert.doesNotMatch(
+    filePlacementSource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
   );
 });
 

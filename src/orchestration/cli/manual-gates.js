@@ -3,7 +3,7 @@ import { createChangeSet, createGateContext } from '../../core/capability/gate-c
 import { defineExecutionPlan } from '../../core/capability/execution-plan.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
-import { collectProjectFiles } from '../../file-placement.js';
+import { collectProjectFiles } from '../../policies/file-placement.js';
 import { createProjectGateRegistry, gateRegistry } from '../../gates/registry.js';
 import { collectWorkingTreeChanges } from '../../git-changes.js';
 import { findRepositoryRoot } from '../../git.js';
