@@ -1388,6 +1388,38 @@ test('keeps maximum file line configuration validation in the config module', ()
   );
 });
 
+test('keeps Stylelint configuration validation in the config module', () => {
+  const stylelintValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'stylelint-validation.js',
+  );
+  assert.equal(existsSync(stylelintValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const stylelintValidationSource = readFileSync(stylelintValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/stylelint-validation\.js['"]/);
+  assert.match(
+    configSource,
+    /validateStylelintConfiguration\(preCommitValue, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const stylelintValue =/);
+  assert.match(
+    stylelintValidationSource,
+    /export function validateStylelintConfiguration/,
+  );
+  assert.match(stylelintValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    stylelintValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    stylelintValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

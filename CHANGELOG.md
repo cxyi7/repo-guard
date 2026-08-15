@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.62
+
+- 将 pre-commit Stylelint 顶层执行参数、选择器/嵌套复杂度与样式治理配置验证从 `validateConfigValue` 迁入 `src/config/stylelint-validation.js`，由内聚领域模块直接返回规范化后的 `stylelint`，主配置验证器只负责编排该结果。
+- 保持对象与开关校验、文件模式、自动修复、最大警告数、配置要求、复杂度阈值、specificity/ID/important 治理、全局样式路径、父子启用依赖、字符串清洗及默认值不变；file-placement、max-file-lines、Prettier、ESLint、其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.61
 
 - 将 pre-commit 单文件行数配置验证从 `validateConfigValue` 迁入 `src/config/max-file-lines-validation.js`，由领域模块直接返回规范化后的 `maxFileLines`，主配置验证器只负责编排该结果。
