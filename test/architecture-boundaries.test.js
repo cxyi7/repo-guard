@@ -1325,18 +1325,24 @@ test('keeps file placement configuration validation in the config module', () =>
   );
   assert.equal(existsSync(filePlacementValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
   const filePlacementValidationSource = readFileSync(
     filePlacementValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/file-placement-validation\.js['"]/);
   assert.match(
-    configSource,
+    preCommitValidationSource,
+    /from ['"]\.\/file-placement-validation\.js['"]/,
+  );
+  assert.match(
+    preCommitValidationSource,
     /validateFilePlacementConfiguration\(preCommitValue, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const filePlacementValue =/);
+  assert.doesNotMatch(preCommitValidationSource, /const filePlacementValue =/);
   assert.match(
     filePlacementValidationSource,
     /export function validateFilePlacementConfiguration/,
@@ -1360,18 +1366,24 @@ test('keeps maximum file line configuration validation in the config module', ()
   );
   assert.equal(existsSync(maxFileLinesValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
   const maxFileLinesValidationSource = readFileSync(
     maxFileLinesValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/max-file-lines-validation\.js['"]/);
   assert.match(
-    configSource,
+    preCommitValidationSource,
+    /from ['"]\.\/max-file-lines-validation\.js['"]/,
+  );
+  assert.match(
+    preCommitValidationSource,
     /validateMaxFileLinesConfiguration\(preCommitValue, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const maxFileLinesValue =/);
+  assert.doesNotMatch(preCommitValidationSource, /const maxFileLinesValue =/);
   assert.match(
     maxFileLinesValidationSource,
     /export function validateMaxFileLinesConfiguration/,
@@ -1396,15 +1408,21 @@ test('keeps Stylelint configuration validation in the config module', () => {
   );
   assert.equal(existsSync(stylelintValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
   const stylelintValidationSource = readFileSync(stylelintValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/stylelint-validation\.js['"]/);
   assert.match(
-    configSource,
+    preCommitValidationSource,
+    /from ['"]\.\/stylelint-validation\.js['"]/,
+  );
+  assert.match(
+    preCommitValidationSource,
     /validateStylelintConfiguration\(preCommitValue, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const stylelintValue =/);
+  assert.doesNotMatch(preCommitValidationSource, /const stylelintValue =/);
   assert.match(
     stylelintValidationSource,
     /export function validateStylelintConfiguration/,
@@ -1428,15 +1446,21 @@ test('keeps Prettier configuration validation in the config module', () => {
   );
   assert.equal(existsSync(prettierValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
   const prettierValidationSource = readFileSync(prettierValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/prettier-validation\.js['"]/);
   assert.match(
-    configSource,
+    preCommitValidationSource,
+    /from ['"]\.\/prettier-validation\.js['"]/,
+  );
+  assert.match(
+    preCommitValidationSource,
     /validatePrettierConfiguration\(preCommitValue, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const prettierValue =/);
+  assert.doesNotMatch(preCommitValidationSource, /const prettierValue =/);
   assert.match(
     prettierValidationSource,
     /export function validatePrettierConfiguration/,
@@ -1460,15 +1484,21 @@ test('keeps ESLint configuration validation in the config module', () => {
   );
   assert.equal(existsSync(eslintValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
   const eslintValidationSource = readFileSync(eslintValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/eslint-validation\.js['"]/);
   assert.match(
-    configSource,
+    preCommitValidationSource,
+    /from ['"]\.\/eslint-validation\.js['"]/,
+  );
+  assert.match(
+    preCommitValidationSource,
     /validateEslintConfiguration\(preCommitValue, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const eslintValue =/);
+  assert.doesNotMatch(preCommitValidationSource, /const eslintValue =/);
   assert.match(
     eslintValidationSource,
     /export function validateEslintConfiguration/,
@@ -1481,6 +1511,59 @@ test('keeps ESLint configuration validation in the config module', () => {
   assert.doesNotMatch(
     eslintValidationSource,
     /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
+test('keeps staged quality configuration validation in its config module', () => {
+  const preCommitValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'pre-commit-validation.js',
+  );
+  assert.equal(existsSync(preCommitValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const preCommitValidationSource = readFileSync(
+    preCommitValidationPath,
+    'utf8',
+  );
+
+  assert.match(
+    configSource,
+    /from ['"]\.\/config\/pre-commit-validation\.js['"]/,
+  );
+  assert.match(
+    configSource,
+    /validatePreCommitConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const preCommitValue =/);
+  assert.match(
+    preCommitValidationSource,
+    /export function validatePreCommitConfiguration/,
+  );
+  for (const moduleName of [
+    'eslint',
+    'file-placement',
+    'max-file-lines',
+    'prettier',
+    'stylelint',
+  ]) {
+    assert.match(
+      preCommitValidationSource,
+      new RegExp(`from ['"]\\./${moduleName}-validation\\.js['"]`),
+    );
+  }
+  assert.match(
+    preCommitValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    preCommitValidationSource,
+    /(?:protected-file-validation|normalizeProtectedFileConfiguration|validateProtectedFileConfigurationShape)/,
+  );
+  assert.doesNotMatch(
+    preCommitValidationSource,
+    /from ['"][^'"]*(?:commands|integrations|orchestration|policies)\//,
   );
 });
 

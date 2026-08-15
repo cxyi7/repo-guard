@@ -41,18 +41,14 @@ import { validateAccessibilityConfiguration } from './config/accessibility-valid
 import { validateArchitectureConfiguration } from './config/architecture-validation.js';
 import { validateCiConfiguration } from './config/ci-validation.js';
 import { validateDependencyPolicyConfiguration } from './config/dependency-policy-validation.js';
-import { validateEslintConfiguration } from './config/eslint-validation.js';
 import { validateExceptionConfiguration } from './config/exception-validation.js';
 import { validateExecutionGateConfiguration } from './config/execution-gate-validation.js';
-import { validateFilePlacementConfiguration } from './config/file-placement-validation.js';
-import { validateMaxFileLinesConfiguration } from './config/max-file-lines-validation.js';
 import { validateNotificationConfiguration } from './config/notification-validation.js';
-import { validatePrettierConfiguration } from './config/prettier-validation.js';
+import { validatePreCommitConfiguration } from './config/pre-commit-validation.js';
 import {
   normalizeProtectedFileConfiguration,
   validateProtectedFileConfigurationShape,
 } from './config/protected-file-validation.js';
-import { validateStylelintConfiguration } from './config/stylelint-validation.js';
 import { validateUnitTestConfiguration } from './config/unit-test-validation.js';
 
 export { SUPPORTED_LEVELS } from './config/protected-file-validation.js';
@@ -137,25 +133,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const unitTest = validateUnitTestConfiguration(value, configPath);
 
-  const preCommitValue = value.preCommit ?? {};
-  if (!preCommitValue || typeof preCommitValue !== 'object' || Array.isArray(preCommitValue)) {
-    throw configValidationError(`${configPath} preCommit must be an object`);
-  }
-  assertKnownProperties(
-    preCommitValue,
-    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines', 'filePlacement']),
-    `${configPath} preCommit`,
-  );
-
-  const filePlacement = validateFilePlacementConfiguration(preCommitValue, configPath);
-
-  const maxFileLines = validateMaxFileLinesConfiguration(preCommitValue, configPath);
-
-  const stylelint = validateStylelintConfiguration(preCommitValue, configPath);
-
-  const prettier = validatePrettierConfiguration(preCommitValue, configPath);
-
-  const eslint = validateEslintConfiguration(preCommitValue, configPath);
+  const preCommit = validatePreCommitConfiguration(value, configPath);
 
   const { rules, exclusions } = normalizeProtectedFileConfiguration(value, configPath);
 
@@ -172,13 +150,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
     typeCheck,
     accessibilityTest,
     unitTest,
-    preCommit: {
-      filePlacement,
-      maxFileLines,
-      stylelint,
-      prettier,
-      eslint,
-    },
+    preCommit,
     rules,
     exclusions,
   };

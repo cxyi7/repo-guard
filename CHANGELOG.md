@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.67
+
+- 将 `preCommit` 容器形状验证及 file-placement、max-file-lines、Stylelint、Prettier、ESLint 五类 staged-code 质量配置编排从 `validateConfigValue` 迁入 `src/config/pre-commit-validation.js`，主配置验证器只负责编排规范化后的 `preCommit` 结果。
+- 保持容器对象与已知字段校验、五类子配置验证顺序、默认值及返回结构不变；保护文件检查继续保持独立，Hook 执行顺序、其他门禁、加载、schema、CLI、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.66
 
 - 将项目通知开关配置验证从 `validateConfigValue` 迁入 `src/config/notification-validation.js`，由领域模块直接返回规范化后的 `notification`，主配置验证器只负责编排该结果。
