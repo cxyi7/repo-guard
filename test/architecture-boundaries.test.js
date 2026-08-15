@@ -51,6 +51,12 @@ const CLI_INSTALL_CI_PATH = path.join(
   'cli',
   'install-ci.js',
 );
+const COMMIT_MESSAGE_RUNNER_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'commit-message',
+  'runner.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -847,6 +853,22 @@ test('keeps managed commit-message summaries in policies without a root helper',
     summaryPolicySource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
   );
+});
+
+test('keeps commit-message Hook lifecycle in orchestration without a command facade', () => {
+  assert.equal(existsSync(COMMIT_MESSAGE_RUNNER_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'hook-message.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const commitMessageRunnerSource = readFileSync(COMMIT_MESSAGE_RUNNER_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\.\/commit-message\/runner\.js['"]/);
+  assert.match(commitMessageRunnerSource, /export function runHookMessage/);
+  assert.match(
+    commitMessageRunnerSource,
+    /from ['"]\.\.\/\.\.\/policies\/commit-message-summary\.js['"]/,
+  );
+  assert.doesNotMatch(commitMessageRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps structured exception validity and matching in policies without a root helper', () => {

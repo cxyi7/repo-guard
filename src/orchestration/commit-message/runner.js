@@ -1,11 +1,11 @@
-import { loadConfig } from '../config/configuration-loader.js';
+import { loadConfig } from '../../config/configuration-loader.js';
 import {
   cleanupCommitMessage,
   finalizeCommitMessage,
   prepareCommitMessage,
-} from '../policies/commit-message-summary.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { configurationError } from '../core/error/repo-guard-error.js';
+} from '../../policies/commit-message-summary.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
 
 export function runHookMessage(argumentsList, cwd = process.cwd()) {
   const [mode, messageFile = '', source = '', sourceCommit = ''] = argumentsList;

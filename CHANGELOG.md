@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.77
+
+- 将 `prepare-commit-msg`、`commit-msg` 与 `post-commit` 共用的提交信息 Hook 生命周期编排从 `src/commands/hook-message.js` 迁入 `src/orchestration/commit-message/runner.js`，CLI runner 只负责分发；删除旧命令路径且不保留兼容转发。
+- 保持模式校验、仓库与配置加载、prepare/finalize/cleanup 调用顺序、提交信息摘要策略、受管 Hook 内容与版本、配置、CI、公共 exports、输出和退出码不变，并增加提交信息编排归属与旧路径防回归测试。
+
 ## 1.4.76
 
 - 将只服务 CLI 的 GitLab CI 安装参数接线与结果展示从 `src/commands/install-ci.js` 迁入 `src/orchestration/cli/install-ci.js`，CLI runner 直接调用同层模块；删除旧命令路径且不保留兼容转发。

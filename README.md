@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.76
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.77
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.77
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.77
+npx repo-guard doctor
+```
+
+1.4.77 删除 `src/commands/hook-message.js`，将 `prepare-commit-msg`、`commit-msg` 与 `post-commit` 共用的提交信息 Hook 生命周期编排归入 `src/orchestration/commit-message/runner.js`；CLI runner 只负责分发，不保留旧路径兼容转发。模式校验、仓库与配置加载、prepare/finalize/cleanup 调用顺序、提交信息摘要策略、受管 Hook 内容与版本、配置、CI、公共 exports、输出和退出码均不变。
 
 ## 升级到 1.4.76
 

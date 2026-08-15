@@ -16,7 +16,7 @@ import { configurationError, errorStatus, toRepoGuardError } from '../../core/er
 import { createGateResult, gateResultToExitCode } from '../../core/result/gate-result.js';
 import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { runGate } from '../../commands/gate.js';
-import { runHookMessage } from '../../commands/hook-message.js';
+import { runHookMessage } from '../commit-message/runner.js';
 import { runInit, runInstallHooks } from '../../commands/init.js';
 import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../../commands/pre-push.js';
