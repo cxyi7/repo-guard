@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'prettier-runner.js',
   'quality-runner.js',
   'stylelint-runner.js',
 ]);
@@ -461,6 +460,35 @@ test('separates ESLint project and execution facts from quality policy decisions
   assert.match(gateSource, /integrations\/eslint\/execution\.js/);
   assert.match(gateSource, /integrations\/eslint\/project\.js/);
   assert.doesNotMatch(gateSource, /\b(?:pathToFileURL|outputFixes|isPathIgnored)\b/);
+});
+
+test('separates Prettier project and formatting facts from quality decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'prettier-runner.js')), false);
+  const integrationPaths = [
+    path.join(SOURCE_ROOT, 'integrations', 'prettier', 'project.js'),
+    path.join(SOURCE_ROOT, 'integrations', 'prettier', 'execution.js'),
+  ];
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'prettier-gate.js');
+  for (const target of [...integrationPaths, gatePath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = integrationPaths
+    .map((target) => readFileSync(target, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|collectFormatting|captureFileContents|restoreFileContents)\b/,
+  );
+  assert.match(integrationSource, /export async function loadProjectPrettier/);
+  assert.match(integrationSource, /export function prepareProjectPrettierExecution/);
+  const gateSource = readFileSync(gatePath, 'utf8');
+  assert.match(gateSource, /integrations\/prettier\/execution\.js/);
+  assert.match(gateSource, /integrations\/prettier\/project\.js/);
+  assert.doesNotMatch(
+    gateSource,
+    /\bprettier\.(?:getFileInfo|resolveConfig|format)\b|\b(?:pathToFileURL|writeFileSync)\b/,
+  );
 });
 
 test('keeps CI execution and report persistence inside orchestration', () => {

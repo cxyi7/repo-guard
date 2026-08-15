@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.17
+
+- 删除顶层 `src/prettier-runner.js`，将消费项目 Prettier 解析加载、ignore/config/parser 事实、格式化调用和文件写入迁入 `src/integrations/prettier`，将配置与 parser 判定、格式差异 findings、失败回滚和 GateResult 判定迁入 `src/gates/quality/prettier-gate.js`，不保留兼容转发。
+- 保持消费项目 Prettier 安装、配置、插件、EditorConfig 和 ignore 文件所有权，继续只格式化暂存文件并由 `lint-staged` 保护部分暂存/未暂存内容；错误代码、结果、CLI、公共 exports 及固定 pre-commit 顺序不变。
+- 增加阶段 8 防回归测试，确认 Prettier integrations 不持有 policy/result/回滚判定、quality gate 不直接加载或调用 Prettier API，并从顶层 runner 待迁移清单移除 Prettier runner。
+
 ## 1.4.16
 
 - 删除顶层 `src/eslint-runner.js` 与 `src/eslint-config.js`，将消费项目 ESLint/插件解析加载、忽略判断和 lint/fix 执行迁入 `src/integrations/eslint`，将 preset、warning 阈值、findings、回滚和 GateResult 判定迁入 `src/gates/quality`，不保留兼容转发。

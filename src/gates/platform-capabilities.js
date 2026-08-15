@@ -36,9 +36,11 @@ import { validateVueLighthouseSetup } from '../integrations/lighthouse/project.j
 import { runVueLighthouse } from './quality/lighthouse-gate.js';
 import {
   runPrettierFiles,
+} from './quality/prettier-gate.js';
+import {
   resolveProjectPrettierConfigFile,
   resolveProjectPrettierMetadata,
-} from '../prettier-runner.js';
+} from '../integrations/prettier/project.js';
 import {
   findProjectStylelintConfig,
   resolveProjectStylelintMetadata,
