@@ -2204,6 +2204,37 @@ test('imports the public API without filesystem, process, or network side effect
   );
 });
 
+test('keeps CLI argument parsing in CLI orchestration', () => {
+  const argumentParsingPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'cli',
+    'argument-parsing.js',
+  );
+  assert.equal(existsSync(argumentParsingPath), true);
+
+  const cliSource = readFileSync(path.join(SOURCE_ROOT, 'cli.js'), 'utf8');
+  const argumentParsingSource = readFileSync(argumentParsingPath, 'utf8');
+
+  assert.match(
+    cliSource,
+    /from ['"]\.\/orchestration\/cli\/argument-parsing\.js['"]/,
+  );
+  assert.doesNotMatch(cliSource, /^function ensureSupportedOptions/m);
+  assert.doesNotMatch(cliSource, /^function parseValuedOptions/m);
+  assert.match(argumentParsingSource, /export function ensureSupportedOptions/);
+  assert.match(argumentParsingSource, /export function parseValuedOptions/);
+  assert.match(
+    argumentParsingSource,
+    /from ['"]\.\.\/\.\.\/core\/error\/repo-guard-error\.js['"]/,
+  );
+  assert.doesNotMatch(
+    argumentParsingSource,
+    /from ['"][^'"]*(?:commands|gates|integrations|policies)\//,
+  );
+  assert.doesNotMatch(argumentParsingSource, /(?:node:fs|process\.|readFileSync)/);
+});
+
 test('keeps CLI execution behind the reviewed npm bin entrypoint', () => {
   const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.deepEqual(packageJson.bin, { 'repo-guard': 'bin/repo-guard.js' });

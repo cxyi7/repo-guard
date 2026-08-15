@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.70
+
+- 将 CLI 无值选项校验和带值选项解析从 `src/cli.js` 迁入 `src/orchestration/cli/argument-parsing.js`，入口分发器只在命令分支声明各自支持的参数。
+- 保持支持项、未知选项、缺失值、重复值覆盖及错误文本不变；命令分发、帮助文本、错误呈现、配置、Hook、CI、公共 exports、输出和退出码均不变，并增加参数行为与职责边界防回归测试。
+
 ## 1.4.69
 
 - 将各配置领域的验证与规范化编排函数 `validateConfigValue` 从 `src/config.js` 迁入 `src/config/configuration-validation.js`，配置入口只保留公共导出、统一错误包装和文件加载职责。
