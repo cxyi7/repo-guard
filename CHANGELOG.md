@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.78
+
+- 将只服务手动 CLI 的暂存区受保护文件门禁编排从 `src/commands/gate.js` 迁入 `src/orchestration/cli/gate.js`，CLI runner 与定向测试直接依赖所属模块；删除旧命令路径且不保留兼容转发。
+- 保持手动执行计划、暂存变更收集、dry-run、强制通知、注入上下文、结构化错误、控制台输出、配置、Hook、CI、公共 exports 和退出码不变，并增加手动门禁归属与旧路径防回归测试。
+
 ## 1.4.77
 
 - 将 `prepare-commit-msg`、`commit-msg` 与 `post-commit` 共用的提交信息 Hook 生命周期编排从 `src/commands/hook-message.js` 迁入 `src/orchestration/commit-message/runner.js`，CLI runner 只负责分发；删除旧命令路径且不保留兼容转发。

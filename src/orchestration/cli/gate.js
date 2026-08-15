@@ -1,12 +1,12 @@
-import { loadConfig } from '../config/configuration-loader.js';
-import { createChangeSet, createGateContext } from '../core/capability/gate-context.js';
-import { defineExecutionPlan, validateExecutionPlan } from '../core/capability/execution-plan.js';
-import { toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { writeGateResultConsole } from '../core/report/console-renderer.js';
-import { collectStagedChanges } from '../git/change-collection.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { gateRegistry } from '../gates/registry.js';
-import { orchestratePlan } from '../orchestration/orchestrator.js';
+import { loadConfig } from '../../config/configuration-loader.js';
+import { createChangeSet, createGateContext } from '../../core/capability/gate-context.js';
+import { defineExecutionPlan, validateExecutionPlan } from '../../core/capability/execution-plan.js';
+import { toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { collectStagedChanges } from '../../git/change-collection.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { gateRegistry } from '../../gates/registry.js';
+import { orchestratePlan } from '../orchestrator.js';
 
 const protectedFilesManualPlan = validateExecutionPlan(defineExecutionPlan({
   id: 'manual:protected-files',

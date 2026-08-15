@@ -39,6 +39,12 @@ const CLI_CHECK_PATH = path.join(
   'cli',
   'check.js',
 );
+const CLI_GATE_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'gate.js',
+);
 const CLI_CONFIGURATION_PATH = path.join(
   SOURCE_ROOT,
   'orchestration',
@@ -2312,6 +2318,20 @@ test('keeps protected working tree checks in CLI orchestration without a command
   assert.match(cliCheckSource, /collectWorkingTreeChanges/);
   assert.match(cliCheckSource, /writeGateResultConsole/);
   assert.doesNotMatch(cliCheckSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps the manual protected-file gate in CLI orchestration without a command facade', () => {
+  assert.equal(existsSync(CLI_GATE_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'gate.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const cliGateSource = readFileSync(CLI_GATE_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\/gate\.js['"]/);
+  assert.match(cliGateSource, /export async function runGate/);
+  assert.match(cliGateSource, /id: ['"]manual:protected-files['"]/);
+  assert.match(cliGateSource, /from ['"]\.\.\/orchestrator\.js['"]/);
+  assert.doesNotMatch(cliGateSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps configuration lifecycle commands in CLI orchestration without a command facade', () => {
