@@ -35,9 +35,7 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
   'registry.js',
 ]);
 
-const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'quality-runner.js',
-]);
+const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([]);
 
 const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
 
@@ -127,6 +125,27 @@ test('does not add new top-level runner, policy, or parser files', () => {
     .map((entry) => entry.name)
     .sort();
   assert.deepEqual(topLevelGateFiles, REVIEWED_TOP_LEVEL_GATE_FILES);
+});
+
+test('keeps staged quality execution inside pre-commit orchestration', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'quality-runner.js')), false);
+  const runnerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'quality-runner.js',
+  );
+  assert.equal(existsSync(runnerPath), true);
+
+  const runnerSource = readFileSync(runnerPath, 'utf8');
+  assert.match(runnerSource, /plan: preCommitQualityPlan/);
+  assert.match(runnerSource, /registry: gateRegistry/);
+  assert.match(runnerSource, /createGateContext/);
+  assert.match(runnerSource, /writeGateResultConsole/);
+  assert.doesNotMatch(
+    runnerSource,
+    /\blint-staged\b|run\w+Project|quality\.typecheck|quality\.lighthouse/,
+  );
 });
 
 test('keeps project dependency discovery in core/project without a root compatibility path', () => {

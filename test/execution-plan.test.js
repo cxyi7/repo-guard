@@ -299,7 +299,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     'commands/doctor',
     'hook-installer',
     'orchestration/ci/runner',
-    'quality-runner',
+    'orchestration/pre-commit/quality-runner',
     'commands/pre-push',
   ].map((name) => [name, readFileSync(new URL(`../src/${name}.js`, import.meta.url), 'utf8')]));
 
@@ -307,8 +307,11 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   assert.doesNotMatch(sources['hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
   assert.match(sources['commands/doctor'], /createProjectGateRegistry\(config\)\.all/);
   assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
-  assert.match(sources['quality-runner'], /plan: preCommitQualityPlan/);
-  assert.doesNotMatch(sources['quality-runner'], /run\w+Project|quality\.typecheck|quality\.lighthouse/);
+  assert.match(sources['orchestration/pre-commit/quality-runner'], /plan: preCommitQualityPlan/);
+  assert.doesNotMatch(
+    sources['orchestration/pre-commit/quality-runner'],
+    /run\w+Project|quality\.typecheck|quality\.lighthouse/,
+  );
   assert.match(sources['commands/pre-push'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);

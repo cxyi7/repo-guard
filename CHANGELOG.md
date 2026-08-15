@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.19
+
+- 删除顶层 `src/quality-runner.js`，将暂存文件选择、执行配置构造、GateContext 创建、固定 Execution Plan 编排、结果渲染与失败回滚迁入 `src/orchestration/pre-commit/quality-runner.js`，不保留兼容转发。
+- 保持 `quality-gate.js` 的独立 `lint-staged` 边界和部分暂存/未暂存内容保护；Stylelint fix、ESLint fix、Prettier、只读 Stylelint/ESLint 验证、其他 staged-only 门禁及最后的 protected-file gate 顺序、错误代码、结果、CLI 和公共 exports 不变。
+- 增加阶段 8 防回归测试，确认 staged quality runner 只编排 Registry Gate，不直接调用消费项目工具或引入 project-wide 门禁，并将顶层 runner/policy/parser 待迁移清单收敛为空。
+
 ## 1.4.18
 
 - 删除顶层 `src/stylelint-runner.js`，将消费项目 Stylelint 加载、项目配置解析与 lint 调用迁入 `src/integrations/stylelint`，将复杂度/样式治理规则、项目规则去重、结构化例外、warning 阈值、findings、回滚和 GateResult 判定迁入 `src/gates/quality/stylelint-gate.js`，不保留兼容转发。

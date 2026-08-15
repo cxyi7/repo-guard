@@ -7,7 +7,7 @@ import { configurationError, internalError, toRepoGuardError } from '../core/err
 import { findRepositoryRoot, runGit } from '../git.js';
 import { collectStagedChanges } from '../git-changes.js';
 import { runQualityGate } from '../quality-gate.js';
-import { runQualityExecution } from '../quality-runner.js';
+import { runQualityExecution } from '../orchestration/pre-commit/quality-runner.js';
 import {
   createChangeSet,
   createGateContext,

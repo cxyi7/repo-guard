@@ -2,22 +2,22 @@ import micromatch from 'micromatch';
 import {
   captureFileContents,
   restoreFileContents,
-} from './file-snapshot.js';
-import { normalizeStagedFiles } from './staged-files.js';
-import { gateRegistry } from './gates/registry.js';
-import { writeGateResultConsole } from './core/report/console-renderer.js';
+} from '../../file-snapshot.js';
+import { normalizeStagedFiles } from '../../staged-files.js';
+import { gateRegistry } from '../../gates/registry.js';
+import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
-} from './max-file-lines.js';
-import { collectStagedChanges } from './git-changes.js';
+} from '../../max-file-lines.js';
+import { collectStagedChanges } from '../../git-changes.js';
 import {
   createChangeSet,
   createGateContext,
-} from './core/capability/gate-context.js';
-import { createGateResult } from './core/result/gate-result.js';
-import { internalError, toRepoGuardError } from './core/error/repo-guard-error.js';
-import { orchestratePlan } from './orchestration/orchestrator.js';
-import { preCommitQualityPlan } from './orchestration/pre-commit/protected-plan.js';
+} from '../../core/capability/gate-context.js';
+import { createGateResult } from '../../core/result/gate-result.js';
+import { internalError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { orchestratePlan } from '../orchestrator.js';
+import { preCommitQualityPlan } from './protected-plan.js';
 
 function selectFiles(files, pattern) {
   return files
