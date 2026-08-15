@@ -1287,6 +1287,36 @@ test('keeps accessibility configuration validation in the config module', () => 
   );
 });
 
+test('keeps unit test configuration validation in the config module', () => {
+  const unitTestValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'unit-test-validation.js',
+  );
+  assert.equal(existsSync(unitTestValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const unitTestValidationSource = readFileSync(unitTestValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/unit-test-validation\.js['"]/);
+  assert.match(configSource, /validateUnitTestConfiguration\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /const unitTestValue =/);
+  assert.match(
+    unitTestValidationSource,
+    /export function validateUnitTestConfiguration/,
+  );
+  assert.match(unitTestValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(unitTestValidationSource, /from ['"]\.\/path-matching\.js['"]/);
+  assert.match(
+    unitTestValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    unitTestValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
