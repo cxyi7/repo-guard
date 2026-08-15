@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.82
+
+- 将推送修订配置加载、门禁启用判断及精确 HEAD/干净工作区快照校验从 pre-push 生命周期入口拆入 `src/orchestration/pre-push/push-configuration.js`，runner 只消费解析结果并编排门禁。
+- 保持推送范围、删除 ref 与缺失配置的跳过语义、多修订阻断、配置错误、门禁顺序、Hook、CI、公共 exports 和退出码不变，并增加配置解析与执行编排职责边界测试。
+
 ## 1.4.81
 
 - 将 pre-commit 生命周期、暂存配置读取和保护策略执行从 `src/commands/pre-commit.js` 迁入 `src/orchestration/pre-commit/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧命令路径且不保留兼容转发。

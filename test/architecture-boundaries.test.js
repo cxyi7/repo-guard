@@ -75,6 +75,12 @@ const PRE_COMMIT_RUNNER_PATH = path.join(
   'pre-commit',
   'runner.js',
 );
+const PRE_PUSH_CONFIGURATION_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'pre-push',
+  'push-configuration.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2409,6 +2415,20 @@ test('keeps pre-commit lifecycle orchestration in its domain without a command f
   assert.match(preCommitRunnerSource, /from ['"]\.\/protected-plan\.js['"]/);
   assert.doesNotMatch(preCommitRunnerSource, /quality-command\.js|quality-runner\.js/);
   assert.doesNotMatch(preCommitRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps pushed configuration and exact snapshot resolution separate from pre-push execution', () => {
+  assert.equal(existsSync(PRE_PUSH_CONFIGURATION_PATH), true);
+
+  const prePushSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'pre-push.js'), 'utf8');
+  const configurationSource = readFileSync(PRE_PUSH_CONFIGURATION_PATH, 'utf8');
+
+  assert.match(prePushSource, /from ['"]\.\.\/orchestration\/pre-push\/push-configuration\.js['"]/);
+  assert.doesNotMatch(prePushSource, /function (?:loadConfigAtRevision|assertExactPushSnapshot|resolvePushConfig)/);
+  assert.match(configurationSource, /export function resolvePushConfig/);
+  assert.match(configurationSource, /from ['"]\.\/change-range\.js['"]/);
+  assert.match(configurationSource, /pre-push\/snapshot-mismatch/);
+  assert.doesNotMatch(configurationSource, /orchestratePlan|writeGateResultConsole/);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {
