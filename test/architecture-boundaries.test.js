@@ -1484,6 +1484,56 @@ test('keeps ESLint configuration validation in the config module', () => {
   );
 });
 
+test('keeps protected-file configuration separate from staged quality validation', () => {
+  const protectedFileValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'protected-file-validation.js',
+  );
+  assert.equal(existsSync(protectedFileValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const protectedFileValidationSource = readFileSync(
+    protectedFileValidationPath,
+    'utf8',
+  );
+
+  assert.match(
+    configSource,
+    /validateProtectedFileConfigurationShape\(value, configPath\)/,
+  );
+  assert.match(
+    configSource,
+    /normalizeProtectedFileConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /value\.rules\.map/);
+  assert.match(protectedFileValidationSource, /export const SUPPORTED_LEVELS/);
+  assert.match(
+    protectedFileValidationSource,
+    /export function validateProtectedFileConfigurationShape/,
+  );
+  assert.match(
+    protectedFileValidationSource,
+    /export function normalizeProtectedFileConfiguration/,
+  );
+  assert.match(
+    protectedFileValidationSource,
+    /from ['"]\.\/path-matching\.js['"]/,
+  );
+  assert.match(
+    protectedFileValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    protectedFileValidationSource,
+    /(?:eslint|prettier|stylelint|lint-staged)/i,
+  );
+  assert.doesNotMatch(
+    protectedFileValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

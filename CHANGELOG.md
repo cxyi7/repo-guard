@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.65
+
+- 将根级保护文件 `rules`/`exclusions` 的集合预检、规则字段验证、路径清洗与 matcher 编译从 `validateConfigValue` 迁入 `src/config/protected-file-validation.js`，与 pre-commit staged-code 质量配置保持独立；主配置验证器仅在原时序点调用形状预检和规范化结果。
+- 保持至少一条规则、排除项数组、pattern/category/level、`notify`/`audit` 级别、首条规则匹配、排除优先级、Git 路径规范化、错误顺序及 `SUPPORTED_LEVELS` 兼容导出不变；其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.64
 
 - 将 pre-commit ESLint 暂存代码质量配置验证从 `validateConfigValue` 迁入 `src/config/eslint-validation.js`，由领域模块直接返回规范化后的 `eslint`，主配置验证器只负责编排该结果。
