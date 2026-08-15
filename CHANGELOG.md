@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.28
+
+- 删除顶层 `src/pre-push-changes.js`，将 pre-push 协议解析和精确推送范围收集迁入 `src/orchestration/pre-push/change-range.js`，不保留兼容转发。
+- 保持空输入 fallback、删除引用跳过、新分支基线选择、rename 检测、跨 revision 去重、稳定错误代码和 ChangeSet 内容不变，配置格式、CLI、Hook、CI、公共 exports、输出和退出码保持不变；增加架构防回归测试，固定 pre-push 范围所有权。
+
 ## 1.4.27
 
 - 删除顶层 `src/ci-changes.js`，将 CI 的 Git base/head 校验和精确 revision range 解析迁入 `src/orchestration/ci/change-range.js`，不保留兼容转发。

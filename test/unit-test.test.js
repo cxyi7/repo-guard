@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { DEFAULT_UNIT_TEST_CONFIG } from '../src/config.js';
 import { createChangeSet } from '../src/core/capability/gate-context.js';
-import { collectPrePushChanges } from '../src/pre-push-changes.js';
+import { collectPrePushChanges } from '../src/orchestration/pre-push/change-range.js';
 import {
   ensureUnitTestPolicy,
   isUnitTestPolicyCurrent,

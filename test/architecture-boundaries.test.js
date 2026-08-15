@@ -87,7 +87,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'index.js',
   'local-env.js',
   'max-file-lines.js',
-  'pre-push-changes.js',
   'quality-gate.js',
   'state.js',
   'style-governance.js',
@@ -678,6 +677,23 @@ test('keeps CI revision range ownership inside CI orchestration without a root c
   assert.match(ciRangeSource, /export function resolveCiRange/);
   assert.match(ciRangeSource, /CI_MERGE_REQUEST_DIFF_BASE_SHA/);
   assert.doesNotMatch(ciRangeSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('keeps pre-push revision range ownership inside pre-push orchestration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'pre-push-changes.js')), false);
+  const prePushRangePath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-push',
+    'change-range.js',
+  );
+  assert.equal(existsSync(prePushRangePath), true);
+
+  const prePushRangeSource = readFileSync(prePushRangePath, 'utf8');
+  assert.match(prePushRangeSource, /export function parsePrePushUpdates/);
+  assert.match(prePushRangeSource, /export function collectPrePushChanges/);
+  assert.match(prePushRangeSource, /refs\/remotes\/\$\{remoteName\}\/HEAD/);
+  assert.doesNotMatch(prePushRangeSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('separates package and staged metadata facts from dependency policy decisions', () => {

@@ -4,7 +4,7 @@ import { findRepositoryRoot, gitValue, runGit } from '../git.js';
 import {
   collectPrePushChanges,
   parsePrePushUpdates,
-} from '../pre-push-changes.js';
+} from '../orchestration/pre-push/change-range.js';
 import { assertExceptionRegistryCurrent } from '../exception-registry.js';
 import {
   createChangeSet,
