@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.50
+
+- 将 `src/config.js` 中独立的 22 组平台默认配置迁入 `src/config/defaults.js`，由配置入口显式导入并重导出原有常量名称；配置验证、加载、路径匹配和 schema 均不在本版本扩展范围内。
+- 保持所有默认开关、脚本名、超时、glob、架构规则、覆盖率阈值、文件归位规则、嵌套 `Object.freeze` 结构和现有导入契约不变，并增加默认值模块职责边界与打包面防回归测试。
+
 ## 1.4.49
 
 - 删除混合职责的顶层 `src/git.js`：将 Git 子进程执行与可选值读取迁入 `src/git/execution.js`，将仓库根目录发现与 Git 元数据路径解析迁入 `src/git/repository.js`，不保留兼容转发。

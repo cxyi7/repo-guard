@@ -65,6 +65,7 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
 
 const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
   'commands',
+  'config',
   'core',
   'gates',
   'git',
@@ -1054,6 +1055,21 @@ test('keeps project configuration lifecycle in setup orchestration without a roo
   );
   assert.match(configManagementSource, /export function configureCi/);
   assert.doesNotMatch(configManagementSource, /from ['"][^'"]*commands\//);
+});
+
+test('keeps immutable platform defaults in the config module', () => {
+  const defaultsPath = path.join(SOURCE_ROOT, 'config', 'defaults.js');
+  assert.equal(existsSync(defaultsPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const defaultsSource = readFileSync(defaultsPath, 'utf8');
+  assert.match(configSource, /from ['"]\.\/config\/defaults\.js['"]/);
+  assert.doesNotMatch(configSource, /^export const DEFAULT_/m);
+  assert.match(defaultsSource, /export const DEFAULT_ARCHITECTURE_CONFIG/);
+  assert.match(defaultsSource, /export const DEFAULT_UNIT_TEST_CONFIG/);
+  assert.match(defaultsSource, /export const DEFAULT_FILE_PLACEMENT_CONFIG/);
+  assert.match(defaultsSource, /Object\.freeze/);
+  assert.doesNotMatch(defaultsSource, /^import /m);
 });
 
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
