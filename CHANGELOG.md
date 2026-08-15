@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.38
+
+- 删除顶层 `src/max-file-lines.js`，将物理行数统计、Vue 分区分析、规则选择与基线比较迁入 `src/policies/max-file-lines.js`，不保留兼容转发。
+- 保持 `strict`/`noRegression` 模式、首条匹配与排除规则、临界值告警、重命名文件基线回退和既有超限文件不增长语义不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.37
 
 - 删除顶层 `src/file-placement.js`，将文件归位规则判断与全项目 Git 文件范围收集迁入 `src/policies/file-placement.js`，不保留兼容转发。

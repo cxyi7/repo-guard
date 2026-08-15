@@ -8,7 +8,7 @@ import { gateRegistry } from '../../gates/registry.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
-} from '../../max-file-lines.js';
+} from '../../policies/max-file-lines.js';
 import { collectStagedChanges } from '../../git-changes.js';
 import {
   createChangeSet,

@@ -14,7 +14,7 @@ import {
   evaluateMaxFileLines,
   inspectMaxFileLines,
   matchMaxFileLineRule,
-} from '../src/max-file-lines.js';
+} from '../src/policies/max-file-lines.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

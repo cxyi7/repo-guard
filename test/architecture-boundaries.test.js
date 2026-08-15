@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'max-file-lines.js',
   'style-governance.js',
   'vue-component-interaction.js',
   'vue-form-label.js',
@@ -976,6 +975,28 @@ test('keeps file placement rules and project scope in policies without a root he
   assert.doesNotMatch(
     filePlacementSource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
+  );
+});
+
+test('keeps maximum file line rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'max-file-lines.js')), false);
+  const maxFileLinesPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'max-file-lines.js',
+  );
+  assert.equal(existsSync(maxFileLinesPath), true);
+
+  const maxFileLinesSource = readFileSync(maxFileLinesPath, 'utf8');
+  assert.match(maxFileLinesSource, /export function countPhysicalLines/);
+  assert.match(maxFileLinesSource, /export function analyzeVueSections/);
+  assert.match(maxFileLinesSource, /export function matchMaxFileLineRule/);
+  assert.match(maxFileLinesSource, /export function selectMaxFileLineFiles/);
+  assert.match(maxFileLinesSource, /export function evaluateMaxFileLines/);
+  assert.match(maxFileLinesSource, /core\/execution\/staged-files\.js/);
+  assert.doesNotMatch(
+    maxFileLinesSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
   );
 });
 
