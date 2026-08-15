@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.42
+
+- 删除顶层 `src/vue-image-alt.js`，将 Vue 原生图片替代文本规则、诊断与结构化例外应用迁入 `src/policies/vue-image-alt.js`，不保留兼容转发。
+- 保持 alt/role 静态语义、装饰图片标记、动态与批量绑定拒绝、重复属性检测、空白引用、泛化替代文本、文件名替代文本及精确例外匹配不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.41
 
 - 删除顶层 `src/vue-form-label.js`，将 Vue 原生表单控件无障碍名称规则、诊断与结构化例外应用迁入 `src/policies/vue-form-label.js`，不保留兼容转发。

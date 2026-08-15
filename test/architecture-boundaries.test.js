@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-image-alt.js',
   'vue-style-languages.js',
   'vue-target-blank.js',
   'vue-unsafe-html.js',
@@ -1060,6 +1059,26 @@ test('keeps Vue form label rules in policies without a root helper', () => {
   assert.match(formLabelPolicySource, /findStructuredException/);
   assert.doesNotMatch(
     formLabelPolicySource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
+  );
+});
+
+test('keeps Vue image alt rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-image-alt.js')), false);
+  const imageAltPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'vue-image-alt.js',
+  );
+  assert.equal(existsSync(imageAltPolicyPath), true);
+
+  const imageAltPolicySource = readFileSync(imageAltPolicyPath, 'utf8');
+  assert.match(imageAltPolicySource, /integrations\/vue\/template-parser\.js/);
+  assert.match(imageAltPolicySource, /export function findVueImageAltIssues/);
+  assert.match(imageAltPolicySource, /export function inspectVueImageAlts/);
+  assert.match(imageAltPolicySource, /findStructuredException/);
+  assert.doesNotMatch(
+    imageAltPolicySource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
   );
 });

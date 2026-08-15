@@ -13,7 +13,7 @@ import {
   findVueImageAltIssues,
   inspectVueImageAlts,
   VUE_IMAGE_ALT_RULE,
-} from '../src/vue-image-alt.js';
+} from '../src/policies/vue-image-alt.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

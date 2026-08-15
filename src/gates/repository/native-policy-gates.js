@@ -15,7 +15,10 @@ import {
   inspectVueFormLabels,
   VUE_FORM_CONTROL_LABEL_RULE,
 } from '../../policies/vue-form-label.js';
-import { inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
+import {
+  inspectVueImageAlts,
+  VUE_IMAGE_ALT_RULE,
+} from '../../policies/vue-image-alt.js';
 import { classifyChanges } from '../../git-changes.js';
 import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';
 import {
