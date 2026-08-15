@@ -17,7 +17,11 @@ import {
   resolveNotificationEnvironment,
 } from '../../policies/local-environment.js';
 import { notificationWasSent, saveNotificationState } from '../../integrations/git/repository-state.js';
-import { buildNotificationText, loadNotificationConfig, sendWecomNotification } from '../../wecom.js';
+import { sendWecomNotification } from '../../integrations/wecom/notification.js';
+import {
+  buildNotificationText,
+  loadNotificationConfig,
+} from '../../policies/wecom-notification.js';
 
 const CONFIG_VERSION = [1];
 

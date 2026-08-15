@@ -34,7 +34,7 @@ import {
   LOCAL_ENV_FILE,
   resolveNotificationEnvironment,
 } from '../policies/local-environment.js';
-import { loadNotificationConfig } from '../wecom.js';
+import { loadNotificationConfig } from '../policies/wecom-notification.js';
 import { createProjectGateRegistry } from '../gates/registry.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 

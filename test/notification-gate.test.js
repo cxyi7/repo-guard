@@ -9,7 +9,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { runGate } from '../src/commands/gate.js';
-import { buildNotificationText } from '../src/wecom.js';
+import { buildNotificationText } from '../src/policies/wecom-notification.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

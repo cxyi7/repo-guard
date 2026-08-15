@@ -90,7 +90,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'vue-style-languages.js',
   'vue-target-blank.js',
   'vue-unsafe-html.js',
-  'wecom.js',
 ]);
 
 const REVIEWED_CLI_LAUNCHER = `#!/usr/bin/env node
@@ -940,6 +939,28 @@ test('keeps local environment governance in policies without a root helper', () 
     localEnvironmentSource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
   );
+});
+
+test('separates WeCom notification policy from network integration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'wecom.js')), false);
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'wecom-notification.js');
+  const integrationPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'wecom',
+    'notification.js',
+  );
+  assert.equal(existsSync(policyPath), true);
+  assert.equal(existsSync(integrationPath), true);
+
+  const policySource = readFileSync(policyPath, 'utf8');
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  assert.match(policySource, /export function loadNotificationConfig/);
+  assert.match(policySource, /export function buildNotificationText/);
+  assert.doesNotMatch(policySource, /node:https|sendWecomNotification/);
+  assert.match(integrationSource, /from ['"]node:https['"]/);
+  assert.match(integrationSource, /export function sendWecomNotification/);
+  assert.doesNotMatch(integrationSource, /loadNotificationConfig|buildNotificationText/);
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {

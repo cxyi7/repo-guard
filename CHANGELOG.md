@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.35
+
+- 删除顶层 `src/wecom.js`，将企业微信通知配置校验与文本生成迁入 `src/policies/wecom-notification.js`，将 HTTPS 发送和响应处理迁入 `src/integrations/wecom/notification.js`，不保留兼容转发。
+- 保持可信 webhook 端点与手机号校验、Git 元数据脱敏、UTF-8 消息截断、请求载荷、10 秒超时、API 响应判定和结构化错误代码不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.34
 
 - 删除顶层 `src/local-env.js`，将本地凭据文件解析、受管模板与 `.gitignore` 维护、Git 状态检查和暂存泄露阻断迁入 `src/policies/local-environment.js`，不保留兼容转发。
