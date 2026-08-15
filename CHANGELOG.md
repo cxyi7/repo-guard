@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.32
+
+- 删除顶层 `src/hook-installer.js`，将受管 Git Hook 安装与升级编排迁入 `src/orchestration/setup/hook-installer.js`，不保留兼容转发。
+- 保持 v1/v2/v3 旧 marker 识别但只生成 v4、全部 Hook 预检先于任何写入、非受管 Hook 与已有 `core.hooksPath` 拒绝覆盖、安装结果、package scripts、`.gitattributes`、本地环境和 Lighthouse ignore 编排不变；配置格式、CLI、Hook 内容与顺序、CI、公共 exports、输出和退出码保持不变，并增加架构防回归测试。
+
 ## 1.4.31
 
 - 删除顶层 `src/quality-gate.js`，将独立 `lint-staged` 隔离边界迁入 `src/orchestration/pre-commit/lint-staged-gate.js`，不保留兼容转发。

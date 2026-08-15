@@ -82,7 +82,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'gitlab-ci.js',
-  'hook-installer.js',
   'index.js',
   'local-env.js',
   'max-file-lines.js',
@@ -882,6 +881,27 @@ test('keeps CI execution and report persistence inside orchestration', () => {
   assert.doesNotMatch(runnerSource, /\b(?:mkdirSync|writeFileSync|lstatSync)\b/);
   assert.match(reportSource, /export function writeCiReport/);
   assert.doesNotMatch(reportSource, /\b(?:orchestratePlan|createProjectGateRegistry)\b/);
+});
+
+test('keeps managed Hook installation in setup orchestration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'hook-installer.js')), false);
+  const installerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'setup',
+    'hook-installer.js',
+  );
+  assert.equal(existsSync(installerPath), true);
+
+  const installerSource = readFileSync(installerPath, 'utf8');
+  assert.match(installerSource, /export function installHooks/);
+  assert.match(installerSource, /export function isManagedHook/);
+  assert.match(installerSource, /export function isCurrentManagedHook/);
+  assert.match(installerSource, /# repo-guard-managed:v4/);
+  assert.match(installerSource, /# repo-guard-managed:v1/);
+  assert.match(installerSource, /\.\/git-attributes\.js/);
+  assert.match(installerSource, /\.\/lighthouse-ignore\.js/);
+  assert.doesNotMatch(installerSource, /from ['"][^'"]*integrations\//);
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {

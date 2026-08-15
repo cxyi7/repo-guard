@@ -14,7 +14,7 @@ import {
   installHooks,
   isCurrentManagedHook,
   isManagedHook,
-} from '../src/hook-installer.js';
+} from '../src/orchestration/setup/hook-installer.js';
 import { createStarterConfig } from '../src/config-management.js';
 import { ensureGitAttributes } from '../src/orchestration/setup/git-attributes.js';
 

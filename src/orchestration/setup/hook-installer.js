@@ -6,18 +6,18 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { configurationError, securityError } from './core/error/repo-guard-error.js';
-import { gateRegistry } from './gates/registry.js';
+import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
+import { gateRegistry } from '../../gates/registry.js';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   loadConfig,
-} from './config.js';
-import { ensureGitAttributes } from './orchestration/setup/git-attributes.js';
-import { writeConsoleMessage } from './core/report/console-renderer.js';
-import { findRepositoryRoot, gitValue, runGit } from './git.js';
-import { ensureLocalEnvironment } from './local-env.js';
-import { ensureLighthouseIgnore } from './orchestration/setup/lighthouse-ignore.js';
+} from '../../config.js';
+import { ensureGitAttributes } from './git-attributes.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
+import { findRepositoryRoot, gitValue, runGit } from '../../git.js';
+import { ensureLocalEnvironment } from '../../local-env.js';
+import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 
 const MANAGED_MARKER = '# repo-guard-managed:v4';
 const LEGACY_MANAGED_MARKERS = Object.freeze([
@@ -26,7 +26,7 @@ const LEGACY_MANAGED_MARKERS = Object.freeze([
   '# repo-guard-managed:v3',
 ]);
 const HOOKS_DIRECTORY = '.githooks';
-const PACKAGE_JSON_PATH = fileURLToPath(new URL('../package.json', import.meta.url));
+const PACKAGE_JSON_PATH = fileURLToPath(new URL('../../../package.json', import.meta.url));
 
 const HOOK_COMMANDS = {
   'pre-commit': ['pre-commit'],

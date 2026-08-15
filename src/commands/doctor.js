@@ -28,7 +28,7 @@ import {
   isManagedHook,
   installHooks,
   managedHookNames,
-} from '../hook-installer.js';
+} from '../orchestration/setup/hook-installer.js';
 import {
   getLocalEnvironmentGitStatus,
   LOCAL_ENV_FILE,

@@ -297,14 +297,14 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   const sources = Object.fromEntries([
     'cli',
     'commands/doctor',
-    'hook-installer',
+    'orchestration/setup/hook-installer',
     'orchestration/ci/runner',
     'orchestration/pre-commit/quality-runner',
     'commands/pre-push',
   ].map((name) => [name, readFileSync(new URL(`../src/${name}.js`, import.meta.url), 'utf8')]));
 
   assert.doesNotMatch(sources.cli, /case ['"](?:dynamic-code|unsafe-html|typecheck|build)['"]/);
-  assert.doesNotMatch(sources['hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
+  assert.doesNotMatch(sources['orchestration/setup/hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
   assert.match(sources['commands/doctor'], /createProjectGateRegistry\(config\)\.all/);
   assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
   assert.match(sources['orchestration/pre-commit/quality-runner'], /plan: preCommitQualityPlan/);
