@@ -2,6 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError } from '../core/error/repo-guard-error.js';
 import {
+  nodeVersionIsSupported,
+  REQUIRED_NODE_RANGE,
+} from '../core/project/node-version.js';
+import {
   ACCESSIBILITY_TEST_POLICY_FILE,
   ARCHITECTURE_POLICY_FILE,
   ensureArchitecturePolicy,
@@ -38,27 +42,6 @@ import {
 import { loadNotificationConfig } from '../policies/wecom-notification.js';
 import { createProjectGateRegistry } from '../gates/registry.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
-
-export const REQUIRED_NODE_RANGE = '>=22.23.2';
-
-function parseNodeVersion(value) {
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(String(value));
-  return match ? match.slice(1).map(Number) : null;
-}
-
-export function nodeVersionIsSupported(
-  version = process.versions.node,
-  requiredRange = REQUIRED_NODE_RANGE,
-) {
-  const current = parseNodeVersion(version);
-  const minimum = parseNodeVersion(String(requiredRange).replace(/^>=/, ''));
-  if (!current || !minimum || !String(requiredRange).startsWith('>=')) return false;
-
-  for (let index = 0; index < minimum.length; index += 1) {
-    if (current[index] !== minimum[index]) return current[index] > minimum[index];
-  }
-  return true;
-}
 
 function repairRepository(root) {
   const repairs = [];

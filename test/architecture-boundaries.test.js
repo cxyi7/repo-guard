@@ -482,6 +482,20 @@ test('keeps project dependency discovery in core/project without a root compatib
   );
 });
 
+test('keeps the Node runtime contract in core project facts instead of doctor orchestration', () => {
+  const nodeVersionPath = path.join(SOURCE_ROOT, 'core', 'project', 'node-version.js');
+  assert.equal(existsSync(nodeVersionPath), true);
+
+  const doctorSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'doctor.js'), 'utf8');
+  const nodeVersionSource = readFileSync(nodeVersionPath, 'utf8');
+
+  assert.match(doctorSource, /from ['"]\.\.\/core\/project\/node-version\.js['"]/);
+  assert.doesNotMatch(doctorSource, /function parseNodeVersion|export const REQUIRED_NODE_RANGE/);
+  assert.match(nodeVersionSource, /export const REQUIRED_NODE_RANGE/);
+  assert.match(nodeVersionSource, /export function nodeVersionIsSupported/);
+  assert.doesNotMatch(nodeVersionSource, /from ['"]/);
+});
+
 test('separates Stylelint project facts from gate-owned setup readiness', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'stylelint-project.js')), false);
   const integrationPath = path.join(

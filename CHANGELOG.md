@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.86
+
+- 将最低 Node.js 版本契约、版本解析和支持判断从 doctor 编排拆入 `src/core/project/node-version.js`，doctor 只消费项目运行时事实。
+- 保持 Node.js `>=22.23.2` 要求、诊断结果、配置、Hook、CI、公共 exports 和退出码不变，并将版本边界测试定向到所属 core 模块。
+
 ## 1.4.85
 
 - 将能力探测、配置创建、受管 Hook 安装、策略维护与初始化结果输出从 `src/commands/init.js` 迁入 `src/orchestration/setup/project-initialization.js`；CLI runner 直接依赖 setup 编排模块，删除旧命令路径且不保留兼容转发。

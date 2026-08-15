@@ -10,10 +10,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
-  nodeVersionIsSupported,
-  REQUIRED_NODE_RANGE,
   runDoctor,
 } from '../src/commands/doctor.js';
+import {
+  nodeVersionIsSupported,
+  REQUIRED_NODE_RANGE,
+} from '../src/core/project/node-version.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
