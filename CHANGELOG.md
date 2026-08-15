@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.41
+
+- 删除顶层 `src/vue-form-label.js`，将 Vue 原生表单控件无障碍名称规则、诊断与结构化例外应用迁入 `src/policies/vue-form-label.js`，不保留兼容转发。
+- 保持可见 `label` 包裹与 `for`/`id` 关联、静态 `aria-label`、`aria-labelledby` 引用校验、动态绑定拒绝、无需文本名称的 input 类型排除及精确例外匹配不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.40
 
 - 删除顶层 `src/vue-component-interaction.js`，将 Vue 模板交互入口与 `@vue/test-utils` 测试 AST 分析迁入 `src/integrations/vue/component-interaction.js`，不保留兼容转发。

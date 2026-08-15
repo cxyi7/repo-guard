@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { findStructuredException } from './exception-registry.js';
+import { findStructuredException } from '../exception-registry.js';
 import {
   findVueTemplateElements,
   sourceLocation,
-} from './integrations/vue/template-parser.js';
+} from '../integrations/vue/template-parser.js';
 
 export const VUE_FORM_CONTROL_LABEL_RULE = 'vue/form-control-label';
 const FORM_CONTROLS = new Set(['input', 'select', 'textarea']);

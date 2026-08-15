@@ -11,7 +11,10 @@ import {
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
 import { inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';
 import { inspectVueTargetBlank, VUE_TARGET_BLANK_RULE } from '../../vue-target-blank.js';
-import { inspectVueFormLabels, VUE_FORM_CONTROL_LABEL_RULE } from '../../vue-form-label.js';
+import {
+  inspectVueFormLabels,
+  VUE_FORM_CONTROL_LABEL_RULE,
+} from '../../policies/vue-form-label.js';
 import { inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
 import { classifyChanges } from '../../git-changes.js';
 import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';

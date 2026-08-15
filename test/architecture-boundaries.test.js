@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-form-label.js',
   'vue-image-alt.js',
   'vue-style-languages.js',
   'vue-target-blank.js',
@@ -1042,6 +1041,26 @@ test('keeps style scope governance in policies without a root helper', () => {
   assert.doesNotMatch(
     styleGovernanceSource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
+});
+
+test('keeps Vue form label rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-form-label.js')), false);
+  const formLabelPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'vue-form-label.js',
+  );
+  assert.equal(existsSync(formLabelPolicyPath), true);
+
+  const formLabelPolicySource = readFileSync(formLabelPolicyPath, 'utf8');
+  assert.match(formLabelPolicySource, /integrations\/vue\/template-parser\.js/);
+  assert.match(formLabelPolicySource, /export function findVueFormLabelIssues/);
+  assert.match(formLabelPolicySource, /export function inspectVueFormLabels/);
+  assert.match(formLabelPolicySource, /findStructuredException/);
+  assert.doesNotMatch(
+    formLabelPolicySource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
   );
 });
 

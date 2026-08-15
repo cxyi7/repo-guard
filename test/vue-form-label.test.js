@@ -13,7 +13,7 @@ import {
   findVueFormLabelIssues,
   inspectVueFormLabels,
   VUE_FORM_CONTROL_LABEL_RULE,
-} from '../src/vue-form-label.js';
+} from '../src/policies/vue-form-label.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
