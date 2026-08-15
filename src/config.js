@@ -36,7 +36,6 @@ import {
   CONFIG_FILE,
   configValidationError,
   normalizePatternList,
-  normalizeRelativePattern,
   validateCiReportPath,
 } from './config/validation-primitives.js';
 import { validateAccessibilityConfiguration } from './config/accessibility-validation.js';
@@ -45,6 +44,7 @@ import { validateCiConfiguration } from './config/ci-validation.js';
 import { validateDependencyPolicyConfiguration } from './config/dependency-policy-validation.js';
 import { validateExceptionConfiguration } from './config/exception-validation.js';
 import { validateExecutionGateConfiguration } from './config/execution-gate-validation.js';
+import { validateFilePlacementConfiguration } from './config/file-placement-validation.js';
 import { validateUnitTestConfiguration } from './config/unit-test-validation.js';
 
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
@@ -162,81 +162,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
     `${configPath} preCommit`,
   );
 
-  const filePlacementValue = preCommitValue.filePlacement ?? {};
-  if (
-    !filePlacementValue
-    || typeof filePlacementValue !== 'object'
-    || Array.isArray(filePlacementValue)
-  ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement must be an object`);
-  }
-  assertKnownProperties(
-    filePlacementValue,
-    new Set(['enabled', 'mode', 'rules']),
-    `${configPath} preCommit.filePlacement`,
-  );
-  if (
-    filePlacementValue.enabled != null
-    && typeof filePlacementValue.enabled !== 'boolean'
-  ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.enabled must be a boolean`);
-  }
-  if (
-    filePlacementValue.mode != null
-    && !['newFiles', 'changedFiles'].includes(filePlacementValue.mode)
-  ) {
-    throw configValidationError(
-      `${configPath} preCommit.filePlacement.mode must be newFiles or changedFiles`,
-    );
-  }
-  const filePlacementRulesValue = filePlacementValue.rules
-    ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
-  if (!Array.isArray(filePlacementRulesValue) || filePlacementRulesValue.length === 0) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.rules must be a non-empty array`);
-  }
-  const filePlacementRules = filePlacementRulesValue.map((rule, index) => {
-    const label = `${configPath} preCommit.filePlacement rule ${index + 1}`;
-    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-      throw configValidationError(`${label} must be an object`);
-    }
-    assertKnownProperties(
-      rule,
-      new Set([
-        'name',
-        'patterns',
-        'allowedPatterns',
-        'exceptions',
-        'suggestedDirectory',
-      ]),
-      label,
-    );
-    if (typeof rule.name !== 'string' || !rule.name.trim()) {
-      throw configValidationError(`${label}.name must be a non-empty string`);
-    }
-    const suggestedDirectory = normalizeRelativePattern(
-      rule.suggestedDirectory,
-      `${label}.suggestedDirectory`,
-    ).replace(/\/$/, '');
-    if (['*', '?', '{', '}', '[', ']', '!'].some((character) => (
-      suggestedDirectory.includes(character)
-    ))) {
-      throw configValidationError(`${label}.suggestedDirectory must be a concrete directory`);
-    }
-    return {
-      name: rule.name.trim(),
-      patterns: normalizePatternList(rule.patterns, `${label}.patterns`),
-      allowedPatterns: normalizePatternList(
-        rule.allowedPatterns,
-        `${label}.allowedPatterns`,
-      ),
-      exceptions: normalizePatternList(
-        rule.exceptions ?? [],
-        `${label}.exceptions`,
-        { allowEmpty: true },
-      ),
-      suggestedDirectory,
-    };
-  });
+  const filePlacement = validateFilePlacementConfiguration(preCommitValue, configPath);
 
   const maxFileLinesValue = preCommitValue.maxFileLines ?? {};
   if (
@@ -557,11 +483,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
     accessibilityTest,
     unitTest,
     preCommit: {
-      filePlacement: {
-        enabled: filePlacementValue.enabled ?? DEFAULT_FILE_PLACEMENT_CONFIG.enabled,
-        mode: filePlacementValue.mode ?? DEFAULT_FILE_PLACEMENT_CONFIG.mode,
-        rules: filePlacementRules,
-      },
+      filePlacement,
       maxFileLines: {
         enabled: maxFileLinesValue.enabled ?? DEFAULT_MAX_FILE_LINES_CONFIG.enabled,
         mode: maxFileLinesValue.mode ?? DEFAULT_MAX_FILE_LINES_CONFIG.mode,

@@ -1317,6 +1317,41 @@ test('keeps unit test configuration validation in the config module', () => {
   );
 });
 
+test('keeps file placement configuration validation in the config module', () => {
+  const filePlacementValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'file-placement-validation.js',
+  );
+  assert.equal(existsSync(filePlacementValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const filePlacementValidationSource = readFileSync(
+    filePlacementValidationPath,
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/file-placement-validation\.js['"]/);
+  assert.match(
+    configSource,
+    /validateFilePlacementConfiguration\(preCommitValue, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const filePlacementValue =/);
+  assert.match(
+    filePlacementValidationSource,
+    /export function validateFilePlacementConfiguration/,
+  );
+  assert.match(filePlacementValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    filePlacementValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    filePlacementValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

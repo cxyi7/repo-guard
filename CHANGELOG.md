@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.60
+
+- 将 pre-commit 文件归位配置验证从 `validateConfigValue` 迁入 `src/config/file-placement-validation.js`，由领域模块直接返回规范化后的 `filePlacement`，主配置验证器只负责编排该结果。
+- 保持对象与开关校验、检查模式、规则结构、匹配/允许/例外路径、建议目录约束、字符串清洗及默认值不变；max-file-lines、Stylelint、Prettier、ESLint、其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.59
 
 - 将 Vitest 单元测试、覆盖率、组件交互、文件匹配与测试映射配置验证从 `validateConfigValue` 迁入 `src/config/unit-test-validation.js`，由内聚领域模块直接返回规范化后的 `unitTest`，主配置验证器只负责编排该结果。
