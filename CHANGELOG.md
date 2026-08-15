@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.87
+
+- 将 `doctor --fix` 的配置创建/迁移、受管策略维护和 Hook 重装写操作拆入 `src/orchestration/setup/repository-repair.js`，doctor 通过 `{ repairs, repairErrors }` 结果消费修复编排。
+- 保持只读 doctor、修复范围、安全约束、输出、配置、Hook、CI、公共 exports 和退出码不变，并增加诊断与仓库修复职责分离测试。
+
 ## 1.4.86
 
 - 将最低 Node.js 版本契约、版本解析和支持判断从 doctor 编排拆入 `src/core/project/node-version.js`，doctor 只消费项目运行时事实。

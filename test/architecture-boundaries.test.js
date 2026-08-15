@@ -69,6 +69,12 @@ const PROJECT_INITIALIZATION_PATH = path.join(
   'setup',
   'project-initialization.js',
 );
+const REPOSITORY_REPAIR_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'setup',
+  'repository-repair.js',
+);
 const COMMIT_MESSAGE_RUNNER_PATH = path.join(
   SOURCE_ROOT,
   'orchestration',
@@ -2446,6 +2452,20 @@ test('keeps project initialization in setup orchestration without a command faca
   assert.match(initializationSource, /from ['"]\.\/hook-installer\.js['"]/);
   assert.doesNotMatch(initializationSource, /runInstallHooks|allowMissingGit/);
   assert.doesNotMatch(initializationSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps doctor repository mutation in setup orchestration separate from diagnosis', () => {
+  assert.equal(existsSync(REPOSITORY_REPAIR_PATH), true);
+
+  const doctorSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'doctor.js'), 'utf8');
+  const repairSource = readFileSync(REPOSITORY_REPAIR_PATH, 'utf8');
+
+  assert.match(doctorSource, /from ['"]\.\.\/orchestration\/setup\/repository-repair\.js['"]/);
+  assert.doesNotMatch(doctorSource, /function repairRepository|ensureProjectConfig|migrateProjectConfig/);
+  assert.match(repairSource, /export function repairRepository/);
+  assert.match(repairSource, /from ['"]\.\/config-management\.js['"]/);
+  assert.match(repairSource, /from ['"]\.\/hook-installer\.js['"]/);
+  assert.doesNotMatch(repairSource, /createProjectGateRegistry|writeConsoleMessage/);
 });
 
 test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orchestration', () => {
