@@ -1,19 +1,23 @@
-import { loadConfig } from '../config/configuration-loader.js';
-import { validateConfig } from '../config/configuration-validation.js';
-import { CONFIG_FILE } from '../config/validation-primitives.js';
-import { configurationError, internalError, toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { runGit } from '../git/execution.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { collectStagedChanges } from '../git/change-collection.js';
-import { runQualityGate } from '../orchestration/pre-commit/lint-staged-gate.js';
+import { loadConfig } from '../../config/configuration-loader.js';
+import { validateConfig } from '../../config/configuration-validation.js';
+import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import {
   createChangeSet,
   createGateContext,
-} from '../core/capability/gate-context.js';
-import { writeGateResultConsole } from '../core/report/console-renderer.js';
-import { gateRegistry } from '../gates/registry.js';
-import { orchestratePlan } from '../orchestration/orchestrator.js';
-import { preCommitPolicyPlan } from '../orchestration/pre-commit/protected-plan.js';
+} from '../../core/capability/gate-context.js';
+import {
+  configurationError,
+  internalError,
+  toRepoGuardError,
+} from '../../core/error/repo-guard-error.js';
+import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { gateRegistry } from '../../gates/registry.js';
+import { collectStagedChanges } from '../../git/change-collection.js';
+import { runGit } from '../../git/execution.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { orchestratePlan } from '../orchestrator.js';
+import { runQualityGate } from './lint-staged-gate.js';
+import { preCommitPolicyPlan } from './protected-plan.js';
 
 function loadStagedConfig(root) {
   const result = runGit(['show', `:${CONFIG_FILE}`], {

@@ -69,6 +69,12 @@ const PRE_COMMIT_QUALITY_COMMAND_PATH = path.join(
   'pre-commit',
   'quality-command.js',
 );
+const PRE_COMMIT_RUNNER_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'pre-commit',
+  'runner.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2381,17 +2387,28 @@ test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orc
   assert.equal(existsSync(PRE_COMMIT_QUALITY_COMMAND_PATH), true);
 
   const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
-  const legacyPreCommitSource = readFileSync(
-    path.join(SOURCE_ROOT, 'commands', 'pre-commit.js'),
-    'utf8',
-  );
   const qualityCommandSource = readFileSync(PRE_COMMIT_QUALITY_COMMAND_PATH, 'utf8');
 
   assert.match(cliRunnerSource, /from ['"]\.\.\/pre-commit\/quality-command\.js['"]/);
-  assert.doesNotMatch(legacyPreCommitSource, /runQualityFileCommand|quality-runner\.js/);
   assert.match(qualityCommandSource, /export async function runQualityFileCommand/);
   assert.match(qualityCommandSource, /from ['"]\.\/quality-runner\.js['"]/);
   assert.doesNotMatch(qualityCommandSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps pre-commit lifecycle orchestration in its domain without a command facade', () => {
+  assert.equal(PRE_COMMIT_RUNNER_PATH.endsWith(path.join('pre-commit', 'runner.js')), true);
+  assert.equal(existsSync(PRE_COMMIT_RUNNER_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'pre-commit.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const preCommitRunnerSource = readFileSync(PRE_COMMIT_RUNNER_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\.\/pre-commit\/runner\.js['"]/);
+  assert.match(preCommitRunnerSource, /export async function runPreCommit/);
+  assert.match(preCommitRunnerSource, /from ['"]\.\/lint-staged-gate\.js['"]/);
+  assert.match(preCommitRunnerSource, /from ['"]\.\/protected-plan\.js['"]/);
+  assert.doesNotMatch(preCommitRunnerSource, /quality-command\.js|quality-runner\.js/);
+  assert.doesNotMatch(preCommitRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {

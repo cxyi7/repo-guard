@@ -9,7 +9,7 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { runPreCommit } from '../src/commands/pre-commit.js';
+import { runPreCommit } from '../src/orchestration/pre-commit/runner.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

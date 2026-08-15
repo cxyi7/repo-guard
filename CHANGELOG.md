@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.81
+
+- 将 pre-commit 生命周期、暂存配置读取和保护策略执行从 `src/commands/pre-commit.js` 迁入 `src/orchestration/pre-commit/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧命令路径且不保留兼容转发。
+- 保持 `quality-files` CLI 适配的独立职责、固定质量检查顺序、lint-staged 暂存隔离、保护文件门禁、配置、Hook、CI、公共 exports 和退出码不变，并增加 pre-commit 编排归属与旧路径防回归测试。
+
 ## 1.4.80
 
 - 将 `quality-files` 的 CLI 适配职责从 pre-commit 生命周期入口拆入 `src/orchestration/pre-commit/quality-command.js`，CLI runner 直接依赖该模块；保留 `src/commands/pre-commit.js` 仅承载尚待独立迁移的 pre-commit 生命周期编排。
