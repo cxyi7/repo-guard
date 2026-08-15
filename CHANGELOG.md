@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.84
+
+- 将 `install-hooks` 的 CLI 适配、可选 Git 仓库处理和结果输出从项目初始化入口拆入 `src/orchestration/cli/install-hooks.js`，CLI runner 直接依赖该单一职责模块。
+- 保持受管 Hook 内容与旧标记升级兼容、项目初始化、配置、CI、公共 exports 和退出码不变，并增加 Hook 安装命令与初始化职责分离测试。
+
 ## 1.4.83
 
 - 将推送范围收集、GateContext 构造和固定 Execution Plan 编排从 `src/commands/pre-push.js` 迁入 `src/orchestration/pre-push/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧命令路径且不保留兼容转发。

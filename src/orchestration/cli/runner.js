@@ -17,7 +17,8 @@ import { createGateResult, gateResultToExitCode } from '../../core/result/gate-r
 import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { runGate } from './gate.js';
 import { runHookMessage } from '../commit-message/runner.js';
-import { runInit, runInstallHooks } from '../../commands/init.js';
+import { runInit } from '../../commands/init.js';
+import { runInstallHooks } from './install-hooks.js';
 import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../pre-push/runner.js';
 import { runQualityFileCommand } from '../pre-commit/quality-command.js';

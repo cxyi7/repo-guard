@@ -138,15 +138,3 @@ export function runInit(cwd = process.cwd()) {
   writeConsoleMessage('- run "repo-guard doctor" after configuring notification environment variables');
   return 0;
 }
-
-export function runInstallHooks(cwd = process.cwd()) {
-  const result = installHooks({
-    cwd,
-    updatePackageScripts: false,
-    allowMissingGit: true,
-  });
-  if (!result.skipped) {
-    writeConsoleMessage(`repo-guard hooks installed in ${result.root}`);
-  }
-  return 0;
-}

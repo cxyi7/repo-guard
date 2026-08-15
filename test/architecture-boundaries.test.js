@@ -57,6 +57,12 @@ const CLI_INSTALL_CI_PATH = path.join(
   'cli',
   'install-ci.js',
 );
+const CLI_INSTALL_HOOKS_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'install-hooks.js',
+);
 const COMMIT_MESSAGE_RUNNER_PATH = path.join(
   SOURCE_ROOT,
   'orchestration',
@@ -2393,6 +2399,20 @@ test('keeps managed CI installation commands in CLI orchestration without a comm
   assert.match(cliInstallCiSource, /export function runInstallCiCommand/);
   assert.match(cliInstallCiSource, /from ['"]\.\.\/setup\/gitlab-ci\.js['"]/);
   assert.doesNotMatch(cliInstallCiSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps managed Hook installation CLI adaptation separate from project initialization', () => {
+  assert.equal(existsSync(CLI_INSTALL_HOOKS_PATH), true);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const initSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'init.js'), 'utf8');
+  const installHooksSource = readFileSync(CLI_INSTALL_HOOKS_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\/install-hooks\.js['"]/);
+  assert.doesNotMatch(initSource, /runInstallHooks|allowMissingGit/);
+  assert.match(installHooksSource, /export function runInstallHooks/);
+  assert.match(installHooksSource, /from ['"]\.\.\/setup\/hook-installer\.js['"]/);
+  assert.doesNotMatch(installHooksSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orchestration', () => {
