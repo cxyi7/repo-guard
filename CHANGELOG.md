@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.74
+
+- 将仅服务手动 CLI 的受保护工作区检查从 `src/commands/check.js` 迁入 `src/orchestration/cli/check.js`，CLI runner 直接调用所属编排模块；删除旧命令路径且不保留兼容转发。
+- 保持配置加载、本地环境暂存泄露阻断、工作区变更收集、保护规则分类、finding、控制台输出、配置、Hook、CI、公共 exports 和退出码不变，并增加 CLI check 归属与旧路径防回归测试。
+
 ## 1.4.73
 
 - 将 CLI 帮助生成、命令分发、运行期参数接线与统一错误呈现从根级 `src/cli.js` 迁入 `src/orchestration/cli/runner.js`，npm `bin` 启动器直接调用所属编排模块；删除旧根路径且不保留兼容转发。

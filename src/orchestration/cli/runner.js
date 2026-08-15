@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { runCheck } from '../../commands/check.js';
+import { runCheck } from './check.js';
 import { runCiCommand } from '../../commands/ci.js';
 import { runDisable, runEnable, runMigrate } from '../../commands/configure.js';
 import { runDoctor } from '../../commands/doctor.js';

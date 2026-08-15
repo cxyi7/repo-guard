@@ -33,6 +33,12 @@ const CLI_RUNNER_PATH = path.join(
   'cli',
   'runner.js',
 );
+const CLI_CHECK_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'check.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2258,6 +2264,20 @@ test('keeps CLI argument parsing in CLI orchestration', () => {
     /from ['"][^'"]*(?:commands|gates|integrations|policies)\//,
   );
   assert.doesNotMatch(argumentParsingSource, /(?:node:fs|process\.|readFileSync)/);
+});
+
+test('keeps protected working tree checks in CLI orchestration without a command facade', () => {
+  assert.equal(existsSync(CLI_CHECK_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'check.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const cliCheckSource = readFileSync(CLI_CHECK_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\/check\.js['"]/);
+  assert.match(cliCheckSource, /export function runCheck/);
+  assert.match(cliCheckSource, /collectWorkingTreeChanges/);
+  assert.match(cliCheckSource, /writeGateResultConsole/);
+  assert.doesNotMatch(cliCheckSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {
