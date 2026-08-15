@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { securityError } from './core/error/repo-guard-error.js';
+import { securityError } from '../error/repo-guard-error.js';
 
 export function normalizeStagedFiles(root, files, label) {
   const uniqueFiles = new Map();

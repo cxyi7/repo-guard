@@ -91,7 +91,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'max-file-lines.js',
   'pre-push-changes.js',
   'quality-gate.js',
-  'staged-files.js',
   'state.js',
   'style-governance.js',
   'vue-component-interaction.js',
@@ -345,6 +344,22 @@ test('keeps file snapshot lifecycle in core execution without a root compatibili
   assert.match(snapshotSource, /export function captureFileContents/);
   assert.match(snapshotSource, /export function restoreFileContents/);
   assert.doesNotMatch(snapshotSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('keeps staged file normalization in core execution without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'staged-files.js')), false);
+  const stagedFilesPath = path.join(
+    SOURCE_ROOT,
+    'core',
+    'execution',
+    'staged-files.js',
+  );
+  assert.equal(existsSync(stagedFilesPath), true);
+
+  const stagedFilesSource = readFileSync(stagedFilesPath, 'utf8');
+  assert.match(stagedFilesSource, /export function normalizeStagedFiles/);
+  assert.match(stagedFilesSource, /staged-files\/outside-repository/);
+  assert.doesNotMatch(stagedFilesSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('keeps staged quality execution inside pre-commit orchestration', () => {

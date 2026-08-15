@@ -4,7 +4,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { normalizeStagedFiles } from '../../staged-files.js';
+import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 
 function resolveIgnorePaths(root) {
   return ['.gitignore', '.prettierignore']

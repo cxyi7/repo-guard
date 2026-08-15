@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import micromatch from 'micromatch';
 import { collectStagedChanges } from './git-changes.js';
 import { runGit } from './git.js';
-import { normalizeStagedFiles } from './staged-files.js';
+import { normalizeStagedFiles } from './core/execution/staged-files.js';
 
 const DEFAULT_MODE = 'strict';
 const DEFAULT_WARN_AT = 0.85;

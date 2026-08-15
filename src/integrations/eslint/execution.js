@@ -1,4 +1,4 @@
-import { normalizeStagedFiles } from '../../staged-files.js';
+import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 
 async function collectLintableFiles(eslint, files) {
   const lintable = [];

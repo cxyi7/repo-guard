@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.25
+
+- 删除顶层 `src/staged-files.js`，将暂存文件路径规范化、去重和仓库边界校验迁入 `src/core/execution/staged-files.js`，不保留兼容转发。
+- 保持仓库外路径拒绝、绝对/相对路径结果、分隔符规范化、Stylelint/ESLint/Prettier 和单文件行数门禁行为、固定 pre-commit 顺序、配置格式、CLI、Hook、CI、公共 exports 和退出码不变；增加架构防回归测试，禁止该执行基础能力返回顶层。
+
 ## 1.4.24
 
 - 删除顶层 `src/file-snapshot.js`，将文件内容捕获与恢复迁入 `src/core/execution/file-snapshot.js`，不保留兼容转发。

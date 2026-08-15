@@ -3,7 +3,7 @@ import {
   captureFileContents,
   restoreFileContents,
 } from '../../core/execution/file-snapshot.js';
-import { normalizeStagedFiles } from '../../staged-files.js';
+import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import {

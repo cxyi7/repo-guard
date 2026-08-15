@@ -4,7 +4,7 @@ import {
   captureFileContents,
   restoreFileContents,
 } from '../../core/execution/file-snapshot.js';
-import { normalizeStagedFiles } from '../../staged-files.js';
+import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 import { findStructuredException } from '../../exception-registry.js';
 import {
   executeProjectStylelint,
