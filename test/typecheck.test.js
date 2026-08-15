@@ -11,7 +11,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { runPrePush } from '../src/commands/pre-push.js';
+import { runPrePush } from '../src/orchestration/pre-push/runner.js';
 import {
   runTypeCheckGate,
 } from '../src/gates/quality/typecheck-gate.js';

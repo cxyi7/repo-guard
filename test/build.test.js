@@ -15,7 +15,7 @@ import {
 } from '../src/gates/quality/build-gate.js';
 import { detectProjectBuildSetup } from '../src/gates/quality/build-setup.js';
 import { validateBuildSetup } from '../src/integrations/npm/build.js';
-import { runPrePush } from '../src/commands/pre-push.js';
+import { runPrePush } from '../src/orchestration/pre-push/runner.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

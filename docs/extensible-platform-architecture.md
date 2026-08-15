@@ -65,7 +65,7 @@
 | 边界 | 当前表现 | 后续要求 |
 | --- | --- | --- |
 | 源码根目录 | 截至 1.4.73，CLI 运行编排已归入 `orchestration/cli`，`src` 根目录只保留 npm 公共入口 `index.js` | 新模块必须直接进入所属目录，不得恢复根级 runner、policy、parser、CLI facade 或兼容转发 |
-| 过渡命令层 | 1.4.74 至 1.4.81 已迁移通用 CLI 与 pre-commit 入口；1.4.82 已从 pre-push 入口拆出推送配置和精确快照解析，其余生命周期入口仍位于 `commands` | 每个入口只能随独立评审和独立版本迁入对应 `orchestration` 目录，不得批量移动或保留转发层 |
+| 过渡命令层 | 1.4.74 至 1.4.81 已迁移通用 CLI 与 pre-commit 入口；1.4.82 至 1.4.83 已分离推送配置解析并迁移 pre-push 生命周期，其余 setup 与 doctor 入口仍位于 `commands` | 每个入口只能随独立评审和独立版本迁入对应 `orchestration` 目录，不得批量移动或保留转发层 |
 
 根级扁平文件债务已经清空；后续需继续收缩过渡 `commands` 层，并通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 

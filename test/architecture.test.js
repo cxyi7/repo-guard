@@ -21,7 +21,7 @@ import {
   ensureArchitecturePolicy,
   isArchitecturePolicyCurrent,
 } from '../src/policies/managed-policies.js';
-import { runPrePush } from '../src/commands/pre-push.js';
+import { runPrePush } from '../src/orchestration/pre-push/runner.js';
 import { runDoctor } from '../src/commands/doctor.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

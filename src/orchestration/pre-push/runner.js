@@ -1,19 +1,19 @@
-import { internalError } from '../core/error/repo-guard-error.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { collectPrePushChanges } from '../orchestration/pre-push/change-range.js';
-import { resolvePushConfig } from '../orchestration/pre-push/push-configuration.js';
 import {
   createChangeSet,
   createGateContext,
-} from '../core/capability/gate-context.js';
-import { gateStatusToExitCode } from '../core/result/gate-result.js';
+} from '../../core/capability/gate-context.js';
+import { internalError } from '../../core/error/repo-guard-error.js';
 import {
   writeConsoleMessage,
   writeGateResultConsole,
-} from '../core/report/console-renderer.js';
-import { gateRegistry } from '../gates/registry.js';
-import { prePushPlan } from '../orchestration/execution-plans.js';
-import { orchestratePlan } from '../orchestration/orchestrator.js';
+} from '../../core/report/console-renderer.js';
+import { gateStatusToExitCode } from '../../core/result/gate-result.js';
+import { gateRegistry } from '../../gates/registry.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { prePushPlan } from '../execution-plans.js';
+import { orchestratePlan } from '../orchestrator.js';
+import { collectPrePushChanges } from './change-range.js';
+import { resolvePushConfig } from './push-configuration.js';
 
 export async function runPrePush(cwd = process.cwd(), {
   input = '',

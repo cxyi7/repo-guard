@@ -81,6 +81,12 @@ const PRE_PUSH_CONFIGURATION_PATH = path.join(
   'pre-push',
   'push-configuration.js',
 );
+const PRE_PUSH_RUNNER_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'pre-push',
+  'runner.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2420,15 +2426,29 @@ test('keeps pre-commit lifecycle orchestration in its domain without a command f
 test('keeps pushed configuration and exact snapshot resolution separate from pre-push execution', () => {
   assert.equal(existsSync(PRE_PUSH_CONFIGURATION_PATH), true);
 
-  const prePushSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'pre-push.js'), 'utf8');
+  const prePushSource = readFileSync(PRE_PUSH_RUNNER_PATH, 'utf8');
   const configurationSource = readFileSync(PRE_PUSH_CONFIGURATION_PATH, 'utf8');
 
-  assert.match(prePushSource, /from ['"]\.\.\/orchestration\/pre-push\/push-configuration\.js['"]/);
+  assert.match(prePushSource, /from ['"]\.\/push-configuration\.js['"]/);
   assert.doesNotMatch(prePushSource, /function (?:loadConfigAtRevision|assertExactPushSnapshot|resolvePushConfig)/);
   assert.match(configurationSource, /export function resolvePushConfig/);
   assert.match(configurationSource, /from ['"]\.\/change-range\.js['"]/);
   assert.match(configurationSource, /pre-push\/snapshot-mismatch/);
   assert.doesNotMatch(configurationSource, /orchestratePlan|writeGateResultConsole/);
+});
+
+test('keeps pre-push lifecycle orchestration in its domain without a command facade', () => {
+  assert.equal(existsSync(PRE_PUSH_RUNNER_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'pre-push.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const prePushRunnerSource = readFileSync(PRE_PUSH_RUNNER_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\.\/pre-push\/runner\.js['"]/);
+  assert.match(prePushRunnerSource, /export async function runPrePush/);
+  assert.match(prePushRunnerSource, /from ['"]\.\/change-range\.js['"]/);
+  assert.match(prePushRunnerSource, /from ['"]\.\/push-configuration\.js['"]/);
+  assert.doesNotMatch(prePushRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {

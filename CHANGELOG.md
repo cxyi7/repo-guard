@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.83
+
+- 将推送范围收集、GateContext 构造和固定 Execution Plan 编排从 `src/commands/pre-push.js` 迁入 `src/orchestration/pre-push/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧命令路径且不保留兼容转发。
+- 保持推送配置与精确快照解析的独立职责、门禁顺序、跳过语义、Hook、CI、公共 exports 和退出码不变，并增加 pre-push 编排归属与旧路径防回归测试。
+
 ## 1.4.82
 
 - 将推送修订配置加载、门禁启用判断及精确 HEAD/干净工作区快照校验从 pre-push 生命周期入口拆入 `src/orchestration/pre-push/push-configuration.js`，runner 只消费解析结果并编排门禁。

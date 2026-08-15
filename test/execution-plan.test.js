@@ -300,7 +300,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     'orchestration/setup/hook-installer',
     'orchestration/ci/runner',
     'orchestration/pre-commit/quality-runner',
-    'commands/pre-push',
+    'orchestration/pre-push/runner',
   ].map((name) => [name, readFileSync(new URL(`../src/${name}.js`, import.meta.url), 'utf8')]));
 
   assert.doesNotMatch(
@@ -315,7 +315,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     sources['orchestration/pre-commit/quality-runner'],
     /run\w+Project|quality\.typecheck|quality\.lighthouse/,
   );
-  assert.match(sources['commands/pre-push'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
+  assert.match(sources['orchestration/pre-push/runner'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);
   assert.equal(gateRegistry.findByConfigKey('typeCheck')?.id, 'quality.typecheck');
