@@ -87,7 +87,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'local-env.js',
   'max-file-lines.js',
   'quality-gate.js',
-  'state.js',
   'style-governance.js',
   'vue-component-interaction.js',
   'vue-form-label.js',
@@ -660,6 +659,27 @@ test('keeps staged fingerprints in the Git integration without a root compatibil
   assert.match(fingerprintSource, /export function createStagedFingerprint/);
   assert.match(fingerprintSource, /\['write-tree'\]/);
   assert.doesNotMatch(fingerprintSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('keeps repository-local state persistence in the Git integration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'state.js')), false);
+  const statePath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'git',
+    'repository-state.js',
+  );
+  assert.equal(existsSync(statePath), true);
+
+  const stateSource = readFileSync(statePath, 'utf8');
+  assert.match(stateSource, /export function notificationWasSent/);
+  assert.match(stateSource, /export function saveNotificationState/);
+  assert.match(stateSource, /export function readCommitMessageState/);
+  assert.match(stateSource, /export function saveCommitMessageState/);
+  assert.match(stateSource, /export function clearCommitMessageState/);
+  assert.match(stateSource, /repo-guard-notified\.json/);
+  assert.match(stateSource, /repo-guard-commit-message\.json/);
+  assert.doesNotMatch(stateSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('keeps CI revision range ownership inside CI orchestration without a root compatibility path', () => {

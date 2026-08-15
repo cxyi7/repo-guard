@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.30
+
+- 删除顶层 `src/state.js`，将 Git 元数据目录中的通知与提交信息状态持久化迁入 `src/integrations/git/repository-state.js`，不保留兼容转发。
+- 保持状态文件名、JSON 格式、通知 ISO 时间戳、指纹匹配、缺失或损坏状态文件的安全 fallback 和提交信息状态清理不变，配置格式、CLI、Hook、CI、公共 exports、输出和退出码保持不变；增加直接持久化测试与架构防回归测试。
+
 ## 1.4.29
 
 - 删除顶层 `src/git-attributes.js`，将 `.gitattributes` 托管文本块维护迁入 `src/orchestration/setup/git-attributes.js`，不保留兼容转发。

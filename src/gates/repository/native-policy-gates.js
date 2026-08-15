@@ -13,7 +13,7 @@ import { inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js'
 import { classifyChanges } from '../../git-changes.js';
 import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';
 import { assertLocalEnvironmentNotStaged, resolveNotificationEnvironment } from '../../local-env.js';
-import { notificationWasSent, saveNotificationState } from '../../state.js';
+import { notificationWasSent, saveNotificationState } from '../../integrations/git/repository-state.js';
 import { buildNotificationText, loadNotificationConfig, sendWecomNotification } from '../../wecom.js';
 
 const CONFIG_VERSION = [1];
