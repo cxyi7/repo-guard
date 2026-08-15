@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { runCli } from '../src/cli.js';
+import { runCli } from '../src/orchestration/cli/runner.js';
 
 runCli(process.argv.slice(2))
   .then((exitCode) => {

@@ -27,6 +27,12 @@ const CONFIGURATION_LOADER_PATH = path.join(
   'config',
   'configuration-loader.js',
 );
+const CLI_RUNNER_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'runner.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -85,13 +91,12 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 ]);
 
 const REVIEWED_SOURCE_FILES = Object.freeze([
-  'cli.js',
   'index.js',
 ]);
 
 const REVIEWED_CLI_LAUNCHER = `#!/usr/bin/env node
 
-import { runCli } from '../src/cli.js';
+import { runCli } from '../src/orchestration/cli/runner.js';
 
 runCli(process.argv.slice(2))
   .then((exitCode) => {
@@ -2233,12 +2238,12 @@ test('keeps CLI argument parsing in CLI orchestration', () => {
   );
   assert.equal(existsSync(argumentParsingPath), true);
 
-  const cliSource = readFileSync(path.join(SOURCE_ROOT, 'cli.js'), 'utf8');
+  const cliSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
   const argumentParsingSource = readFileSync(argumentParsingPath, 'utf8');
 
   assert.match(
     cliSource,
-    /from ['"]\.\/orchestration\/cli\/argument-parsing\.js['"]/,
+    /from ['"]\.\/argument-parsing\.js['"]/,
   );
   assert.doesNotMatch(cliSource, /^function ensureSupportedOptions/m);
   assert.doesNotMatch(cliSource, /^function parseValuedOptions/m);
@@ -2255,22 +2260,24 @@ test('keeps CLI argument parsing in CLI orchestration', () => {
   assert.doesNotMatch(argumentParsingSource, /(?:node:fs|process\.|readFileSync)/);
 });
 
-test('keeps CLI execution behind the reviewed npm bin entrypoint', () => {
+test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {
   const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.deepEqual(packageJson.bin, { 'repo-guard': 'bin/repo-guard.js' });
+  assert.equal(existsSync(CLI_RUNNER_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'cli.js')), false);
 
   const launcherPath = path.join(ROOT, packageJson.bin['repo-guard']);
   const launcherSource = readFileSync(launcherPath, 'utf8').replaceAll('\r\n', '\n');
   assert.equal(launcherSource, REVIEWED_CLI_LAUNCHER);
 
   const unexpectedCallers = javascriptFiles(SOURCE_ROOT)
-    .filter((file) => file !== path.join(SOURCE_ROOT, 'cli.js'))
+    .filter((file) => file !== CLI_RUNNER_PATH)
     .filter((file) => /\brunCli\s*\(/.test(readFileSync(file, 'utf8')))
     .map((file) => path.relative(ROOT, file));
   assert.deepEqual(unexpectedCallers, []);
 
   assertModuleImportIsInert(
-    path.join(SOURCE_ROOT, 'cli.js'),
+    CLI_RUNNER_PATH,
     'repo-guard-cli-import-',
     'CLI module',
     { allowModuleResolution: true },

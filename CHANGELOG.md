@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.73
+
+- 将 CLI 帮助生成、命令分发、运行期参数接线与统一错误呈现从根级 `src/cli.js` 迁入 `src/orchestration/cli/runner.js`，npm `bin` 启动器直接调用所属编排模块；删除旧根路径且不保留兼容转发。
+- 保持 npm `bin` 名称与启动器边界、命令顺序、帮助文本、参数语义、错误分类与呈现、配置、Hook、CI、公共 exports、输出和退出码不变，并增加 CLI 编排归属与根目录防回归测试。
+
 ## 1.4.72
 
 - 删除根级 `src/config.js`，将完整配置验证与结构化错误包装归入 `src/config/configuration-validation.js`，将配置文件读取和过期例外检查归入 `src/config/configuration-loader.js`；内部消费者直接依赖所需模块，不保留兼容转发。

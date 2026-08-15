@@ -1,29 +1,29 @@
 import { readFileSync } from 'node:fs';
-import { runCheck } from './commands/check.js';
-import { runCiCommand } from './commands/ci.js';
-import { runDisable, runEnable, runMigrate } from './commands/configure.js';
-import { runDoctor } from './commands/doctor.js';
-import { gateRegistry } from './gates/registry.js';
+import { runCheck } from '../../commands/check.js';
+import { runCiCommand } from '../../commands/ci.js';
+import { runDisable, runEnable, runMigrate } from '../../commands/configure.js';
+import { runDoctor } from '../../commands/doctor.js';
+import { gateRegistry } from '../../gates/registry.js';
 import {
   runExternalManualGate,
   runRegisteredManualGate,
-} from './orchestration/cli/manual-gates.js';
+} from './manual-gates.js';
 import {
   ensureSupportedOptions,
   parseValuedOptions,
-} from './orchestration/cli/argument-parsing.js';
-import { configurationError, errorStatus, toRepoGuardError } from './core/error/repo-guard-error.js';
-import { createGateResult, gateResultToExitCode } from './core/result/gate-result.js';
-import { writeConsoleMessage, writeGateResultConsole } from './core/report/console-renderer.js';
-import { runGate } from './commands/gate.js';
-import { runHookMessage } from './commands/hook-message.js';
-import { runInit, runInstallHooks } from './commands/init.js';
-import { runInstallCiCommand } from './commands/install-ci.js';
-import { runPrePush } from './commands/pre-push.js';
+} from './argument-parsing.js';
+import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { createGateResult, gateResultToExitCode } from '../../core/result/gate-result.js';
+import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { runGate } from '../../commands/gate.js';
+import { runHookMessage } from '../../commands/hook-message.js';
+import { runInit, runInstallHooks } from '../../commands/init.js';
+import { runInstallCiCommand } from '../../commands/install-ci.js';
+import { runPrePush } from '../../commands/pre-push.js';
 import {
   runPreCommit,
   runQualityFileCommand,
-} from './commands/pre-commit.js';
+} from '../../commands/pre-commit.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)

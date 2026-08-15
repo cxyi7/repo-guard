@@ -295,7 +295,7 @@ test('rejects duplicate config keys, invalid relation references, ordering cycle
 
 test('keeps capability discovery in Registry and lifecycle order in Execution Plans', () => {
   const sources = Object.fromEntries([
-    'cli',
+    'orchestration/cli/runner',
     'commands/doctor',
     'orchestration/setup/hook-installer',
     'orchestration/ci/runner',
@@ -303,7 +303,10 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     'commands/pre-push',
   ].map((name) => [name, readFileSync(new URL(`../src/${name}.js`, import.meta.url), 'utf8')]));
 
-  assert.doesNotMatch(sources.cli, /case ['"](?:dynamic-code|unsafe-html|typecheck|build)['"]/);
+  assert.doesNotMatch(
+    sources['orchestration/cli/runner'],
+    /case ['"](?:dynamic-code|unsafe-html|typecheck|build)['"]/,
+  );
   assert.doesNotMatch(sources['orchestration/setup/hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
   assert.match(sources['commands/doctor'], /createProjectGateRegistry\(config\)\.all/);
   assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
