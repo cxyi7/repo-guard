@@ -63,6 +63,12 @@ const CLI_INSTALL_HOOKS_PATH = path.join(
   'cli',
   'install-hooks.js',
 );
+const PROJECT_INITIALIZATION_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'setup',
+  'project-initialization.js',
+);
 const COMMIT_MESSAGE_RUNNER_PATH = path.join(
   SOURCE_ROOT,
   'orchestration',
@@ -2405,14 +2411,27 @@ test('keeps managed Hook installation CLI adaptation separate from project initi
   assert.equal(existsSync(CLI_INSTALL_HOOKS_PATH), true);
 
   const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
-  const initSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'init.js'), 'utf8');
   const installHooksSource = readFileSync(CLI_INSTALL_HOOKS_PATH, 'utf8');
 
   assert.match(cliRunnerSource, /from ['"]\.\/install-hooks\.js['"]/);
-  assert.doesNotMatch(initSource, /runInstallHooks|allowMissingGit/);
   assert.match(installHooksSource, /export function runInstallHooks/);
   assert.match(installHooksSource, /from ['"]\.\.\/setup\/hook-installer\.js['"]/);
   assert.doesNotMatch(installHooksSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps project initialization in setup orchestration without a command facade', () => {
+  assert.equal(existsSync(PROJECT_INITIALIZATION_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'init.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const initializationSource = readFileSync(PROJECT_INITIALIZATION_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\.\/setup\/project-initialization\.js['"]/);
+  assert.match(initializationSource, /export function runInit/);
+  assert.match(initializationSource, /from ['"]\.\/config-management\.js['"]/);
+  assert.match(initializationSource, /from ['"]\.\/hook-installer\.js['"]/);
+  assert.doesNotMatch(initializationSource, /runInstallHooks|allowMissingGit/);
+  assert.doesNotMatch(initializationSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orchestration', () => {

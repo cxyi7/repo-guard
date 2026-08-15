@@ -1,16 +1,22 @@
+import { loadConfig } from '../../config/configuration-loader.js';
 import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
-} from '../config/defaults.js';
-import { loadConfig } from '../config/configuration-loader.js';
-import { CONFIG_FILE } from '../config/validation-primitives.js';
-import { detectProjectArchitectureSetup } from '../gates/quality/architecture-setup.js';
+} from '../../config/defaults.js';
+import { CONFIG_FILE } from '../../config/validation-primitives.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
+import { detectProjectArchitectureSetup } from '../../gates/quality/architecture-setup.js';
+import { detectProjectBuildSetup } from '../../gates/quality/build-setup.js';
+import { detectProjectStylelintSetup } from '../../gates/quality/stylelint-setup.js';
+import { detectProjectTypeCheckSetup } from '../../gates/quality/typecheck-setup.js';
 import {
   detectProjectAccessibilityTestSetup,
-} from '../gates/testing/accessibility-test-setup.js';
+} from '../../gates/testing/accessibility-test-setup.js';
+import { detectProjectUnitTestSetup } from '../../gates/testing/unit-test-setup.js';
+import { findRepositoryRoot } from '../../git/repository.js';
 import {
   ACCESSIBILITY_TEST_POLICY_FILE,
   ARCHITECTURE_POLICY_FILE,
@@ -20,15 +26,9 @@ import {
   EXCEPTION_POLICY_FILE,
   ensureUnitTestPolicy,
   UNIT_TEST_POLICY_FILE,
-} from '../policies/managed-policies.js';
-import { ensureProjectConfig } from '../orchestration/setup/config-management.js';
-import { detectProjectBuildSetup } from '../gates/quality/build-setup.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { installHooks } from '../orchestration/setup/hook-installer.js';
-import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';
-import { detectProjectTypeCheckSetup } from '../gates/quality/typecheck-setup.js';
-import { detectProjectUnitTestSetup } from '../gates/testing/unit-test-setup.js';
-import { writeConsoleMessage } from '../core/report/console-renderer.js';
+} from '../../policies/managed-policies.js';
+import { ensureProjectConfig } from './config-management.js';
+import { installHooks } from './hook-installer.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);

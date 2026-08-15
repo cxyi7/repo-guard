@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.85
+
+- 将能力探测、配置创建、受管 Hook 安装、策略维护与初始化结果输出从 `src/commands/init.js` 迁入 `src/orchestration/setup/project-initialization.js`；CLI runner 直接依赖 setup 编排模块，删除旧命令路径且不保留兼容转发。
+- 保持 `install-hooks` CLI 适配的独立职责、初始化行为、配置、Hook、CI、公共 exports 和退出码不变，并增加项目初始化归属与旧路径防回归测试。
+
 ## 1.4.84
 
 - 将 `install-hooks` 的 CLI 适配、可选 Git 仓库处理和结果输出从项目初始化入口拆入 `src/orchestration/cli/install-hooks.js`，CLI runner 直接依赖该单一职责模块。
