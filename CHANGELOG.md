@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.80
+
+- 将 `quality-files` 的 CLI 适配职责从 pre-commit 生命周期入口拆入 `src/orchestration/pre-commit/quality-command.js`，CLI runner 直接依赖该模块；保留 `src/commands/pre-commit.js` 仅承载尚待独立迁移的 pre-commit 生命周期编排。
+- 保持固定质量检查顺序、lint-staged 暂存隔离、配置加载、结构化错误、保护文件门禁、配置、Hook、CI、公共 exports 和退出码不变，并增加职责分离与依赖方向回归测试。
+
 ## 1.4.79
 
 - 将 CI 命令边界、配置与报告路径校验、失败报告回退和退出码转换从 `src/commands/ci.js` 迁入 `src/orchestration/ci/command.js`，CLI runner 与定向测试直接依赖所属 CI 编排模块；删除旧命令路径且不保留兼容转发。

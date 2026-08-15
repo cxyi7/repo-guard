@@ -6,7 +6,6 @@ import { runGit } from '../git/execution.js';
 import { findRepositoryRoot } from '../git/repository.js';
 import { collectStagedChanges } from '../git/change-collection.js';
 import { runQualityGate } from '../orchestration/pre-commit/lint-staged-gate.js';
-import { runQualityExecution } from '../orchestration/pre-commit/quality-runner.js';
 import {
   createChangeSet,
   createGateContext,
@@ -83,23 +82,6 @@ export async function runPreCommit(cwd = process.cwd()) {
       {
       kind: decisiveError?.kind ?? 'execution',
       code: decisiveError?.code ?? 'pre-commit/policy-failed',
-      },
-    );
-  }
-  return execution.exitCode === 0 ? 0 : 1;
-}
-
-export async function runQualityFileCommand(files, cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
-  const execution = await runQualityExecution({ root, files, config });
-  if (execution.status.endsWith('-error')) {
-    const decisiveError = execution.decisiveResult?.error;
-    throw toRepoGuardError(
-      decisiveError?.message ?? 'Quality gate could not complete',
-      {
-      kind: decisiveError?.kind ?? 'execution',
-      code: decisiveError?.code ?? 'pre-commit/quality-failed',
       },
     );
   }

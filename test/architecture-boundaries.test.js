@@ -63,6 +63,12 @@ const COMMIT_MESSAGE_RUNNER_PATH = path.join(
   'commit-message',
   'runner.js',
 );
+const PRE_COMMIT_QUALITY_COMMAND_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'pre-commit',
+  'quality-command.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2369,6 +2375,23 @@ test('keeps managed CI installation commands in CLI orchestration without a comm
   assert.match(cliInstallCiSource, /export function runInstallCiCommand/);
   assert.match(cliInstallCiSource, /from ['"]\.\.\/setup\/gitlab-ci\.js['"]/);
   assert.doesNotMatch(cliInstallCiSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orchestration', () => {
+  assert.equal(existsSync(PRE_COMMIT_QUALITY_COMMAND_PATH), true);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const legacyPreCommitSource = readFileSync(
+    path.join(SOURCE_ROOT, 'commands', 'pre-commit.js'),
+    'utf8',
+  );
+  const qualityCommandSource = readFileSync(PRE_COMMIT_QUALITY_COMMAND_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\.\/pre-commit\/quality-command\.js['"]/);
+  assert.doesNotMatch(legacyPreCommitSource, /runQualityFileCommand|quality-runner\.js/);
+  assert.match(qualityCommandSource, /export async function runQualityFileCommand/);
+  assert.match(qualityCommandSource, /from ['"]\.\/quality-runner\.js['"]/);
+  assert.doesNotMatch(qualityCommandSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {

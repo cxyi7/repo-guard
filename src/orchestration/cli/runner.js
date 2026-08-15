@@ -20,10 +20,8 @@ import { runHookMessage } from '../commit-message/runner.js';
 import { runInit, runInstallHooks } from '../../commands/init.js';
 import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../../commands/pre-push.js';
-import {
-  runPreCommit,
-  runQualityFileCommand,
-} from '../../commands/pre-commit.js';
+import { runPreCommit } from '../../commands/pre-commit.js';
+import { runQualityFileCommand } from '../pre-commit/quality-command.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
