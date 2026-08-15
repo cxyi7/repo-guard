@@ -67,6 +67,7 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
   'commands',
   'core',
   'gates',
+  'git',
   'integrations',
   'orchestration',
   'policies',
@@ -75,7 +76,6 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 const REVIEWED_SOURCE_FILES = Object.freeze([
   'cli.js',
   'config.js',
-  'git-changes.js',
   'git.js',
   'index.js',
 ]);
@@ -717,6 +717,39 @@ test('keeps repository-local state persistence in the Git integration without a 
   assert.match(stateSource, /repo-guard-notified\.json/);
   assert.match(stateSource, /repo-guard-commit-message\.json/);
   assert.doesNotMatch(stateSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('separates Git change collection facts from change classification policy', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'git-changes.js')), false);
+  const collectionPath = path.join(
+    SOURCE_ROOT,
+    'git',
+    'change-collection.js',
+  );
+  const classificationPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'change-classification.js',
+  );
+  assert.equal(existsSync(collectionPath), true);
+  assert.equal(existsSync(classificationPath), true);
+
+  const collectionSource = readFileSync(collectionPath, 'utf8');
+  const classificationSource = readFileSync(classificationPath, 'utf8');
+  assert.match(collectionSource, /export function parseNameStatus/);
+  assert.match(collectionSource, /export function collectRevisionChanges/);
+  assert.match(collectionSource, /export function collectStagedChanges/);
+  assert.match(collectionSource, /export function collectWorkingTreeChanges/);
+  assert.doesNotMatch(
+    collectionSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
+  );
+  assert.match(classificationSource, /export function classifyChanges/);
+  assert.match(classificationSource, /export function displayPath/);
+  assert.doesNotMatch(
+    classificationSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
 });
 
 test('keeps CI revision range ownership inside CI orchestration without a root compatibility path', () => {

@@ -3,7 +3,7 @@ import { createChangeSet, createGateContext } from '../core/capability/gate-cont
 import { defineExecutionPlan, validateExecutionPlan } from '../core/capability/execution-plan.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';
-import { collectStagedChanges } from '../git-changes.js';
+import { collectStagedChanges } from '../git/change-collection.js';
 import { findRepositoryRoot } from '../git.js';
 import { gateRegistry } from '../gates/registry.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';

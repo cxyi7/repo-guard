@@ -1,4 +1,4 @@
-import { collectRevisionChanges } from '../../git-changes.js';
+import { collectRevisionChanges } from '../../git/change-collection.js';
 import { rangeError } from '../../core/error/repo-guard-error.js';
 import { gitValue } from '../../git.js';
 

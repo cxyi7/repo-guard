@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isRepoGuardError } from '../src/core/error/repo-guard-error.js';
 import { createGateResult } from '../src/core/result/gate-result.js';
-import { parseNameStatus } from '../src/git-changes.js';
+import { parseNameStatus } from '../src/git/change-collection.js';
 
 function captureError(callback) {
   try {

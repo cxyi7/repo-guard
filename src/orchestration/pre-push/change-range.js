@@ -1,4 +1,4 @@
-import { parseNameStatus } from '../../git-changes.js';
+import { parseNameStatus } from '../../git/change-collection.js';
 import { rangeError } from '../../core/error/repo-guard-error.js';
 import { gitValue, runGit } from '../../git.js';
 

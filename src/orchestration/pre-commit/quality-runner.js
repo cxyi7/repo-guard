@@ -9,7 +9,7 @@ import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
-import { collectStagedChanges } from '../../git-changes.js';
+import { collectStagedChanges } from '../../git/change-collection.js';
 import {
   createChangeSet,
   createGateContext,

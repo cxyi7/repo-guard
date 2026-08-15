@@ -1,9 +1,6 @@
 import { loadConfig } from '../config.js';
-import {
-  classifyChanges,
-  collectWorkingTreeChanges,
-  displayPath,
-} from '../git-changes.js';
+import { collectWorkingTreeChanges } from '../git/change-collection.js';
+import { classifyChanges, displayPath } from '../policies/change-classification.js';
 import { findRepositoryRoot } from '../git.js';
 import { assertLocalEnvironmentNotStaged } from '../policies/local-environment.js';
 import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';

@@ -25,7 +25,7 @@ import {
   inspectVueImageAlts,
   VUE_IMAGE_ALT_RULE,
 } from '../../policies/vue-image-alt.js';
-import { classifyChanges } from '../../git-changes.js';
+import { classifyChanges } from '../../policies/change-classification.js';
 import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';
 import {
   assertLocalEnvironmentNotStaged,

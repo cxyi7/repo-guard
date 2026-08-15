@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { configurationError } from '../core/error/repo-guard-error.js';
-import { displayPath } from '../git-changes.js';
+import { displayPath } from './change-classification.js';
 import { gitValue } from '../git.js';
 
 const WECOM_HOST = 'qyapi.weixin.qq.com';

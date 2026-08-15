@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.47
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.48
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.48
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.48
+npx repo-guard doctor
+```
+
+1.4.48 删除混合职责的顶层 `src/git-changes.js`：Git `--name-status -z` 解析、revision/staged/working-tree 变更收集迁入跨入口共享的 `src/git/change-collection.js`，规则分类与展示路径迁入 `src/policies/change-classification.js`，不保留兼容转发。重命名/复制解析、类型化协议错误、变更状态合并、未跟踪文件收集、规则回退匹配与展示文本均保持不变；配置 schema、CLI、Hook、CI、公共 exports、输出和退出码不变。
 
 ## 升级到 1.4.47
 

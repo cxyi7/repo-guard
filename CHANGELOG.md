@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.48
+
+- 删除混合职责的顶层 `src/git-changes.js`：将 Git `--name-status -z` 解析、revision/staged/working-tree 变更收集迁入跨入口共享的 `src/git/change-collection.js`，将规则分类与展示路径迁入 `src/policies/change-classification.js`，不保留兼容转发。
+- 保持重命名/复制解析、类型化协议错误、变更状态合并、未跟踪文件收集、规则回退匹配与展示文本不变；配置 schema、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加跨层架构防回归测试。
+
 ## 1.4.47
 
 - 删除顶层 `src/config-management.js`，将消费项目配置的初始化、迁移、功能启停与写回生命周期迁入 `src/orchestration/setup/config-management.js`，不保留兼容转发。

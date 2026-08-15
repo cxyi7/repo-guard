@@ -1,6 +1,6 @@
-import { matchRule, normalizeGitPath } from './config.js';
-import { executionError } from './core/error/repo-guard-error.js';
-import { runGit } from './git.js';
+import { normalizeGitPath } from '../config.js';
+import { executionError } from '../core/error/repo-guard-error.js';
+import { runGit } from '../git.js';
 
 function malformedNameStatusError(code, message, { index, status }) {
   return executionError(code, message, {
@@ -155,16 +155,4 @@ export function collectWorkingTreeChanges(root) {
     ...change,
     states: [...change.states].sort(),
   }));
-}
-
-export function classifyChanges(changes, config) {
-  return changes.flatMap((change) => {
-    const rule = matchRule(change.path, config)
-      || (change.oldPath ? matchRule(change.oldPath, config) : null);
-    return rule ? [{ ...change, ...rule }] : [];
-  });
-}
-
-export function displayPath(change) {
-  return change.oldPath ? `${change.oldPath} -> ${change.path}` : change.path;
 }

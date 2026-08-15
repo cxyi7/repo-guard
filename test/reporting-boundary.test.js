@@ -146,7 +146,10 @@ test('keeps consumer dependency resolution on typed configuration errors', () =>
 });
 
 test('keeps Git change protocol failures on typed execution errors', () => {
-  const source = readFileSync(path.join(SOURCE_ROOT, 'git-changes.js'), 'utf8');
+  const source = readFileSync(
+    path.join(SOURCE_ROOT, 'git', 'change-collection.js'),
+    'utf8',
+  );
   assert.doesNotMatch(source, /throw new Error\s*\(/);
   assert.match(source, /git-changes\/incomplete-file-entry/);
   assert.match(source, /git-changes\/incomplete-rename-or-copy-entry/);

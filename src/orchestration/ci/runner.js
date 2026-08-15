@@ -3,7 +3,7 @@ import { configurationError, toRepoGuardError } from '../../core/error/repo-guar
 import micromatch from 'micromatch';
 import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config.js';
-import { classifyChanges } from '../../git-changes.js';
+import { classifyChanges } from '../../policies/change-classification.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
 import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
 import {
