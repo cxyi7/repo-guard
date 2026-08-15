@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { parse } from '@babel/parser';
 import traverseModule from '@babel/traverse';
-import { executionError } from './core/error/repo-guard-error.js';
-import { findVueTemplateAttributes } from './integrations/vue/template-parser.js';
+import { executionError } from '../../core/error/repo-guard-error.js';
+import { findVueTemplateAttributes } from './template-parser.js';
 
 const traverse = traverseModule.default ?? traverseModule;
 const INTERACTION_METHODS = new Set([

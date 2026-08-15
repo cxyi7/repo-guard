@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.40
+
+- 删除顶层 `src/vue-component-interaction.js`，将 Vue 模板交互入口与 `@vue/test-utils` 测试 AST 分析迁入 `src/integrations/vue/component-interaction.js`，不保留兼容转发。
+- 保持 `v-model`/`v-on`/`@` 入口识别、JavaScript/TypeScript/JSX/TSX 解析、组件导入别名、`mount`、wrapper 查询与交互、结果断言及其执行顺序判定不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.39
 
 - 删除顶层 `src/style-governance.js`，将 Vue 样式作用域、全局逃逸与普通样式文件位置规则迁入 `src/policies/style-governance.js`，不保留兼容转发。

@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-component-interaction.js',
   'vue-form-label.js',
   'vue-image-alt.js',
   'vue-style-languages.js',
@@ -449,6 +448,32 @@ test('keeps shared Vue template parsing in an integration without a root compati
   assert.match(parserSource, /export function findVueTemplateAttributes/);
   assert.match(parserSource, /export function findVueTemplateElements/);
   assert.match(parserSource, /export function sourceLocation/);
+});
+
+test('keeps Vue component interaction analysis in an integration without a root helper', () => {
+  assert.equal(
+    existsSync(path.join(SOURCE_ROOT, 'vue-component-interaction.js')),
+    false,
+  );
+  const analysisPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'vue',
+    'component-interaction.js',
+  );
+  assert.equal(existsSync(analysisPath), true);
+
+  const analysisSource = readFileSync(analysisPath, 'utf8');
+  assert.match(analysisSource, /\.\/template-parser\.js/);
+  assert.match(analysisSource, /export function findVueInteractionEntries/);
+  assert.match(
+    analysisSource,
+    /export function analyzeVueComponentInteractionTest/,
+  );
+  assert.doesNotMatch(
+    analysisSource,
+    /\b(?:createGateResult|changeSetEntries|unitTestPolicyFindings|remediation)\b/,
+  );
 });
 
 test('keeps Lighthouse project inspection in its integration without a root compatibility path', () => {

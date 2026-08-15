@@ -13,7 +13,7 @@ import { analyzeUnitTestContent } from '../../integrations/vitest/source-analysi
 import {
   analyzeVueComponentInteractionTest,
   findVueInteractionEntries,
-} from '../../vue-component-interaction.js';
+} from '../../integrations/vue/component-interaction.js';
 
 function matches(pathname, patterns) {
   return micromatch.isMatch(pathname, patterns, { dot: true });
