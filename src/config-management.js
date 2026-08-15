@@ -6,7 +6,7 @@ import {
 import path from 'node:path';
 import { configurationError } from './core/error/repo-guard-error.js';
 import { gateRegistry } from './gates/registry.js';
-import { assertExceptionRegistryCurrent } from './exception-registry.js';
+import { assertExceptionRegistryCurrent } from './policies/exception-registry.js';
 import {
   CONFIG_FILE,
   DEFAULT_CI_CONFIG,

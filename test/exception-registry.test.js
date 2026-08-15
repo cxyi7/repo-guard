@@ -15,7 +15,7 @@ import {
   assertExceptionRegistryCurrent,
   findStructuredException,
   inspectExceptionRegistry,
-} from '../src/exception-registry.js';
+} from '../src/policies/exception-registry.js';
 import {
   renderExceptionRegistrySummary,
 } from '../src/core/report/exception-registry-renderer.js';

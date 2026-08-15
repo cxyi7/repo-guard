@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { findStructuredException } from '../exception-registry.js';
+import { findStructuredException } from './exception-registry.js';
 import {
   findVueTemplateAttributes,
   sourceLocation,

@@ -5,7 +5,7 @@ import {
   collectPrePushChanges,
   parsePrePushUpdates,
 } from '../orchestration/pre-push/change-range.js';
-import { assertExceptionRegistryCurrent } from '../exception-registry.js';
+import { assertExceptionRegistryCurrent } from '../policies/exception-registry.js';
 import {
   createChangeSet,
   createGateContext,

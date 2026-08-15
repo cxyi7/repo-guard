@@ -13,7 +13,7 @@ import {
   UNIT_TEST_POLICY_FILE,
 } from '../policies/managed-policies.js';
 import { loadConfig } from '../config.js';
-import { inspectExceptionRegistry } from '../exception-registry.js';
+import { inspectExceptionRegistry } from '../policies/exception-registry.js';
 import {
   renderExceptionRegistrySummary,
 } from '../core/report/exception-registry-renderer.js';

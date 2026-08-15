@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.46
+
+- 删除顶层 `src/exception-registry.js`，将结构化例外有效期分类、当前性断言与精确匹配策略迁入 `src/policies/exception-registry.js`，不保留兼容转发。
+- 保持 active/expiring/expired/future 分类、UTC 日期边界、人工复审约束和规则/路径/行列精确匹配不变；配置 schema、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并同步架构与错误契约防回归测试。
+
 ## 1.4.45
 
 - 删除顶层 `src/vue-unsafe-html.js`，将 Vue `v-html` 安全规则、诊断与结构化例外应用迁入 `src/policies/vue-unsafe-html.js`，不保留兼容转发。

@@ -1,4 +1,4 @@
-import { findStructuredException } from '../../exception-registry.js';
+import { findStructuredException } from '../../policies/exception-registry.js';
 import { readStagedPackageMetadata } from '../../integrations/git/staged-package-metadata.js';
 import {
   parsePackageMetadata,

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { assertExceptionRegistryCurrent } from './exception-registry.js';
+import { assertExceptionRegistryCurrent } from './policies/exception-registry.js';
 import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 
 export const CONFIG_FILE = 'repo-guard.config.json';

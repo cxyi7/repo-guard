@@ -76,7 +76,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'cli.js',
   'config-management.js',
   'config.js',
-  'exception-registry.js',
   'git-changes.js',
   'git.js',
   'index.js',
@@ -754,6 +753,38 @@ test('keeps managed commit-message summaries in policies without a root helper',
   assert.doesNotMatch(
     summaryPolicySource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
+  );
+});
+
+test('keeps structured exception validity and matching in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'exception-registry.js')), false);
+  const exceptionRegistryPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'exception-registry.js',
+  );
+  assert.equal(existsSync(exceptionRegistryPolicyPath), true);
+
+  const exceptionRegistryPolicySource = readFileSync(
+    exceptionRegistryPolicyPath,
+    'utf8',
+  );
+  assert.match(
+    exceptionRegistryPolicySource,
+    /export function inspectExceptionRegistry/,
+  );
+  assert.match(
+    exceptionRegistryPolicySource,
+    /export function assertExceptionRegistryCurrent/,
+  );
+  assert.match(
+    exceptionRegistryPolicySource,
+    /export function findStructuredException/,
+  );
+  assert.match(exceptionRegistryPolicySource, /configurationError/);
+  assert.doesNotMatch(
+    exceptionRegistryPolicySource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
   );
 });
 
