@@ -3,7 +3,7 @@ import { configurationError, toRepoGuardError } from '../../core/error/repo-guar
 import {
   captureFileContents,
   restoreFileContents,
-} from '../../file-snapshot.js';
+} from '../../core/execution/file-snapshot.js';
 import { normalizeStagedFiles } from '../../staged-files.js';
 import { findStructuredException } from '../../exception-registry.js';
 import {

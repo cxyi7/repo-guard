@@ -1,5 +1,8 @@
 import path from 'node:path';
-import { captureFileContents, restoreFileContents } from '../../file-snapshot.js';
+import {
+  captureFileContents,
+  restoreFileContents,
+} from '../../core/execution/file-snapshot.js';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import { prepareProjectEslintExecution } from '../../integrations/eslint/execution.js';

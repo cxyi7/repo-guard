@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'config.js',
   'exception-registry.js',
   'file-placement.js',
-  'file-snapshot.js',
   'fingerprint.js',
   'git-attributes.js',
   'git-changes.js',
@@ -330,6 +329,22 @@ test('does not add new top-level runner, policy, or parser files', () => {
     .map((entry) => entry.name)
     .sort();
   assert.deepEqual(topLevelGateFiles, REVIEWED_TOP_LEVEL_GATE_FILES);
+});
+
+test('keeps file snapshot lifecycle in core execution without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'file-snapshot.js')), false);
+  const snapshotPath = path.join(
+    SOURCE_ROOT,
+    'core',
+    'execution',
+    'file-snapshot.js',
+  );
+  assert.equal(existsSync(snapshotPath), true);
+
+  const snapshotSource = readFileSync(snapshotPath, 'utf8');
+  assert.match(snapshotSource, /export function captureFileContents/);
+  assert.match(snapshotSource, /export function restoreFileContents/);
+  assert.doesNotMatch(snapshotSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('keeps staged quality execution inside pre-commit orchestration', () => {

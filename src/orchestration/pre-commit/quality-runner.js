@@ -2,7 +2,7 @@ import micromatch from 'micromatch';
 import {
   captureFileContents,
   restoreFileContents,
-} from '../../file-snapshot.js';
+} from '../../core/execution/file-snapshot.js';
 import { normalizeStagedFiles } from '../../staged-files.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.24
+
+- 删除顶层 `src/file-snapshot.js`，将文件内容捕获与恢复迁入 `src/core/execution/file-snapshot.js`，不保留兼容转发。
+- 保持二进制内容原样捕获和恢复、暂存质量门禁失败回滚、执行顺序、配置格式、CLI、Hook、CI、公共 exports 和退出码不变；增加架构防回归测试，禁止该执行基础能力返回顶层。
+
 ## 1.4.23
 
 - 为所有 `defineGate` 能力增加不可变的 `resultModel: "GateResult"` 元数据，使统一内部结果模型成为 Registry 显式契约，而不再只由实现约定。
