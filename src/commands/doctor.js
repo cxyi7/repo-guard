@@ -33,7 +33,7 @@ import {
   getLocalEnvironmentGitStatus,
   LOCAL_ENV_FILE,
   resolveNotificationEnvironment,
-} from '../local-env.js';
+} from '../policies/local-environment.js';
 import { loadNotificationConfig } from '../wecom.js';
 import { createProjectGateRegistry } from '../gates/registry.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';

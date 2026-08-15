@@ -4,9 +4,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { configurationError, securityError } from './core/error/repo-guard-error.js';
-import { runGit } from './git.js';
-import { buildManagedTextBlock } from './core/policy/managed-text-block.js';
+import { configurationError, securityError } from '../core/error/repo-guard-error.js';
+import { runGit } from '../git.js';
+import { buildManagedTextBlock } from '../core/policy/managed-text-block.js';
 
 export const LOCAL_ENV_FILE = '.env.config';
 export const GIT_IGNORE_FILE = '.gitignore';

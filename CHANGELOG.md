@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.34
+
+- 删除顶层 `src/local-env.js`，将本地凭据文件解析、受管模板与 `.gitignore` 维护、Git 状态检查和暂存泄露阻断迁入 `src/policies/local-environment.js`，不保留兼容转发。
+- 保持 `.env.config` 格式与变量白名单、系统环境变量优先级、敏感值不进入诊断、已跟踪/未忽略检查、删除已跟踪凭据的放行语义和结构化错误不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.33
 
 - 删除顶层 `src/gitlab-ci.js`，将受管 GitLab CI 模板安装、根流水线接入和 doctor 检查迁入 `src/orchestration/setup/gitlab-ci.js`，不保留兼容转发。

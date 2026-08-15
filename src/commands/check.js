@@ -5,7 +5,7 @@ import {
   displayPath,
 } from '../git-changes.js';
 import { findRepositoryRoot } from '../git.js';
-import { assertLocalEnvironmentNotStaged } from '../local-env.js';
+import { assertLocalEnvironmentNotStaged } from '../policies/local-environment.js';
 import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';
 

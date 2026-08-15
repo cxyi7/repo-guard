@@ -16,7 +16,7 @@ import {
 import { ensureGitAttributes } from './git-attributes.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { findRepositoryRoot, gitValue, runGit } from '../../git.js';
-import { ensureLocalEnvironment } from '../../local-env.js';
+import { ensureLocalEnvironment } from '../../policies/local-environment.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 
 const MANAGED_MARKER = '# repo-guard-managed:v4';

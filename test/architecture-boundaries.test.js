@@ -82,7 +82,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'local-env.js',
   'max-file-lines.js',
   'style-governance.js',
   'vue-component-interaction.js',
@@ -920,6 +919,27 @@ test('keeps managed GitLab CI installation in setup orchestration without a root
   assert.match(gitLabCiSource, /# repo-guard-gitlab:start/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:end/);
   assert.doesNotMatch(gitLabCiSource, /from ['"][^'"]*integrations\//);
+});
+
+test('keeps local environment governance in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'local-env.js')), false);
+  const localEnvironmentPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'local-environment.js',
+  );
+  assert.equal(existsSync(localEnvironmentPath), true);
+
+  const localEnvironmentSource = readFileSync(localEnvironmentPath, 'utf8');
+  assert.match(localEnvironmentSource, /export function loadLocalEnvironment/);
+  assert.match(localEnvironmentSource, /export function resolveNotificationEnvironment/);
+  assert.match(localEnvironmentSource, /export function ensureLocalEnvironment/);
+  assert.match(localEnvironmentSource, /export function assertLocalEnvironmentNotStaged/);
+  assert.match(localEnvironmentSource, /core\/policy\/managed-text-block\.js/);
+  assert.doesNotMatch(
+    localEnvironmentSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {
