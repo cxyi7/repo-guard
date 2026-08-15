@@ -21,7 +21,8 @@ import {
   ensureProjectConfig,
   migrateProjectConfig,
 } from '../orchestration/setup/config-management.js';
-import { findRepositoryRoot, gitValue } from '../git.js';
+import { gitValue } from '../git/execution.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { inspectGitLabCi } from '../orchestration/setup/gitlab-ci.js';
 import {
   isCurrentManagedHook,

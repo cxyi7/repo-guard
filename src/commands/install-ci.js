@@ -1,4 +1,4 @@
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { configurationError } from '../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 import {

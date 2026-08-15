@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import micromatch from 'micromatch';
 import { collectStagedChanges } from '../git/change-collection.js';
-import { runGit } from '../git.js';
+import { runGit } from '../git/execution.js';
 import { normalizeStagedFiles } from '../core/execution/staged-files.js';
 
 const DEFAULT_MODE = 'strict';

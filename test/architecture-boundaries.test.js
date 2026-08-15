@@ -76,7 +76,6 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 const REVIEWED_SOURCE_FILES = Object.freeze([
   'cli.js',
   'config.js',
-  'git.js',
   'index.js',
 ]);
 
@@ -717,6 +716,35 @@ test('keeps repository-local state persistence in the Git integration without a 
   assert.match(stateSource, /repo-guard-notified\.json/);
   assert.match(stateSource, /repo-guard-commit-message\.json/);
   assert.doesNotMatch(stateSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('separates Git command execution from repository discovery without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'git.js')), false);
+  const executionPath = path.join(SOURCE_ROOT, 'git', 'execution.js');
+  const repositoryPath = path.join(SOURCE_ROOT, 'git', 'repository.js');
+  assert.equal(existsSync(executionPath), true);
+  assert.equal(existsSync(repositoryPath), true);
+
+  const executionSource = readFileSync(executionPath, 'utf8');
+  const repositorySource = readFileSync(repositoryPath, 'utf8');
+  assert.match(executionSource, /export function runGit/);
+  assert.match(executionSource, /export function gitValue/);
+  assert.doesNotMatch(
+    executionSource,
+    /\b(?:configurationError|findRepositoryRoot|resolveGitPath)\b/,
+  );
+  assert.doesNotMatch(
+    executionSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
+  );
+  assert.match(repositorySource, /export function findRepositoryRoot/);
+  assert.match(repositorySource, /export function resolveGitPath/);
+  assert.match(repositorySource, /from ['"]\.\/execution\.js['"]/);
+  assert.doesNotMatch(repositorySource, /\b(?:spawnSync|executionError|gitValue)\b/);
+  assert.doesNotMatch(
+    repositorySource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
+  );
 });
 
 test('separates Git change collection facts from change classification policy', () => {

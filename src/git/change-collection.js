@@ -1,6 +1,6 @@
 import { normalizeGitPath } from '../config.js';
 import { executionError } from '../core/error/repo-guard-error.js';
-import { runGit } from '../git.js';
+import { runGit } from './execution.js';
 
 function malformedNameStatusError(code, message, { index, status }) {
   return executionError(code, message, {

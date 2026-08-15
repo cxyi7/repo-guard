@@ -4,7 +4,8 @@ import {
   validateConfig,
 } from '../config.js';
 import { configurationError, internalError, toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { findRepositoryRoot, runGit } from '../git.js';
+import { runGit } from '../git/execution.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { collectStagedChanges } from '../git/change-collection.js';
 import { runQualityGate } from '../orchestration/pre-commit/lint-staged-gate.js';
 import { runQualityExecution } from '../orchestration/pre-commit/quality-runner.js';

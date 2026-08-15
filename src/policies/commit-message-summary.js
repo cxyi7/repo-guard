@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { collectStagedChanges } from '../git/change-collection.js';
 import { classifyChanges, displayPath } from './change-classification.js';
-import { gitValue, runGit } from '../git.js';
+import { gitValue, runGit } from '../git/execution.js';
 import {
   clearCommitMessageState,
   readCommitMessageState,

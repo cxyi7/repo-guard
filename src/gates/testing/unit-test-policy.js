@@ -7,7 +7,7 @@ import { configurationError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { DEFAULT_UNIT_TEST_CONFIG, normalizeGitPath } from '../../config.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
-import { runGit } from '../../git.js';
+import { runGit } from '../../git/execution.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
 import { analyzeUnitTestContent } from '../../integrations/vitest/source-analysis.js';
 import {

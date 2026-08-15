@@ -4,7 +4,7 @@ import {
   migrateProjectConfig,
   setFeaturesEnabled,
 } from '../orchestration/setup/config-management.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 import {
   ensureAccessibilityTestPolicy,

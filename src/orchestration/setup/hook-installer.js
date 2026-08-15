@@ -15,7 +15,8 @@ import {
 } from '../../config.js';
 import { ensureGitAttributes } from './git-attributes.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
-import { findRepositoryRoot, gitValue, runGit } from '../../git.js';
+import { gitValue, runGit } from '../../git/execution.js';
+import { findRepositoryRoot } from '../../git/repository.js';
 import { ensureLocalEnvironment } from '../../policies/local-environment.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 

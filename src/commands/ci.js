@@ -9,7 +9,7 @@ import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';
 import { renderGateResultJson } from '../core/report/json-renderer.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 
 function errorReport(options, error, {
   gateId = 'ci.configuration',

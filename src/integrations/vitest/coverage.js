@@ -7,7 +7,7 @@ import path from 'node:path';
 import { executionError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { normalizeGitPath } from '../../config.js';
-import { runGit } from '../../git.js';
+import { runGit } from '../../git/execution.js';
 
 export const COVERAGE_METRICS = Object.freeze([
   'lines',

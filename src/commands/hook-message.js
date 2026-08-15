@@ -4,7 +4,7 @@ import {
   finalizeCommitMessage,
   prepareCommitMessage,
 } from '../policies/commit-message-summary.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { configurationError } from '../core/error/repo-guard-error.js';
 
 export function runHookMessage(argumentsList, cwd = process.cwd()) {

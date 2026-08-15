@@ -5,7 +5,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { configurationError, securityError } from '../core/error/repo-guard-error.js';
-import { runGit } from '../git.js';
+import { runGit } from '../git/execution.js';
 import { buildManagedTextBlock } from '../core/policy/managed-text-block.js';
 
 export const LOCAL_ENV_FILE = '.env.config';

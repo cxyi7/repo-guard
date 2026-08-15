@@ -4,7 +4,7 @@ import { defineExecutionPlan, validateExecutionPlan } from '../core/capability/e
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../core/report/console-renderer.js';
 import { collectStagedChanges } from '../git/change-collection.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { gateRegistry } from '../gates/registry.js';
 import { orchestratePlan } from '../orchestration/orchestrator.js';
 

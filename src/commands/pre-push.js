@@ -1,6 +1,7 @@
 import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
 import { configurationError, internalError, rangeError } from '../core/error/repo-guard-error.js';
-import { findRepositoryRoot, gitValue, runGit } from '../git.js';
+import { gitValue, runGit } from '../git/execution.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import {
   collectPrePushChanges,
   parsePrePushUpdates,

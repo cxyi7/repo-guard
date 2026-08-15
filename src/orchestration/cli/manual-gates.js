@@ -6,7 +6,7 @@ import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
 import { createProjectGateRegistry, gateRegistry } from '../../gates/registry.js';
 import { collectWorkingTreeChanges } from '../../git/change-collection.js';
-import { findRepositoryRoot } from '../../git.js';
+import { findRepositoryRoot } from '../../git/repository.js';
 import { orchestratePlan } from '../orchestrator.js';
 
 function manualContext(root, config) {

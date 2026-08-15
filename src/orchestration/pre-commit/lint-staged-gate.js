@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import lintStaged from 'lint-staged';
 import { loadConfig } from '../../config.js';
-import { findRepositoryRoot } from '../../git.js';
+import { findRepositoryRoot } from '../../git/repository.js';
 
 const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
 

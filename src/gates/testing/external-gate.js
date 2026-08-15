@@ -17,7 +17,7 @@ import { createGateResult } from '../../core/result/gate-result.js';
 import { skippedResult } from '../native-result.js';
 import { runExactNpmScript, containsSensitiveExternalData } from '../../integrations/npm/external-script.js';
 import { assertReleaseScriptReadOnly } from '../../integrations/npm/release-environment.js';
-import { runGit } from '../../git.js';
+import { runGit } from '../../git/execution.js';
 
 const MAX_REPORT_BYTES = 1024 * 1024;
 const MAX_ARTIFACTS = 20;

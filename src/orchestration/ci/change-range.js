@@ -1,6 +1,6 @@
 import { collectRevisionChanges } from '../../git/change-collection.js';
 import { rangeError } from '../../core/error/repo-guard-error.js';
-import { gitValue } from '../../git.js';
+import { gitValue } from '../../git/execution.js';
 
 const ZERO_SHA = /^0+$/;
 

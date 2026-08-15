@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.49
+
+- 删除混合职责的顶层 `src/git.js`：将 Git 子进程执行与可选值读取迁入 `src/git/execution.js`，将仓库根目录发现与 Git 元数据路径解析迁入 `src/git/repository.js`，不保留兼容转发。
+- 保持 `core.quotepath=false`、失败容忍与 fallback、类型化执行/配置错误、Windows 隐藏窗口、仓库发现和相对 Git 路径解析行为不变；配置 schema、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加 Git 基础设施职责边界防回归测试。
+
 ## 1.4.48
 
 - 删除混合职责的顶层 `src/git-changes.js`：将 Git `--name-status -z` 解析、revision/staged/working-tree 变更收集迁入跨入口共享的 `src/git/change-collection.js`，将规则分类与展示路径迁入 `src/policies/change-classification.js`，不保留兼容转发。

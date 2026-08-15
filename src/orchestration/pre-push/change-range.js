@@ -1,6 +1,6 @@
 import { parseNameStatus } from '../../git/change-collection.js';
 import { rangeError } from '../../core/error/repo-guard-error.js';
-import { gitValue, runGit } from '../../git.js';
+import { gitValue, runGit } from '../../git/execution.js';
 
 const ZERO_SHA = /^0+$/;
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';

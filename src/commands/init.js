@@ -23,7 +23,7 @@ import {
 } from '../policies/managed-policies.js';
 import { ensureProjectConfig } from '../orchestration/setup/config-management.js';
 import { detectProjectBuildSetup } from '../gates/quality/build-setup.js';
-import { findRepositoryRoot } from '../git.js';
+import { findRepositoryRoot } from '../git/repository.js';
 import { installHooks } from '../orchestration/setup/hook-installer.js';
 import { detectProjectStylelintSetup } from '../gates/quality/stylelint-setup.js';
 import { detectProjectTypeCheckSetup } from '../gates/quality/typecheck-setup.js';
