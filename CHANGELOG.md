@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.47
+
+- 删除顶层 `src/config-management.js`，将消费项目配置的初始化、迁移、功能启停与写回生命周期迁入 `src/orchestration/setup/config-management.js`，不保留兼容转发。
+- 保持 starter 默认值、深拷贝隔离、迁移前验证、过期例外阻断、功能依赖联动、CI profile 配置和幂等写入行为不变；配置 schema、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加 setup 架构防回归测试。
+
 ## 1.4.46
 
 - 删除顶层 `src/exception-registry.js`，将结构化例外有效期分类、当前性断言与精确匹配策略迁入 `src/policies/exception-registry.js`，不保留兼容转发。

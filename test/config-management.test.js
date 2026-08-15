@@ -13,7 +13,7 @@ import {
   enableQualityGates,
   migrateProjectConfig,
   setFeaturesEnabled,
-} from '../src/config-management.js';
+} from '../src/orchestration/setup/config-management.js';
 import { CONFIG_FILE } from '../src/config.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

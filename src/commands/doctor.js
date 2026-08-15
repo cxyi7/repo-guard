@@ -20,7 +20,7 @@ import {
 import {
   ensureProjectConfig,
   migrateProjectConfig,
-} from '../config-management.js';
+} from '../orchestration/setup/config-management.js';
 import { findRepositoryRoot, gitValue } from '../git.js';
 import { inspectGitLabCi } from '../orchestration/setup/gitlab-ci.js';
 import {

@@ -3,7 +3,7 @@ import { CONFIG_FILE, loadConfig } from '../config.js';
 import {
   migrateProjectConfig,
   setFeaturesEnabled,
-} from '../config-management.js';
+} from '../orchestration/setup/config-management.js';
 import { findRepositoryRoot } from '../git.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 import {

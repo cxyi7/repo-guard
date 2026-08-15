@@ -74,7 +74,6 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 
 const REVIEWED_SOURCE_FILES = Object.freeze([
   'cli.js',
-  'config-management.js',
   'config.js',
   'git-changes.js',
   'git.js',
@@ -966,6 +965,34 @@ test('keeps managed Hook installation in setup orchestration without a root help
   assert.match(installerSource, /\.\/git-attributes\.js/);
   assert.match(installerSource, /\.\/lighthouse-ignore\.js/);
   assert.doesNotMatch(installerSource, /from ['"][^'"]*integrations\//);
+});
+
+test('keeps project configuration lifecycle in setup orchestration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'config-management.js')), false);
+  const configManagementPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'setup',
+    'config-management.js',
+  );
+  assert.equal(existsSync(configManagementPath), true);
+
+  const configManagementSource = readFileSync(configManagementPath, 'utf8');
+  assert.match(configManagementSource, /writeFileSync/);
+  assert.match(
+    configManagementSource,
+    /export function createStarterConfig/,
+  );
+  assert.match(
+    configManagementSource,
+    /export function migrateProjectConfig/,
+  );
+  assert.match(
+    configManagementSource,
+    /export function setFeaturesEnabled/,
+  );
+  assert.match(configManagementSource, /export function configureCi/);
+  assert.doesNotMatch(configManagementSource, /from ['"][^'"]*commands\//);
 });
 
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {

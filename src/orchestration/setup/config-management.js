@@ -4,9 +4,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { configurationError } from './core/error/repo-guard-error.js';
-import { gateRegistry } from './gates/registry.js';
-import { assertExceptionRegistryCurrent } from './policies/exception-registry.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
+import { gateRegistry } from '../../gates/registry.js';
+import { assertExceptionRegistryCurrent } from '../../policies/exception-registry.js';
 import {
   CONFIG_FILE,
   DEFAULT_CI_CONFIG,
@@ -29,7 +29,7 @@ import {
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
-} from './config.js';
+} from '../../config.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';
 export const QUALITY_GATES = Object.freeze(
