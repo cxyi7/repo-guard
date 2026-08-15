@@ -37,7 +37,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
   'quality-runner.js',
-  'stylelint-runner.js',
 ]);
 
 const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
@@ -488,6 +487,39 @@ test('separates Prettier project and formatting facts from quality decisions', (
   assert.doesNotMatch(
     gateSource,
     /\bprettier\.(?:getFileInfo|resolveConfig|format)\b|\b(?:pathToFileURL|writeFileSync)\b/,
+  );
+});
+
+test('separates Stylelint project and execution facts from quality policy', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'stylelint-runner.js')), false);
+  const integrationPaths = [
+    path.join(SOURCE_ROOT, 'integrations', 'stylelint', 'project.js'),
+    path.join(SOURCE_ROOT, 'integrations', 'stylelint', 'execution.js'),
+  ];
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'stylelint-gate.js');
+  for (const target of [...integrationPaths, gatePath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = integrationPaths
+    .map((target) => readFileSync(target, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|findStructuredException|stylelintFindings|restoreFileContents)\b/,
+  );
+  assert.match(integrationSource, /export async function loadProjectStylelint/);
+  assert.match(integrationSource, /export async function executeProjectStylelint/);
+  assert.match(integrationSource, /bypassProjectIgnores = false/);
+  assert.match(integrationSource, /ignoreDisables = false/);
+  const gateSource = readFileSync(gatePath, 'utf8');
+  assert.match(gateSource, /integrations\/stylelint\/execution\.js/);
+  assert.match(gateSource, /integrations\/stylelint\/project\.js/);
+  assert.match(gateSource, /bypassProjectIgnores: true/);
+  assert.match(gateSource, /ignoreDisables: true/);
+  assert.doesNotMatch(
+    gateSource,
+    /\bstylelint\.(?:lint|resolveConfig)\b|\b(?:pathToFileURL|randomUUID|readFileSync)\b/,
   );
 });
 

@@ -1,22 +1,23 @@
-import { pathToFileURL } from 'node:url';
-import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
+import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import {
   captureFileContents,
   restoreFileContents,
-} from './file-snapshot.js';
-import { normalizeStagedFiles } from './staged-files.js';
-import { findStructuredException } from './exception-registry.js';
+} from '../../file-snapshot.js';
+import { normalizeStagedFiles } from '../../staged-files.js';
+import { findStructuredException } from '../../exception-registry.js';
+import {
+  executeProjectStylelint,
+  executeProjectStylelintRules,
+  inspectProjectStylelintRuleInputs,
+} from '../../integrations/stylelint/execution.js';
 import {
   findProjectStylelintConfig,
-  resolveProjectStylelintMetadata,
-} from './integrations/stylelint/project.js';
-import { assertVueStyleLanguages } from './vue-style-languages.js';
-import { inspectUnexpectedGlobalStyles } from './style-governance.js';
-import { createGateResult } from './core/result/gate-result.js';
+  loadProjectStylelint,
+} from '../../integrations/stylelint/project.js';
+import { assertVueStyleLanguages } from '../../vue-style-languages.js';
+import { inspectUnexpectedGlobalStyles } from '../../style-governance.js';
+import { createGateResult } from '../../core/result/gate-result.js';
 
 export const STYLELINT_GATE_ID = 'quality.stylelint';
 
@@ -30,26 +31,6 @@ export const STYLE_GOVERNANCE_RULES = Object.freeze({
   disallowImportant: 'declaration-no-important',
   unexpectedGlobalStyle: 'no-unexpected-global-style',
 });
-
-async function loadProjectStylelint(root) {
-  const metadata = resolveProjectStylelintMetadata(root);
-  const stylelintModule = await import(pathToFileURL(metadata.entryPath).href);
-  const stylelint = typeof stylelintModule.lint === 'function'
-    ? stylelintModule
-    : stylelintModule.default;
-
-  if (!stylelint || typeof stylelint.lint !== 'function') {
-    throw configurationError(
-      'stylelint/unsupported-project-api',
-      `Unsupported Stylelint ${metadata.version}: the lint API is not available`,
-    );
-  }
-
-  return {
-    stylelint,
-    version: metadata.version,
-  };
-}
 
 function activeResults(results) {
   return results.filter(({ ignored }) => !ignored);
@@ -101,62 +82,37 @@ function governanceConfig(projectConfig, governance) {
   };
 }
 
-async function lint(stylelint, root, files, fix) {
-  return await stylelint.lint({
-    cwd: root,
-    files: files.map((file) => file.replace(/\\/g, '/')),
-    fix,
+async function lintComplexity(project, root, files, complexity) {
+  if (!complexity?.enabled) return { results: [] };
+  const inputs = await inspectProjectStylelintRuleInputs({ project, root, files });
+  return await executeProjectStylelintRules({
+    project,
+    root,
+    bypassProjectIgnores: true,
+    ignoreDisables: true,
+    inputs: inputs.map((input) => ({
+      ...input,
+      config: complexityConfig(input.projectConfig, complexity),
+    })),
   });
 }
 
-async function lintComplexity(stylelint, root, files, complexity) {
-  if (!complexity?.enabled) return { results: [] };
-  const results = await Promise.all(files.map(async (file) => {
-    const projectConfig = await stylelint.resolveConfig(file, { cwd: root });
-    if (!projectConfig) {
-      throw configurationError('stylelint/unresolved-project-config', `Stylelint could not resolve project configuration for ${file}`);
-    }
-    return await stylelint.lint({
-      code: readFileSync(file, 'utf8'),
-      codeFilename: file,
-      config: complexityConfig(projectConfig, complexity),
-      configBasedir: root,
-      cwd: root,
-      ...(projectConfig?.customSyntax
-        ? { customSyntax: projectConfig.customSyntax }
-        : {}),
-      ignoreDisables: true,
-      ignorePath: path.join(tmpdir(), `repo-guard-stylelint-${randomUUID()}`),
-    });
-  }));
-  return {
-    results: results.flatMap((result) => result.results),
-  };
-}
-
-async function lintGovernance(stylelint, root, files, governance) {
+async function lintGovernance(project, root, files, governance) {
   if (!governance?.enabled) return { results: [] };
-  const results = await Promise.all(files.map(async (file) => {
-    const projectConfig = await stylelint.resolveConfig(file, { cwd: root });
-    if (!projectConfig) {
-      throw configurationError('stylelint/unresolved-project-config', `Stylelint could not resolve project configuration for ${file}`);
-    }
-    return await stylelint.lint({
-      code: readFileSync(file, 'utf8'),
-      codeFilename: file,
-      config: governanceConfig(projectConfig, governance),
-      configBasedir: root,
-      cwd: root,
-      ...(projectConfig?.customSyntax
-        ? { customSyntax: projectConfig.customSyntax }
-        : {}),
-      ignoreDisables: true,
-      ignorePath: path.join(tmpdir(), `repo-guard-stylelint-${randomUUID()}`),
-    });
-  }));
+  const inputs = await inspectProjectStylelintRuleInputs({ project, root, files });
+  const report = await executeProjectStylelintRules({
+    project,
+    root,
+    bypassProjectIgnores: true,
+    ignoreDisables: true,
+    inputs: inputs.map((input) => ({
+      ...input,
+      config: governanceConfig(input.projectConfig, governance),
+    })),
+  });
   return {
     results: [
-      ...results.flatMap((result) => result.results),
+      ...report.results,
       ...inspectUnexpectedGlobalStyles({
         root,
         files,
@@ -275,15 +231,15 @@ export async function runStylelintFiles({
     throw configurationError('stylelint/missing-project-config', 'Stylelint staged gate requires a project Stylelint configuration file');
   }
 
-  const { stylelint, version } = await loadProjectStylelint(root);
+  const project = await loadProjectStylelint(root);
   const initialComplexity = await lintComplexity(
-    stylelint,
+    project,
     root,
     normalizedFiles,
     complexity,
   );
   const initialGovernance = await lintGovernance(
-    stylelint,
+    project,
     root,
     normalizedFiles,
     governance,
@@ -297,7 +253,12 @@ export async function runStylelintFiles({
         : mergeLintResults(
         withoutProjectGovernanceWarnings(
           withoutProjectComplexityWarnings(
-            await lint(stylelint, root, normalizedFiles, false),
+            await executeProjectStylelint({
+              project,
+              root,
+              files: normalizedFiles,
+              fix: false,
+            }),
             complexity,
           ),
           governance,
@@ -314,7 +275,7 @@ export async function runStylelintFiles({
   const ignoredCount = normalizedFiles.length - lintedCount;
 
   if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${version} passed`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
+    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} passed`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
   }
 
   if (!fix) {
@@ -324,19 +285,29 @@ export async function runStylelintFiles({
   const originalContents = captureFileContents(normalizedFiles);
   let final;
   try {
-    await lint(stylelint, root, normalizedFiles, true);
+    await executeProjectStylelint({
+      project,
+      root,
+      files: normalizedFiles,
+      fix: true,
+    });
     final = applyOwnedRuleExceptions(
       root,
       mergeLintResults(
         withoutProjectGovernanceWarnings(
           withoutProjectComplexityWarnings(
-            await lint(stylelint, root, normalizedFiles, false),
+            await executeProjectStylelint({
+              project,
+              root,
+              files: normalizedFiles,
+              fix: false,
+            }),
             complexity,
           ),
           governance,
         ),
-        await lintComplexity(stylelint, root, normalizedFiles, complexity),
-        await lintGovernance(stylelint, root, normalizedFiles, governance),
+        await lintComplexity(project, root, normalizedFiles, complexity),
+        await lintGovernance(project, root, normalizedFiles, governance),
       ),
       exceptions,
       complexity,
@@ -356,7 +327,7 @@ export async function runStylelintFiles({
     return createGateResult({ gateId, status: 'violation', summary: `Stylelint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: stylelintFindings(root, final.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
   }
 
-  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${version} auto-fix and verification passed`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
+  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} auto-fix and verification passed`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
 }
 
 export async function runStyleComplexityProject({ root, files, config, exceptions }) {

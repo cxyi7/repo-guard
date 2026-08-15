@@ -49,7 +49,7 @@ import {
   runStyleComplexityProject,
   runStyleGovernanceProject,
   runStylelintFiles,
-} from '../stylelint-runner.js';
+} from './quality/stylelint-gate.js';
 import {
   inspectUnitTestPolicy,
   unitTestPolicyFindings,

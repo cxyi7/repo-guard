@@ -9,7 +9,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { runStyleComplexityProject } from '../src/stylelint-runner.js';
+import { runStyleComplexityProject } from '../src/gates/quality/stylelint-gate.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

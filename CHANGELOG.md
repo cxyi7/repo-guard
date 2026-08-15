@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.18
+
+- 删除顶层 `src/stylelint-runner.js`，将消费项目 Stylelint 加载、项目配置解析与 lint 调用迁入 `src/integrations/stylelint`，将复杂度/样式治理规则、项目规则去重、结构化例外、warning 阈值、findings、回滚和 GateResult 判定迁入 `src/gates/quality/stylelint-gate.js`，不保留兼容转发。
+- 保持消费项目 Stylelint 安装、配置和 custom syntax 所有权，继续只修复暂存文件并由 `lint-staged` 保护部分暂存/未暂存内容；硬性规则、错误代码、结果、CLI、公共 exports 及固定 pre-commit 顺序不变。
+- 增加阶段 8 防回归测试，确认 Stylelint integrations 不持有 policy/result/例外/回滚判定、quality gate 不直接加载或调用 Stylelint API，并从顶层 runner 待迁移清单移除 Stylelint runner。
+
 ## 1.4.17
 
 - 删除顶层 `src/prettier-runner.js`，将消费项目 Prettier 解析加载、ignore/config/parser 事实、格式化调用和文件写入迁入 `src/integrations/prettier`，将配置与 parser 判定、格式差异 findings、失败回滚和 GateResult 判定迁入 `src/gates/quality/prettier-gate.js`，不保留兼容转发。

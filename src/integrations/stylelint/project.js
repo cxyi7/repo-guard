@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { configurationError } from '../../core/error/repo-guard-error.js';
 import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 
 export const STYLELINT_CONFIG_FILES = Object.freeze([
@@ -29,6 +31,26 @@ export function resolveProjectStylelintMetadata(root) {
 
   const entryPath = path.resolve(path.dirname(metadata.packagePath), importEntry);
   return existsSync(entryPath) ? { ...metadata, entryPath } : metadata;
+}
+
+export async function loadProjectStylelint(root) {
+  const metadata = resolveProjectStylelintMetadata(root);
+  const stylelintModule = await import(pathToFileURL(metadata.entryPath).href);
+  const stylelint = typeof stylelintModule.lint === 'function'
+    ? stylelintModule
+    : stylelintModule.default;
+
+  if (!stylelint || typeof stylelint.lint !== 'function') {
+    throw configurationError(
+      'stylelint/unsupported-project-api',
+      `Unsupported Stylelint ${metadata.version}: the lint API is not available`,
+    );
+  }
+
+  return {
+    stylelint,
+    version: metadata.version,
+  };
 }
 
 export function findProjectStylelintConfig(root) {
