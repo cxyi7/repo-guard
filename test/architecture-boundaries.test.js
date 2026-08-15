@@ -1255,6 +1255,38 @@ test('keeps external execution gate validation in the config module', () => {
   );
 });
 
+test('keeps accessibility configuration validation in the config module', () => {
+  const accessibilityValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'accessibility-validation.js',
+  );
+  assert.equal(existsSync(accessibilityValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const accessibilityValidationSource = readFileSync(
+    accessibilityValidationPath,
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/accessibility-validation\.js['"]/);
+  assert.match(configSource, /validateAccessibilityConfiguration\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /const accessibilityTestValue =/);
+  assert.match(
+    accessibilityValidationSource,
+    /export function validateAccessibilityConfiguration/,
+  );
+  assert.match(accessibilityValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    accessibilityValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    accessibilityValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
