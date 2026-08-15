@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.33
+
+- 删除顶层 `src/gitlab-ci.js`，将受管 GitLab CI 模板安装、根流水线接入和 doctor 检查迁入 `src/orchestration/setup/gitlab-ci.js`，不保留兼容转发。
+- 保持三种 CI profile、受管 marker、现有 stage 选择、复杂 YAML 冲突转人工片段、非受管模板拒绝覆盖、dry-run 预览和幂等更新不变；配置格式、CLI、生成的 CI 内容、输出、退出码和公共 exports 均保持不变，并增加架构防回归测试。
+
 ## 1.4.32
 
 - 删除顶层 `src/hook-installer.js`，将受管 Git Hook 安装与升级编排迁入 `src/orchestration/setup/hook-installer.js`，不保留兼容转发。

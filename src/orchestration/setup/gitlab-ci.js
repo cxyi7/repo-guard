@@ -5,9 +5,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { configureCi } from './config-management.js';
-import { loadConfig } from './config.js';
-import { configurationError, securityError } from './core/error/repo-guard-error.js';
+import { configureCi } from '../../config-management.js';
+import { loadConfig } from '../../config.js';
+import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
 
 export const GITLAB_CI_FILE = '.gitlab-ci.yml';
 export const GITLAB_TEMPLATE_FILE = '.gitlab/ci/repo-guard.yml';

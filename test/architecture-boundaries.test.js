@@ -81,7 +81,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'file-placement.js',
   'git-changes.js',
   'git.js',
-  'gitlab-ci.js',
   'index.js',
   'local-env.js',
   'max-file-lines.js',
@@ -902,6 +901,25 @@ test('keeps managed Hook installation in setup orchestration without a root help
   assert.match(installerSource, /\.\/git-attributes\.js/);
   assert.match(installerSource, /\.\/lighthouse-ignore\.js/);
   assert.doesNotMatch(installerSource, /from ['"][^'"]*integrations\//);
+});
+
+test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
+  const gitLabCiPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'setup',
+    'gitlab-ci.js',
+  );
+  assert.equal(existsSync(gitLabCiPath), true);
+
+  const gitLabCiSource = readFileSync(gitLabCiPath, 'utf8');
+  assert.match(gitLabCiSource, /export function inspectGitLabCi/);
+  assert.match(gitLabCiSource, /export function installGitLabCi/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v1/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab:start/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab:end/);
+  assert.doesNotMatch(gitLabCiSource, /from ['"][^'"]*integrations\//);
 });
 
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {

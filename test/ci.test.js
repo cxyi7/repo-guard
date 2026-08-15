@@ -20,7 +20,7 @@ import {
   GITLAB_TEMPLATE_FILE,
   inspectGitLabCi,
   installGitLabCi,
-} from '../src/gitlab-ci.js';
+} from '../src/orchestration/setup/gitlab-ci.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

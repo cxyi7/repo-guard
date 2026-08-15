@@ -5,7 +5,7 @@ import {
   GITLAB_CI_FILE,
   GITLAB_TEMPLATE_FILE,
   installGitLabCi,
-} from '../gitlab-ci.js';
+} from '../orchestration/setup/gitlab-ci.js';
 
 export function runInstallCiCommand(cwd = process.cwd(), {
   provider,

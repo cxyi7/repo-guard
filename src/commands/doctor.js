@@ -22,7 +22,7 @@ import {
   migrateProjectConfig,
 } from '../config-management.js';
 import { findRepositoryRoot, gitValue } from '../git.js';
-import { inspectGitLabCi } from '../gitlab-ci.js';
+import { inspectGitLabCi } from '../orchestration/setup/gitlab-ci.js';
 import {
   isCurrentManagedHook,
   isManagedHook,
