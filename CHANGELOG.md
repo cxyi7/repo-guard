@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.45
+
+- 删除顶层 `src/vue-unsafe-html.js`，将 Vue `v-html` 安全规则、诊断与结构化例外应用迁入 `src/policies/vue-unsafe-html.js`，不保留兼容转发。
+- 保持仅分析 Vue template、忽略脚本字符串与注释、识别参数和修饰符、精确位置及结构化例外行为不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.44
 
 - 删除顶层 `src/vue-target-blank.js`，将 Vue `target="_blank"` 安全规则、诊断与结构化例外应用迁入 `src/policies/vue-target-blank.js`，不保留兼容转发。

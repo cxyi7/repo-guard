@@ -9,7 +9,10 @@ import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
-import { inspectUnsafeVueHtml, VUE_NO_V_HTML_RULE } from '../../vue-unsafe-html.js';
+import {
+  inspectUnsafeVueHtml,
+  VUE_NO_V_HTML_RULE,
+} from '../../policies/vue-unsafe-html.js';
 import {
   inspectVueTargetBlank,
   VUE_TARGET_BLANK_RULE,

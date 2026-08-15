@@ -13,7 +13,7 @@ import {
   findVueVHtml,
   inspectUnsafeVueHtml,
   VUE_NO_V_HTML_RULE,
-} from '../src/vue-unsafe-html.js';
+} from '../src/policies/vue-unsafe-html.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

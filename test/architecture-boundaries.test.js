@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-unsafe-html.js',
 ]);
 
 const REVIEWED_CLI_LAUNCHER = `#!/usr/bin/env node
@@ -1086,6 +1085,27 @@ test('keeps Vue target blank security rules in policies without a root helper', 
   assert.match(targetBlankPolicySource, /findStructuredException/);
   assert.doesNotMatch(
     targetBlankPolicySource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
+  );
+});
+
+test('keeps Vue unsafe HTML security rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-unsafe-html.js')), false);
+  const unsafeHtmlPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'vue-unsafe-html.js',
+  );
+  assert.equal(existsSync(unsafeHtmlPolicyPath), true);
+
+  const unsafeHtmlPolicySource = readFileSync(unsafeHtmlPolicyPath, 'utf8');
+  assert.match(unsafeHtmlPolicySource, /integrations\/vue\/template-parser\.js/);
+  assert.match(unsafeHtmlPolicySource, /export const VUE_NO_V_HTML_RULE/);
+  assert.match(unsafeHtmlPolicySource, /export function findVueVHtml/);
+  assert.match(unsafeHtmlPolicySource, /export function inspectUnsafeVueHtml/);
+  assert.match(unsafeHtmlPolicySource, /findStructuredException/);
+  assert.doesNotMatch(
+    unsafeHtmlPolicySource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
   );
 });
