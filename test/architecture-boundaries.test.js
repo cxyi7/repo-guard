@@ -1191,6 +1191,38 @@ test('keeps dependency policy configuration validation in the config module', ()
   );
 });
 
+test('keeps architecture configuration validation in the config module', () => {
+  const architectureValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'architecture-validation.js',
+  );
+  assert.equal(existsSync(architectureValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const architectureValidationSource = readFileSync(
+    architectureValidationPath,
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/architecture-validation\.js['"]/);
+  assert.match(configSource, /validateArchitectureConfiguration\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /const architectureValue =/);
+  assert.match(
+    architectureValidationSource,
+    /export function validateArchitectureConfiguration/,
+  );
+  assert.match(architectureValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    architectureValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    architectureValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

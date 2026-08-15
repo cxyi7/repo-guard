@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.56
+
+- 将依赖架构配置验证从 `validateConfigValue` 迁入 `src/config/architecture-validation.js`，由领域模块直接返回规范化后的 `architecture`，主配置验证器只负责编排该结果。
+- 保持启用开关、超时、源路径、TypeScript 配置路径、排除正则、规则名称与严重级别、from/to 条件正则及条件深拷贝行为不变；构建、其他质量门禁、通知、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.55
 
 - 将依赖治理配置验证从 `validateConfigValue` 迁入 `src/config/dependency-policy-validation.js`，由领域模块直接返回规范化后的 `dependencyPolicy`，主配置验证器只负责编排该结果。
