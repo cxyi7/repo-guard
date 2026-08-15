@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -617,4 +618,101 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     /from ['"]\.\/(?:gates|integrations|orchestration)\//,
   );
   assert.doesNotMatch(publicEntry, /from ['"][^'"]*(?:runner|policy|parser)\.js['"]/);
+});
+
+test('imports the public API without filesystem, process, or network side effects', () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'repo-guard-public-import-'));
+  const publicEntry = path.join(SOURCE_ROOT, 'index.js');
+  const probe = `
+    import childProcess from 'node:child_process';
+    import dgram from 'node:dgram';
+    import dns from 'node:dns';
+    import fs from 'node:fs';
+    import http from 'node:http';
+    import https from 'node:https';
+    import net from 'node:net';
+    import tls from 'node:tls';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { pathToFileURL } from 'node:url';
+
+    const forbidden = (operation) => () => {
+      throw new TypeError(\`Public API import attempted \${operation}\`);
+    };
+    const replaceFunctions = (target, names, prefix) => {
+      for (const name of names) {
+        if (typeof target[name] === 'function') target[name] = forbidden(\`\${prefix}.\${name}\`);
+      }
+    };
+
+    replaceFunctions(fs, [
+      'access', 'accessSync', 'appendFile', 'appendFileSync', 'chmod', 'chmodSync',
+      'chown', 'chownSync', 'copyFile', 'copyFileSync', 'cp', 'cpSync',
+      'createReadStream', 'createWriteStream', 'existsSync', 'link', 'linkSync',
+      'lstat', 'lstatSync', 'mkdir', 'mkdirSync', 'mkdtemp', 'mkdtempSync',
+      'readdir', 'readdirSync', 'readFile', 'readFileSync', 'readlink',
+      'readlinkSync', 'realpath',
+      'realpathSync', 'rename', 'renameSync', 'rm', 'rmSync', 'rmdir',
+      'rmdirSync', 'stat', 'statSync', 'symlink', 'symlinkSync', 'truncate',
+      'truncateSync', 'unlink', 'unlinkSync', 'utimes', 'utimesSync', 'write',
+      'writeFile', 'writeFileSync', 'writeSync', 'writev', 'writevSync',
+    ], 'fs');
+    replaceFunctions(fs.promises, [
+      'access', 'appendFile', 'chmod', 'chown', 'copyFile', 'cp', 'link',
+      'lstat', 'mkdir', 'mkdtemp', 'open', 'readdir', 'readFile', 'readlink',
+      'realpath', 'rename', 'rm', 'rmdir', 'stat', 'symlink', 'truncate',
+      'unlink', 'utimes', 'writeFile',
+    ], 'fs.promises');
+    replaceFunctions(childProcess, [
+      'exec', 'execFile', 'execFileSync', 'execSync', 'fork', 'spawn', 'spawnSync',
+    ], 'child_process');
+    replaceFunctions(http, ['ClientRequest', 'createServer', 'get', 'request'], 'http');
+    replaceFunctions(https, ['createServer', 'get', 'request'], 'https');
+    replaceFunctions(net, ['connect', 'createConnection', 'createServer'], 'net');
+    replaceFunctions(net.Socket.prototype, ['connect'], 'net.Socket');
+    replaceFunctions(tls, ['connect', 'createServer'], 'tls');
+    replaceFunctions(dgram, ['createSocket'], 'dgram');
+    replaceFunctions(dns, [
+      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
+      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
+      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
+    ], 'dns');
+    replaceFunctions(dns.promises, [
+      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
+      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
+      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
+    ], 'dns.promises');
+    globalThis.fetch = forbidden('fetch');
+    if ('WebSocket' in globalThis) globalThis.WebSocket = forbidden('WebSocket');
+    process.exit = forbidden('process.exit');
+    syncBuiltinESMExports();
+
+    await import(pathToFileURL(process.argv[1]).href);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    if (process.exitCode !== undefined) {
+      throw new TypeError(\`Public API import set process.exitCode to \${process.exitCode}\`);
+    }
+    process.stdout.write('PUBLIC_API_IMPORT_OK\\n');
+  `;
+
+  try {
+    const result = spawnSync(process.execPath, [
+      '--input-type=module',
+      '--eval',
+      probe,
+      publicEntry,
+    ], {
+      cwd: fixtureRoot,
+      encoding: 'utf8',
+      timeout: 10_000,
+      windowsHide: true,
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.signal, null);
+    assert.equal(result.stdout, 'PUBLIC_API_IMPORT_OK\n');
+    assert.equal(result.stderr, '');
+    assert.deepEqual(readdirSync(fixtureRoot), []);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });

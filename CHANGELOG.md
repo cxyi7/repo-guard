@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.20
+
+- 为包根公共 API 增加隔离进程动态防回归测试，导入真实 `src/index.js` 时阻断文件读取检查与写入、子进程、DNS、Socket、HTTP(S)、fetch/WebSocket 和进程退出，并验证无输出、无退出码、无落盘文件。
+- 将“公共 API 导入零副作用”从静态 exports 审查提升为最终验收的可执行证明；公共 exports、运行时实现、CLI、Hook、CI、配置格式和消费项目行为不变。
+
 ## 1.4.19
 
 - 删除顶层 `src/quality-runner.js`，将暂存文件选择、执行配置构造、GateContext 创建、固定 Execution Plan 编排、结果渲染与失败回滚迁入 `src/orchestration/pre-commit/quality-runner.js`，不保留兼容转发。
