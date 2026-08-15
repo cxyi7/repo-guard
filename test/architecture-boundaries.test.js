@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'style-governance.js',
   'vue-component-interaction.js',
   'vue-form-label.js',
   'vue-image-alt.js',
@@ -996,6 +995,27 @@ test('keeps maximum file line rules in policies without a root helper', () => {
   assert.match(maxFileLinesSource, /core\/execution\/staged-files\.js/);
   assert.doesNotMatch(
     maxFileLinesSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
+});
+
+test('keeps style scope governance in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'style-governance.js')), false);
+  const styleGovernancePath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'style-governance.js',
+  );
+  assert.equal(existsSync(styleGovernancePath), true);
+
+  const styleGovernanceSource = readFileSync(styleGovernancePath, 'utf8');
+  assert.match(
+    styleGovernanceSource,
+    /export function inspectUnexpectedGlobalStyles/,
+  );
+  assert.match(styleGovernanceSource, /no-unexpected-global-style/);
+  assert.doesNotMatch(
+    styleGovernanceSource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
   );
 });

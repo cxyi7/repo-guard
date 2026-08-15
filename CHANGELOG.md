@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.39
+
+- 删除顶层 `src/style-governance.js`，将 Vue 样式作用域、全局逃逸与普通样式文件位置规则迁入 `src/policies/style-governance.js`，不保留兼容转发。
+- 保持 `scoped`/`module` 判定、`:global()`/`::v-global()` 检测、CSS Modules 与允许路径放行、注释和脚本示例跳过、诊断位置及结构化例外语义不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.38
 
 - 删除顶层 `src/max-file-lines.js`，将物理行数统计、Vue 分区分析、规则选择与基线比较迁入 `src/policies/max-file-lines.js`，不保留兼容转发。

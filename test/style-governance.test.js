@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { inspectUnexpectedGlobalStyles } from '../src/style-governance.js';
+import { inspectUnexpectedGlobalStyles } from '../src/policies/style-governance.js';
 import { runStyleGovernanceProject } from '../src/gates/quality/stylelint-gate.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
