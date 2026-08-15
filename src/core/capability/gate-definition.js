@@ -112,6 +112,7 @@ export function defineGate({
   }
   return Object.freeze({
     id,
+    resultModel: 'GateResult',
     configKey,
     featureName,
     featureOrder,

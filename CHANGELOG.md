@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.23
+
+- 为所有 `defineGate` 能力增加不可变的 `resultModel: "GateResult"` 元数据，使统一内部结果模型成为 Registry 显式契约，而不再只由实现约定。
+- 冻结 24 个官方门禁的 ID、配置键、执行环境、副作用上限、超时、关系依赖、工具/项目脚本/环境/Secret、artifact 及修复/取消能力；新增、删除或改变官方能力描述符必须显式更新受审清单。Execution Plan、配置格式、CLI、Hook、CI、输出和退出码保持不变。
+
 ## 1.4.22
 
 - 冻结唯一 npm `bin` 启动器及 `runCli` 调用边界，并用隔离进程证明导入 `src/cli.js` 只装载能力：除 Node 从 `node_modules` 读取依赖代码外，不得读取消费项目配置、写入文件、启动子进程、访问网络、产生输出或设置退出码。

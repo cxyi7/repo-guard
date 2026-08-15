@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.22
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.23
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.23
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.23
+npx repo-guard doctor
+```
+
+1.4.23 让所有 `defineGate` 能力在不可变 Registry 元数据中显式声明统一内部结果模型 `GateResult`，并冻结当前 24 个官方门禁的 ID、配置键、执行环境、副作用上限、超时、`requires`/`before`/`after`/`conflicts` 关系、所需工具/项目脚本/环境/Secret、artifact 以及修复和取消能力。新增、删除或改变官方能力描述符会触发仓库防回归测试，必须作为显式架构变更审查。Execution Plan、消费项目配置格式、CLI、Hook、CI、报告内容和退出码均保持不变。
 
 ## 升级到 1.4.22
 

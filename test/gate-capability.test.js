@@ -19,9 +19,292 @@ function gate(overrides = {}) {
   });
 }
 
+const POLICY_ENVIRONMENTS = Object.freeze([
+  'manual',
+  'pre-commit',
+  'ci-policy',
+  'ci-full',
+  'release-ready',
+]);
+const CI_POLICY_ENVIRONMENTS = Object.freeze([
+  'pre-commit',
+  'ci-policy',
+  'ci-full',
+  'release-ready',
+]);
+
+function reviewedGateDescriptor(id, environments, overrides = {}) {
+  return {
+    id,
+    resultModel: 'GateResult',
+    configKey: null,
+    featureName: null,
+    featureOrder: null,
+    configVersions: [1],
+    environments,
+    mutation: 'read-only',
+    allowedMutations: ['read-only'],
+    defaultTimeoutMs: 120000,
+    requires: [],
+    before: [],
+    after: [],
+    conflicts: [],
+    manualCommand: null,
+    manualOptions: [],
+    manualOrder: null,
+    doctorOrder: null,
+    packageScript: null,
+    rules: [],
+    requiredTools: [],
+    requiredScripts: [],
+    requiredEnvironment: [],
+    requiredSecrets: [],
+    artifactTypes: [],
+    supportsFix: false,
+    supportsCancellation: false,
+    ...overrides,
+  };
+}
+
+const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
+  reviewedGateDescriptor('security.dynamic-code', POLICY_ENVIRONMENTS, {
+    manualCommand: 'dynamic-code',
+    manualOrder: 70,
+    doctorOrder: 70,
+    packageScript: 'guard:dynamic-code',
+    rules: ['security/no-eval', 'security/no-function-constructor'],
+  }),
+  reviewedGateDescriptor('security.vue-unsafe-html', POLICY_ENVIRONMENTS, {
+    manualCommand: 'unsafe-html',
+    manualOrder: 80,
+    doctorOrder: 80,
+    packageScript: 'guard:unsafe-html',
+    rules: ['vue/no-v-html'],
+  }),
+  reviewedGateDescriptor('security.vue-target-blank', POLICY_ENVIRONMENTS, {
+    manualCommand: 'target-blank',
+    manualOrder: 90,
+    doctorOrder: 90,
+    packageScript: 'guard:target-blank',
+    rules: ['vue/target-blank-security'],
+  }),
+  reviewedGateDescriptor('accessibility.vue-form-label', POLICY_ENVIRONMENTS, {
+    manualCommand: 'form-labels',
+    manualOrder: 100,
+    doctorOrder: 100,
+    packageScript: 'guard:form-labels',
+    rules: ['vue/form-control-label'],
+  }),
+  reviewedGateDescriptor('accessibility.vue-image-alt', POLICY_ENVIRONMENTS, {
+    manualCommand: 'image-alt',
+    manualOrder: 110,
+    doctorOrder: 110,
+    packageScript: 'guard:image-alt',
+    rules: ['vue/img-alt'],
+  }),
+  reviewedGateDescriptor(
+    'repository.structured-exceptions',
+    ['manual', 'ci-policy', 'ci-full', 'release-ready'],
+    {
+      configKey: 'exceptions',
+      defaultTimeoutMs: 30000,
+      manualCommand: 'exceptions',
+      manualOrder: 10,
+      packageScript: 'guard:exceptions',
+    },
+  ),
+  reviewedGateDescriptor('dependencies.policy', POLICY_ENVIRONMENTS, {
+    configKey: 'dependencyPolicy',
+    featureName: 'dependencies',
+    featureOrder: 80,
+    manualCommand: 'dependencies',
+    manualOrder: 20,
+    doctorOrder: 120,
+    packageScript: 'guard:dependencies',
+  }),
+  reviewedGateDescriptor('repository.file-placement', POLICY_ENVIRONMENTS, {
+    configKey: 'preCommit.filePlacement',
+    featureName: 'filePlacement',
+    featureOrder: 40,
+    manualCommand: 'file-placement',
+    manualOrder: 150,
+    doctorOrder: 150,
+    packageScript: 'guard:file-placement',
+  }),
+  reviewedGateDescriptor('repository.maximum-file-lines', CI_POLICY_ENVIRONMENTS, {
+    configKey: 'preCommit.maxFileLines',
+    featureName: 'maxFileLines',
+    featureOrder: 50,
+    doctorOrder: 140,
+  }),
+  reviewedGateDescriptor('repository.protected-files', CI_POLICY_ENVIRONMENTS, {
+    mutation: 'external-write',
+    allowedMutations: ['external-write', 'read-only'],
+  }),
+  reviewedGateDescriptor('release.check', ['release-ready'], {
+    defaultTimeoutMs: 300000,
+    requiredScripts: ['check'],
+    supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('release.test', ['release-ready'], {
+    defaultTimeoutMs: 900000,
+    requiredScripts: ['test'],
+    supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('release.package', ['release-ready'], {
+    defaultTimeoutMs: 300000,
+    requires: ['release.check', 'release.test'],
+    after: ['quality.build'],
+    artifactTypes: ['npm-package-manifest'],
+    supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('quality.stylelint', ['pre-commit', 'ci-full'], {
+    configKey: 'preCommit.stylelint',
+    featureName: 'stylelint',
+    featureOrder: 30,
+    mutation: 'working-tree-fix',
+    allowedMutations: ['working-tree-fix', 'read-only'],
+    before: ['quality.eslint'],
+    requiredTools: ['stylelint'],
+    supportsFix: true,
+    doctorOrder: 160,
+  }),
+  reviewedGateDescriptor('quality.eslint', ['pre-commit', 'ci-full'], {
+    configKey: 'preCommit.eslint',
+    featureName: 'eslint',
+    featureOrder: 10,
+    mutation: 'working-tree-fix',
+    allowedMutations: ['working-tree-fix', 'read-only'],
+    before: ['quality.prettier'],
+    requiredTools: ['eslint'],
+    supportsFix: true,
+    doctorOrder: 130,
+  }),
+  reviewedGateDescriptor('quality.prettier', ['pre-commit', 'ci-full'], {
+    configKey: 'preCommit.prettier',
+    featureName: 'prettier',
+    featureOrder: 20,
+    mutation: 'working-tree-fix',
+    allowedMutations: ['working-tree-fix', 'read-only'],
+    requiredTools: ['prettier'],
+    supportsFix: true,
+    doctorOrder: 170,
+  }),
+  reviewedGateDescriptor('quality.typecheck', ['manual', 'pre-push', 'ci-full'], {
+    configKey: 'typeCheck',
+    featureName: 'typeCheck',
+    featureOrder: 130,
+    defaultTimeoutMs: 180000,
+    manualCommand: 'typecheck',
+    manualOrder: 50,
+    doctorOrder: 40,
+    packageScript: 'guard:typecheck',
+    requiredScripts: ['config:typeCheck.script'],
+  }),
+  reviewedGateDescriptor(
+    'quality.unit-test',
+    ['manual', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'],
+    {
+      configKey: 'unitTest',
+      featureName: 'unitTest',
+      featureOrder: 140,
+      manualCommand: 'unit-test',
+      manualOrder: 60,
+      doctorOrder: 50,
+      packageScript: 'guard:unit-test',
+      requiredTools: ['vitest'],
+      requiredScripts: ['config:unitTest.script'],
+      artifactTypes: ['coverage-report'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.accessibility-test',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'accessibilityTest',
+      featureName: 'accessibilityTest',
+      featureOrder: 100,
+      defaultTimeoutMs: 180000,
+      manualCommand: 'accessibility-test',
+      manualOrder: 120,
+      doctorOrder: 60,
+      packageScript: 'guard:accessibility-test',
+      requiredScripts: ['config:accessibilityTest.script'],
+    },
+  ),
+  reviewedGateDescriptor('quality.architecture', ['manual', 'pre-push', 'ci-full'], {
+    configKey: 'architecture',
+    featureName: 'architecture',
+    featureOrder: 90,
+    manualCommand: 'architecture',
+    manualOrder: 40,
+    doctorOrder: 20,
+    packageScript: 'guard:architecture',
+    requiredTools: ['dependency-cruiser'],
+  }),
+  reviewedGateDescriptor(
+    'quality.build',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'build',
+      featureName: 'build',
+      featureOrder: 110,
+      defaultTimeoutMs: 300000,
+      manualCommand: 'build',
+      manualOrder: 30,
+      doctorOrder: 10,
+      packageScript: 'guard:build',
+      requiredScripts: ['config:build.script'],
+      artifactTypes: ['build-output'],
+    },
+  ),
+  reviewedGateDescriptor('quality.lighthouse', ['manual', 'pre-push', 'release-ready'], {
+    configKey: 'lighthouse',
+    featureName: 'lighthouse',
+    featureOrder: 120,
+    defaultTimeoutMs: 300000,
+    manualCommand: 'lighthouse',
+    manualOptions: ['--skip-build'],
+    manualOrder: 160,
+    doctorOrder: 30,
+    packageScript: 'guard:lighthouse',
+    requiredTools: ['@lhci/cli'],
+    artifactTypes: ['lighthouse-report'],
+  }),
+  reviewedGateDescriptor('quality.style-complexity', ['manual'], {
+    configKey: 'preCommit.stylelint.complexity',
+    featureName: 'styleComplexity',
+    featureOrder: 60,
+    manualCommand: 'style-complexity',
+    manualOrder: 130,
+    packageScript: 'guard:style-complexity',
+    requiredTools: ['stylelint'],
+  }),
+  reviewedGateDescriptor('quality.style-governance', ['manual'], {
+    configKey: 'preCommit.stylelint.governance',
+    featureName: 'styleGovernance',
+    featureOrder: 70,
+    manualCommand: 'style-governance',
+    manualOrder: 140,
+    packageScript: 'guard:style-governance',
+    requiredTools: ['stylelint'],
+  }),
+]);
+
+function officialGateDescriptor(gateDefinition) {
+  const metadataEntries = Object.entries(gateDefinition)
+    .filter(([, value]) => typeof value !== 'function');
+  assert.deepEqual(
+    metadataEntries.map(([field]) => field),
+    Object.keys(REVIEWED_OFFICIAL_GATE_DESCRIPTORS[0]),
+  );
+  return Object.fromEntries(metadataEntries);
+}
+
 test('defines immutable gate metadata and exposes the dynamic-code vertical slice', () => {
   const dynamicCode = gateRegistry.get('security.dynamic-code');
   assert.equal(Object.isFrozen(dynamicCode), true);
+  assert.equal(dynamicCode.resultModel, 'GateResult');
   assert.equal(dynamicCode.manualCommand, 'dynamic-code');
   assert.equal(dynamicCode.packageScript, 'guard:dynamic-code');
   assert.equal(dynamicCode.mutation, 'read-only');
@@ -53,6 +336,13 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
       + '(hard requirement, rules=security/no-eval+security/no-function-constructor)',
     rules: dynamicCode.rules,
   });
+});
+
+test('keeps every official Gate capability descriptor on the reviewed contract', () => {
+  assert.deepEqual(
+    gateRegistry.all.map(officialGateDescriptor),
+    REVIEWED_OFFICIAL_GATE_DESCRIPTORS,
+  );
 });
 
 test('keeps a supplied file scope immutable without letting the gate own console output', () => {
