@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.21
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.22
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.22
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.22
+npx repo-guard doctor
+```
+
+1.4.22 冻结 `repo-guard` 唯一 npm `bin` 启动器和 `runCli` 调用边界，并用隔离进程验证导入 `src/cli.js` 只装载能力。探针仅允许 Node 从本包 `node_modules` 读取依赖代码；消费项目配置读取、文件写入、子进程、DNS/Socket/HTTP(S)、fetch/WebSocket、console 输出、进程退出和退出码设置均会被阻断。Hook 包名只在实际安装命令中读取，doctor 的 Node.js 运行时下限不再依赖模块顶层文件读取。CLI、Hook、CI、配置格式、门禁顺序、输出和退出码保持不变。
 
 ## 升级到 1.4.21
 

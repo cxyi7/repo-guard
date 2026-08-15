@@ -27,7 +27,6 @@ const LEGACY_MANAGED_MARKERS = Object.freeze([
 ]);
 const HOOKS_DIRECTORY = '.githooks';
 const PACKAGE_JSON_PATH = fileURLToPath(new URL('../package.json', import.meta.url));
-const PACKAGE_NAME = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8')).name;
 
 const HOOK_COMMANDS = {
   'pre-commit': ['pre-commit'],
@@ -37,11 +36,15 @@ const HOOK_COMMANDS = {
   'post-commit': ['hook-message', 'cleanup'],
 };
 
-function packageCliPath() {
-  return `node_modules/${PACKAGE_NAME}/bin/repo-guard.js`;
+function loadPackageName() {
+  return JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8')).name;
 }
 
-function createHookContent(argumentsList) {
+function packageCliPath(packageName) {
+  return `node_modules/${packageName}/bin/repo-guard.js`;
+}
+
+function createHookContent(argumentsList, packageName) {
   return [
     '#!/bin/sh',
     '',
@@ -56,7 +59,7 @@ function createHookContent(argumentsList) {
     '  exit 1',
     'fi',
     '',
-    `repo_guard_cli="$repo_root/${packageCliPath()}"`,
+    `repo_guard_cli="$repo_root/${packageCliPath(packageName)}"`,
     'if [ ! -f "$repo_guard_cli" ]; then',
     '  echo "repo-guard failed: package is not installed. Run npm install." >&2',
     '  exit 1',
@@ -168,12 +171,13 @@ export function installHooks({
     }
   }
 
+  const packageName = loadPackageName();
   mkdirSync(hooksPath, { recursive: true });
 
   for (const [hookName, argumentsList] of Object.entries(HOOK_COMMANDS)) {
     ensureManagedFile(
       path.join(hooksPath, hookName),
-      createHookContent(argumentsList),
+      createHookContent(argumentsList, packageName),
     );
   }
 

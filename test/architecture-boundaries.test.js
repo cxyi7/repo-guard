@@ -104,6 +104,20 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'wecom.js',
 ]);
 
+const REVIEWED_CLI_LAUNCHER = `#!/usr/bin/env node
+
+import { runCli } from '../src/cli.js';
+
+runCli(process.argv.slice(2))
+  .then((exitCode) => {
+    process.exitCode = exitCode;
+  })
+  .catch((error) => {
+    console.error(\`repo-guard failed: \${error.message}\`);
+    process.exitCode = 1;
+  });
+`;
+
 function javascriptFiles(root) {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const target = path.join(root, entry.name);
@@ -116,6 +130,132 @@ function writeFixture(root, relativePath, source = 'export const fixture = true;
   const target = path.join(root, relativePath);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, source, 'utf8');
+}
+
+function assertModuleImportIsInert(
+  modulePath,
+  fixturePrefix,
+  importLabel,
+  { allowModuleResolution = false } = {},
+) {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), fixturePrefix));
+  const probe = `
+    import childProcess from 'node:child_process';
+    import dgram from 'node:dgram';
+    import dns from 'node:dns';
+    import fs from 'node:fs';
+    import http from 'node:http';
+    import https from 'node:https';
+    import net from 'node:net';
+    import tls from 'node:tls';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { pathToFileURL } from 'node:url';
+
+    const importLabel = process.argv[2];
+    const allowModuleResolution = process.argv[3] === 'allow-module-resolution';
+    const normalizedDependencyRoot = process.argv[4].replaceAll('\\\\', '/');
+    const dependencyRoot = normalizedDependencyRoot.endsWith('/')
+      ? normalizedDependencyRoot.slice(0, -1)
+      : normalizedDependencyRoot;
+    const forbidden = (operation) => () => {
+      throw new TypeError(\`\${importLabel} import attempted \${operation}\`);
+    };
+    const replaceFunctions = (target, names, prefix) => {
+      for (const name of names) {
+        if (typeof target[name] === 'function') target[name] = forbidden(\`\${prefix}.\${name}\`);
+      }
+    };
+
+    const dependencyReadFunctions = new Map([
+      ['readFileSync', fs.readFileSync.bind(fs)],
+      ['realpathSync', fs.realpathSync.bind(fs)],
+    ]);
+    const blockedFsFunctions = [
+      'access', 'accessSync', 'appendFile', 'appendFileSync', 'chmod', 'chmodSync',
+      'chown', 'chownSync', 'copyFile', 'copyFileSync', 'cp', 'cpSync',
+      'createReadStream', 'createWriteStream', 'existsSync', 'link', 'linkSync',
+      'lstat', 'lstatSync', 'mkdir', 'mkdirSync', 'mkdtemp', 'mkdtempSync',
+      'readdir', 'readdirSync', 'readFile', 'readFileSync', 'readlink',
+      'readlinkSync', 'realpath',
+      'realpathSync', 'rename', 'renameSync', 'rm', 'rmSync', 'rmdir',
+      'rmdirSync', 'stat', 'statSync', 'symlink', 'symlinkSync', 'truncate',
+      'truncateSync', 'unlink', 'unlinkSync', 'utimes', 'utimesSync', 'write',
+      'writeFile', 'writeFileSync', 'writeSync', 'writev', 'writevSync',
+    ].filter((name) => !allowModuleResolution || !dependencyReadFunctions.has(name));
+    replaceFunctions(fs, blockedFsFunctions, 'fs');
+    if (allowModuleResolution) {
+      for (const [name, original] of dependencyReadFunctions) {
+        fs[name] = (target, ...argumentsList) => {
+          const normalizedTarget = String(target).replaceAll('\\\\', '/');
+          if (normalizedTarget.startsWith(\`\${dependencyRoot}/\`)) {
+            return original(target, ...argumentsList);
+          }
+          return forbidden(\`fs.\${name}\`)();
+        };
+      }
+    }
+    replaceFunctions(fs.promises, [
+      'access', 'appendFile', 'chmod', 'chown', 'copyFile', 'cp', 'link',
+      'lstat', 'mkdir', 'mkdtemp', 'open', 'readdir', 'readFile', 'readlink',
+      'realpath', 'rename', 'rm', 'rmdir', 'stat', 'symlink', 'truncate',
+      'unlink', 'utimes', 'writeFile',
+    ], 'fs.promises');
+    replaceFunctions(childProcess, [
+      'exec', 'execFile', 'execFileSync', 'execSync', 'fork', 'spawn', 'spawnSync',
+    ], 'child_process');
+    replaceFunctions(http, ['ClientRequest', 'createServer', 'get', 'request'], 'http');
+    replaceFunctions(https, ['createServer', 'get', 'request'], 'https');
+    replaceFunctions(net, ['connect', 'createConnection', 'createServer'], 'net');
+    replaceFunctions(net.Socket.prototype, ['connect'], 'net.Socket');
+    replaceFunctions(tls, ['connect', 'createServer'], 'tls');
+    replaceFunctions(dgram, ['createSocket'], 'dgram');
+    replaceFunctions(dns, [
+      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
+      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
+      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
+    ], 'dns');
+    replaceFunctions(dns.promises, [
+      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
+      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
+      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
+    ], 'dns.promises');
+    globalThis.fetch = forbidden('fetch');
+    if ('WebSocket' in globalThis) globalThis.WebSocket = forbidden('WebSocket');
+    process.exit = forbidden('process.exit');
+    syncBuiltinESMExports();
+
+    await import(pathToFileURL(process.argv[1]).href);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    if (process.exitCode !== undefined) {
+      throw new TypeError(\`\${importLabel} import set process.exitCode to \${process.exitCode}\`);
+    }
+    process.stdout.write('MODULE_IMPORT_OK\\n');
+  `;
+
+  try {
+    const result = spawnSync(process.execPath, [
+      '--input-type=module',
+      '--eval',
+      probe,
+      modulePath,
+      importLabel,
+      allowModuleResolution ? 'allow-module-resolution' : 'strict',
+      path.join(ROOT, 'node_modules'),
+    ], {
+      cwd: fixtureRoot,
+      encoding: 'utf8',
+      timeout: 10_000,
+      windowsHide: true,
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.signal, null);
+    assert.equal(result.stdout, 'MODULE_IMPORT_OK\n');
+    assert.equal(result.stderr, '');
+    assert.deepEqual(readdirSync(fixtureRoot), []);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 }
 
 test('enforces every declared platform dependency direction as an error', async () => {
@@ -748,98 +888,31 @@ test('keeps the npm package surface limited to reviewed gate-platform artifacts'
 });
 
 test('imports the public API without filesystem, process, or network side effects', () => {
-  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'repo-guard-public-import-'));
-  const publicEntry = path.join(SOURCE_ROOT, 'index.js');
-  const probe = `
-    import childProcess from 'node:child_process';
-    import dgram from 'node:dgram';
-    import dns from 'node:dns';
-    import fs from 'node:fs';
-    import http from 'node:http';
-    import https from 'node:https';
-    import net from 'node:net';
-    import tls from 'node:tls';
-    import { syncBuiltinESMExports } from 'node:module';
-    import { pathToFileURL } from 'node:url';
+  assertModuleImportIsInert(
+    path.join(SOURCE_ROOT, 'index.js'),
+    'repo-guard-public-import-',
+    'Public API',
+  );
+});
 
-    const forbidden = (operation) => () => {
-      throw new TypeError(\`Public API import attempted \${operation}\`);
-    };
-    const replaceFunctions = (target, names, prefix) => {
-      for (const name of names) {
-        if (typeof target[name] === 'function') target[name] = forbidden(\`\${prefix}.\${name}\`);
-      }
-    };
+test('keeps CLI execution behind the reviewed npm bin entrypoint', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.deepEqual(packageJson.bin, { 'repo-guard': 'bin/repo-guard.js' });
 
-    replaceFunctions(fs, [
-      'access', 'accessSync', 'appendFile', 'appendFileSync', 'chmod', 'chmodSync',
-      'chown', 'chownSync', 'copyFile', 'copyFileSync', 'cp', 'cpSync',
-      'createReadStream', 'createWriteStream', 'existsSync', 'link', 'linkSync',
-      'lstat', 'lstatSync', 'mkdir', 'mkdirSync', 'mkdtemp', 'mkdtempSync',
-      'readdir', 'readdirSync', 'readFile', 'readFileSync', 'readlink',
-      'readlinkSync', 'realpath',
-      'realpathSync', 'rename', 'renameSync', 'rm', 'rmSync', 'rmdir',
-      'rmdirSync', 'stat', 'statSync', 'symlink', 'symlinkSync', 'truncate',
-      'truncateSync', 'unlink', 'unlinkSync', 'utimes', 'utimesSync', 'write',
-      'writeFile', 'writeFileSync', 'writeSync', 'writev', 'writevSync',
-    ], 'fs');
-    replaceFunctions(fs.promises, [
-      'access', 'appendFile', 'chmod', 'chown', 'copyFile', 'cp', 'link',
-      'lstat', 'mkdir', 'mkdtemp', 'open', 'readdir', 'readFile', 'readlink',
-      'realpath', 'rename', 'rm', 'rmdir', 'stat', 'symlink', 'truncate',
-      'unlink', 'utimes', 'writeFile',
-    ], 'fs.promises');
-    replaceFunctions(childProcess, [
-      'exec', 'execFile', 'execFileSync', 'execSync', 'fork', 'spawn', 'spawnSync',
-    ], 'child_process');
-    replaceFunctions(http, ['ClientRequest', 'createServer', 'get', 'request'], 'http');
-    replaceFunctions(https, ['createServer', 'get', 'request'], 'https');
-    replaceFunctions(net, ['connect', 'createConnection', 'createServer'], 'net');
-    replaceFunctions(net.Socket.prototype, ['connect'], 'net.Socket');
-    replaceFunctions(tls, ['connect', 'createServer'], 'tls');
-    replaceFunctions(dgram, ['createSocket'], 'dgram');
-    replaceFunctions(dns, [
-      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
-      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
-      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
-    ], 'dns');
-    replaceFunctions(dns.promises, [
-      'lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny',
-      'resolveCaa', 'resolveCname', 'resolveMx', 'resolveNaptr', 'resolveNs',
-      'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse',
-    ], 'dns.promises');
-    globalThis.fetch = forbidden('fetch');
-    if ('WebSocket' in globalThis) globalThis.WebSocket = forbidden('WebSocket');
-    process.exit = forbidden('process.exit');
-    syncBuiltinESMExports();
+  const launcherPath = path.join(ROOT, packageJson.bin['repo-guard']);
+  const launcherSource = readFileSync(launcherPath, 'utf8').replaceAll('\r\n', '\n');
+  assert.equal(launcherSource, REVIEWED_CLI_LAUNCHER);
 
-    await import(pathToFileURL(process.argv[1]).href);
-    await new Promise((resolve) => setTimeout(resolve, 25));
-    if (process.exitCode !== undefined) {
-      throw new TypeError(\`Public API import set process.exitCode to \${process.exitCode}\`);
-    }
-    process.stdout.write('PUBLIC_API_IMPORT_OK\\n');
-  `;
+  const unexpectedCallers = javascriptFiles(SOURCE_ROOT)
+    .filter((file) => file !== path.join(SOURCE_ROOT, 'cli.js'))
+    .filter((file) => /\brunCli\s*\(/.test(readFileSync(file, 'utf8')))
+    .map((file) => path.relative(ROOT, file));
+  assert.deepEqual(unexpectedCallers, []);
 
-  try {
-    const result = spawnSync(process.execPath, [
-      '--input-type=module',
-      '--eval',
-      probe,
-      publicEntry,
-    ], {
-      cwd: fixtureRoot,
-      encoding: 'utf8',
-      timeout: 10_000,
-      windowsHide: true,
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.signal, null);
-    assert.equal(result.stdout, 'PUBLIC_API_IMPORT_OK\n');
-    assert.equal(result.stderr, '');
-    assert.deepEqual(readdirSync(fixtureRoot), []);
-  } finally {
-    rmSync(fixtureRoot, { recursive: true, force: true });
-  }
+  assertModuleImportIsInert(
+    path.join(SOURCE_ROOT, 'cli.js'),
+    'repo-guard-cli-import-',
+    'CLI module',
+    { allowModuleResolution: true },
+  );
 });

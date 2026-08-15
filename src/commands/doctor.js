@@ -38,10 +38,7 @@ import { loadNotificationConfig } from '../wecom.js';
 import { createProjectGateRegistry } from '../gates/registry.js';
 import { writeConsoleMessage } from '../core/report/console-renderer.js';
 
-const PACKAGE_JSON = JSON.parse(
-  readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
-);
-export const REQUIRED_NODE_RANGE = PACKAGE_JSON.engines.node;
+export const REQUIRED_NODE_RANGE = '>=22.23.2';
 
 function parseNodeVersion(value) {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(String(value));

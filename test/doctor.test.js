@@ -48,6 +48,10 @@ function createRepository() {
 }
 
 test('uses the package Node.js 22.23.2 runtime floor', () => {
+  const packageJson = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
+  );
+  assert.equal(REQUIRED_NODE_RANGE, packageJson.engines.node);
   assert.equal(REQUIRED_NODE_RANGE, '>=22.23.2');
   assert.equal(nodeVersionIsSupported('22.23.1'), false);
   assert.equal(nodeVersionIsSupported('22.23.2'), true);
