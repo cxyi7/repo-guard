@@ -8,16 +8,6 @@ import {
   normalizeRelativePattern,
   validateCiReportPath,
 } from '../src/config/validation-primitives.js';
-import {
-  CONFIG_FILE as configFileExport,
-  validateCiReportPath as configValidateCiReportPath,
-} from '../src/config.js';
-
-test('preserves config entry exports for validation primitives', () => {
-  assert.equal(configFileExport, CONFIG_FILE);
-  assert.equal(configValidateCiReportPath, validateCiReportPath);
-});
-
 test('reports unsupported properties through the structured configuration error', () => {
   assert.throws(
     () => assertKnownProperties({ enabled: true, extra: true }, new Set(['enabled']), 'gate'),

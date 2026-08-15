@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { tmpdir } from 'node:os';
-import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../src/config.js';
+import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../src/config/defaults.js';
 import { createStarterConfig } from '../src/orchestration/setup/config-management.js';
 import { runPrePush } from '../src/commands/pre-push.js';
 import {

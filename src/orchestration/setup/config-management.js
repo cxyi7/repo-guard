@@ -7,6 +7,7 @@ import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { assertExceptionRegistryCurrent } from '../../policies/exception-registry.js';
+import { validateConfig } from '../../config.js';
 import {
   DEFAULT_CI_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -27,8 +28,7 @@ import {
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
-  validateConfig,
-} from '../../config.js';
+} from '../../config/defaults.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';

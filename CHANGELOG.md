@@ -2,8 +2,8 @@
 
 ## 1.4.71
 
-- 将 `src/config.js` 中仅用于兼容导出的默认值与路径匹配绑定改为从所属模块直接转发；验证基础模块仅保留 `CONFIG_FILE` 的必要本地导入，避免入口门面创建无用途的本地绑定。
-- 保持 `src/config.js` 兼容门面、全部导出名称与对象身份、配置加载和验证行为、npm exports、schema、CLI、Hook、CI、输出和退出码不变，并增加直接转发职责边界防回归测试。
+- 删除 `src/config.js` 对默认值、路径匹配、验证基础符号和 `SUPPORTED_LEVELS` 的内部兼容转发，仓库内部消费者与测试改为直接依赖各符号的所属配置模块；配置入口只保留加载和完整配置验证职责。
+- npm 根入口仍只从 `src/config.js` 公开 `loadConfig` 与 `validateConfig`，正式 npm exports、配置行为、schema、CLI、Hook、CI、输出和退出码保持不变，并增加无兼容转发的职责边界防回归测试。
 
 ## 1.4.70
 

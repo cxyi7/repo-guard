@@ -1307,7 +1307,7 @@ npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.71
 npx repo-guard doctor
 ```
 
-1.4.71 将 `src/config.js` 中只为兼容导出而创建的默认值与路径匹配本地绑定改为从所属配置模块直接转发，并让验证基础模块仅保留 `CONFIG_FILE` 的必要本地绑定。`src/config.js` 兼容门面、全部导出名称与对象身份、配置加载和验证行为、npm exports、schema、CLI、Hook、CI、输出和退出码均不变。
+1.4.71 删除 `src/config.js` 对默认值、路径匹配、验证基础符号和 `SUPPORTED_LEVELS` 的内部兼容转发，仓库内部消费者与测试改为直接依赖各符号的所属配置模块；`src/config.js` 只保留配置加载和完整配置验证职责。npm 根入口仍只从该文件公开 `loadConfig` 与 `validateConfig`，因此正式 npm exports、配置行为、schema、CLI、Hook、CI、输出和退出码均不变。
 
 ## 升级到 1.4.70
 

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SUPPORTED_LEVELS as configSupportedLevels } from '../src/config.js';
 import {
   normalizeProtectedFileConfiguration,
   SUPPORTED_LEVELS,
@@ -10,7 +9,6 @@ import {
 const CONFIG_PATH = 'repo-guard.config.json';
 
 test('preserves the supported protected-file enforcement levels', () => {
-  assert.equal(configSupportedLevels, SUPPORTED_LEVELS);
   assert.deepEqual([...SUPPORTED_LEVELS], ['notify', 'audit']);
 });
 

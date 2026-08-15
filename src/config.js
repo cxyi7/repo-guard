@@ -5,41 +5,6 @@ import { configurationError, toRepoGuardError } from './core/error/repo-guard-er
 import { CONFIG_FILE } from './config/validation-primitives.js';
 import { validateConfigValue } from './config/configuration-validation.js';
 
-export { SUPPORTED_LEVELS } from './config/protected-file-validation.js';
-export {
-  DEFAULT_ESLINT_PATTERN,
-  DEFAULT_PRETTIER_PATTERN,
-  DEFAULT_STYLELINT_PATTERN,
-  DEFAULT_STYLE_COMPLEXITY_CONFIG,
-  DEFAULT_STYLE_GOVERNANCE_CONFIG,
-  DEFAULT_ESLINT_CONFIG,
-  DEFAULT_PRETTIER_CONFIG,
-  DEFAULT_STYLELINT_CONFIG,
-  DEFAULT_BUILD_CONFIG,
-  DEFAULT_DEPENDENCY_POLICY_CONFIG,
-  DEFAULT_ARCHITECTURE_CONFIG,
-  DEFAULT_MAX_FILE_LINES_CONFIG,
-  DEFAULT_FILE_PLACEMENT_CONFIG,
-  DEFAULT_LIGHTHOUSE_CONFIG,
-  DEFAULT_TYPE_CHECK_CONFIG,
-  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
-  DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
-  DEFAULT_COMPONENT_INTERACTION_CONFIG,
-  DEFAULT_UNIT_TEST_CONFIG,
-  DEFAULT_NOTIFICATION_CONFIG,
-  DEFAULT_CI_CONFIG,
-  DEFAULT_EXCEPTIONS_CONFIG,
-} from './config/defaults.js';
-export {
-  globToRegExp,
-  matchRule,
-  normalizeGitPath,
-} from './config/path-matching.js';
-export {
-  CONFIG_FILE,
-  validateCiReportPath,
-} from './config/validation-primitives.js';
-
 export function validateConfig(value, configPath = CONFIG_FILE) {
   try {
     return validateConfigValue(value, configPath);

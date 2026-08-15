@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { DEFAULT_FILE_PLACEMENT_CONFIG } from '../src/config.js';
+import { DEFAULT_FILE_PLACEMENT_CONFIG } from '../src/config/defaults.js';
 import { inspectFilePlacement } from '../src/policies/file-placement.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');

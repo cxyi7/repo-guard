@@ -23,7 +23,7 @@ import {
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
-} from '../config.js';
+} from '../config/defaults.js';
 import { defineGate } from '../core/capability/gate-definition.js';
 import { configurationError } from '../core/error/repo-guard-error.js';
 import { createGateResult } from '../core/result/gate-result.js';

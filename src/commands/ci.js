@@ -1,7 +1,5 @@
-import {
-  DEFAULT_CI_CONFIG,
-  loadConfig,
-} from '../config.js';
+import { loadConfig } from '../config.js';
+import { DEFAULT_CI_CONFIG } from '../config/defaults.js';
 import { validateCiReportPath } from '../config/validation-primitives.js';
 import { runCiGate } from '../orchestration/ci/runner.js';
 import { writeCiReport } from '../orchestration/ci/report.js';

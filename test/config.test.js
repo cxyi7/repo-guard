@@ -16,8 +16,10 @@ import {
   DEFAULT_STYLE_GOVERNANCE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
-  validateConfig,
-} from '../src/config.js';
+} from '../src/config/defaults.js';
+import * as configFacade from '../src/config.js';
+
+const { validateConfig } = configFacade;
 
 function baseConfig(extra = {}) {
   return {
@@ -33,6 +35,10 @@ function baseConfig(extra = {}) {
     ...extra,
   };
 }
+
+test('limits the config facade to configuration lifecycle functions', () => {
+  assert.deepEqual(Object.keys(configFacade).sort(), ['loadConfig', 'validateConfig']);
+});
 
 test('sparse version 1 configs use the current platform defaults', () => {
   const config = validateConfig(baseConfig());

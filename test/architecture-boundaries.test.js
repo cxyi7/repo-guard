@@ -1062,21 +1062,13 @@ test('keeps project configuration lifecycle in setup orchestration without a roo
   assert.doesNotMatch(configManagementSource, /from ['"][^'"]*commands\//);
 });
 
-test('keeps immutable platform defaults in the config module', () => {
+test('keeps immutable platform defaults in their owning config module', () => {
   const defaultsPath = path.join(SOURCE_ROOT, 'config', 'defaults.js');
   assert.equal(existsSync(defaultsPath), true);
 
   const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
   const defaultsSource = readFileSync(defaultsPath, 'utf8');
-  assert.match(configSource, /from ['"]\.\/config\/defaults\.js['"]/);
-  assert.match(
-    configSource,
-    /export\s*\{[^}]*DEFAULT_ESLINT_PATTERN[^}]*DEFAULT_EXCEPTIONS_CONFIG[^}]*\}\s*from ['"]\.\/config\/defaults\.js['"]/,
-  );
-  assert.doesNotMatch(
-    configSource,
-    /import\s*\{[^}]*DEFAULT_ESLINT_PATTERN[^}]*\}\s*from ['"]\.\/config\/defaults\.js['"]/,
-  );
+  assert.doesNotMatch(configSource, /from ['"]\.\/config\/defaults\.js['"]/);
   assert.doesNotMatch(configSource, /^export const DEFAULT_/m);
   assert.match(defaultsSource, /export const DEFAULT_ARCHITECTURE_CONFIG/);
   assert.match(defaultsSource, /export const DEFAULT_UNIT_TEST_CONFIG/);
@@ -1085,7 +1077,7 @@ test('keeps immutable platform defaults in the config module', () => {
   assert.doesNotMatch(defaultsSource, /^import /m);
 });
 
-test('keeps path normalization and rule matching in the config module', () => {
+test('keeps path normalization and rule matching in their owning config module', () => {
   const pathMatchingPath = path.join(SOURCE_ROOT, 'config', 'path-matching.js');
   assert.equal(existsSync(pathMatchingPath), true);
 
@@ -1097,15 +1089,7 @@ test('keeps path normalization and rule matching in the config module', () => {
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/path-matching\.js['"]/);
-  assert.match(
-    configSource,
-    /export\s*\{\s*globToRegExp,\s*matchRule,\s*normalizeGitPath,?\s*\}\s*from ['"]\.\/config\/path-matching\.js['"]/,
-  );
-  assert.doesNotMatch(
-    configSource,
-    /import\s*\{[^}]*(?:globToRegExp|matchRule|normalizeGitPath)[^}]*\}\s*from ['"]\.\/config\/path-matching\.js['"]/,
-  );
+  assert.doesNotMatch(configSource, /from ['"]\.\/config\/path-matching\.js['"]/);
   assert.doesNotMatch(configSource, /^export function (?:normalizeGitPath|globToRegExp|matchRule)/m);
   assert.match(pathMatchingSource, /export function normalizeGitPath/);
   assert.match(pathMatchingSource, /export function globToRegExp/);
@@ -1131,10 +1115,7 @@ test('keeps shared configuration validation primitives in the config module', ()
     configSource,
     /import\s*\{\s*CONFIG_FILE\s*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
   );
-  assert.match(
-    configSource,
-    /export\s*\{\s*CONFIG_FILE,\s*validateCiReportPath,?\s*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
-  );
+  assert.doesNotMatch(configSource, /^export\s*\{/m);
   assert.doesNotMatch(
     configSource,
     /import\s*\{[^}]*validateCiReportPath[^}]*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
@@ -1165,6 +1146,14 @@ test('keeps configuration validation orchestration behind the config facade', ()
   );
   assert.match(configSource, /validateConfigValue\(value, configPath\)/);
   assert.doesNotMatch(configSource, /function validateConfigValue/);
+  assert.deepEqual(
+    [...configSource.matchAll(/^export function (\w+)/gm)].map((match) => match[1]),
+    ['validateConfig', 'loadConfig'],
+  );
+  assert.doesNotMatch(
+    configSource,
+    /(?:SUPPORTED_LEVELS|DEFAULT_|globToRegExp|matchRule|normalizeGitPath|validateCiReportPath)/,
+  );
   assert.match(
     configurationValidationSource,
     /export function validateConfigValue/,

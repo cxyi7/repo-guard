@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { DEFAULT_UNIT_TEST_CONFIG } from '../src/config.js';
+import { DEFAULT_UNIT_TEST_CONFIG } from '../src/config/defaults.js';
 import { createChangeSet } from '../src/core/capability/gate-context.js';
 import { collectPrePushChanges } from '../src/orchestration/pre-push/change-range.js';
 import {

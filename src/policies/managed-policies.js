@@ -3,7 +3,7 @@ import {
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
-} from '../config.js';
+} from '../config/defaults.js';
 import {
   defineManagedPolicy,
   ensureManagedPolicy,

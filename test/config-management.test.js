@@ -14,7 +14,7 @@ import {
   migrateProjectConfig,
   setFeaturesEnabled,
 } from '../src/orchestration/setup/config-management.js';
-import { CONFIG_FILE } from '../src/config.js';
+import { CONFIG_FILE } from '../src/config/validation-primitives.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

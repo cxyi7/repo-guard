@@ -5,17 +5,9 @@ import {
   matchRule,
   normalizeGitPath,
 } from '../src/config/path-matching.js';
-import {
-  globToRegExp as configGlobToRegExp,
-  matchRule as configMatchRule,
-  normalizeGitPath as configNormalizeGitPath,
-} from '../src/config.js';
 import { matchRule as publicMatchRule } from '../src/index.js';
 
-test('preserves config and package entry exports for path matching', () => {
-  assert.equal(configNormalizeGitPath, normalizeGitPath);
-  assert.equal(configGlobToRegExp, globToRegExp);
-  assert.equal(configMatchRule, matchRule);
+test('preserves the package entry export for rule matching', () => {
   assert.equal(publicMatchRule, matchRule);
 });
 

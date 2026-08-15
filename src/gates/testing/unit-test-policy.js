@@ -5,7 +5,7 @@ import {
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { DEFAULT_UNIT_TEST_CONFIG } from '../../config.js';
+import { DEFAULT_UNIT_TEST_CONFIG } from '../../config/defaults.js';
 import { normalizeGitPath } from '../../config/path-matching.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { runGit } from '../../git/execution.js';

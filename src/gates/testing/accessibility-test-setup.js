@@ -5,7 +5,7 @@ import {
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../../config.js';
+import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../../config/defaults.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
 import {
   inspectAxeIntegration,
