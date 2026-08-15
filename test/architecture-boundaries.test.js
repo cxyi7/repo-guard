@@ -45,6 +45,12 @@ const CLI_CONFIGURATION_PATH = path.join(
   'cli',
   'configuration.js',
 );
+const CLI_INSTALL_CI_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'cli',
+  'install-ci.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -2300,6 +2306,19 @@ test('keeps configuration lifecycle commands in CLI orchestration without a comm
   assert.match(cliConfigurationSource, /from ['"]\.\.\/setup\/config-management\.js['"]/);
   assert.match(cliConfigurationSource, /from ['"]\.\.\/\.\.\/policies\/managed-policies\.js['"]/);
   assert.doesNotMatch(cliConfigurationSource, /from ['"]\.\.\/\.\.\/commands\//);
+});
+
+test('keeps managed CI installation commands in CLI orchestration without a command facade', () => {
+  assert.equal(existsSync(CLI_INSTALL_CI_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'install-ci.js')), false);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const cliInstallCiSource = readFileSync(CLI_INSTALL_CI_PATH, 'utf8');
+
+  assert.match(cliRunnerSource, /from ['"]\.\/install-ci\.js['"]/);
+  assert.match(cliInstallCiSource, /export function runInstallCiCommand/);
+  assert.match(cliInstallCiSource, /from ['"]\.\.\/setup\/gitlab-ci\.js['"]/);
+  assert.doesNotMatch(cliInstallCiSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
 test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entrypoint', () => {

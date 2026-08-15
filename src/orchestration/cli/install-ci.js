@@ -1,11 +1,11 @@
-import { findRepositoryRoot } from '../git/repository.js';
-import { configurationError } from '../core/error/repo-guard-error.js';
-import { writeConsoleMessage } from '../core/report/console-renderer.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import {
   GITLAB_CI_FILE,
   GITLAB_TEMPLATE_FILE,
   installGitLabCi,
-} from '../orchestration/setup/gitlab-ci.js';
+} from '../setup/gitlab-ci.js';
 
 export function runInstallCiCommand(cwd = process.cwd(), {
   provider,

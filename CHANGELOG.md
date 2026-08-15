@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.76
+
+- 将只服务 CLI 的 GitLab CI 安装参数接线与结果展示从 `src/commands/install-ci.js` 迁入 `src/orchestration/cli/install-ci.js`，CLI runner 直接调用同层模块；删除旧命令路径且不保留兼容转发。
+- 保持 provider 校验、仓库发现、安装与 dry-run 行为、复杂配置的手动回退提示、控制台输出、配置、Hook、CI、公共 exports 和退出码不变，并增加 CI 安装 CLI 归属与旧路径防回归测试。
+
 ## 1.4.75
 
 - 将只服务 CLI 的配置迁移、功能启用和功能禁用编排从 `src/commands/configure.js` 迁入 `src/orchestration/cli/configuration.js`，CLI runner 直接调用同层模块；删除旧命令路径且不保留兼容转发。

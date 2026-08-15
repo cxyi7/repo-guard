@@ -18,7 +18,7 @@ import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/c
 import { runGate } from '../../commands/gate.js';
 import { runHookMessage } from '../../commands/hook-message.js';
 import { runInit, runInstallHooks } from '../../commands/init.js';
-import { runInstallCiCommand } from '../../commands/install-ci.js';
+import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../../commands/pre-push.js';
 import {
   runPreCommit,
