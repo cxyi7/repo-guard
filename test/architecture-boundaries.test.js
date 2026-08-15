@@ -1133,6 +1133,29 @@ test('keeps CI and external gate validation in the config module', () => {
   assert.doesNotMatch(ciValidationSource, /from ['"][^'"]*(?:commands|orchestration)\//);
 });
 
+test('keeps structured exception validation in the config module', () => {
+  const exceptionValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'exception-validation.js',
+  );
+  assert.equal(existsSync(exceptionValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const exceptionValidationSource = readFileSync(exceptionValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/exception-validation\.js['"]/);
+  assert.match(configSource, /validateExceptionConfiguration\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /const exceptionsValue =/);
+  assert.match(exceptionValidationSource, /export function validateExceptionConfiguration/);
+  assert.match(exceptionValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(exceptionValidationSource, /from ['"]\.\/validation-primitives\.js['"]/);
+  assert.doesNotMatch(
+    exceptionValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

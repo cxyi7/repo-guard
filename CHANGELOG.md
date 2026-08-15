@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.54
+
+- 将结构化例外配置验证从 `validateConfigValue` 迁入 `src/config/exception-validation.js`，由领域模块直接返回规范化后的 `exceptions`，主配置验证器只负责编排该结果。
+- 保持 `warningDays`、`maxDays`、ID 与目标唯一性、命名空间规则、精确仓库路径、行列位置、理由与工单长度、owner/approvedBy 分离、ISO 日期和生命周期约束不变；依赖治理、架构、质量门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.53
 
 - 将 CI 配置、受保护文件动作与外部项目门禁验证从 `validateConfigValue` 迁入 `src/config/ci-validation.js`，由领域模块直接返回规范化后的 `ci` 与 `externalGates`，主配置验证器只负责编排该结果。
