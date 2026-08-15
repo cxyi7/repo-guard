@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.55
+
+- 将依赖治理配置验证从 `validateConfigValue` 迁入 `src/config/dependency-policy-validation.js`，由领域模块直接返回规范化后的 `dependencyPolicy`，主配置验证器只负责编排该结果。
+- 保持启用开关、精确版本与锁文件策略、协议名称校验和去重、禁用包唯一性、原因长度、替代包清洗及默认值不变；架构、构建、质量门禁、通知、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.54
 
 - 将结构化例外配置验证从 `validateConfigValue` 迁入 `src/config/exception-validation.js`，由领域模块直接返回规范化后的 `exceptions`，主配置验证器只负责编排该结果。
