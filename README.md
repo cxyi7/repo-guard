@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.42
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.43
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.43
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.43
+npx repo-guard doctor
+```
+
+1.4.43 删除顶层 `src/vue-style-languages.js`，将 Vue style 语言收集与单文件语言一致性策略迁入职责更明确的 `src/policies/vue-style-languages.js`，不保留兼容转发。缺省 CSS、单双引号与无引号 lang、大小写归一、去重排序、非 Vue 文件跳过，以及同一 Vue 文件混用多种 style 语言时的结构化配置错误均保持不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码不变。
 
 ## 升级到 1.4.42
 

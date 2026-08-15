@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-style-languages.js',
   'vue-target-blank.js',
   'vue-unsafe-html.js',
 ]);
@@ -1039,6 +1038,34 @@ test('keeps style scope governance in policies without a root helper', () => {
   assert.match(styleGovernanceSource, /no-unexpected-global-style/);
   assert.doesNotMatch(
     styleGovernanceSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
+});
+
+test('keeps Vue style language rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-style-languages.js')), false);
+  const styleLanguagesPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'vue-style-languages.js',
+  );
+  assert.equal(existsSync(styleLanguagesPolicyPath), true);
+
+  const styleLanguagesPolicySource = readFileSync(
+    styleLanguagesPolicyPath,
+    'utf8',
+  );
+  assert.match(
+    styleLanguagesPolicySource,
+    /export function collectVueStyleLanguages/,
+  );
+  assert.match(
+    styleLanguagesPolicySource,
+    /export function assertVueStyleLanguages/,
+  );
+  assert.match(styleLanguagesPolicySource, /configurationError/);
+  assert.doesNotMatch(
+    styleLanguagesPolicySource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
   );
 });

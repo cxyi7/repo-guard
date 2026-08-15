@@ -15,7 +15,7 @@ import {
   findProjectStylelintConfig,
   loadProjectStylelint,
 } from '../../integrations/stylelint/project.js';
-import { assertVueStyleLanguages } from '../../vue-style-languages.js';
+import { assertVueStyleLanguages } from '../../policies/vue-style-languages.js';
 import { inspectUnexpectedGlobalStyles } from '../../policies/style-governance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.43
+
+- 删除顶层 `src/vue-style-languages.js`，将 Vue style 语言收集与单文件语言一致性策略迁入 `src/policies/vue-style-languages.js`，不保留兼容转发。
+- 保持缺省 CSS、单双引号与无引号 lang、大小写归一、去重排序、非 Vue 文件跳过，以及同一 Vue 文件混用多种 style 语言时的结构化配置错误不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.42
 
 - 删除顶层 `src/vue-image-alt.js`，将 Vue 原生图片替代文本规则、诊断与结构化例外应用迁入 `src/policies/vue-image-alt.js`，不保留兼容转发。

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { configurationError } from './core/error/repo-guard-error.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
 
 const STYLE_TAG = /<style\b([^>]*)>/gi;
 const LANG_ATTRIBUTE = /\blang\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;

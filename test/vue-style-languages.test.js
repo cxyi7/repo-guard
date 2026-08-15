@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { collectVueStyleLanguages } from '../src/vue-style-languages.js';
+import { collectVueStyleLanguages } from '../src/policies/vue-style-languages.js';
 
 test('collects default and explicit Vue style languages', () => {
   assert.deepEqual(
