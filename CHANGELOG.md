@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.69
+
+- 将各配置领域的验证与规范化编排函数 `validateConfigValue` 从 `src/config.js` 迁入 `src/config/configuration-validation.js`，配置入口只保留公共导出、统一错误包装和文件加载职责。
+- 保持领域调用顺序、默认值、规范化结果及错误优先级不变；根契约、保护文件和 staged-code 质量配置继续由各自模块负责，schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加编排行为与职责边界防回归测试。
+
 ## 1.4.68
 
 - 将根配置对象、顶层已知字段及配置版本校验从 `validateConfigValue` 迁入 `src/config/root-configuration-validation.js`，主配置验证器仅在原时序点调用根配置契约后继续编排各领域结果。

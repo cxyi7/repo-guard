@@ -35,20 +35,7 @@ import {
   CONFIG_FILE,
   validateCiReportPath,
 } from './config/validation-primitives.js';
-import { validateAccessibilityConfiguration } from './config/accessibility-validation.js';
-import { validateArchitectureConfiguration } from './config/architecture-validation.js';
-import { validateCiConfiguration } from './config/ci-validation.js';
-import { validateDependencyPolicyConfiguration } from './config/dependency-policy-validation.js';
-import { validateExceptionConfiguration } from './config/exception-validation.js';
-import { validateExecutionGateConfiguration } from './config/execution-gate-validation.js';
-import { validateNotificationConfiguration } from './config/notification-validation.js';
-import { validatePreCommitConfiguration } from './config/pre-commit-validation.js';
-import {
-  normalizeProtectedFileConfiguration,
-  validateProtectedFileConfigurationShape,
-} from './config/protected-file-validation.js';
-import { validateRootConfigurationContract } from './config/root-configuration-validation.js';
-import { validateUnitTestConfiguration } from './config/unit-test-validation.js';
+import { validateConfigValue } from './config/configuration-validation.js';
 
 export { SUPPORTED_LEVELS } from './config/protected-file-validation.js';
 export {
@@ -81,52 +68,6 @@ export {
   normalizeGitPath,
 };
 export { CONFIG_FILE, validateCiReportPath };
-
-function validateConfigValue(value, configPath = CONFIG_FILE) {
-  validateRootConfigurationContract(value, configPath);
-  validateProtectedFileConfigurationShape(value, configPath);
-
-  const notification = validateNotificationConfiguration(value, configPath);
-
-  const { ci, externalGates } = validateCiConfiguration(value, configPath);
-
-  const exceptions = validateExceptionConfiguration(value, configPath);
-
-  const dependencyPolicy = validateDependencyPolicyConfiguration(value, configPath);
-
-  const architecture = validateArchitectureConfiguration(value, configPath);
-
-  const { build, lighthouse, typeCheck } = validateExecutionGateConfiguration(
-    value,
-    configPath,
-  );
-
-  const accessibilityTest = validateAccessibilityConfiguration(value, configPath);
-
-  const unitTest = validateUnitTestConfiguration(value, configPath);
-
-  const preCommit = validatePreCommitConfiguration(value, configPath);
-
-  const { rules, exclusions } = normalizeProtectedFileConfiguration(value, configPath);
-
-  return {
-    version: 1,
-    notification,
-    ci,
-    externalGates,
-    exceptions,
-    dependencyPolicy,
-    architecture,
-    build,
-    lighthouse,
-    typeCheck,
-    accessibilityTest,
-    unitTest,
-    preCommit,
-    rules,
-    exclusions,
-  };
-}
 
 export function validateConfig(value, configPath = CONFIG_FILE) {
   try {

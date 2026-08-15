@@ -17,6 +17,11 @@ import dependencyCruiserConfig from '../.dependency-cruiser.cjs';
 
 const ROOT = process.cwd();
 const SOURCE_ROOT = path.join(ROOT, 'src');
+const CONFIGURATION_VALIDATION_PATH = path.join(
+  SOURCE_ROOT,
+  'config',
+  'configuration-validation.js',
+);
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
   'core-does-not-depend-on-platform-layers',
@@ -1117,6 +1122,50 @@ test('keeps shared configuration validation primitives in the config module', ()
   assert.match(ciRunnerSource, /from ['"]\.\.\/\.\.\/config\/validation-primitives\.js['"]/);
 });
 
+test('keeps configuration validation orchestration behind the config facade', () => {
+  assert.equal(existsSync(CONFIGURATION_VALIDATION_PATH), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
+
+  assert.match(
+    configSource,
+    /from ['"]\.\/config\/configuration-validation\.js['"]/,
+  );
+  assert.match(configSource, /validateConfigValue\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /function validateConfigValue/);
+  assert.match(
+    configurationValidationSource,
+    /export function validateConfigValue/,
+  );
+  for (const moduleName of [
+    'accessibility',
+    'architecture',
+    'ci',
+    'dependency-policy',
+    'exception',
+    'execution-gate',
+    'notification',
+    'pre-commit',
+    'protected-file',
+    'root-configuration',
+    'unit-test',
+  ]) {
+    assert.match(
+      configurationValidationSource,
+      new RegExp(`from ['"]\\./${moduleName}-validation\\.js['"]`),
+    );
+  }
+  assert.doesNotMatch(
+    configurationValidationSource,
+    /from ['"][^'"]*(?:commands|core|integrations|orchestration|policies)\//,
+  );
+  assert.doesNotMatch(configurationValidationSource, /(?:readFileSync|JSON\.parse)/);
+});
+
 test('keeps the root configuration contract in its config module', () => {
   const rootValidationPath = path.join(
     SOURCE_ROOT,
@@ -1125,20 +1174,23 @@ test('keeps the root configuration contract in its config module', () => {
   );
   assert.equal(existsSync(rootValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const rootValidationSource = readFileSync(rootValidationPath, 'utf8');
 
   assert.match(
-    configSource,
-    /from ['"]\.\/config\/root-configuration-validation\.js['"]/,
+    configurationValidationSource,
+    /from ['"]\.\/root-configuration-validation\.js['"]/,
   );
   assert.match(
-    configSource,
+    configurationValidationSource,
     /validateRootConfigurationContract\(value, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /must contain a JSON object/);
-  assert.doesNotMatch(configSource, /uses unsupported version/);
-  assert.doesNotMatch(configSource, /assertKnownProperties\(/);
+  assert.doesNotMatch(configurationValidationSource, /must contain a JSON object/);
+  assert.doesNotMatch(configurationValidationSource, /uses unsupported version/);
+  assert.doesNotMatch(configurationValidationSource, /assertKnownProperties\(/);
   assert.match(
     rootValidationSource,
     /export function validateRootConfigurationContract/,
@@ -1161,12 +1213,18 @@ test('keeps CI and external gate validation in the config module', () => {
   const ciValidationPath = path.join(SOURCE_ROOT, 'config', 'ci-validation.js');
   assert.equal(existsSync(ciValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const ciValidationSource = readFileSync(ciValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/ci-validation\.js['"]/);
-  assert.match(configSource, /validateCiConfiguration\(value, configPath\)/);
-  assert.doesNotMatch(configSource, /const externalGatesValue =/);
+  assert.match(configurationValidationSource, /from ['"]\.\/ci-validation\.js['"]/);
+  assert.match(
+    configurationValidationSource,
+    /validateCiConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configurationValidationSource, /const externalGatesValue =/);
   assert.match(ciValidationSource, /export function validateCiConfiguration/);
   assert.match(ciValidationSource, /from ['"]\.\/defaults\.js['"]/);
   assert.match(ciValidationSource, /from ['"]\.\/validation-primitives\.js['"]/);
@@ -1181,12 +1239,21 @@ test('keeps structured exception validation in the config module', () => {
   );
   assert.equal(existsSync(exceptionValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const exceptionValidationSource = readFileSync(exceptionValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/exception-validation\.js['"]/);
-  assert.match(configSource, /validateExceptionConfiguration\(value, configPath\)/);
-  assert.doesNotMatch(configSource, /const exceptionsValue =/);
+  assert.match(
+    configurationValidationSource,
+    /from ['"]\.\/exception-validation\.js['"]/,
+  );
+  assert.match(
+    configurationValidationSource,
+    /validateExceptionConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configurationValidationSource, /const exceptionsValue =/);
   assert.match(exceptionValidationSource, /export function validateExceptionConfiguration/);
   assert.match(exceptionValidationSource, /from ['"]\.\/defaults\.js['"]/);
   assert.match(exceptionValidationSource, /from ['"]\.\/validation-primitives\.js['"]/);
@@ -1204,18 +1271,24 @@ test('keeps dependency policy configuration validation in the config module', ()
   );
   assert.equal(existsSync(dependencyPolicyValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const dependencyPolicyValidationSource = readFileSync(
     dependencyPolicyValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/dependency-policy-validation\.js['"]/);
   assert.match(
-    configSource,
+    configurationValidationSource,
+    /from ['"]\.\/dependency-policy-validation\.js['"]/,
+  );
+  assert.match(
+    configurationValidationSource,
     /validateDependencyPolicyConfiguration\(value, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const dependencyPolicyValue =/);
+  assert.doesNotMatch(configurationValidationSource, /const dependencyPolicyValue =/);
   assert.match(
     dependencyPolicyValidationSource,
     /export function validateDependencyPolicyConfiguration/,
@@ -1239,15 +1312,24 @@ test('keeps architecture configuration validation in the config module', () => {
   );
   assert.equal(existsSync(architectureValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const architectureValidationSource = readFileSync(
     architectureValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/architecture-validation\.js['"]/);
-  assert.match(configSource, /validateArchitectureConfiguration\(value, configPath\)/);
-  assert.doesNotMatch(configSource, /const architectureValue =/);
+  assert.match(
+    configurationValidationSource,
+    /from ['"]\.\/architecture-validation\.js['"]/,
+  );
+  assert.match(
+    configurationValidationSource,
+    /validateArchitectureConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configurationValidationSource, /const architectureValue =/);
   assert.match(
     architectureValidationSource,
     /export function validateArchitectureConfiguration/,
@@ -1271,15 +1353,24 @@ test('keeps external execution gate validation in the config module', () => {
   );
   assert.equal(existsSync(executionGateValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const executionGateValidationSource = readFileSync(
     executionGateValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/execution-gate-validation\.js['"]/);
-  assert.match(configSource, /validateExecutionGateConfiguration\(/);
-  assert.doesNotMatch(configSource, /const (?:build|lighthouse|typeCheck)Value =/);
+  assert.match(
+    configurationValidationSource,
+    /from ['"]\.\/execution-gate-validation\.js['"]/,
+  );
+  assert.match(configurationValidationSource, /validateExecutionGateConfiguration\(/);
+  assert.doesNotMatch(
+    configurationValidationSource,
+    /const (?:build|lighthouse|typeCheck)Value =/,
+  );
   assert.match(
     executionGateValidationSource,
     /export function validateExecutionGateConfiguration/,
@@ -1303,15 +1394,24 @@ test('keeps accessibility configuration validation in the config module', () => 
   );
   assert.equal(existsSync(accessibilityValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const accessibilityValidationSource = readFileSync(
     accessibilityValidationPath,
     'utf8',
   );
 
-  assert.match(configSource, /from ['"]\.\/config\/accessibility-validation\.js['"]/);
-  assert.match(configSource, /validateAccessibilityConfiguration\(value, configPath\)/);
-  assert.doesNotMatch(configSource, /const accessibilityTestValue =/);
+  assert.match(
+    configurationValidationSource,
+    /from ['"]\.\/accessibility-validation\.js['"]/,
+  );
+  assert.match(
+    configurationValidationSource,
+    /validateAccessibilityConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configurationValidationSource, /const accessibilityTestValue =/);
   assert.match(
     accessibilityValidationSource,
     /export function validateAccessibilityConfiguration/,
@@ -1335,12 +1435,21 @@ test('keeps unit test configuration validation in the config module', () => {
   );
   assert.equal(existsSync(unitTestValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const unitTestValidationSource = readFileSync(unitTestValidationPath, 'utf8');
 
-  assert.match(configSource, /from ['"]\.\/config\/unit-test-validation\.js['"]/);
-  assert.match(configSource, /validateUnitTestConfiguration\(value, configPath\)/);
-  assert.doesNotMatch(configSource, /const unitTestValue =/);
+  assert.match(
+    configurationValidationSource,
+    /from ['"]\.\/unit-test-validation\.js['"]/,
+  );
+  assert.match(
+    configurationValidationSource,
+    /validateUnitTestConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configurationValidationSource, /const unitTestValue =/);
   assert.match(
     unitTestValidationSource,
     /export function validateUnitTestConfiguration/,
@@ -1562,21 +1671,24 @@ test('keeps staged quality configuration validation in its config module', () =>
   );
   assert.equal(existsSync(preCommitValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const preCommitValidationSource = readFileSync(
     preCommitValidationPath,
     'utf8',
   );
 
   assert.match(
-    configSource,
-    /from ['"]\.\/config\/pre-commit-validation\.js['"]/,
+    configurationValidationSource,
+    /from ['"]\.\/pre-commit-validation\.js['"]/,
   );
   assert.match(
-    configSource,
+    configurationValidationSource,
     /validatePreCommitConfiguration\(value, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const preCommitValue =/);
+  assert.doesNotMatch(configurationValidationSource, /const preCommitValue =/);
   assert.match(
     preCommitValidationSource,
     /export function validatePreCommitConfiguration/,
@@ -1615,21 +1727,24 @@ test('keeps protected-file configuration separate from staged quality validation
   );
   assert.equal(existsSync(protectedFileValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const protectedFileValidationSource = readFileSync(
     protectedFileValidationPath,
     'utf8',
   );
 
   assert.match(
-    configSource,
+    configurationValidationSource,
     /validateProtectedFileConfigurationShape\(value, configPath\)/,
   );
   assert.match(
-    configSource,
+    configurationValidationSource,
     /normalizeProtectedFileConfiguration\(value, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /value\.rules\.map/);
+  assert.doesNotMatch(configurationValidationSource, /value\.rules\.map/);
   assert.match(protectedFileValidationSource, /export const SUPPORTED_LEVELS/);
   assert.match(
     protectedFileValidationSource,
@@ -1665,21 +1780,24 @@ test('keeps notification configuration validation in the config module', () => {
   );
   assert.equal(existsSync(notificationValidationPath), true);
 
-  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const configurationValidationSource = readFileSync(
+    CONFIGURATION_VALIDATION_PATH,
+    'utf8',
+  );
   const notificationValidationSource = readFileSync(
     notificationValidationPath,
     'utf8',
   );
 
   assert.match(
-    configSource,
-    /from ['"]\.\/config\/notification-validation\.js['"]/,
+    configurationValidationSource,
+    /from ['"]\.\/notification-validation\.js['"]/,
   );
   assert.match(
-    configSource,
+    configurationValidationSource,
     /validateNotificationConfiguration\(value, configPath\)/,
   );
-  assert.doesNotMatch(configSource, /const notificationValue =/);
+  assert.doesNotMatch(configurationValidationSource, /const notificationValue =/);
   assert.match(
     notificationValidationSource,
     /export function validateNotificationConfiguration/,
