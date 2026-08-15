@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'config.js',
   'exception-registry.js',
   'file-placement.js',
-  'fingerprint.js',
   'git-attributes.js',
   'git-changes.js',
   'git.js',
@@ -648,6 +647,22 @@ test('separates Vitest project and execution facts from unit-test policy decisio
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/vitest\/execution\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/vitest\/project\.js/);
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
+});
+
+test('keeps staged fingerprints in the Git integration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'fingerprint.js')), false);
+  const fingerprintPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'git',
+    'staged-fingerprint.js',
+  );
+  assert.equal(existsSync(fingerprintPath), true);
+
+  const fingerprintSource = readFileSync(fingerprintPath, 'utf8');
+  assert.match(fingerprintSource, /export function createStagedFingerprint/);
+  assert.match(fingerprintSource, /\['write-tree'\]/);
+  assert.doesNotMatch(fingerprintSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('separates package and staged metadata facts from dependency policy decisions', () => {

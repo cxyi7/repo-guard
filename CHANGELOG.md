@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.26
+
+- 删除顶层 `src/fingerprint.js`，将 Git 暂存状态指纹迁入更明确的 `src/integrations/git/staged-fingerprint.js`，不保留兼容转发。
+- 保持 `HEAD`/初始仓库标识、index tree、受保护变更复制排序、字段选择和 SHA-256 输出格式不变，通知去重、配置格式、CLI、Hook、CI、公共 exports 和退出码保持不变；增加架构防回归测试，禁止 Git 事实能力返回顶层或接管策略判定。
+
 ## 1.4.25
 
 - 删除顶层 `src/staged-files.js`，将暂存文件路径规范化、去重和仓库边界校验迁入 `src/core/execution/staged-files.js`，不保留兼容转发。

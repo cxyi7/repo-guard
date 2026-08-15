@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { gitValue, runGit } from './git.js';
+import { gitValue, runGit } from '../../git.js';
 
 export function createStagedFingerprint(root, protectedChanges) {
   const payload = {

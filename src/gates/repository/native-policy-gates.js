@@ -11,7 +11,7 @@ import { inspectVueTargetBlank, VUE_TARGET_BLANK_RULE } from '../../vue-target-b
 import { inspectVueFormLabels, VUE_FORM_CONTROL_LABEL_RULE } from '../../vue-form-label.js';
 import { inspectVueImageAlts, VUE_IMAGE_ALT_RULE } from '../../vue-image-alt.js';
 import { classifyChanges } from '../../git-changes.js';
-import { createStagedFingerprint } from '../../fingerprint.js';
+import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';
 import { assertLocalEnvironmentNotStaged, resolveNotificationEnvironment } from '../../local-env.js';
 import { notificationWasSent, saveNotificationState } from '../../state.js';
 import { buildNotificationText, loadNotificationConfig, sendWecomNotification } from '../../wecom.js';
