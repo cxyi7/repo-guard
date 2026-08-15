@@ -4,7 +4,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE } from '../../config.js';
+import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import { buildManagedTextBlock } from '../../core/policy/managed-text-block.js';
 
 export const GIT_ATTRIBUTES_FILE = '.gitattributes';

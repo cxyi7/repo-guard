@@ -6,7 +6,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { securityError } from '../../core/error/repo-guard-error.js';
-import { validateCiReportPath } from '../../config.js';
+import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { runGit } from '../../git/execution.js';
 
 function assertNoSymlinkPath(root, reportPath) {

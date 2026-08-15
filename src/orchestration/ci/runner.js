@@ -2,7 +2,7 @@ import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
 import { resolveCiRange } from './change-range.js';
-import { validateCiReportPath } from '../../config.js';
+import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { classifyChanges } from '../../policies/change-classification.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
 import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';

@@ -1,12 +1,12 @@
 import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
-  CONFIG_FILE,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   loadConfig,
 } from '../config.js';
+import { CONFIG_FILE } from '../config/validation-primitives.js';
 import { detectProjectArchitectureSetup } from '../gates/quality/architecture-setup.js';
 import {
   detectProjectAccessibilityTestSetup,

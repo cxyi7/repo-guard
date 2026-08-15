@@ -1094,6 +1094,29 @@ test('keeps path normalization and rule matching in the config module', () => {
   assert.match(classificationSource, /from ['"]\.\.\/config\/path-matching\.js['"]/);
 });
 
+test('keeps shared configuration validation primitives in the config module', () => {
+  const primitivesPath = path.join(SOURCE_ROOT, 'config', 'validation-primitives.js');
+  assert.equal(existsSync(primitivesPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const primitivesSource = readFileSync(primitivesPath, 'utf8');
+  const ciRunnerSource = readFileSync(
+    path.join(SOURCE_ROOT, 'orchestration', 'ci', 'runner.js'),
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/validation-primitives\.js['"]/);
+  assert.doesNotMatch(configSource, /^function configValidationError/m);
+  assert.doesNotMatch(configSource, /^export const CONFIG_FILE/m);
+  assert.match(primitivesSource, /export const CONFIG_FILE/);
+  assert.match(primitivesSource, /export function configValidationError/);
+  assert.match(primitivesSource, /export function normalizeRelativePattern/);
+  assert.match(primitivesSource, /export function validateCiReportPath/);
+  assert.match(primitivesSource, /from ['"]\.\/path-matching\.js['"]/);
+  assert.doesNotMatch(primitivesSource, /from ['"][^'"]*(?:policies|orchestration)\//);
+  assert.match(ciRunnerSource, /from ['"]\.\.\/\.\.\/config\/validation-primitives\.js['"]/);
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

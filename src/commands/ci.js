@@ -1,8 +1,8 @@
 import {
   DEFAULT_CI_CONFIG,
   loadConfig,
-  validateCiReportPath,
 } from '../config.js';
+import { validateCiReportPath } from '../config/validation-primitives.js';
 import { runCiGate } from '../orchestration/ci/runner.js';
 import { writeCiReport } from '../orchestration/ci/report.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';

@@ -31,8 +31,16 @@ import {
   DEFAULT_CI_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
 } from './config/defaults.js';
+import {
+  assertKnownProperties,
+  CONFIG_FILE,
+  configValidationError,
+  normalizeIsoDate,
+  normalizePatternList,
+  normalizeRelativePattern,
+  validateCiReportPath,
+} from './config/validation-primitives.js';
 
-export const CONFIG_FILE = 'repo-guard.config.json';
 export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
 export {
   DEFAULT_ESLINT_PATTERN,
@@ -63,78 +71,7 @@ export {
   matchRule,
   normalizeGitPath,
 };
-
-function configValidationError(message) {
-  return configurationError('config/invalid-value', message, {
-    details: {
-      location: { path: CONFIG_FILE },
-      evidence: [{
-        type: 'configuration-validation',
-        message,
-        location: { path: CONFIG_FILE },
-      }],
-    },
-    expected: `${CONFIG_FILE} 中对应字段满足当前配置 Schema。`,
-    remediation: {
-      goal: '修正报告中指出的配置字段，同时保留已启用门禁的约束强度',
-      steps: ['根据字段路径、当前值要求和 config.schema.json 修正配置'],
-      constraints: ['不得仅通过关闭门禁来绕过配置校验'],
-      verification: ['运行 npm run guard:check 并确认配置门禁通过'],
-    },
-  });
-}
-
-function assertKnownProperties(value, allowed, label) {
-  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
-  if (unknown.length > 0) {
-    throw configValidationError(`${label} has unsupported properties: ${unknown.join(', ')}`);
-  }
-}
-
-function normalizeIsoDate(value, label) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw configValidationError(`${label} must use YYYY-MM-DD`);
-  }
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw configValidationError(`${label} must be a valid calendar date`);
-  }
-  return value;
-}
-
-function normalizeRelativePattern(value, label) {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw configValidationError(`${label} must be a non-empty string`);
-  }
-  const pattern = normalizeGitPath(value.trim());
-  if (
-    path.isAbsolute(value.trim())
-    || pattern.startsWith('/')
-    || /^[A-Za-z]:\//.test(pattern)
-    || pattern.startsWith('!')
-    || pattern.split('/').includes('..')
-  ) {
-    throw configValidationError(`${label} must stay inside the repository`);
-  }
-  return pattern;
-}
-
-export function validateCiReportPath(value, label = 'CI report path') {
-  const reportPath = normalizeRelativePattern(value, label);
-  if (!/^reports\/.+\.json$/.test(reportPath)) {
-    throw configValidationError(`${label} must be a JSON file inside reports/`);
-  }
-  return reportPath;
-}
-
-function normalizePatternList(value, label, { allowEmpty = false } = {}) {
-  if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
-    throw configValidationError(`${label} must be ${allowEmpty ? 'an array' : 'a non-empty array'}`);
-  }
-  return value.map((pattern, index) => (
-    normalizeRelativePattern(pattern, `${label} item ${index + 1}`)
-  ));
-}
+export { CONFIG_FILE, validateCiReportPath };
 
 function validateConfigValue(value, configPath = CONFIG_FILE) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {

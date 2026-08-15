@@ -1,4 +1,5 @@
-import { CONFIG_FILE, loadConfig, validateConfig } from '../config.js';
+import { loadConfig, validateConfig } from '../config.js';
+import { CONFIG_FILE } from '../config/validation-primitives.js';
 import { configurationError, internalError, rangeError } from '../core/error/repo-guard-error.js';
 import { gitValue, runGit } from '../git/execution.js';
 import { findRepositoryRoot } from '../git/repository.js';

@@ -8,7 +8,6 @@ import { configurationError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { assertExceptionRegistryCurrent } from '../../policies/exception-registry.js';
 import {
-  CONFIG_FILE,
   DEFAULT_CI_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
@@ -30,6 +29,7 @@ import {
   DEFAULT_UNIT_TEST_CONFIG,
   validateConfig,
 } from '../../config.js';
+import { CONFIG_FILE } from '../../config/validation-primitives.js';
 
 export const CONFIG_SCHEMA_PATH = './node_modules/@cxyi7/repo-guard/config.schema.json';
 export const QUALITY_GATES = Object.freeze(

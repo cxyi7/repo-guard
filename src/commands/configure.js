@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { CONFIG_FILE, loadConfig } from '../config.js';
+import { loadConfig } from '../config.js';
+import { CONFIG_FILE } from '../config/validation-primitives.js';
 import {
   migrateProjectConfig,
   setFeaturesEnabled,
