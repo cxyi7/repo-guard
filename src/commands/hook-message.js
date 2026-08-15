@@ -3,7 +3,7 @@ import {
   cleanupCommitMessage,
   finalizeCommitMessage,
   prepareCommitMessage,
-} from '../commit-message.js';
+} from '../policies/commit-message-summary.js';
 import { findRepositoryRoot } from '../git.js';
 import { configurationError } from '../core/error/repo-guard-error.js';
 

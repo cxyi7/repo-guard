@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.36
+
+- 删除顶层 `src/commit-message.js`，将 `prepare-commit-msg`、`commit-msg` 与 `post-commit` 使用的受管提交信息摘要策略迁入 `src/policies/commit-message-summary.js`，不保留兼容转发。
+- 保持初始提交与 `commit` source 的 base 解析、暂存树指纹、受保护文件分类、受管标记块替换、手写提交信息保留、索引变化时重建状态和提交后清理不变；配置格式、CLI、Hook 内容与顺序、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.35
 
 - 删除顶层 `src/wecom.js`，将企业微信通知配置校验与文本生成迁入 `src/policies/wecom-notification.js`，将 HTTPS 发送和响应处理迁入 `src/integrations/wecom/notification.js`，不保留兼容转发。

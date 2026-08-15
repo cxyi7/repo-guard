@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { classifyChanges, collectStagedChanges, displayPath } from './git-changes.js';
-import { gitValue, runGit } from './git.js';
+import { classifyChanges, collectStagedChanges, displayPath } from '../git-changes.js';
+import { gitValue, runGit } from '../git.js';
 import {
   clearCommitMessageState,
   readCommitMessageState,
   saveCommitMessageState,
-} from './integrations/git/repository-state.js';
+} from '../integrations/git/repository-state.js';
 
 const AUTO_HEADING = '【自动变更文件】';
 const MARKER_BEGIN = '<!-- repo-guard:files:start -->';

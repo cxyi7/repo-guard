@@ -74,7 +74,6 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 
 const REVIEWED_SOURCE_FILES = Object.freeze([
   'cli.js',
-  'commit-message.js',
   'config-management.js',
   'config.js',
   'exception-registry.js',
@@ -719,6 +718,26 @@ test('keeps CI revision range ownership inside CI orchestration without a root c
   assert.match(ciRangeSource, /export function resolveCiRange/);
   assert.match(ciRangeSource, /CI_MERGE_REQUEST_DIFF_BASE_SHA/);
   assert.doesNotMatch(ciRangeSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('keeps managed commit-message summaries in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commit-message.js')), false);
+  const summaryPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'commit-message-summary.js',
+  );
+  assert.equal(existsSync(summaryPolicyPath), true);
+
+  const summaryPolicySource = readFileSync(summaryPolicyPath, 'utf8');
+  assert.match(summaryPolicySource, /export function prepareCommitMessage/);
+  assert.match(summaryPolicySource, /export function finalizeCommitMessage/);
+  assert.match(summaryPolicySource, /export function cleanupCommitMessage/);
+  assert.match(summaryPolicySource, /integrations\/git\/repository-state\.js/);
+  assert.doesNotMatch(
+    summaryPolicySource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
+  );
 });
 
 test('keeps pre-push revision range ownership inside pre-push orchestration without a root compatibility path', () => {
