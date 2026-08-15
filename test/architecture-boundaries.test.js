@@ -1069,6 +1069,14 @@ test('keeps immutable platform defaults in the config module', () => {
   const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
   const defaultsSource = readFileSync(defaultsPath, 'utf8');
   assert.match(configSource, /from ['"]\.\/config\/defaults\.js['"]/);
+  assert.match(
+    configSource,
+    /export\s*\{[^}]*DEFAULT_ESLINT_PATTERN[^}]*DEFAULT_EXCEPTIONS_CONFIG[^}]*\}\s*from ['"]\.\/config\/defaults\.js['"]/,
+  );
+  assert.doesNotMatch(
+    configSource,
+    /import\s*\{[^}]*DEFAULT_ESLINT_PATTERN[^}]*\}\s*from ['"]\.\/config\/defaults\.js['"]/,
+  );
   assert.doesNotMatch(configSource, /^export const DEFAULT_/m);
   assert.match(defaultsSource, /export const DEFAULT_ARCHITECTURE_CONFIG/);
   assert.match(defaultsSource, /export const DEFAULT_UNIT_TEST_CONFIG/);
@@ -1090,6 +1098,14 @@ test('keeps path normalization and rule matching in the config module', () => {
   );
 
   assert.match(configSource, /from ['"]\.\/config\/path-matching\.js['"]/);
+  assert.match(
+    configSource,
+    /export\s*\{\s*globToRegExp,\s*matchRule,\s*normalizeGitPath,?\s*\}\s*from ['"]\.\/config\/path-matching\.js['"]/,
+  );
+  assert.doesNotMatch(
+    configSource,
+    /import\s*\{[^}]*(?:globToRegExp|matchRule|normalizeGitPath)[^}]*\}\s*from ['"]\.\/config\/path-matching\.js['"]/,
+  );
   assert.doesNotMatch(configSource, /^export function (?:normalizeGitPath|globToRegExp|matchRule)/m);
   assert.match(pathMatchingSource, /export function normalizeGitPath/);
   assert.match(pathMatchingSource, /export function globToRegExp/);
@@ -1111,6 +1127,18 @@ test('keeps shared configuration validation primitives in the config module', ()
   );
 
   assert.match(configSource, /from ['"]\.\/config\/validation-primitives\.js['"]/);
+  assert.match(
+    configSource,
+    /import\s*\{\s*CONFIG_FILE\s*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
+  );
+  assert.match(
+    configSource,
+    /export\s*\{\s*CONFIG_FILE,\s*validateCiReportPath,?\s*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    configSource,
+    /import\s*\{[^}]*validateCiReportPath[^}]*\}\s*from ['"]\.\/config\/validation-primitives\.js['"]/,
+  );
   assert.doesNotMatch(configSource, /^function configValidationError/m);
   assert.doesNotMatch(configSource, /^export const CONFIG_FILE/m);
   assert.match(primitivesSource, /export const CONFIG_FILE/);

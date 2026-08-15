@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.71
+
+- 将 `src/config.js` 中仅用于兼容导出的默认值与路径匹配绑定改为从所属模块直接转发；验证基础模块仅保留 `CONFIG_FILE` 的必要本地导入，避免入口门面创建无用途的本地绑定。
+- 保持 `src/config.js` 兼容门面、全部导出名称与对象身份、配置加载和验证行为、npm exports、schema、CLI、Hook、CI、输出和退出码不变，并增加直接转发职责边界防回归测试。
+
 ## 1.4.70
 
 - 将 CLI 无值选项校验和带值选项解析从 `src/cli.js` 迁入 `src/orchestration/cli/argument-parsing.js`，入口分发器只在命令分支声明各自支持的参数。
