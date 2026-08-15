@@ -40,6 +40,70 @@ const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([]);
 
 const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
 
+const REVIEWED_PACKAGE_FILES = Object.freeze([
+  'bin',
+  'scripts',
+  'src',
+  'config.schema.json',
+  'external-report.schema.json',
+  'gate-result.schema.json',
+  'CHANGELOG.md',
+  'README.md',
+]);
+
+const REVIEWED_PACKED_ROOTS = Object.freeze([
+  'CHANGELOG.md',
+  'README.md',
+  'bin',
+  'config.schema.json',
+  'external-report.schema.json',
+  'gate-result.schema.json',
+  'package.json',
+  'scripts',
+  'src',
+]);
+
+const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
+  'commands',
+  'core',
+  'gates',
+  'integrations',
+  'orchestration',
+  'policies',
+]);
+
+const REVIEWED_SOURCE_FILES = Object.freeze([
+  'ci-changes.js',
+  'cli.js',
+  'commit-message.js',
+  'config-management.js',
+  'config.js',
+  'exception-registry.js',
+  'file-placement.js',
+  'file-snapshot.js',
+  'fingerprint.js',
+  'git-attributes.js',
+  'git-changes.js',
+  'git.js',
+  'gitlab-ci.js',
+  'hook-installer.js',
+  'index.js',
+  'local-env.js',
+  'max-file-lines.js',
+  'pre-push-changes.js',
+  'quality-gate.js',
+  'staged-files.js',
+  'state.js',
+  'style-governance.js',
+  'vue-component-interaction.js',
+  'vue-form-label.js',
+  'vue-image-alt.js',
+  'vue-style-languages.js',
+  'vue-target-blank.js',
+  'vue-unsafe-html.js',
+  'wecom.js',
+]);
+
 function javascriptFiles(root) {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
     const target = path.join(root, entry.name);
@@ -618,6 +682,69 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     /from ['"]\.\/(?:gates|integrations|orchestration)\//,
   );
   assert.doesNotMatch(publicEntry, /from ['"][^'"]*(?:runner|policy|parser)\.js['"]/);
+});
+
+test('keeps the npm package surface limited to reviewed gate-platform artifacts', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.deepEqual(packageJson.files, REVIEWED_PACKAGE_FILES);
+
+  const npmCli = [
+    process.env.npm_execpath,
+    path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ].find((candidate) => candidate && existsSync(candidate));
+  assert.ok(npmCli);
+  const packCache = mkdtempSync(path.join(tmpdir(), 'repo-guard-pack-cache-'));
+  let packedRoots;
+  try {
+    const packResult = spawnSync(process.execPath, [
+      npmCli,
+      'pack',
+      '--dry-run',
+      '--json',
+      '--ignore-scripts',
+    ], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        npm_config_cache: packCache,
+        npm_config_fund: 'false',
+        npm_config_update_notifier: 'false',
+      },
+      timeout: 30_000,
+      windowsHide: true,
+    });
+    assert.equal(packResult.status, 0, packResult.stderr);
+    const packReport = JSON.parse(packResult.stdout);
+    assert.equal(packReport.length, 1);
+    packedRoots = [...new Set(packReport[0].files.map(({ path: packedPath }) => (
+      packedPath.replaceAll('\\', '/').split('/')[0]
+    )))].sort();
+  } finally {
+    rmSync(packCache, { recursive: true, force: true });
+  }
+  assert.deepEqual(
+    packedRoots,
+    REVIEWED_PACKED_ROOTS,
+  );
+
+  const sourceEntries = readdirSync(SOURCE_ROOT, { withFileTypes: true });
+  assert.deepEqual(
+    sourceEntries.filter((entry) => entry.isDirectory()).map(({ name }) => name).sort(),
+    REVIEWED_SOURCE_DIRECTORIES,
+  );
+  assert.deepEqual(
+    sourceEntries.filter((entry) => entry.isFile()).map(({ name }) => name).sort(),
+    REVIEWED_SOURCE_FILES,
+  );
+
+  const automaticOrProductionScripts = Object.keys(packageJson.scripts)
+    .filter((name) => /^(?:preinstall|install|postinstall|prepare|start|serve|deploy)(?::|$)/
+      .test(name));
+  assert.deepEqual(
+    automaticOrProductionScripts,
+    [],
+  );
 });
 
 test('imports the public API without filesystem, process, or network side effects', () => {

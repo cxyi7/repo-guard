@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.20
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.21
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.21
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.21
+npx repo-guard doctor
+```
+
+1.4.21 冻结本包受审的 npm 发布根目录、`src` 顶层平台目录和既有入口文件，并禁止本包声明 `preinstall`、`install`、`postinstall`、`prepare`、`start`、`serve`、`deploy` 及其命名空间脚本。新增未审查的顶层业务 API、页面、服务、部署入口或自动安装副作用将触发仓库防回归测试，必须作为显式架构变更审查；通用 `release-ready` 不增加此限制，不会约束消费项目的正常应用结构。公共 exports、CLI、Hook、CI、配置格式和运行时行为均保持不变。
 
 ## 升级到 1.4.20
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.21
+
+- 冻结本包受审的 npm 发布根目录、`src` 顶层平台目录和既有入口文件，新增未审查的顶层业务 API、页面、服务或部署发布面必须先显式更新架构契约并完成代码审查。
+- 禁止本包声明自动安装及生产运行脚本 `preinstall`、`install`、`postinstall`、`prepare`、`start`、`serve`、`deploy` 及其命名空间，提供作为被动 `devDependency` 安装的防回归证明；通用消费项目 `release-ready` 语义不变。
+
 ## 1.4.20
 
 - 为包根公共 API 增加隔离进程动态防回归测试，导入真实 `src/index.js` 时阻断文件读取检查与写入、子进程、DNS、Socket、HTTP(S)、fetch/WebSocket 和进程退出，并验证无输出、无退出码、无落盘文件。
