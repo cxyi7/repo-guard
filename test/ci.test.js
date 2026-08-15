@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { resolveCiRange } from '../src/ci-changes.js';
+import { resolveCiRange } from '../src/orchestration/ci/change-range.js';
 import { runCiGate } from '../src/orchestration/ci/runner.js';
 import { validateConfig } from '../src/config.js';
 import { runCiCommand } from '../src/commands/ci.js';

@@ -73,7 +73,6 @@ const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
 ]);
 
 const REVIEWED_SOURCE_FILES = Object.freeze([
-  'ci-changes.js',
   'cli.js',
   'commit-message.js',
   'config-management.js',
@@ -663,6 +662,22 @@ test('keeps staged fingerprints in the Git integration without a root compatibil
   assert.match(fingerprintSource, /export function createStagedFingerprint/);
   assert.match(fingerprintSource, /\['write-tree'\]/);
   assert.doesNotMatch(fingerprintSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+});
+
+test('keeps CI revision range ownership inside CI orchestration without a root compatibility path', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'ci-changes.js')), false);
+  const ciRangePath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'ci',
+    'change-range.js',
+  );
+  assert.equal(existsSync(ciRangePath), true);
+
+  const ciRangeSource = readFileSync(ciRangePath, 'utf8');
+  assert.match(ciRangeSource, /export function resolveCiRange/);
+  assert.match(ciRangeSource, /CI_MERGE_REQUEST_DIFF_BASE_SHA/);
+  assert.doesNotMatch(ciRangeSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
 test('separates package and staged metadata facts from dependency policy decisions', () => {

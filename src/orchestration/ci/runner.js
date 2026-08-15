@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import micromatch from 'micromatch';
-import { resolveCiRange } from '../../ci-changes.js';
+import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config.js';
 import { classifyChanges } from '../../git-changes.js';
 import { collectProjectFiles } from '../../file-placement.js';

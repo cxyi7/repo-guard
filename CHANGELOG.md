@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.27
+
+- 删除顶层 `src/ci-changes.js`，将 CI 的 Git base/head 校验和精确 revision range 解析迁入 `src/orchestration/ci/change-range.js`，不保留兼容转发。
+- 保持显式参数、GitLab 环境变量优先级、零 SHA 拒绝、非 GitLab 父提交 fallback、错误代码和 ChangeSet 内容不变，配置格式、CLI、Hook、CI 执行步骤、公共 exports 和退出码保持不变；增加架构防回归测试，固定 CI 范围所有权且避免编排入口直接依赖 integrations。
+
 ## 1.4.26
 
 - 删除顶层 `src/fingerprint.js`，将 Git 暂存状态指纹迁入更明确的 `src/integrations/git/staged-fingerprint.js`，不保留兼容转发。
