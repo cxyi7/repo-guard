@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.66
+
+- 将项目通知开关配置验证从 `validateConfigValue` 迁入 `src/config/notification-validation.js`，由领域模块直接返回规范化后的 `notification`，主配置验证器只负责编排该结果。
+- 保持通知对象、已知字段、布尔开关及默认值校验不变；通知文本策略、企业微信网络集成、保护文件、staged-code 质量配置、其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.65
 
 - 将根级保护文件 `rules`/`exclusions` 的集合预检、规则字段验证、路径清洗与 matcher 编译从 `validateConfigValue` 迁入 `src/config/protected-file-validation.js`，与 pre-commit staged-code 质量配置保持独立；主配置验证器仅在原时序点调用形状预检和规范化结果。

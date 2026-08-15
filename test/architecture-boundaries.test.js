@@ -1534,6 +1534,48 @@ test('keeps protected-file configuration separate from staged quality validation
   );
 });
 
+test('keeps notification configuration validation in the config module', () => {
+  const notificationValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'notification-validation.js',
+  );
+  assert.equal(existsSync(notificationValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const notificationValidationSource = readFileSync(
+    notificationValidationPath,
+    'utf8',
+  );
+
+  assert.match(
+    configSource,
+    /from ['"]\.\/config\/notification-validation\.js['"]/,
+  );
+  assert.match(
+    configSource,
+    /validateNotificationConfiguration\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const notificationValue =/);
+  assert.match(
+    notificationValidationSource,
+    /export function validateNotificationConfiguration/,
+  );
+  assert.match(notificationValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    notificationValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    notificationValidationSource,
+    /(?:node:https|sendWecomNotification|buildNotificationText)/,
+  );
+  assert.doesNotMatch(
+    notificationValidationSource,
+    /from ['"][^'"]*(?:commands|integrations|orchestration|policies)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

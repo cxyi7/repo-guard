@@ -46,6 +46,7 @@ import { validateExceptionConfiguration } from './config/exception-validation.js
 import { validateExecutionGateConfiguration } from './config/execution-gate-validation.js';
 import { validateFilePlacementConfiguration } from './config/file-placement-validation.js';
 import { validateMaxFileLinesConfiguration } from './config/max-file-lines-validation.js';
+import { validateNotificationConfiguration } from './config/notification-validation.js';
 import { validatePrettierConfiguration } from './config/prettier-validation.js';
 import {
   normalizeProtectedFileConfiguration,
@@ -117,25 +118,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
   }
   validateProtectedFileConfigurationShape(value, configPath);
 
-  const notificationValue = value.notification ?? {};
-  if (
-    !notificationValue
-    || typeof notificationValue !== 'object'
-    || Array.isArray(notificationValue)
-  ) {
-    throw configValidationError(`${configPath} notification must be an object`);
-  }
-  assertKnownProperties(
-    notificationValue,
-    new Set(['enabled']),
-    `${configPath} notification`,
-  );
-  if (
-    notificationValue.enabled != null
-    && typeof notificationValue.enabled !== 'boolean'
-  ) {
-    throw configValidationError(`${configPath} notification.enabled must be a boolean`);
-  }
+  const notification = validateNotificationConfiguration(value, configPath);
 
   const { ci, externalGates } = validateCiConfiguration(value, configPath);
 
@@ -178,9 +161,7 @@ function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   return {
     version: 1,
-    notification: {
-      enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,
-    },
+    notification,
     ci,
     externalGates,
     exceptions,
