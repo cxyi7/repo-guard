@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.53
+
+- 将 CI 配置、受保护文件动作与外部项目门禁验证从 `validateConfigValue` 迁入 `src/config/ci-validation.js`，由领域模块直接返回规范化后的 `ci` 与 `externalGates`，主配置验证器只负责编排该结果。
+- 保持 CI 默认值、profile、报告路径、外部门禁字段、环境、脚本、超时、Windows 保留名防护、大小写不敏感的报告路径唯一性和数组复制行为不变；通知、例外、依赖、质量门禁、加载、schema、CLI、Hook、CI 输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.52
 
 - 将配置文件名、结构化配置错误、已知字段检查、ISO 日期、仓库内相对模式、模式列表与 CI 报告路径校验迁入 `src/config/validation-primitives.js`，内部消费者直接依赖归类后的基础模块，配置入口继续显式重导出既有公开名称。

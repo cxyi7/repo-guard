@@ -1117,6 +1117,22 @@ test('keeps shared configuration validation primitives in the config module', ()
   assert.match(ciRunnerSource, /from ['"]\.\.\/\.\.\/config\/validation-primitives\.js['"]/);
 });
 
+test('keeps CI and external gate validation in the config module', () => {
+  const ciValidationPath = path.join(SOURCE_ROOT, 'config', 'ci-validation.js');
+  assert.equal(existsSync(ciValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const ciValidationSource = readFileSync(ciValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/ci-validation\.js['"]/);
+  assert.match(configSource, /validateCiConfiguration\(value, configPath\)/);
+  assert.doesNotMatch(configSource, /const externalGatesValue =/);
+  assert.match(ciValidationSource, /export function validateCiConfiguration/);
+  assert.match(ciValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(ciValidationSource, /from ['"]\.\/validation-primitives\.js['"]/);
+  assert.doesNotMatch(ciValidationSource, /from ['"][^'"]*(?:commands|orchestration)\//);
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
