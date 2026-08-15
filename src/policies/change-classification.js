@@ -1,4 +1,4 @@
-import { matchRule } from '../config.js';
+import { matchRule } from '../config/path-matching.js';
 
 export function classifyChanges(changes, config) {
   return changes.flatMap((change) => {

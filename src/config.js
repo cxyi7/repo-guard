@@ -3,6 +3,11 @@ import path from 'node:path';
 import { assertExceptionRegistryCurrent } from './policies/exception-registry.js';
 import { configurationError, toRepoGuardError } from './core/error/repo-guard-error.js';
 import {
+  globToRegExp,
+  matchRule,
+  normalizeGitPath,
+} from './config/path-matching.js';
+import {
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
@@ -53,6 +58,11 @@ export {
   DEFAULT_CI_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
 };
+export {
+  globToRegExp,
+  matchRule,
+  normalizeGitPath,
+};
 
 function configValidationError(message) {
   return configurationError('config/invalid-value', message, {
@@ -72,14 +82,6 @@ function configValidationError(message) {
       verification: ['运行 npm run guard:check 并确认配置门禁通过'],
     },
   });
-}
-
-export function normalizeGitPath(value) {
-  return String(value).replace(/\\/g, '/').replace(/^\.\//, '');
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
 }
 
 function assertKnownProperties(value, allowed, label) {
@@ -132,36 +134,6 @@ function normalizePatternList(value, label, { allowEmpty = false } = {}) {
   return value.map((pattern, index) => (
     normalizeRelativePattern(pattern, `${label} item ${index + 1}`)
   ));
-}
-
-export function globToRegExp(pattern) {
-  const normalized = normalizeGitPath(pattern);
-  let expression = '';
-
-  for (let index = 0; index < normalized.length; index += 1) {
-    const character = normalized[index];
-
-    if (character === '*' && normalized[index + 1] === '*') {
-      const followedBySlash = normalized[index + 2] === '/';
-      expression += followedBySlash ? '(?:.*/)?' : '.*';
-      index += followedBySlash ? 2 : 1;
-      continue;
-    }
-
-    if (character === '*') {
-      expression += '[^/]*';
-      continue;
-    }
-
-    if (character === '?') {
-      expression += '[^/]';
-      continue;
-    }
-
-    expression += escapeRegExp(character);
-  }
-
-  return new RegExp(`^${expression}$`);
 }
 
 function validateConfigValue(value, configPath = CONFIG_FILE) {
@@ -1550,22 +1522,4 @@ export function loadConfig(root, {
       code: 'config/invalid',
     });
   }
-}
-
-export function matchRule(filePath, config) {
-  const normalized = normalizeGitPath(filePath);
-  if (config.exclusions.some(({ matcher }) => matcher.test(normalized))) {
-    return null;
-  }
-
-  const rule = config.rules.find(({ matcher }) => matcher.test(normalized));
-  if (!rule) {
-    return null;
-  }
-
-  return {
-    pattern: rule.pattern,
-    category: rule.category,
-    level: rule.level,
-  };
 }

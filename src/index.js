@@ -1,4 +1,5 @@
-export { loadConfig, matchRule, validateConfig } from './config.js';
+export { loadConfig, validateConfig } from './config.js';
+export { matchRule } from './config/path-matching.js';
 export {
   createChangeSet,
   createGateContext,

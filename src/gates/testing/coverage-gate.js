@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { normalizeGitPath } from '../../config.js';
+import { normalizeGitPath } from '../../config/path-matching.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import {
   COVERAGE_METRICS,

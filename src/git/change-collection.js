@@ -1,4 +1,4 @@
-import { normalizeGitPath } from '../config.js';
+import { normalizeGitPath } from '../config/path-matching.js';
 import { executionError } from '../core/error/repo-guard-error.js';
 import { runGit } from './execution.js';
 

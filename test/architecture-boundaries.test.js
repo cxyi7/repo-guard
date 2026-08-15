@@ -1072,6 +1072,28 @@ test('keeps immutable platform defaults in the config module', () => {
   assert.doesNotMatch(defaultsSource, /^import /m);
 });
 
+test('keeps path normalization and rule matching in the config module', () => {
+  const pathMatchingPath = path.join(SOURCE_ROOT, 'config', 'path-matching.js');
+  assert.equal(existsSync(pathMatchingPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const pathMatchingSource = readFileSync(pathMatchingPath, 'utf8');
+  const publicEntrySource = readFileSync(path.join(SOURCE_ROOT, 'index.js'), 'utf8');
+  const classificationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'policies', 'change-classification.js'),
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/path-matching\.js['"]/);
+  assert.doesNotMatch(configSource, /^export function (?:normalizeGitPath|globToRegExp|matchRule)/m);
+  assert.match(pathMatchingSource, /export function normalizeGitPath/);
+  assert.match(pathMatchingSource, /export function globToRegExp/);
+  assert.match(pathMatchingSource, /export function matchRule/);
+  assert.doesNotMatch(pathMatchingSource, /^import /m);
+  assert.match(publicEntrySource, /from ['"]\.\/config\/path-matching\.js['"]/);
+  assert.match(classificationSource, /from ['"]\.\.\/config\/path-matching\.js['"]/);
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
