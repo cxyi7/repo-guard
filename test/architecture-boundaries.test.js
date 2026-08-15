@@ -79,7 +79,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'config.js',
   'exception-registry.js',
   'file-placement.js',
-  'git-attributes.js',
   'git-changes.js',
   'git.js',
   'gitlab-ci.js',
@@ -848,6 +847,25 @@ test('keeps Lighthouse ignore management in setup orchestration without a root h
       'lighthouse-ignore.js',
     )),
     true,
+  );
+});
+
+test('keeps Git attributes management in setup orchestration without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'git-attributes.js')), false);
+  const attributesPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'setup',
+    'git-attributes.js',
+  );
+  assert.equal(existsSync(attributesPath), true);
+
+  const attributesSource = readFileSync(attributesPath, 'utf8');
+  assert.match(attributesSource, /export function ensureGitAttributes/);
+  assert.match(attributesSource, /repo-guard-managed:attributes:start/);
+  assert.doesNotMatch(
+    attributesSource,
+    /\b(?:GateResult|finding|registry|orchestratePlan|runGit)\b/i,
   );
 });
 

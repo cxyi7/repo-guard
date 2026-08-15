@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.29
+
+- 删除顶层 `src/git-attributes.js`，将 `.gitattributes` 托管文本块维护迁入 `src/orchestration/setup/git-attributes.js`，不保留兼容转发。
+- 保持人工内容、托管标记、`.githooks/*` 与配置文件 LF 属性、幂等写入和安装结果不变，配置格式、CLI、Hook 顺序、CI、公共 exports、输出和退出码保持不变；增加行为测试与架构防回归测试，固定 setup 所有权。
+
 ## 1.4.28
 
 - 删除顶层 `src/pre-push-changes.js`，将 pre-push 协议解析和精确推送范围收集迁入 `src/orchestration/pre-push/change-range.js`，不保留兼容转发。

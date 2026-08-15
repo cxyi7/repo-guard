@@ -13,7 +13,7 @@ import {
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   loadConfig,
 } from './config.js';
-import { ensureGitAttributes } from './git-attributes.js';
+import { ensureGitAttributes } from './orchestration/setup/git-attributes.js';
 import { writeConsoleMessage } from './core/report/console-renderer.js';
 import { findRepositoryRoot, gitValue, runGit } from './git.js';
 import { ensureLocalEnvironment } from './local-env.js';

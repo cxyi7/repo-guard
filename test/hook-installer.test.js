@@ -16,6 +16,7 @@ import {
   isManagedHook,
 } from '../src/hook-installer.js';
 import { createStarterConfig } from '../src/config-management.js';
+import { ensureGitAttributes } from '../src/orchestration/setup/git-attributes.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -38,6 +39,26 @@ function createRepository() {
   );
   return root;
 }
+
+test('preserves manual Git attributes while maintaining an idempotent managed block', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, '.gitattributes');
+  writeFileSync(target, '*.png binary\n');
+
+  const first = ensureGitAttributes(root);
+  const managed = readFileSync(target, 'utf8');
+  const second = ensureGitAttributes(root);
+
+  assert.deepEqual(first, { changed: true, path: target });
+  assert.match(managed, /^\*\.png binary\n/);
+  assert.match(managed, /# repo-guard-managed:attributes:start/);
+  assert.match(managed, /\.githooks\/\* text eol=lf/);
+  assert.match(managed, /repo-guard\.config\.json text eol=lf/);
+  assert.match(managed, /# repo-guard-managed:attributes:end/);
+  assert.deepEqual(second, { changed: false, path: target });
+  assert.equal(readFileSync(target, 'utf8'), managed);
+});
 
 test('skips hook installation when the CI environment requests it', (context) => {
   const root = createRepository();

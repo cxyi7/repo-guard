@@ -4,8 +4,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE } from './config.js';
-import { buildManagedTextBlock } from './core/policy/managed-text-block.js';
+import { CONFIG_FILE } from '../../config.js';
+import { buildManagedTextBlock } from '../../core/policy/managed-text-block.js';
 
 export const GIT_ATTRIBUTES_FILE = '.gitattributes';
 export const ATTRIBUTES_START_MARKER = '# repo-guard-managed:attributes:start';
