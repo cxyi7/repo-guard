@@ -33,6 +33,12 @@ const CLI_RUNNER_PATH = path.join(
   'cli',
   'runner.js',
 );
+const DOCTOR_RUNNER_PATH = path.join(
+  SOURCE_ROOT,
+  'orchestration',
+  'doctor',
+  'runner.js',
+);
 const CLI_CHECK_PATH = path.join(
   SOURCE_ROOT,
   'orchestration',
@@ -492,10 +498,10 @@ test('keeps the Node runtime contract in core project facts instead of doctor or
   const nodeVersionPath = path.join(SOURCE_ROOT, 'core', 'project', 'node-version.js');
   assert.equal(existsSync(nodeVersionPath), true);
 
-  const doctorSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'doctor.js'), 'utf8');
+  const doctorSource = readFileSync(DOCTOR_RUNNER_PATH, 'utf8');
   const nodeVersionSource = readFileSync(nodeVersionPath, 'utf8');
 
-  assert.match(doctorSource, /from ['"]\.\.\/core\/project\/node-version\.js['"]/);
+  assert.match(doctorSource, /from ['"]\.\.\/\.\.\/core\/project\/node-version\.js['"]/);
   assert.doesNotMatch(doctorSource, /function parseNodeVersion|export const REQUIRED_NODE_RANGE/);
   assert.match(nodeVersionSource, /export const REQUIRED_NODE_RANGE/);
   assert.match(nodeVersionSource, /export function nodeVersionIsSupported/);
@@ -2457,15 +2463,33 @@ test('keeps project initialization in setup orchestration without a command faca
 test('keeps doctor repository mutation in setup orchestration separate from diagnosis', () => {
   assert.equal(existsSync(REPOSITORY_REPAIR_PATH), true);
 
-  const doctorSource = readFileSync(path.join(SOURCE_ROOT, 'commands', 'doctor.js'), 'utf8');
+  const doctorSource = readFileSync(DOCTOR_RUNNER_PATH, 'utf8');
   const repairSource = readFileSync(REPOSITORY_REPAIR_PATH, 'utf8');
 
-  assert.match(doctorSource, /from ['"]\.\.\/orchestration\/setup\/repository-repair\.js['"]/);
+  assert.match(doctorSource, /from ['"]\.\.\/setup\/repository-repair\.js['"]/);
   assert.doesNotMatch(doctorSource, /function repairRepository|ensureProjectConfig|migrateProjectConfig/);
   assert.match(repairSource, /export function repairRepository/);
   assert.match(repairSource, /from ['"]\.\/config-management\.js['"]/);
   assert.match(repairSource, /from ['"]\.\/hook-installer\.js['"]/);
   assert.doesNotMatch(repairSource, /createProjectGateRegistry|writeConsoleMessage/);
+});
+
+test('keeps doctor diagnosis in orchestration and the transition command layer empty', () => {
+  assert.equal(existsSync(DOCTOR_RUNNER_PATH), true);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'doctor.js')), false);
+
+  const commandsPath = path.join(SOURCE_ROOT, 'commands');
+  const commandEntries = existsSync(commandsPath)
+    ? readdirSync(commandsPath, { withFileTypes: true }).filter((entry) => entry.isFile())
+    : [];
+  assert.deepEqual(commandEntries, []);
+
+  const cliRunnerSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+  const doctorSource = readFileSync(DOCTOR_RUNNER_PATH, 'utf8');
+  assert.match(cliRunnerSource, /from ['"]\.\.\/doctor\/runner\.js['"]/);
+  assert.match(doctorSource, /export async function runDoctor/);
+  assert.match(doctorSource, /from ['"]\.\.\/setup\/repository-repair\.js['"]/);
+  assert.doesNotMatch(doctorSource, /from ['"][^'"]*commands\//);
 });
 
 test('keeps staged quality CLI adaptation separate from pre-commit lifecycle orchestration', () => {

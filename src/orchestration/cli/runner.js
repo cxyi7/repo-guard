@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { runCheck } from './check.js';
 import { runCiCommand } from '../ci/command.js';
 import { runDisable, runEnable, runMigrate } from './configuration.js';
-import { runDoctor } from '../../commands/doctor.js';
+import { runDoctor } from '../doctor/runner.js';
 import { gateRegistry } from '../../gates/registry.js';
 import {
   runExternalManualGate,

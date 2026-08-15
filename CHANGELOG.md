@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.88
+
+- 将只读诊断、CI 模式检查、Gate setup 巡检与结果输出从 `src/commands/doctor.js` 迁入 `src/orchestration/doctor/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧路径且不保留兼容转发。
+- 保持 Node 契约与仓库修复的独立职责、诊断行为、配置、Hook、CI、公共 exports 和退出码不变，并增加 doctor 归属、旧路径以及过渡 `commands` 层清零测试。
+
 ## 1.4.87
 
 - 将 `doctor --fix` 的配置创建/迁移、受管策略维护和 Hook 重装写操作拆入 `src/orchestration/setup/repository-repair.js`，doctor 通过 `{ repairs, repairErrors }` 结果消费修复编排。

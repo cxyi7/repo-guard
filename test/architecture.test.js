@@ -22,7 +22,7 @@ import {
   isArchitecturePolicyCurrent,
 } from '../src/policies/managed-policies.js';
 import { runPrePush } from '../src/orchestration/pre-push/runner.js';
-import { runDoctor } from '../src/commands/doctor.js';
+import { runDoctor } from '../src/orchestration/doctor/runner.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));

@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   runDoctor,
-} from '../src/commands/doctor.js';
+} from '../src/orchestration/doctor/runner.js';
 import {
   nodeVersionIsSupported,
   REQUIRED_NODE_RANGE,

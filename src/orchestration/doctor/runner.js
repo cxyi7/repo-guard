@@ -1,36 +1,36 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { configurationError } from '../core/error/repo-guard-error.js';
+import { loadConfig } from '../../config/configuration-loader.js';
+import { configurationError } from '../../core/error/repo-guard-error.js';
 import {
   nodeVersionIsSupported,
   REQUIRED_NODE_RANGE,
-} from '../core/project/node-version.js';
-import {
-  EXCEPTION_POLICY_FILE,
-  isExceptionPolicyCurrent,
-} from '../policies/managed-policies.js';
-import { loadConfig } from '../config/configuration-loader.js';
-import { inspectExceptionRegistry } from '../policies/exception-registry.js';
+} from '../../core/project/node-version.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import {
   renderExceptionRegistrySummary,
-} from '../core/report/exception-registry-renderer.js';
-import { gitValue } from '../git/execution.js';
-import { findRepositoryRoot } from '../git/repository.js';
-import { inspectGitLabCi } from '../orchestration/setup/gitlab-ci.js';
-import {
-  isCurrentManagedHook,
-  isManagedHook,
-  managedHookNames,
-} from '../orchestration/setup/hook-installer.js';
-import { repairRepository } from '../orchestration/setup/repository-repair.js';
+} from '../../core/report/exception-registry-renderer.js';
+import { createProjectGateRegistry } from '../../gates/registry.js';
+import { gitValue } from '../../git/execution.js';
+import { findRepositoryRoot } from '../../git/repository.js';
+import { inspectExceptionRegistry } from '../../policies/exception-registry.js';
 import {
   getLocalEnvironmentGitStatus,
   LOCAL_ENV_FILE,
   resolveNotificationEnvironment,
-} from '../policies/local-environment.js';
-import { loadNotificationConfig } from '../policies/wecom-notification.js';
-import { createProjectGateRegistry } from '../gates/registry.js';
-import { writeConsoleMessage } from '../core/report/console-renderer.js';
+} from '../../policies/local-environment.js';
+import {
+  EXCEPTION_POLICY_FILE,
+  isExceptionPolicyCurrent,
+} from '../../policies/managed-policies.js';
+import { loadNotificationConfig } from '../../policies/wecom-notification.js';
+import { inspectGitLabCi } from '../setup/gitlab-ci.js';
+import {
+  isCurrentManagedHook,
+  isManagedHook,
+  managedHookNames,
+} from '../setup/hook-installer.js';
+import { repairRepository } from '../setup/repository-repair.js';
 
 export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false } = {}) {
   const errors = [];
