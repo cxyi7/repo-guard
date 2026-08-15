@@ -1,13 +1,13 @@
-import { loadConfig } from '../config/configuration-loader.js';
-import { DEFAULT_CI_CONFIG } from '../config/defaults.js';
-import { validateCiReportPath } from '../config/validation-primitives.js';
-import { runCiGate } from '../orchestration/ci/runner.js';
-import { writeCiReport } from '../orchestration/ci/report.js';
-import { toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { createGateResult, gateStatusToExitCode } from '../core/result/gate-result.js';
-import { writeGateResultConsole } from '../core/report/console-renderer.js';
-import { renderGateResultJson } from '../core/report/json-renderer.js';
-import { findRepositoryRoot } from '../git/repository.js';
+import { loadConfig } from '../../config/configuration-loader.js';
+import { DEFAULT_CI_CONFIG } from '../../config/defaults.js';
+import { validateCiReportPath } from '../../config/validation-primitives.js';
+import { runCiGate } from './runner.js';
+import { writeCiReport } from './report.js';
+import { toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
+import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { renderGateResultJson } from '../../core/report/json-renderer.js';
+import { findRepositoryRoot } from '../../git/repository.js';
 
 function errorReport(options, error, {
   gateId = 'ci.configuration',

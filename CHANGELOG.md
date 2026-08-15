@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.79
+
+- 将 CI 命令边界、配置与报告路径校验、失败报告回退和退出码转换从 `src/commands/ci.js` 迁入 `src/orchestration/ci/command.js`，CLI runner 与定向测试直接依赖所属 CI 编排模块；删除旧命令路径且不保留兼容转发。
+- 保持 CI runner 与报告持久化的独立职责、profile、变更范围、配置错误和执行错误报告、报告路径安全、控制台输出、配置、Hook、公共 exports 和退出码不变，并扩展 CI 编排与旧路径防回归测试。
+
 ## 1.4.78
 
 - 将只服务手动 CLI 的暂存区受保护文件门禁编排从 `src/commands/gate.js` 迁入 `src/orchestration/cli/gate.js`，CLI runner 与定向测试直接依赖所属模块；删除旧命令路径且不保留兼容转发。

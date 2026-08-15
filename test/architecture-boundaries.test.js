@@ -1055,13 +1055,21 @@ test('separates Stylelint project and execution facts from quality policy', () =
 
 test('keeps CI execution and report persistence inside orchestration', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'ci-runner.js')), false);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'commands', 'ci.js')), false);
+  const commandPath = path.join(SOURCE_ROOT, 'orchestration', 'ci', 'command.js');
   const runnerPath = path.join(SOURCE_ROOT, 'orchestration', 'ci', 'runner.js');
   const reportPath = path.join(SOURCE_ROOT, 'orchestration', 'ci', 'report.js');
+  assert.equal(existsSync(commandPath), true);
   assert.equal(existsSync(runnerPath), true);
   assert.equal(existsSync(reportPath), true);
 
+  const commandSource = readFileSync(commandPath, 'utf8');
   const runnerSource = readFileSync(runnerPath, 'utf8');
   const reportSource = readFileSync(reportPath, 'utf8');
+  assert.match(commandSource, /export async function runCiCommand/);
+  assert.match(commandSource, /from ['"]\.\/runner\.js['"]/);
+  assert.match(commandSource, /from ['"]\.\/report\.js['"]/);
+  assert.doesNotMatch(commandSource, /from ['"][^'"]*commands\//);
   assert.match(runnerSource, /\.\/report\.js/);
   assert.doesNotMatch(runnerSource, /\b(?:mkdirSync|writeFileSync|lstatSync)\b/);
   assert.match(reportSource, /export function writeCiReport/);
