@@ -1117,6 +1117,46 @@ test('keeps shared configuration validation primitives in the config module', ()
   assert.match(ciRunnerSource, /from ['"]\.\.\/\.\.\/config\/validation-primitives\.js['"]/);
 });
 
+test('keeps the root configuration contract in its config module', () => {
+  const rootValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'root-configuration-validation.js',
+  );
+  assert.equal(existsSync(rootValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const rootValidationSource = readFileSync(rootValidationPath, 'utf8');
+
+  assert.match(
+    configSource,
+    /from ['"]\.\/config\/root-configuration-validation\.js['"]/,
+  );
+  assert.match(
+    configSource,
+    /validateRootConfigurationContract\(value, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /must contain a JSON object/);
+  assert.doesNotMatch(configSource, /uses unsupported version/);
+  assert.doesNotMatch(configSource, /assertKnownProperties\(/);
+  assert.match(
+    rootValidationSource,
+    /export function validateRootConfigurationContract/,
+  );
+  assert.match(
+    rootValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    rootValidationSource,
+    /from ['"][^'"]*(?:commands|integrations|orchestration|policies)\//,
+  );
+  assert.doesNotMatch(
+    rootValidationSource,
+    /from ['"]\.\/(?:ci|notification|pre-commit|protected-file)-validation\.js['"]/,
+  );
+});
+
 test('keeps CI and external gate validation in the config module', () => {
   const ciValidationPath = path.join(SOURCE_ROOT, 'config', 'ci-validation.js');
   assert.equal(existsSync(ciValidationPath), true);

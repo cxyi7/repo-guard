@@ -32,9 +32,7 @@ import {
   DEFAULT_EXCEPTIONS_CONFIG,
 } from './config/defaults.js';
 import {
-  assertKnownProperties,
   CONFIG_FILE,
-  configValidationError,
   validateCiReportPath,
 } from './config/validation-primitives.js';
 import { validateAccessibilityConfiguration } from './config/accessibility-validation.js';
@@ -49,6 +47,7 @@ import {
   normalizeProtectedFileConfiguration,
   validateProtectedFileConfigurationShape,
 } from './config/protected-file-validation.js';
+import { validateRootConfigurationContract } from './config/root-configuration-validation.js';
 import { validateUnitTestConfiguration } from './config/unit-test-validation.js';
 
 export { SUPPORTED_LEVELS } from './config/protected-file-validation.js';
@@ -84,34 +83,7 @@ export {
 export { CONFIG_FILE, validateCiReportPath };
 
 function validateConfigValue(value, configPath = CONFIG_FILE) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw configValidationError(`${configPath} must contain a JSON object`);
-  }
-  assertKnownProperties(
-    value,
-    new Set([
-      '$schema',
-      'version',
-      'notification',
-      'ci',
-      'externalGates',
-      'exceptions',
-      'dependencyPolicy',
-      'architecture',
-      'accessibilityTest',
-      'build',
-      'lighthouse',
-      'typeCheck',
-      'unitTest',
-      'preCommit',
-      'rules',
-      'exclusions',
-    ]),
-    configPath,
-  );
-  if (value.version !== 1) {
-    throw configValidationError(`${configPath} uses unsupported version: ${String(value.version)}`);
-  }
+  validateRootConfigurationContract(value, configPath);
   validateProtectedFileConfigurationShape(value, configPath);
 
   const notification = validateNotificationConfiguration(value, configPath);

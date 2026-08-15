@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.68
+
+- 将根配置对象、顶层已知字段及配置版本校验从 `validateConfigValue` 迁入 `src/config/root-configuration-validation.js`，主配置验证器仅在原时序点调用根配置契约后继续编排各领域结果。
+- 保持根对象要求、允许字段集合、版本 1 契约及错误顺序不变；各领域配置、保护文件、staged-code 质量配置、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加根契约行为与职责边界防回归测试。
+
 ## 1.4.67
 
 - 将 `preCommit` 容器形状验证及 file-placement、max-file-lines、Stylelint、Prettier、ESLint 五类 staged-code 质量配置编排从 `validateConfigValue` 迁入 `src/config/pre-commit-validation.js`，主配置验证器只负责编排规范化后的 `preCommit` 结果。
