@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import lintStaged from 'lint-staged';
-import { loadConfig } from './config.js';
-import { findRepositoryRoot } from './git.js';
+import { loadConfig } from '../../config.js';
+import { findRepositoryRoot } from '../../git.js';
 
-const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
+const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
 
 function quoteCommandArgument(value) {
   return `"${String(value).replace(/\\/g, '/').replace(/"/g, '\\"')}"`;

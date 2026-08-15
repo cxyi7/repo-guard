@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.30
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.31
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.4.31
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.31
+npx repo-guard doctor
+```
+
+1.4.31 删除顶层 `src/quality-gate.js`，将独立的 `lint-staged` 隔离边界迁入职责更明确的 `src/orchestration/pre-commit/lint-staged-gate.js`，不保留兼容转发。它仍与 `quality-runner.js` 和 `protected-plan.js` 分离，继续通过 `stash: true` 保护部分暂存文件的未暂存内容，并只把 staged 文件交给 `quality-files` 命令；Stylelint fix、ESLint fix、Prettier、只读 Stylelint/ESLint 验证、其他 staged-only 质量门禁及最后的 protected-file gate 顺序不变。`lint-staged` 参数、配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变。
 
 ## 升级到 1.4.30
 

@@ -6,7 +6,7 @@ import {
 import { configurationError, internalError, toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { findRepositoryRoot, runGit } from '../git.js';
 import { collectStagedChanges } from '../git-changes.js';
-import { runQualityGate } from '../quality-gate.js';
+import { runQualityGate } from '../orchestration/pre-commit/lint-staged-gate.js';
 import { runQualityExecution } from '../orchestration/pre-commit/quality-runner.js';
 import {
   createChangeSet,

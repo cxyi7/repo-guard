@@ -86,7 +86,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'index.js',
   'local-env.js',
   'max-file-lines.js',
-  'quality-gate.js',
   'style-governance.js',
   'vue-component-interaction.js',
   'vue-form-label.js',
@@ -357,17 +356,34 @@ test('keeps staged file normalization in core execution without a root compatibi
   assert.doesNotMatch(stagedFilesSource, /\b(?:GateResult|finding|policy|registry)\b/i);
 });
 
-test('keeps staged quality execution inside pre-commit orchestration', () => {
+test('keeps staged quality execution and lint-staged isolation in separate pre-commit modules', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'quality-runner.js')), false);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'quality-gate.js')), false);
   const runnerPath = path.join(
     SOURCE_ROOT,
     'orchestration',
     'pre-commit',
     'quality-runner.js',
   );
+  const lintStagedGatePath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'lint-staged-gate.js',
+  );
+  const protectedPlanPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'protected-plan.js',
+  );
   assert.equal(existsSync(runnerPath), true);
+  assert.equal(existsSync(lintStagedGatePath), true);
+  assert.equal(existsSync(protectedPlanPath), true);
 
   const runnerSource = readFileSync(runnerPath, 'utf8');
+  const lintStagedGateSource = readFileSync(lintStagedGatePath, 'utf8');
+  const protectedPlanSource = readFileSync(protectedPlanPath, 'utf8');
   assert.match(runnerSource, /plan: preCommitQualityPlan/);
   assert.match(runnerSource, /registry: gateRegistry/);
   assert.match(runnerSource, /createGateContext/);
@@ -376,6 +392,17 @@ test('keeps staged quality execution inside pre-commit orchestration', () => {
     runnerSource,
     /\blint-staged\b|run\w+Project|quality\.typecheck|quality\.lighthouse/,
   );
+  assert.match(lintStagedGateSource, /from 'lint-staged'/);
+  assert.match(lintStagedGateSource, /'quality-files'/);
+  assert.match(lintStagedGateSource, /allowEmpty: false/);
+  assert.match(lintStagedGateSource, /concurrent: false/);
+  assert.match(lintStagedGateSource, /relative: false/);
+  assert.match(lintStagedGateSource, /stash: true/);
+  assert.doesNotMatch(
+    lintStagedGateSource,
+    /\b(?:preCommitPolicyPlan|runQualityExecution|GateResult|protectedFilesGate)\b/,
+  );
+  assert.doesNotMatch(protectedPlanSource, /lint-staged|runQualityGate/);
 });
 
 test('keeps project dependency discovery in core/project without a root compatibility path', () => {

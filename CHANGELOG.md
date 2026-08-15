@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.31
+
+- 删除顶层 `src/quality-gate.js`，将独立 `lint-staged` 隔离边界迁入 `src/orchestration/pre-commit/lint-staged-gate.js`，不保留兼容转发。
+- 保持 `lint-staged` 隔离边界、质量执行 runner 与 protected-file plan 为三个独立模块，继续隔离部分暂存文件的未暂存内容；`lint-staged` 参数、`quality-files` 命令、固定 pre-commit 顺序、配置格式、CLI、Hook、CI、公共 exports、输出和退出码保持不变，并扩展架构防回归测试。
+
 ## 1.4.30
 
 - 删除顶层 `src/state.js`，将 Git 元数据目录中的通知与提交信息状态持久化迁入 `src/integrations/git/repository-state.js`，不保留兼容转发。
