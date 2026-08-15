@@ -80,7 +80,6 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
   'git-changes.js',
   'git.js',
   'index.js',
-  'vue-target-blank.js',
   'vue-unsafe-html.js',
 ]);
 
@@ -1067,6 +1066,27 @@ test('keeps Vue style language rules in policies without a root helper', () => {
   assert.doesNotMatch(
     styleLanguagesPolicySource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
+  );
+});
+
+test('keeps Vue target blank security rules in policies without a root helper', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-target-blank.js')), false);
+  const targetBlankPolicyPath = path.join(
+    SOURCE_ROOT,
+    'policies',
+    'vue-target-blank.js',
+  );
+  assert.equal(existsSync(targetBlankPolicyPath), true);
+
+  const targetBlankPolicySource = readFileSync(targetBlankPolicyPath, 'utf8');
+  assert.match(targetBlankPolicySource, /integrations\/vue\/template-parser\.js/);
+  assert.match(targetBlankPolicySource, /export const VUE_TARGET_BLANK_RULE/);
+  assert.match(targetBlankPolicySource, /export function findVueTargetBlankIssues/);
+  assert.match(targetBlankPolicySource, /export function inspectVueTargetBlank/);
+  assert.match(targetBlankPolicySource, /findStructuredException/);
+  assert.doesNotMatch(
+    targetBlankPolicySource,
+    /from ['"][^'"]*(?:gates|orchestration)\//,
   );
 });
 

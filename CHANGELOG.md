@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.44
+
+- 删除顶层 `src/vue-target-blank.js`，将 Vue `target="_blank"` 安全规则、诊断与结构化例外应用迁入 `src/policies/vue-target-blank.js`，不保留兼容转发。
+- 保持静态与字面量绑定分析、`noopener noreferrer` 必需 token、`opener` 禁止 token、动态 rel 诊断、精确位置和结构化例外行为不变；配置格式、CLI、Hook、CI、公共 exports、输出和退出码均保持不变，并增加架构防回归测试。
+
 ## 1.4.43
 
 - 删除顶层 `src/vue-style-languages.js`，将 Vue style 语言收集与单文件语言一致性策略迁入 `src/policies/vue-style-languages.js`，不保留兼容转发。

@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { findStructuredException } from './exception-registry.js';
+import { findStructuredException } from '../exception-registry.js';
 import {
   findVueTemplateAttributes,
   sourceLocation,
-} from './integrations/vue/template-parser.js';
+} from '../integrations/vue/template-parser.js';
 
 export const VUE_TARGET_BLANK_RULE = 'vue/target-blank-security';
 const REQUIRED_REL_TOKENS = Object.freeze(['noopener', 'noreferrer']);

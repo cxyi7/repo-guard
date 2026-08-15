@@ -13,7 +13,7 @@ import {
   findVueTargetBlankIssues,
   inspectVueTargetBlank,
   VUE_TARGET_BLANK_RULE,
-} from '../src/vue-target-blank.js';
+} from '../src/policies/vue-target-blank.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
