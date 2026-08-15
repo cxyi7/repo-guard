@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.63
+
+- 将 pre-commit Prettier 暂存格式化配置验证从 `validateConfigValue` 迁入 `src/config/prettier-validation.js`，由领域模块直接返回规范化后的 `prettier`，主配置验证器只负责编排该结果。
+- 保持对象与开关校验、文件模式、自动修复、配置文件要求、字符串清洗及默认值不变；file-placement、max-file-lines、Stylelint、ESLint、其他门禁、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加领域行为与职责边界防回归测试。
+
 ## 1.4.62
 
 - 将 pre-commit Stylelint 顶层执行参数、选择器/嵌套复杂度与样式治理配置验证从 `validateConfigValue` 迁入 `src/config/stylelint-validation.js`，由内聚领域模块直接返回规范化后的 `stylelint`，主配置验证器只负责编排该结果。

@@ -1420,6 +1420,38 @@ test('keeps Stylelint configuration validation in the config module', () => {
   );
 });
 
+test('keeps Prettier configuration validation in the config module', () => {
+  const prettierValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'prettier-validation.js',
+  );
+  assert.equal(existsSync(prettierValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const prettierValidationSource = readFileSync(prettierValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/prettier-validation\.js['"]/);
+  assert.match(
+    configSource,
+    /validatePrettierConfiguration\(preCommitValue, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const prettierValue =/);
+  assert.match(
+    prettierValidationSource,
+    /export function validatePrettierConfiguration/,
+  );
+  assert.match(prettierValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    prettierValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    prettierValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
