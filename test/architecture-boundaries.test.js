@@ -1223,6 +1223,38 @@ test('keeps architecture configuration validation in the config module', () => {
   );
 });
 
+test('keeps external execution gate validation in the config module', () => {
+  const executionGateValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'execution-gate-validation.js',
+  );
+  assert.equal(existsSync(executionGateValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const executionGateValidationSource = readFileSync(
+    executionGateValidationPath,
+    'utf8',
+  );
+
+  assert.match(configSource, /from ['"]\.\/config\/execution-gate-validation\.js['"]/);
+  assert.match(configSource, /validateExecutionGateConfiguration\(/);
+  assert.doesNotMatch(configSource, /const (?:build|lighthouse|typeCheck)Value =/);
+  assert.match(
+    executionGateValidationSource,
+    /export function validateExecutionGateConfiguration/,
+  );
+  assert.match(executionGateValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    executionGateValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    executionGateValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(

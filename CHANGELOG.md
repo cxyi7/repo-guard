@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.57
+
+- 将 build、Vue Lighthouse 与 TypeScript 三类外部执行型质量门禁配置验证从 `validateConfigValue` 迁入 `src/config/execution-gate-validation.js`，由内聚模块直接返回规范化后的 `build`、`lighthouse` 与 `typeCheck`，主配置验证器只负责编排结果。
+- 保持各门禁对象与开关校验、npm 脚本名、超时、Lighthouse 配置路径、可空构建脚本、字符串清洗及默认值不变；accessibility/unit-test、pre-commit、通知、加载、schema、CLI、Hook、CI、公共 exports、输出和退出码均不变，并增加三类领域行为与职责边界防回归测试。
+
 ## 1.4.56
 
 - 将依赖架构配置验证从 `validateConfigValue` 迁入 `src/config/architecture-validation.js`，由领域模块直接返回规范化后的 `architecture`，主配置验证器只负责编排该结果。
