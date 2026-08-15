@@ -36,7 +36,6 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([
-  'eslint-runner.js',
   'prettier-runner.js',
   'quality-runner.js',
   'stylelint-runner.js',
@@ -434,6 +433,34 @@ test('separates package and staged metadata facts from dependency policy decisio
   assert.match(gateSource, /integrations\/git\/staged-package-metadata\.js/);
   assert.match(gateSource, /integrations\/npm\/package-metadata\.js/);
   assert.doesNotMatch(gateSource, /\b(?:mkdtempSync|writeFileSync|rmSync|runGit)\b/);
+});
+
+test('separates ESLint project and execution facts from quality policy decisions', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'eslint-runner.js')), false);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'eslint-config.js')), false);
+  const integrationPaths = [
+    path.join(SOURCE_ROOT, 'integrations', 'eslint', 'project.js'),
+    path.join(SOURCE_ROOT, 'integrations', 'eslint', 'execution.js'),
+  ];
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'eslint-gate.js');
+  const presetPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'eslint-preset.js');
+  for (const target of [...integrationPaths, gatePath, presetPath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const integrationSource = integrationPaths
+    .map((target) => readFileSync(target, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    integrationSource,
+    /\b(?:createGateResult|blockingFindings|createRepoGuardEslintConfig|restoreFileContents)\b/,
+  );
+  assert.match(integrationSource, /export async function loadProjectEslint/);
+  assert.match(integrationSource, /export async function prepareProjectEslintExecution/);
+  const gateSource = readFileSync(gatePath, 'utf8');
+  assert.match(gateSource, /integrations\/eslint\/execution\.js/);
+  assert.match(gateSource, /integrations\/eslint\/project\.js/);
+  assert.doesNotMatch(gateSource, /\b(?:pathToFileURL|outputFixes|isPathIgnored)\b/);
 });
 
 test('keeps CI execution and report persistence inside orchestration', () => {

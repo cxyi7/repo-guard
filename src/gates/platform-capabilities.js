@@ -29,9 +29,9 @@ import { configurationError } from '../core/error/repo-guard-error.js';
 import { createGateResult } from '../core/result/gate-result.js';
 import {
   runEslintFiles,
-  resolveProjectEslintMetadata,
   resolveRepoGuardEslintPreset,
-} from '../eslint-runner.js';
+} from './quality/eslint-gate.js';
+import { resolveProjectEslintMetadata } from '../integrations/eslint/project.js';
 import { validateVueLighthouseSetup } from '../integrations/lighthouse/project.js';
 import { runVueLighthouse } from './quality/lighthouse-gate.js';
 import {

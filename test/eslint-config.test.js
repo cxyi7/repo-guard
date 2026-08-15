@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import js from '@eslint/js';
 import { ESLint } from 'eslint';
 import test from 'node:test';
-import { createRepoGuardEslintConfig } from '../src/eslint-config.js';
-import { resolveRepoGuardEslintPreset } from '../src/eslint-runner.js';
+import { resolveRepoGuardEslintPreset } from '../src/gates/quality/eslint-gate.js';
+import { createRepoGuardEslintConfig } from '../src/gates/quality/eslint-preset.js';
 
 test('creates the core AI maintainability policy', () => {
   const configs = createRepoGuardEslintConfig({ js });

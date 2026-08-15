@@ -1,3 +1,5 @@
+import { configurationError } from '../../core/error/repo-guard-error.js';
+
 const COMMON_FILES = Object.freeze([
   '**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}',
 ]);
@@ -142,4 +144,3 @@ export function createRepoGuardEslintConfig({
     ...typescriptPolicy(typescript),
   ];
 }
-import { configurationError } from './core/error/repo-guard-error.js';

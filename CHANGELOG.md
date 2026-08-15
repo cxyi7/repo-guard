@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.16
+
+- 删除顶层 `src/eslint-runner.js` 与 `src/eslint-config.js`，将消费项目 ESLint/插件解析加载、忽略判断和 lint/fix 执行迁入 `src/integrations/eslint`，将 preset、warning 阈值、findings、回滚和 GateResult 判定迁入 `src/gates/quality`，不保留兼容转发。
+- 保持消费项目 ESLint 安装、Flat Config 和覆盖顺序，继续只修复暂存文件并由 `lint-staged` 保护部分暂存/未暂存内容；错误代码、结果、CLI、公共 exports 及 Stylelint fix → ESLint fix → Prettier → 只读 Stylelint/ESLint → protected-file 的顺序不变。
+- 增加阶段 8 防回归测试，确认 ESLint integrations 不持有 policy/result/回滚判定、quality gate 不直接加载或调用 ESLint API，并从顶层 runner 待迁移清单移除 ESLint runner。
+
 ## 1.4.15
 
 - 删除顶层 `src/dependency-policy.js`，将 package/lock JSON 与 Git index 暂存元数据事实分别迁入 `src/integrations/npm/package-metadata.js` 和 `src/integrations/git/staged-package-metadata.js`，将依赖治理与结构化例外判定迁入 `src/gates/repository/dependency-policy.js`，不保留兼容转发。
