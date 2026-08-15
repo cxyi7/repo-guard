@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.89
+
+- 移除 dependency-cruiser 四条活动边界中已无目标的 `commands` 过渡分支，并从受审源码目录清单移除空 `commands` 目录要求，避免全新 clone 因 Git 不保留空目录而出现架构测试差异。
+- 保持 core、gate、integration 与 orchestration 的依赖方向、配置、Hook、CI、公共 exports 和退出码不变，并增加 dependency-cruiser 不得重新接纳命令转发层的回归断言。
+
 ## 1.4.88
 
 - 将只读诊断、CI 模式检查、Gate setup 巡检与结果输出从 `src/commands/doctor.js` 迁入 `src/orchestration/doctor/runner.js`；CLI runner 与定向测试直接依赖所属编排模块，删除旧路径且不保留兼容转发。

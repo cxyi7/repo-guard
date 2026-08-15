@@ -158,7 +158,6 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
 ]);
 
 const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
-  'commands',
   'config',
   'core',
   'gates',
@@ -327,6 +326,11 @@ function assertModuleImportIsInert(
 }
 
 test('enforces every declared platform dependency direction as an error', async () => {
+  const dependencyCruiserSource = readFileSync(
+    path.join(ROOT, '.dependency-cruiser.cjs'),
+    'utf8',
+  );
+  assert.doesNotMatch(dependencyCruiserSource, /commands\//);
   assert.deepEqual(
     dependencyCruiserConfig.forbidden.map((rule) => rule.name).sort(),
     EXPECTED_BOUNDARY_RULES,
