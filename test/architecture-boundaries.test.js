@@ -1452,6 +1452,38 @@ test('keeps Prettier configuration validation in the config module', () => {
   );
 });
 
+test('keeps ESLint configuration validation in the config module', () => {
+  const eslintValidationPath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'eslint-validation.js',
+  );
+  assert.equal(existsSync(eslintValidationPath), true);
+
+  const configSource = readFileSync(path.join(SOURCE_ROOT, 'config.js'), 'utf8');
+  const eslintValidationSource = readFileSync(eslintValidationPath, 'utf8');
+
+  assert.match(configSource, /from ['"]\.\/config\/eslint-validation\.js['"]/);
+  assert.match(
+    configSource,
+    /validateEslintConfiguration\(preCommitValue, configPath\)/,
+  );
+  assert.doesNotMatch(configSource, /const eslintValue =/);
+  assert.match(
+    eslintValidationSource,
+    /export function validateEslintConfiguration/,
+  );
+  assert.match(eslintValidationSource, /from ['"]\.\/defaults\.js['"]/);
+  assert.match(
+    eslintValidationSource,
+    /from ['"]\.\/validation-primitives\.js['"]/,
+  );
+  assert.doesNotMatch(
+    eslintValidationSource,
+    /from ['"][^'"]*(?:commands|orchestration)\//,
+  );
+});
+
 test('keeps managed GitLab CI installation in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'gitlab-ci.js')), false);
   const gitLabCiPath = path.join(
