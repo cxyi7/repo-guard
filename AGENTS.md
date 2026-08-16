@@ -12,6 +12,9 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Preserve partially staged and unstaged changes through `lint-staged`.
 - Managed Hook upgrades must accept known older markers but generate only the current version.
 - Every behavior change requires tests and synchronized README/config schema updates.
+- Treat `docs/project-structure-and-feature-inventory.md` as a long-lived source of truth.
+  Every feature addition, change, or removal, and every repository-structure, module-responsibility,
+  or dependency-direction change, must update that document in the same change.
 - All repo-guard-authored user-facing statuses, warnings, errors, evidence, expectations,
   remediation steps, constraints, and verification guidance must use Simplified Chinese.
   Keep stable machine identifiers, commands, paths, package names, and third-party rule IDs
