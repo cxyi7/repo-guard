@@ -1,5 +1,13 @@
 import { configurationError } from '../error/repo-guard-error.js';
 
+function normalizeNewlines(content) {
+  return String(content).replace(/\r\n?/g, '\n');
+}
+
+export function managedTextIsCurrent(current, expected) {
+  return normalizeNewlines(current) === normalizeNewlines(expected);
+}
+
 function markerIndexes(lines, marker) {
   return lines
     .map((line, index) => (line === marker ? index : -1))
@@ -25,7 +33,7 @@ export function buildManagedTextBlock({
   startMarker,
   target,
 }) {
-  const normalized = current.replace(/\r\n/g, '\n');
+  const normalized = normalizeNewlines(current);
   const lines = normalized.split('\n');
   const starts = markerIndexes(lines, startMarker);
   const ends = markerIndexes(lines, endMarker);

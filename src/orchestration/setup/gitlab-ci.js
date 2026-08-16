@@ -8,6 +8,7 @@ import path from 'node:path';
 import { configureCi } from './config-management.js';
 import { loadConfig } from '../../config/configuration-loader.js';
 import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
+import { managedTextIsCurrent } from '../../core/policy/managed-text-block.js';
 
 export const GITLAB_CI_FILE = '.gitlab-ci.yml';
 export const GITLAB_TEMPLATE_FILE = '.gitlab/ci/repo-guard.yml';
@@ -17,7 +18,7 @@ const ROOT_END = '# repo-guard-gitlab:end';
 const DEFAULT_GITLAB_STAGES = Object.freeze(['.pre', 'build', 'test', 'deploy', '.post']);
 
 function normalizeNewlines(content) {
-  return content.replace(/\r\n/g, '\n');
+  return content.replace(/\r\n?/g, '\n');
 }
 
 function isManagedTemplate(content) {
@@ -293,8 +294,9 @@ export function installGitLabCi(root, {
   const preview = {
     profile,
     stage: selectedStage,
-    templateChanged: currentTemplate !== nextTemplate,
-    rootChanged: !conflict && currentRoot !== nextRoot,
+    templateChanged: !managedTextIsCurrent(currentTemplate, nextTemplate),
+    rootChanged: !conflict
+      && !managedTextIsCurrent(currentRoot, nextRoot),
     integrated: !conflict,
     conflict,
     manualSnippet: conflict ? block : null,
@@ -302,8 +304,8 @@ export function installGitLabCi(root, {
   if (dryRun) return preview;
 
   mkdirSync(path.dirname(templatePath), { recursive: true });
-  writeFileSync(templatePath, nextTemplate, 'utf8');
-  if (!conflict) writeFileSync(rootPath, nextRoot, 'utf8');
+  if (preview.templateChanged) writeFileSync(templatePath, nextTemplate, 'utf8');
+  if (!conflict && preview.rootChanged) writeFileSync(rootPath, nextRoot, 'utf8');
   configureCi(root, { profile });
   return preview;
 }

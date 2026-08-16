@@ -138,6 +138,8 @@ repo-guard doctor --ci
 
 `doctor --fix` 只修复 repo-guard 管理的配置、Hook、CI、忽略项、项目脚本和 AGENTS 策略块，不安装项目工具、不填写密钥、不修改业务代码。
 
+托管文本的最新状态比较会统一 LF、CRLF 和 CR 后再判断，因此 Windows 的 `core.autocrlf` 不会让内容正确的 `AGENTS.md`、`.gitignore`、`.gitattributes` 或 GitLab CI 被误报为缺失或过期；除换行符外，其他空白和正文仍严格匹配。
+
 ### 启用或关闭能力
 
 ```bash

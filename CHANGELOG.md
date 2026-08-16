@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+- 修复 Windows CRLF 导致 `doctor` 将内容正确的 `AGENTS.md` 结构化例外、架构和单元测试策略误报为缺失的问题；换行符差异不再触发 `doctor --fix` 重写。
+- `.gitignore`、`.gitattributes`、Lighthouse 忽略块和 GitLab CI 托管文件使用同一换行语义，避免重复修复或 dry-run 误报；除 LF、CRLF、CR 外的空白和正文仍严格比较。
+- 配置格式、Schema、功能开关、Hook 顺序、CI 策略和退出码保持不变，并补充 Windows 换行回归测试与使用文档。
+
 ## 1.6.1
 
 - 保护文件规则新增 `block` 级别：业务项目可用精确仓库相对路径声明不可变文件，修改、删除、重命名或移动都会在 pre-commit 和 CI 中直接阻断。

@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildManagedTextBlock } from './managed-text-block.js';
+import {
+  buildManagedTextBlock,
+  managedTextIsCurrent,
+} from './managed-text-block.js';
 
 export function defineManagedPolicy({ id, file = 'AGENTS.md', buildLines }) {
   if (!/^[a-z][a-z0-9-]*$/.test(id)) {
@@ -33,7 +36,9 @@ export function ensureManagedPolicy(root, policy, config) {
   const existed = existsSync(target);
   const current = existed ? readFileSync(target, 'utf8') : '';
   const next = renderManagedPolicy(current, policy, config);
-  if (next === current) return { changed: false, created: false, path: target };
+  if (managedTextIsCurrent(current, next)) {
+    return { changed: false, created: false, path: target };
+  }
   writeFileSync(target, next, 'utf8');
   return { changed: true, created: !existed, path: target };
 }
@@ -44,5 +49,5 @@ export function isManagedPolicyPresent(content, policy) {
 
 export function isManagedPolicyCurrent(content, policy, config) {
   return isManagedPolicyPresent(content, policy)
-    && renderManagedPolicy(content, policy, config) === content;
+    && managedTextIsCurrent(content, renderManagedPolicy(content, policy, config));
 }

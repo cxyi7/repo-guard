@@ -212,14 +212,14 @@ export function installHooks({
 }
 
 export function isManagedHook(content) {
-  const lines = String(content).replace(/\r\n/g, '\n').split('\n')
+  const lines = String(content).replace(/\r\n?/g, '\n').split('\n')
     .map((line) => line.trim());
   return lines.includes(MANAGED_MARKER)
     || LEGACY_MANAGED_MARKERS.some((marker) => lines.includes(marker));
 }
 
 export function isCurrentManagedHook(content) {
-  return String(content).replace(/\r\n/g, '\n').split('\n')
+  return String(content).replace(/\r\n?/g, '\n').split('\n')
     .some((line) => line.trim() === MANAGED_MARKER);
 }
 

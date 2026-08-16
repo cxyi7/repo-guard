@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildManagedTextBlock } from '../../core/policy/managed-text-block.js';
+import {
+  buildManagedTextBlock,
+  managedTextIsCurrent,
+} from '../../core/policy/managed-text-block.js';
 
 export const LIGHTHOUSE_OUTPUT_DIRECTORY = '.lighthouseci/';
 const START_MARKER = '# repo-guard-managed:lighthouse:start';
@@ -19,7 +22,7 @@ export function ensureLighthouseIgnore(root, coverageDirectory = 'coverage') {
     startMarker: START_MARKER,
     target: '.gitignore',
   });
-  if (next === current) {
+  if (managedTextIsCurrent(current, next)) {
     return { changed: false, path: target };
   }
   writeFileSync(target, next, 'utf8');

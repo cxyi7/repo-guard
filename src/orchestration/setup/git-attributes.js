@@ -5,7 +5,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
-import { buildManagedTextBlock } from '../../core/policy/managed-text-block.js';
+import {
+  buildManagedTextBlock,
+  managedTextIsCurrent,
+} from '../../core/policy/managed-text-block.js';
 
 export const GIT_ATTRIBUTES_FILE = '.gitattributes';
 export const ATTRIBUTES_START_MARKER = '# repo-guard-managed:attributes:start';
@@ -27,7 +30,7 @@ export function ensureGitAttributes(root) {
     target: GIT_ATTRIBUTES_FILE,
   });
 
-  if (next === current) {
+  if (managedTextIsCurrent(current, next)) {
     return {
       changed: false,
       path: target,

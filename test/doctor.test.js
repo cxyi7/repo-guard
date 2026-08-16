@@ -178,6 +178,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     /repo_guard_cli" pre-push/,
   );
 
+  const agentsPath = path.join(root, 'AGENTS.md');
+  const windowsAgents = readFileSync(agentsPath, 'utf8').replaceAll('\n', '\r\n');
+  writeFileSync(agentsPath, windowsAgents);
   rmSync(path.join(root, '.env.config'));
   assert.equal(await runDoctor(root), 0);
+  assert.equal(readFileSync(agentsPath, 'utf8'), windowsAgents);
 });

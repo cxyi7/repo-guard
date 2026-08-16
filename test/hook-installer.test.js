@@ -48,6 +48,8 @@ test('preserves manual Git attributes while maintaining an idempotent managed bl
 
   const first = ensureGitAttributes(root);
   const managed = readFileSync(target, 'utf8');
+  const windowsManaged = managed.replaceAll('\n', '\r\n');
+  writeFileSync(target, windowsManaged);
   const second = ensureGitAttributes(root);
 
   assert.deepEqual(first, { changed: true, path: target });
@@ -57,7 +59,23 @@ test('preserves manual Git attributes while maintaining an idempotent managed bl
   assert.match(managed, /repo-guard\.config\.json text eol=lf/);
   assert.match(managed, /# repo-guard-managed:attributes:end/);
   assert.deepEqual(second, { changed: false, path: target });
-  assert.equal(readFileSync(target, 'utf8'), managed);
+  assert.equal(readFileSync(target, 'utf8'), windowsManaged);
+});
+
+test('does not rewrite current managed ignore blocks solely for CRLF', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  installHooks({ cwd: root });
+  const target = path.join(root, '.gitignore');
+  const windowsManaged = readFileSync(target, 'utf8').replaceAll('\n', '\r\n');
+  writeFileSync(target, windowsManaged);
+
+  const result = installHooks({ cwd: root });
+
+  assert.equal(result.localEnvironment.gitIgnore.changed, false);
+  assert.equal(result.lighthouseIgnore.changed, false);
+  assert.equal(readFileSync(target, 'utf8'), windowsManaged);
 });
 
 test('skips hook installation when the CI environment requests it', (context) => {
@@ -88,6 +106,8 @@ test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
 
   assert.equal(isManagedHook(hook), true);
   assert.equal(isCurrentManagedHook(hook), true);
+  assert.equal(isManagedHook(hook.replaceAll('\n', '\r')), true);
+  assert.equal(isCurrentManagedHook(hook.replaceAll('\n', '\r')), true);
   assert.match(hook, /repo-guard-managed:v4/);
   assert.match(hook, /repo_guard_cli" pre-commit/);
   assert.doesNotMatch(hook, /repo_guard_cli" gate/);

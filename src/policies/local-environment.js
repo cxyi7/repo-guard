@@ -6,7 +6,10 @@ import {
 import path from 'node:path';
 import { configurationError, securityError } from '../core/error/repo-guard-error.js';
 import { runGit } from '../git/execution.js';
-import { buildManagedTextBlock } from '../core/policy/managed-text-block.js';
+import {
+  buildManagedTextBlock,
+  managedTextIsCurrent,
+} from '../core/policy/managed-text-block.js';
 
 export const LOCAL_ENV_FILE = '.env.config';
 export const GIT_IGNORE_FILE = '.gitignore';
@@ -74,7 +77,7 @@ function ensureGitIgnore(root) {
     target: GIT_IGNORE_FILE,
   });
 
-  if (next === current) {
+  if (managedTextIsCurrent(current, next)) {
     return {
       changed: false,
       path: target,

@@ -283,10 +283,18 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   ensureExceptionPolicy(fixture.root, installedConfig.exceptions);
   assert.equal(await runDoctor(fixture.root, { ci: true }), 0);
 
+  const rootPath = path.join(fixture.root, '.gitlab-ci.yml');
+  const templatePath = path.join(fixture.root, GITLAB_TEMPLATE_FILE);
+  const windowsRoot = installedRoot.replaceAll('\n', '\r\n');
+  const windowsTemplate = template.replaceAll('\n', '\r\n');
+  writeFileSync(rootPath, windowsRoot);
+  writeFileSync(templatePath, windowsTemplate);
+
   const repeat = installGitLabCi(fixture.root, { profile: 'policy' });
   assert.equal(repeat.rootChanged, false);
   assert.equal(repeat.templateChanged, false);
-  assert.equal(installedRoot, readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'));
+  assert.equal(readFileSync(rootPath, 'utf8'), windowsRoot);
+  assert.equal(readFileSync(templatePath, 'utf8'), windowsTemplate);
 });
 
 test('installs the release-ready GitLab profile without embedding publish or deploy', (context) => {

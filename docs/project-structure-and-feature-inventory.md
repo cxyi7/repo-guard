@@ -166,6 +166,7 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | `doctor` | 检查 Node、配置、Hook、工具、脚本、通知、结构化例外和外部门禁准备状态 |
 | `doctor --fix` | 只修复 repo-guard 管理的配置、Hook、CI、忽略项、AGENTS 策略块和项目脚本 |
 | `doctor --ci` | 检查 GitLab CI 集成，不要求本地 Hook 或企业微信凭据 |
+| 托管文本换行兼容 | 比较最新状态时统一 LF、CRLF 和 CR，避免 Windows `core.autocrlf` 造成误报或无意义重写；其他内容仍严格匹配 |
 
 项目要求 Node.js `>=22.23.2`。repo-guard 不自动安装消费项目的 ESLint、Prettier、Stylelint、TypeScript、Vitest、dependency-cruiser、axe、Lighthouse 或 Chrome。
 
