@@ -9,7 +9,7 @@ import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
-import { classifyChanges } from '../../policies/change-classification.js';
+import { classifyChanges, displayPath } from '../../policies/change-classification.js';
 import { createStagedFingerprint } from '../../git/staged-fingerprint.js';
 import {
   assertLocalEnvironmentNotStaged,
@@ -38,6 +38,51 @@ function policyFinding(item, fallbackRule, fallbackRemediation = null) {
   return findingFromPolicy({ ...item, rule: item.rule ?? fallbackRule }, {
     remediation: item.remediation ?? fallbackRemediation,
   });
+}
+
+function protectedFileFinding(change, action) {
+  const immutable = change.level === 'block';
+  const blocking = action === 'fail' || immutable;
+  const affectedPath = displayPath(change);
+  let message = `${affectedPath} 受保护（${change.category}）`;
+  let expected = '受保护文件变更必须按项目策略完成记录或通知';
+  let remediation = null;
+
+  if (immutable) {
+    message = `${affectedPath} 命中了不可变文件规则（${change.category}），不允许修改、删除、重命名或移动`;
+    expected = `文件必须保持在 ${change.oldPath ?? change.path}，且内容不得变更`;
+    remediation = {
+      goal: '撤销不可变文件的本次变更',
+      steps: [
+        `恢复 ${change.oldPath ?? change.path} 的原始路径和内容`,
+        '如果业务确实需要变更，先由维护者评审并调整对应保护规则',
+      ],
+      constraints: ['不得通过重命名、移动、删除后重建或改写内容绕过不可变文件规则'],
+      verification: ['重新暂存变更并再次运行提交门禁'],
+    };
+  } else if (blocking) {
+    message = `${affectedPath} 受保护（${change.category}），当前 CI 策略要求阻断`;
+    expected = '当前 CI 策略不允许受保护文件变更进入目标分支';
+    remediation = {
+      goal: '处理当前受保护文件变更',
+      steps: ['撤销该变更，或按项目流程完成评审后调整 CI 保护文件策略'],
+      constraints: ['不得跳过或绕过 CI 保护文件门禁'],
+      verification: ['重新运行 repo-guard ci 并确认保护文件步骤通过'],
+    };
+  }
+
+  return {
+    ruleId: 'repository/protected-file',
+    severity: blocking ? 'error' : 'warning',
+    message,
+    location: { path: change.path },
+    evidence: [
+      { message: `Git 变更状态：${change.status}` },
+      { message: `保护级别：${change.level}` },
+    ],
+    expected,
+    remediation,
+  };
 }
 
 export const exceptionRegistryGate = defineGate({
@@ -154,21 +199,22 @@ export const protectedFilesGate = defineGate({
   }),
   async run({ root, config, plan }) {
     assertLocalEnvironmentNotStaged(plan.stagedChanges);
-    const findings = plan.protectedChanges.map((change) => ({
-      ruleId: 'repository/protected-file',
-      severity: plan.action === 'fail' ? 'error' : 'warning',
-      message: `${change.path} 受保护（${change.category})`,
-      location: { path: change.path },
-    }));
+    const findings = plan.protectedChanges.map((change) => (
+      protectedFileFinding(change, plan.action)
+    ));
     if (findings.length === 0) {
       return passedResult('repository.protected-files', '没有受保护文件发生变更', {
         metrics: { protectedChanges: 0 },
       });
     }
-    if (plan.action === 'fail') {
-      return violationResult('repository.protected-files', `受保护文件策略发现 ${findings.length} 项变更`, {
+    const blockedChanges = findings.filter(({ severity }) => severity === 'error');
+    if (blockedChanges.length > 0) {
+      return violationResult('repository.protected-files', `受保护文件策略阻止 ${blockedChanges.length} 项变更`, {
         findings,
-        metrics: { protectedChanges: findings.length },
+        metrics: {
+          blockedChanges: blockedChanges.length,
+          protectedChanges: findings.length,
+        },
       });
     }
     const notifyChanges = plan.protectedChanges.filter(({ level }) => level === 'notify');

@@ -4,7 +4,7 @@ import {
   configValidationError,
 } from './validation-primitives.js';
 
-export const SUPPORTED_LEVELS = new Set(['notify', 'audit']);
+export const SUPPORTED_LEVELS = new Set(['notify', 'audit', 'block']);
 
 export function validateProtectedFileConfigurationShape(value, configPath) {
   if (!Array.isArray(value.rules) || value.rules.length === 0) {

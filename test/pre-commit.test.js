@@ -67,6 +67,11 @@ function writeConfig(root, {
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
   ],
+  protectedRules = [{
+    pattern: '**',
+    category: 'Test fixture',
+    level: 'audit',
+  }],
 } = {}) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
@@ -127,13 +132,7 @@ function writeConfig(root, {
           maxWarnings: 0,
         },
       },
-      rules: [
-        {
-          pattern: '**',
-          category: 'Test fixture',
-          level: 'audit',
-        },
-      ],
+      rules: protectedRules,
       exclusions: [],
     }, null, 2)}\n`,
   );
@@ -960,6 +959,22 @@ test('requires a project Stylelint configuration when configured', async (contex
 
   writeFileSync(path.join(root, 'style.css'), '.sample { color: red; }\n');
   git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+});
+
+test('blocks a staged rename of an immutable protected file', async (context) => {
+  const root = createRepository({
+    protectedRules: [{
+      pattern: 'sample.js',
+      category: '不可变安全文件',
+      level: 'block',
+    }],
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+
+  git(root, ['mv', 'sample.js', 'moved.js']);
 
   assert.equal(await runPreCommit(root), 1);
 });

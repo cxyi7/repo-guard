@@ -1144,9 +1144,10 @@
             "type": "string",
             "enum": [
               "notify",
-              "audit"
+              "audit",
+              "block"
             ],
-            "description": "notify requires successful delivery when notification.enabled is true; audit only records the change."
+            "description": "audit 仅记录；notify 在启用通知时要求发送成功；block 始终阻止修改、删除、重命名或移动匹配文件。"
           }
         }
       }

@@ -9,7 +9,7 @@ import {
 const CONFIG_PATH = 'repo-guard.config.json';
 
 test('preserves the supported protected-file enforcement levels', () => {
-  assert.deepEqual([...SUPPORTED_LEVELS], ['notify', 'audit']);
+  assert.deepEqual([...SUPPORTED_LEVELS], ['notify', 'audit', 'block']);
 });
 
 test('requires protected-file rules and structured exclusions', () => {
@@ -80,10 +80,23 @@ test('requires structured protected-file rules with supported values', () => {
   );
   assert.throws(
     () => normalizeProtectedFileConfiguration({
-      rules: [{ pattern: 'src/**', category: 'Source', level: 'block' }],
+      rules: [{ pattern: 'src/**', category: 'Source', level: 'deny' }],
     }, CONFIG_PATH),
-    /规则 1 使用了不支持的级别： block/,
+    /规则 1 使用了不支持的级别： deny/,
   );
+});
+
+test('accepts block rules for immutable protected files', () => {
+  const { rules } = normalizeProtectedFileConfiguration({
+    rules: [{
+      pattern: 'src/security/permission-map.ts',
+      category: '不可变安全文件',
+      level: 'block',
+    }],
+  }, CONFIG_PATH);
+
+  assert.equal(rules[0].level, 'block');
+  assert.equal(rules[0].matcher.test('src/security/permission-map.ts'), true);
 });
 
 test('requires non-empty protected-file exclusion patterns', () => {

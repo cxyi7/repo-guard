@@ -381,11 +381,27 @@ git push
       "pattern": "src/components/**",
       "category": "公共组件",
       "level": "notify"
+    },
+    {
+      "pattern": "src/security/permission-map.ts",
+      "category": "不可变安全文件",
+      "level": "block"
     }
   ],
   "exclusions": []
 }
 ```
+
+保护文件规则支持三个级别：
+
+- `audit`：记录匹配的文件变更，但不发送通知、不阻止提交。
+- `notify`：记录变更；`notification.enabled` 为 `true` 时要求通知成功。
+- `block`：不可变文件硬门禁。修改、删除、重命名或移动匹配文件都会直接阻止提交和 CI，且不会先发送外部通知。
+
+需要锁定单个文件时，应把 `pattern` 配置为精确仓库相对路径，例如
+`src/security/permission-map.ts`。Git 重命名和移动会同时检查原路径与新路径，因此不能通过换目录或改名绕过。
+同一路径仍按规则配置顺序采用第一条匹配，因此精确的 `block` 规则应放在可能覆盖它的宽泛规则之前。
+如果确实需要变更，应先由维护者评审并调整规则；`exclusions` 仍然优先于保护规则，请勿把不可变文件加入排除项。
 
 ### GitLab CI 远程门禁
 
@@ -427,7 +443,7 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 
 `release-ready` 使用固定计划依次执行 CI policy、消费项目精确的 `check` 与 `test` npm scripts、已启用的 build、可选 Lighthouse，以及必须精确等于 `npm pack --dry-run --json --ignore-scripts` 的 `pack:check` script。最后一步校验 package/lockfile 版本、`CHANGELOG.md` 版本标题、已导出的 draft 2020-12 Schema、exports/bin 和实际打包文件的一致性，并拒绝敏感发布文件。它不会生成 tarball，不运行 lifecycle scripts，不执行 `npm publish` 或 deploy，也不会把发布、部署和云凭证传给 `check`、`test` 或 pack 子进程。项目外部门禁只有显式声明 `release-ready` 且运行在 GitLab protected ref 时，才会固定追加在全部官方步骤之后。
 
-退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码。规则与 runner 只返回结构化 findings、diagnostics、metrics 和 artifacts；console 与 CI JSON 由统一报告层生成。消费项目脚本的 stdout/stderr 会先被捕获为 diagnostics，CI `gateResult` 也完整保留 diagnostics，不再存在 runner 直接输出或继承 stdio 的旁路。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
+退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码。规则与 runner 只返回结构化 findings、diagnostics、metrics 和 artifacts；console 与 CI JSON 由统一报告层生成。消费项目脚本的 stdout/stderr 会先被捕获为 diagnostics，CI `gateResult` 也完整保留 diagnostics，不再存在 runner 直接输出或继承 stdio 的旁路。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告，`block` 级别始终阻断；设置 `ci.protectedFiles.action` 为 `fail` 时，CI 还会把 `audit` 和 `notify` 级别一并提升为阻断。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
 内部 `GateResult` JSON 使用 `schemaVersion: 2`。`issues` 是交给 AI 的规范入口：每项都包含稳定的 `id/kind/gateId/ruleId/code/severity`、仓库相对 `location`、明确的中文 `message/evidence/expected`、结构化中文 `remediation`、`decision.aiAction`、是否需要人工批准以及用于去重的 `fingerprint`。`findings` 保留规则发现集合，错误状态会把同结构的 typed error 追加到 `issues`；规则违规使用 `kind: violation`，配置、执行、范围、安全、内部和取消错误不会伪装成规则违规。CI 在尚未进入执行计划时发生的配置或范围错误，也会把同一结构写入顶层报告的 `gateResult`，不再只留下一个错误字符串。机器 ID、命令、路径、包名、协议枚举和第三方规则 ID 保持原值；第三方原始输出只进入明确标记的 diagnostics，不能替代中文问题说明。完整 Schema 可从 `@cxyi7/repo-guard/gate-result.schema.json` 引用。
 
