@@ -68,6 +68,7 @@
 | 过渡命令层 | 1.4.74 至 1.4.88 已迁移全部入口，1.4.89 已从 dependency-cruiser 与受审目录清单移除过渡分支；`commands` 已彻底移除 | 通过目录清单、职责归属、无旧路径与依赖规则源码测试禁止重新引入命令转发层 |
 | 配置与策略 | 1.4.90 将结构化例外日期状态和有效期断言归入 `config`，`policies` 只保留 finding 匹配，不再由配置层反向依赖策略层 | 配置形状、默认值和配置生命周期属于 `config`；具体违规匹配与判定属于 `policies` 或 Gate |
 | Git 仓库能力 | 1.4.91 将状态持久化、暂存指纹和 Git index 元数据读取从 `integrations/git` 归入统一的 `git` 领域，删除重复目录分支 | Git 命令、仓库发现、变更收集与仓库本地状态属于 `git`；外部工具适配才进入 `integrations` |
+| 基础领域依赖 | 1.4.92 以 error 级 dependency-cruiser 规则固定 config、Git 与 policy 的单向依赖，允许 policy 消费 integration 的无决策事实，并用独立违规 fixture 证明每条规则 | config 不得反向依赖 Git、policy 或运行层；Git 不得依赖 policy 或运行层；policy 不得依赖 Gate 或 orchestration；新增跨层依赖必须先通过独立架构评审 |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 
@@ -195,16 +196,13 @@ CLI 再将内部状态稳定映射为现有退出码，避免每个 runner 自�
 ### 5.1 依赖方向
 
 ```text
-orchestration ─────▶ core/capability + core/report
-       │
-       └───────────▶ gates
-
-gates ─────────────▶ core
-  │
-  └────────────────▶ integrations
-
-integrations ───────▶ core 的稳定类型
-core ───────────────▶ Node.js 标准库和最小通用依赖
+orchestration ─────▶ gates + core/capability + core/report
+gates ─────────────▶ integrations + policies + git + config + core
+policies ──────────▶ integrations + git + config + core
+git ───────────────▶ config + core
+config ────────────▶ core
+integrations ──────▶ git + config + core 的稳定事实与类型
+core ──────────────▶ Node.js 标准库和最小通用依赖
 ```
 
 禁止：

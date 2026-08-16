@@ -23,6 +23,27 @@ module.exports = {
       to: { path: '^src/(?:gates/|orchestration/|integrations/)' },
     },
     {
+      name: 'config-does-not-depend-on-runtime-domains',
+      severity: 'error',
+      comment: 'Configuration contracts and lifecycle cannot depend on Git, policies, gates, integrations, or orchestration.',
+      from: { path: '^src/config/' },
+      to: { path: '^src/(?:gates/|git/|integrations/|orchestration/|policies/)' },
+    },
+    {
+      name: 'git-does-not-depend-on-policy-or-runtime-layers',
+      severity: 'error',
+      comment: 'Git facts and repository state cannot depend on policy decisions or runtime composition.',
+      from: { path: '^src/git/' },
+      to: { path: '^src/(?:gates/|integrations/|orchestration/|policies/)' },
+    },
+    {
+      name: 'policies-do-not-depend-on-gates-or-orchestration',
+      severity: 'error',
+      comment: 'Policies may consume stable facts but cannot invoke gates or orchestration.',
+      from: { path: '^src/policies/' },
+      to: { path: '^src/(?:gates/|orchestration/)' },
+    },
+    {
       name: 'gates-do-not-depend-on-orchestration',
       severity: 'error',
       comment: 'A gate cannot know whether it is invoked by CLI, Hook, pre-push, or CI orchestration.',

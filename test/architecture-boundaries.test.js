@@ -113,15 +113,18 @@ const PRE_PUSH_RUNNER_PATH = path.join(
 );
 
 const EXPECTED_BOUNDARY_RULES = Object.freeze([
+  'config-does-not-depend-on-runtime-domains',
   'core-does-not-depend-on-platform-layers',
   'gate-domains-do-not-deep-import-each-other',
   'gates-do-not-depend-on-orchestration',
   'gates-do-not-import-report-renderers',
+  'git-does-not-depend-on-policy-or-runtime-layers',
   'integrations-do-not-depend-on-policy-layers',
   'integrations-do-not-import-policy-or-rendering',
   'no-circular-dependencies',
   'no-unresolvable-imports',
   'orchestration-entrypoints-do-not-call-integrations-directly',
+  'policies-do-not-depend-on-gates-or-orchestration',
 ]);
 
 const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
@@ -348,6 +351,7 @@ test('enforces every declared platform dependency direction as an error', async 
       'src/gates/testing/gate.js',
       'src/integrations/npm/tool.js',
       'src/orchestration/runner.js',
+      'src/policies/policy.js',
     ];
     for (const target of targets) writeFixture(fixtureRoot, target);
 
@@ -355,6 +359,10 @@ test('enforces every declared platform dependency direction as an error', async 
     writeFixture(fixtureRoot, 'src/core/unresolved.js', "import './missing.js';\n");
     writeFixture(fixtureRoot, 'src/core/cycle-a.js', "import './cycle-b.js';\n");
     writeFixture(fixtureRoot, 'src/core/cycle-b.js', "import './cycle-a.js';\n");
+    writeFixture(fixtureRoot, 'src/config/invalid.js', "import '../policies/policy.js';\n");
+    writeFixture(fixtureRoot, 'src/git/invalid.js', "import '../integrations/npm/tool.js';\n");
+    writeFixture(fixtureRoot, 'src/policies/invalid.js', "import '../orchestration/runner.js';\n");
+    writeFixture(fixtureRoot, 'src/policies/integration-fact.js', "import '../integrations/npm/tool.js';\n");
     writeFixture(fixtureRoot, 'src/gates/security/orchestration.js', "import '../../orchestration/runner.js';\n");
     writeFixture(fixtureRoot, 'src/gates/security/report.js', "import '../../core/report/renderer.js';\n");
     writeFixture(fixtureRoot, 'src/gates/security/cross-domain.js', "import '../testing/gate.js';\n");
@@ -373,6 +381,12 @@ test('enforces every declared platform dependency direction as an error', async 
     assert.deepEqual(
       [...new Set(report.summary.violations.map((violation) => violation.rule.name))].sort(),
       EXPECTED_BOUNDARY_RULES,
+    );
+    assert.equal(
+      report.summary.violations.some(
+        (violation) => violation.from === 'src/policies/integration-fact.js',
+      ),
+      false,
     );
     assert.equal(report.summary.error >= EXPECTED_BOUNDARY_RULES.length, true);
   } finally {

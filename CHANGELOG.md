@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.92
+
+- 新增 error 级 dependency-cruiser 边界，固定 config、Git 与 policy 基础领域的单向依赖骨架：config 不得反向依赖 Git、policy 或运行层，Git 不得依赖 policy 或运行层，policy 不得依赖 Gate 或 orchestration。
+- 架构测试为每条新规则构造独立违规依赖并验证实际拦截；同步目标依赖图和持续守护说明，不改变运行时行为、配置、GateResult、Hook、CI、公共 exports 或退出码。
+
 ## 1.4.91
 
 - 将 `integrations/git` 中的仓库状态持久化、暂存指纹与 Git index 元数据读取原样迁入统一的 `src/git` 领域，删除空的 `integrations/git` 分支且不保留兼容转发。
