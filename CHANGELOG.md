@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.94
+
+- 将跨质量与测试领域的 `gates/platform-capabilities.js` 拆为暂存质量、项目质量和测试 Gate 模块，删除旧聚合路径且不保留兼容转发。
+- Registry 按原顺序显式组合平台 Gate，共享的 `gates/platform-gate.js` 只提供无具体 Gate 知识的协议辅助；capability ID、配置键、环境、顺序、mutation、超时、setup、结果、Hook、CI、公共 exports 和退出码保持不变。
+
 ## 1.4.93
 
 - 将 `repository/native-policy-gates.js` 拆为 repository、security 与 accessibility 领域模块，删除旧聚合路径且不保留兼容转发；Registry 按原顺序组合各领域 Gate。

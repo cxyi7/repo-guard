@@ -129,7 +129,7 @@ const EXPECTED_BOUNDARY_RULES = Object.freeze([
 
 const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
   'native-result.js',
-  'platform-capabilities.js',
+  'platform-gate.js',
   'registry.js',
   'vue-policy-gate.js',
 ]);
@@ -844,6 +844,39 @@ test('keeps native policy gates in their owning domains', () => {
   assert.match(accessibilitySource, /accessibility\.vue-image-alt/);
   assert.doesNotMatch(accessibilitySource, /security\.vue-/);
   assert.match(registrySource, /\.\.\.vueSecurityGates,[\s\S]*\.\.\.vueAccessibilityGates,[\s\S]*\.\.\.repositoryPolicyGates/);
+});
+
+test('keeps platform gates in cohesive quality and testing modules', () => {
+  const legacyPath = path.join(SOURCE_ROOT, 'gates', 'platform-capabilities.js');
+  const helperPath = path.join(SOURCE_ROOT, 'gates', 'platform-gate.js');
+  const stagedPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'staged-quality-gates.js');
+  const projectPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'project-quality-gates.js');
+  const testingPath = path.join(SOURCE_ROOT, 'gates', 'testing', 'platform-test-gates.js');
+  assert.equal(existsSync(legacyPath), false);
+  for (const target of [helperPath, stagedPath, projectPath, testingPath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const helperSource = readFileSync(helperPath, 'utf8');
+  const stagedSource = readFileSync(stagedPath, 'utf8');
+  const projectSource = readFileSync(projectPath, 'utf8');
+  const testingSource = readFileSync(testingPath, 'utf8');
+  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates', 'registry.js'), 'utf8');
+  assert.match(helperSource, /export function definePlatformGate/);
+  assert.doesNotMatch(helperSource, /quality\.(?:eslint|unit-test|build)/);
+  assert.match(stagedSource, /export const stylelintGate/);
+  assert.match(stagedSource, /export const eslintGate/);
+  assert.match(stagedSource, /export const prettierGate/);
+  assert.match(projectSource, /export const typecheckGate/);
+  assert.match(projectSource, /export const architectureGate/);
+  assert.match(projectSource, /export const buildGate/);
+  assert.match(projectSource, /export const lighthouseGate/);
+  assert.match(testingSource, /export const unitTestGate/);
+  assert.match(testingSource, /export const accessibilityTestGate/);
+  assert.match(
+    registrySource,
+    /stylelintGate,[\s\S]*eslintGate,[\s\S]*prettierGate,[\s\S]*typecheckGate,[\s\S]*unitTestGate,[\s\S]*accessibilityTestGate,[\s\S]*architectureGate,[\s\S]*buildGate,[\s\S]*lighthouseGate,[\s\S]*styleComplexityGate,[\s\S]*styleGovernanceGate/,
+  );
 });
 
 test('keeps staged fingerprints in the unified Git domain without a compatibility path', () => {
