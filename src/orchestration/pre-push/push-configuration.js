@@ -3,7 +3,7 @@ import { validateConfig } from '../../config/configuration-validation.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import { configurationError, rangeError } from '../../core/error/repo-guard-error.js';
 import { gitValue, runGit } from '../../git/execution.js';
-import { assertExceptionRegistryCurrent } from '../../policies/exception-registry.js';
+import { assertExceptionLifecycleCurrent } from '../../config/exception-lifecycle.js';
 import { parsePrePushUpdates } from './change-range.js';
 
 const ZERO_SHA = /^0+$/;
@@ -28,7 +28,7 @@ function loadConfigAtRevision(root, revision) {
     );
   }
   const config = validateConfig(parsed, CONFIG_FILE);
-  assertExceptionRegistryCurrent(config.exceptions);
+  assertExceptionLifecycleCurrent(config.exceptions);
   return config;
 }
 

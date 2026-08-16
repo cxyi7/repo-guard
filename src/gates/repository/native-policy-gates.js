@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { inspectDependencyPolicy, inspectStagedDependencyPolicy } from './dependency-policy.js';
-import { inspectExceptionRegistry } from '../../policies/exception-registry.js';
+import { inspectExceptionLifecycle } from '../../config/exception-lifecycle.js';
 import { inspectFilePlacement } from '../../policies/file-placement.js';
 import {
   evaluateMaxFileLines,
@@ -125,7 +125,7 @@ export const exceptionRegistryGate = defineGate({
   manualCommand: 'exceptions', manualOrder: 10, packageScript: 'guard:exceptions',
   inspectSetup: () => ready('Structured exception registry'), plan: () => ({}),
   run({ config }) {
-    const result = inspectExceptionRegistry(config.exceptions);
+    const result = inspectExceptionLifecycle(config.exceptions);
     const invalid = [...result.expired, ...result.future];
     if (invalid.length === 0) return passedResult('repository.structured-exceptions', `Structured exceptions are current (${result.active.length} active)`, { metrics: { entries: result.entries.length, active: result.active.length, expiring: result.expiring.length } });
     return violationResult('repository.structured-exceptions', 'Structured exceptions contain invalid dates', {

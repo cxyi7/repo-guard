@@ -6,7 +6,7 @@ import {
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
-import { assertExceptionRegistryCurrent } from '../../policies/exception-registry.js';
+import { assertExceptionLifecycleCurrent } from '../../config/exception-lifecycle.js';
 import { validateConfig } from '../../config/configuration-validation.js';
 import {
   DEFAULT_CI_CONFIG,
@@ -246,7 +246,7 @@ export function migrateProjectConfig(root, {
   // Invalid values must fail before migration can rewrite the user's file.
   const currentConfig = validateConfig(prepared);
   if (!allowExpiredExceptions) {
-    assertExceptionRegistryCurrent(currentConfig.exceptions, { now });
+    assertExceptionLifecycleCurrent(currentConfig.exceptions, { now });
   }
 
   const preCommit = prepared.preCommit ?? {};

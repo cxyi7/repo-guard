@@ -943,32 +943,50 @@ test('keeps commit-message Hook lifecycle in orchestration without a command fac
   assert.doesNotMatch(commitMessageRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
-test('keeps structured exception validity and matching in policies without a root helper', () => {
+test('separates structured exception lifecycle from policy matching', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'exception-registry.js')), false);
+  const exceptionLifecyclePath = path.join(
+    SOURCE_ROOT,
+    'config',
+    'exception-lifecycle.js',
+  );
   const exceptionRegistryPolicyPath = path.join(
     SOURCE_ROOT,
     'policies',
     'exception-registry.js',
   );
+  assert.equal(existsSync(exceptionLifecyclePath), true);
   assert.equal(existsSync(exceptionRegistryPolicyPath), true);
 
+  const exceptionLifecycleSource = readFileSync(exceptionLifecyclePath, 'utf8');
   const exceptionRegistryPolicySource = readFileSync(
     exceptionRegistryPolicyPath,
     'utf8',
   );
   assert.match(
-    exceptionRegistryPolicySource,
-    /export function inspectExceptionRegistry/,
+    exceptionLifecycleSource,
+    /export function inspectExceptionLifecycle/,
   );
   assert.match(
-    exceptionRegistryPolicySource,
-    /export function assertExceptionRegistryCurrent/,
+    exceptionLifecycleSource,
+    /export function assertExceptionLifecycleCurrent/,
+  );
+  assert.match(exceptionLifecycleSource, /configurationError/);
+  assert.doesNotMatch(
+    exceptionLifecycleSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
   );
   assert.match(
     exceptionRegistryPolicySource,
     /export function findStructuredException/,
   );
-  assert.match(exceptionRegistryPolicySource, /configurationError/);
+  assert.match(
+    exceptionRegistryPolicySource,
+    /from ['"]\.\.\/config\/exception-lifecycle\.js['"]/,
+  );
+  assert.doesNotMatch(exceptionRegistryPolicySource, /configurationError/);
+  assert.doesNotMatch(exceptionRegistryPolicySource, /export function inspectException/);
+  assert.doesNotMatch(exceptionRegistryPolicySource, /export function assertException/);
   assert.doesNotMatch(
     exceptionRegistryPolicySource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,
@@ -1279,7 +1297,12 @@ test('keeps configuration validation and loading in config modules without a roo
   );
   assert.match(configurationLoaderSource, /export function loadConfig/);
   assert.match(configurationLoaderSource, /JSON\.parse\(readFileSync/);
-  assert.match(configurationLoaderSource, /assertExceptionRegistryCurrent/);
+  assert.match(configurationLoaderSource, /assertExceptionLifecycleCurrent/);
+  assert.match(
+    configurationLoaderSource,
+    /from ['"]\.\/exception-lifecycle\.js['"]/,
+  );
+  assert.doesNotMatch(configurationLoaderSource, /from ['"][^'"]*policies\//);
   assert.match(
     configurationValidationSource,
     /export function validateConfigValue/,

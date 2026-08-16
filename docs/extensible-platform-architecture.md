@@ -66,6 +66,7 @@
 | --- | --- | --- |
 | 源码根目录 | 截至 1.4.73，CLI 运行编排已归入 `orchestration/cli`，`src` 根目录只保留 npm 公共入口 `index.js` | 新模块必须直接进入所属目录，不得恢复根级 runner、policy、parser、CLI facade 或兼容转发 |
 | 过渡命令层 | 1.4.74 至 1.4.88 已迁移全部入口，1.4.89 已从 dependency-cruiser 与受审目录清单移除过渡分支；`commands` 已彻底移除 | 通过目录清单、职责归属、无旧路径与依赖规则源码测试禁止重新引入命令转发层 |
+| 配置与策略 | 1.4.90 将结构化例外日期状态和有效期断言归入 `config`，`policies` 只保留 finding 匹配，不再由配置层反向依赖策略层 | 配置形状、默认值和配置生命周期属于 `config`；具体违规匹配与判定属于 `policies` 或 Gate |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 

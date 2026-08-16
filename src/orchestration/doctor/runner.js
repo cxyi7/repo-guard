@@ -13,7 +13,7 @@ import {
 import { createProjectGateRegistry } from '../../gates/registry.js';
 import { gitValue } from '../../git/execution.js';
 import { findRepositoryRoot } from '../../git/repository.js';
-import { inspectExceptionRegistry } from '../../policies/exception-registry.js';
+import { inspectExceptionLifecycle } from '../../config/exception-lifecycle.js';
 import {
   getLocalEnvironmentGitStatus,
   LOCAL_ENV_FILE,
@@ -61,7 +61,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   }
 
   if (config) {
-    const exceptionResult = inspectExceptionRegistry(config.exceptions);
+    const exceptionResult = inspectExceptionLifecycle(config.exceptions);
     const policyPath = path.join(root, EXCEPTION_POLICY_FILE);
     if (!existsSync(policyPath)
       || !isExceptionPolicyCurrent(readFileSync(policyPath, 'utf8'), config.exceptions)) {

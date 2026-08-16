@@ -12,10 +12,10 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { loadConfig } from '../src/config/configuration-loader.js';
 import {
-  assertExceptionRegistryCurrent,
-  findStructuredException,
-  inspectExceptionRegistry,
-} from '../src/policies/exception-registry.js';
+  assertExceptionLifecycleCurrent,
+  inspectExceptionLifecycle,
+} from '../src/config/exception-lifecycle.js';
+import { findStructuredException } from '../src/policies/exception-registry.js';
 import {
   renderExceptionRegistrySummary,
 } from '../src/core/report/exception-registry-renderer.js';
@@ -72,7 +72,7 @@ function createFixture(entries) {
 }
 
 test('classifies active, expiring, expired, and future-dated exceptions', () => {
-  const result = inspectExceptionRegistry(registry([
+  const result = inspectExceptionLifecycle(registry([
     entry({ id: 'active', expiresOn: '2026-09-20' }),
     entry({ id: 'expiring', line: 13, expiresOn: '2026-08-20' }),
     entry({ id: 'expired', line: 14, expiresOn: '2026-08-10' }),
@@ -92,7 +92,7 @@ test('classifies active, expiring, expired, and future-dated exceptions', () => 
   ]);
   assert.match(renderExceptionRegistrySummary(result), /legacy-renderer|active/);
   assert.throws(
-    () => assertExceptionRegistryCurrent(registry(result.entries), {
+    () => assertExceptionLifecycleCurrent(registry(result.entries), {
       now: new Date('2026-08-11T10:00:00Z'),
     }),
     /future-dated entries are invalid/,

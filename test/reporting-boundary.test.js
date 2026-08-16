@@ -100,7 +100,7 @@ test('does not retain gate-owned AI or console renderer compatibility helpers', 
 
 test('forbids untyped Error and AggregateError construction across project boundaries', () => {
   const typeErrorContractFiles = new Set([
-    'policies/exception-registry.js',
+    'config/exception-lifecycle.js',
     'core/capability/execution-plan.js',
     'core/capability/gate-context.js',
     'core/capability/gate-definition.js',

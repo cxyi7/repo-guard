@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.90
+
+- 将结构化例外的日期状态计算与有效期断言从 `policies/exception-registry.js` 迁入 `config/exception-lifecycle.js`，配置加载、迁移、doctor、pre-push 与 Gate 直接依赖配置生命周期模块。
+- `policies/exception-registry.js` 只保留 finding 与当前有效例外的精确匹配职责；删除旧内部导出且不保留兼容转发，配置行为、错误代码、GateResult、Hook、CI、公共 exports 和退出码不变。
+
 ## 1.4.89
 
 - 移除 dependency-cruiser 四条活动边界中已无目标的 `commands` 过渡分支，并从受审源码目录清单移除空 `commands` 目录要求，避免全新 clone 因 Git 不保留空目录而出现架构测试差异。

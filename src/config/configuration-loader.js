@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { assertExceptionRegistryCurrent } from '../policies/exception-registry.js';
+import { assertExceptionLifecycleCurrent } from './exception-lifecycle.js';
 import { validateConfig } from './configuration-validation.js';
 import { CONFIG_FILE } from './validation-primitives.js';
 
@@ -35,7 +35,7 @@ export function loadConfig(root, {
   try {
     const config = validateConfig(parsed, CONFIG_FILE);
     if (!allowExpiredExceptions) {
-      assertExceptionRegistryCurrent(config.exceptions, { now });
+      assertExceptionLifecycleCurrent(config.exceptions, { now });
     }
     return config;
   } catch (error) {
