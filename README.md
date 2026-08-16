@@ -326,7 +326,7 @@ repo-guard external project.api-contract
 ```text
 repo/
 ├─ bin/                              CLI 启动器
-├─ docs/                             项目结构和功能说明
+├─ docs/                             长期维护的项目结构与功能清单
 ├─ scripts/                          仓库自身维护检查
 ├─ src/
 │  ├─ config/                        配置默认值、加载和验证
