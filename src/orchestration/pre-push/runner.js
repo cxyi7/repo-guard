@@ -2,7 +2,6 @@ import {
   createChangeSet,
   createGateContext,
 } from '../../core/capability/gate-context.js';
-import { internalError } from '../../core/error/repo-guard-error.js';
 import {
   writeConsoleMessage,
   writeGateResultConsole,
@@ -41,25 +40,6 @@ export async function runPrePush(cwd = process.cwd(), {
     registry: gateRegistry,
     context,
     stopOnFailure: true,
-    executeStep: async ({ context: stepContext, gate, step }) => {
-      switch (step.id) {
-      case 'quality.typecheck':
-      case 'quality.unit-test':
-      case 'quality.accessibility-test':
-      case 'quality.architecture':
-      case 'quality.build':
-      case 'quality.lighthouse':
-        {
-          const gatePlan = await gate.plan(stepContext);
-          return await gate.run({ ...stepContext, plan: gatePlan });
-        }
-      default:
-        throw internalError(
-          'pre-push/unsupported-plan-step',
-          `Unsupported pre-push execution step: ${step.id}`,
-        );
-      }
-    },
     onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
   });
   return execution.exitCode;

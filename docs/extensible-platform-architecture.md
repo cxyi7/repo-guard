@@ -71,6 +71,7 @@
 | 基础领域依赖 | 1.4.92 以 error 级 dependency-cruiser 规则固定 config、Git 与 policy 的单向依赖，允许 policy 消费 integration 的无决策事实，并用独立违规 fixture 证明每条规则 | config 不得反向依赖 Git、policy 或运行层；Git 不得依赖 policy 或运行层；policy 不得依赖 Gate 或 orchestration；新增跨层依赖必须先通过独立架构评审 |
 | 原生 Gate 归属 | 1.4.93 将 Vue security、Vue accessibility 与 repository Gate 从单个 repository 聚合文件拆回所属领域，Registry 保持原顺序组合 | Gate 实现必须位于其 capability 领域；跨领域可复用协议只能放在无具体规则知识的共享根级工厂，禁止恢复跨领域聚合实现 |
 | 平台 Gate 归属 | 1.4.94 将暂存质量、项目质量与测试 Gate 从跨领域平台聚合文件拆回所属领域，Registry 按既定顺序显式组合 | 平台 Gate 按单一能力职责分组；共享 helper 不得知道具体 Gate，Registry 只负责发现与组合，不承载执行策略 |
+| pre-push capability 分发 | 1.4.95 删除 runner 对具体质量 Gate ID 的 switch，直接使用统一 orchestrator 的默认 `plan`/`run` 分发 | pre-push runner 只拥有推送配置、变更范围、上下文、首错停止与呈现职责；能力发现和顺序分别属于 Registry 与 Execution Plan |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 

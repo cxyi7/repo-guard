@@ -316,6 +316,10 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     /run\w+Project|quality\.typecheck|quality\.lighthouse/,
   );
   assert.match(sources['orchestration/pre-push/runner'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
+  assert.doesNotMatch(
+    sources['orchestration/pre-push/runner'],
+    /executeStep|unsupported-plan-step|quality\.(?:typecheck|unit-test|accessibility-test|architecture|build|lighthouse)/,
+  );
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);
   assert.equal(gateRegistry.findByConfigKey('typeCheck')?.id, 'quality.typecheck');

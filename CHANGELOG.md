@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.95
+
+- 删除 pre-push runner 对 6 个具体质量 Gate 的硬编码分支，直接使用统一 orchestrator 的 Gate `plan`/`run` 分发；新增受支持的 pre-push capability 不再需要修改生命周期 runner。
+- 固定 Execution Plan 顺序、精确推送快照、setup 校验、逐 Gate 超时、首错停止、结果输出、Hook、公共 exports 和退出码保持不变，并增加 runner 不得重新接纳具体 Gate 知识的架构断言。
+
 ## 1.4.94
 
 - 将跨质量与测试领域的 `gates/platform-capabilities.js` 拆为暂存质量、项目质量和测试 Gate 模块，删除旧聚合路径且不保留兼容转发。
