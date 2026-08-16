@@ -80,7 +80,7 @@ function withoutComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\r\n]/g, ' '));
 }
 
-function warning(source, offset, text) {
+function governanceViolation(source, offset, text) {
   return {
     ...sourceLocation(source, offset),
     endLine: sourceLocation(source, offset).line,
@@ -91,14 +91,14 @@ function warning(source, offset, text) {
   };
 }
 
-function vueWarnings(source, allowed) {
+function inspectVueStyleViolations(source, allowed) {
   if (allowed) return [];
-  const warnings = [];
+  const violations = [];
   for (const block of findVueStyleBlocks(source)) {
     const { attributes, content, contentOffset } = block;
     const isolated = withoutComments(content);
     if (!ATTRIBUTE('scoped').test(attributes) && !ATTRIBUTE('module').test(attributes)) {
-      warnings.push(warning(
+      violations.push(governanceViolation(
         source,
         block.start,
         'Vue style blocks must use scoped or module unless the file is an approved global stylesheet',
@@ -107,14 +107,14 @@ function vueWarnings(source, allowed) {
     const globalPattern = /(?:::v-global|:global)\s*\(/gi;
     let globalMatch;
     while ((globalMatch = globalPattern.exec(isolated)) !== null) {
-      warnings.push(warning(
+      violations.push(governanceViolation(
         source,
         contentOffset + globalMatch.index,
         ':global() escapes component style isolation and requires an approved global stylesheet',
       ));
     }
   }
-  return warnings;
+  return violations;
 }
 
 export function inspectUnexpectedGlobalStyles({ root, files, allowedPatterns }) {
@@ -122,16 +122,16 @@ export function inspectUnexpectedGlobalStyles({ root, files, allowedPatterns }) 
     const relative = normalizePath(root, filePath);
     const allowed = micromatch.isMatch(relative, allowedPatterns, { dot: true });
     const source = readFileSync(filePath, 'utf8');
-    let warnings = [];
+    let violations = [];
     if (relative.toLowerCase().endsWith('.vue')) {
-      warnings = vueWarnings(source, allowed);
+      violations = inspectVueStyleViolations(source, allowed);
     } else if (!allowed && !MODULE_STYLE.test(relative)) {
-      warnings = [warning(
+      violations = [governanceViolation(
         source,
         0,
         'Global stylesheet is outside allowedGlobalStylePatterns; move it to an approved global style location or convert it to a CSS Module',
       )];
     }
-    return warnings.length > 0 ? [{ source: filePath, warnings }] : [];
+    return violations.length > 0 ? [{ source: filePath, violations }] : [];
   });
 }

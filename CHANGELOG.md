@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.98
+
+- 将样式治理策略的内部结果统一命名为 `violations`，仅由 Stylelint Gate 在适配原生结果协议时转换为 `warnings`；不再用 warning 命名承载 `severity: error` 的治理违规。
+- 同步统一 Stylelint Gate 内部 message 命名，并以不可变映射补充自有规则命名空间；样式治理行为、配置、Schema、GateResult、Hook、CI、公共 exports 和退出码保持不变，架构测试禁止策略层重新引入误导性的 warning 命名。
+
 ## 1.4.97
 
 - 删除 pre-commit 最终策略 runner 对依赖策略与保护文件 Gate 的重复硬编码分发，直接使用统一 orchestrator 的 Gate `plan`/`run` 执行。

@@ -2177,7 +2177,10 @@ test('keeps style scope governance in policies without a root helper', () => {
     styleGovernanceSource,
     /export function inspectUnexpectedGlobalStyles/,
   );
+  assert.match(styleGovernanceSource, /function governanceViolation/);
+  assert.match(styleGovernanceSource, /function inspectVueStyleViolations/);
   assert.match(styleGovernanceSource, /no-unexpected-global-style/);
+  assert.doesNotMatch(styleGovernanceSource, /\b(?:warning|warnings|vueWarnings)\b/);
   assert.doesNotMatch(
     styleGovernanceSource,
     /from ['"][^'"]*(?:gates|integrations|orchestration)\//,

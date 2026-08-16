@@ -34,15 +34,17 @@ test('detects unscoped Vue blocks and explicit global escapes', (context) => {
     files: [file],
     allowedPatterns: ['src/styles/**'],
   });
-  assert.equal(results[0].warnings.length, 3);
+  assert.equal(results[0].violations.length, 3);
   assert.deepEqual(
-    results[0].warnings.map(({ rule }) => rule),
+    results[0].violations.map(({ rule }) => rule),
     [
       'no-unexpected-global-style',
       'no-unexpected-global-style',
       'no-unexpected-global-style',
     ],
   );
+  assert.equal(results[0].violations.every(({ severity }) => severity === 'error'), true);
+  assert.equal(Object.hasOwn(results[0], 'warnings'), false);
 });
 
 test('allows scoped, module, CSS Modules, and approved global files', (context) => {

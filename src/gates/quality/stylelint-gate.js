@@ -117,7 +117,7 @@ async function lintGovernance(project, root, files, governance) {
         root,
         files,
         allowedPatterns: governance.allowedGlobalStylePatterns,
-      }),
+      }).map(({ source, violations }) => ({ source, warnings: violations })),
     ],
   };
 }
@@ -126,7 +126,7 @@ function mergeLintResults(...reports) {
   return { results: reports.flatMap((report) => report.results) };
 }
 
-function withoutProjectComplexityWarnings(report, complexity) {
+function withoutProjectComplexityMessages(report, complexity) {
   if (!complexity?.enabled) return report;
   return {
     results: report.results.map((result) => ({
@@ -138,7 +138,7 @@ function withoutProjectComplexityWarnings(report, complexity) {
   };
 }
 
-function withoutProjectGovernanceWarnings(report, governance) {
+function withoutProjectGovernanceMessages(report, governance) {
   if (!governance?.enabled) return report;
   const activeRules = new Set([
     STYLE_GOVERNANCE_RULES.maxSpecificity,
@@ -168,40 +168,58 @@ function applyOwnedRuleExceptions(root, report, exceptions, complexity, governan
   const approved = [];
   const results = report.results.map((result) => ({
     ...result,
-    warnings: (result.warnings ?? []).filter((warning) => {
-      if (!ownedRules.has(warning.rule)) return true;
+    warnings: (result.warnings ?? []).flatMap((message) => {
+      if (!ownedRules.has(message.rule)) return [message];
       const finding = {
         path: path.relative(root, result.source).replace(/\\/g, '/'),
-        line: warning.line,
-        column: warning.column,
-        rule: `style/${warning.rule}`,
+        line: message.line,
+        column: message.column,
+        rule: `style/${message.rule}`,
       };
       const exception = findStructuredException(exceptions, finding);
       if (!exception) {
-        warning.rule = finding.rule;
-        return true;
+        return [{ ...message, rule: finding.rule }];
       }
       approved.push({ ...finding, exception });
-      return false;
+      return [];
     }),
   }));
   return { approved, results };
 }
 
 function stylelintFindings(root, results, maxWarnings) {
-  const warningCount = results.reduce((total, result) => total + (result.warnings || []).filter(({ severity }) => severity === 'warning').length, 0);
+  const warningCount = results.reduce(
+    (total, result) => total
+      + (result.warnings || []).filter(({ severity }) => severity === 'warning').length,
+    0,
+  );
   const warningsBlock = warningCount > maxWarnings;
   return results.flatMap((result) => [
-    ...(result.warnings || []).filter((warning) => warning.severity === 'error' || (warningsBlock && warning.severity === 'warning')).map((warning) => ({
-      ruleId: warning.rule?.startsWith('style/') ? warning.rule : `stylelint/${warning.rule || 'syntax-error'}`,
-      severity: warning.severity === 'warning' ? 'warning' : 'error',
-      message: warning.text || 'Stylelint violation',
-      location: { path: path.relative(root, result.source).replace(/\\/g, '/'), ...(warning.line ? { line: warning.line } : {}), ...(warning.column ? { column: warning.column } : {}) },
-      remediation: warning.rule
-        ? `Fix the root cause reported by Stylelint rule ${warning.rule} without disabling the rule.`
-        : 'Correct the stylesheet syntax without weakening Stylelint verification.',
+    ...(result.warnings || [])
+      .filter((message) => message.severity === 'error'
+        || (warningsBlock && message.severity === 'warning'))
+      .map((message) => ({
+        ruleId: message.rule?.startsWith('style/')
+          ? message.rule
+          : `stylelint/${message.rule || 'syntax-error'}`,
+        severity: message.severity === 'warning' ? 'warning' : 'error',
+        message: message.text || 'Stylelint violation',
+        location: {
+          path: path.relative(root, result.source).replace(/\\/g, '/'),
+          ...(message.line ? { line: message.line } : {}),
+          ...(message.column ? { column: message.column } : {}),
+        },
+        remediation: message.rule
+          ? `Fix the root cause reported by Stylelint rule ${message.rule} without disabling the rule.`
+          : 'Correct the stylesheet syntax without weakening Stylelint verification.',
+      })),
+    ...(result.invalidOptionWarnings || []).map((message) => ({
+      ruleId: 'stylelint/invalid-option',
+      severity: 'error',
+      message: message.text || message.message || 'Invalid Stylelint option',
+      location: { path: path.relative(root, result.source).replace(/\\/g, '/') },
+      remediation: 'Correct the project Stylelint option while preserving the rule.',
     })),
-    ...(result.invalidOptionWarnings || []).map((warning) => ({ ruleId: 'stylelint/invalid-option', severity: 'error', message: warning.text || warning.message || 'Invalid Stylelint option', location: { path: path.relative(root, result.source).replace(/\\/g, '/') }, remediation: 'Correct the project Stylelint option while preserving the rule.' })),
   ]);
 }
 
@@ -251,8 +269,8 @@ export async function runStylelintFiles({
       : governanceOnly
         ? initialGovernance
         : mergeLintResults(
-        withoutProjectGovernanceWarnings(
-          withoutProjectComplexityWarnings(
+        withoutProjectGovernanceMessages(
+          withoutProjectComplexityMessages(
             await executeProjectStylelint({
               project,
               root,
@@ -294,8 +312,8 @@ export async function runStylelintFiles({
     final = applyOwnedRuleExceptions(
       root,
       mergeLintResults(
-        withoutProjectGovernanceWarnings(
-          withoutProjectComplexityWarnings(
+        withoutProjectGovernanceMessages(
+          withoutProjectComplexityMessages(
             await executeProjectStylelint({
               project,
               root,
