@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.96
+
+- 删除 CI runner 对官方与外部 Gate 的具体分发 switch，统一使用 orchestrator 的 Gate `plan`/`run` 执行；CI runner 只保留范围、上下文、报告聚合与持久化职责。
+- 将既有 CI 步骤显示名归入受审 Execution Plan 的 `reportName` 元数据，将 Stylelint、ESLint 与 Prettier 的文件 pattern 适用性归入各自 Gate plan；报告名称、步骤顺序、文件范围、GateResult、profile、Hook、公共 exports 和退出码保持不变。
+
 ## 1.4.95
 
 - 删除 pre-push runner 对 6 个具体质量 Gate 的硬编码分支，直接使用统一 orchestrator 的 Gate `plan`/`run` 分发；新增受支持的 pre-push capability 不再需要修改生命周期 runner。

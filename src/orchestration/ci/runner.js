@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
-import micromatch from 'micromatch';
 import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { classifyChanges } from '../../policies/change-classification.js';
@@ -23,13 +22,6 @@ import {
 } from '../execution-plans.js';
 import { orchestratePlan } from '../orchestrator.js';
 import { writeCiReport } from './report.js';
-
-function matchingFiles(files, pattern) {
-  return files.filter((file) => micromatch.isMatch(file, pattern, {
-    dot: true,
-    matchBase: true,
-  }));
-}
 
 function isTrustedExternalGateCi(env) {
   return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
@@ -150,73 +142,11 @@ export async function runCiGate({
     plan: ciPlan,
     registry,
     context,
-    executeStep: async ({ context: stepContext, gate, step }) => {
-      switch (step.id) {
-      case 'repository.structured-exceptions':
-      case 'security.vue-unsafe-html':
-      case 'security.vue-target-blank':
-      case 'accessibility.vue-form-label':
-      case 'accessibility.vue-image-alt':
-      case 'dependencies.policy':
-      case 'repository.file-placement':
-      case 'repository.maximum-file-lines': {
-        const gatePlan = await gate.plan(stepContext);
-        return { name: step.id, result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-      }
-      case 'security.dynamic-code': {
-        const gate = registry.get(step.gateId);
-        const gatePlan = await gate.plan(stepContext);
-        const result = await gate.run({ ...stepContext, plan: gatePlan });
-        return { name: 'dynamic-code', result, recordOptions: { includeGateResult: true } };
-      }
-      case 'quality.unit-test-policy':
-        {
-          const gatePlan = await gate.plan(stepContext);
-          return { name: 'unit-test-policy', result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-        }
-      case 'repository.protected-files':
-        {
-          const gatePlan = await gate.plan(stepContext);
-          return { name: 'protected-files', result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-        }
-      case 'quality.stylelint-project':
-        {
-          const selected = matchingFiles(projectFiles, config.preCommit.stylelint.pattern);
-          const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: selected }));
-          return { name: 'stylelint', result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-        }
-      case 'quality.eslint-project':
-      case 'quality.prettier-project': {
-        const selected = step.id === 'quality.eslint-project'
-          ? matchingFiles(projectFiles, config.preCommit.eslint.pattern)
-          : matchingFiles(projectFiles, config.preCommit.prettier.pattern);
-        const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: selected }));
-        return { name: step.id === 'quality.eslint-project' ? 'eslint' : 'prettier', result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-      }
-      case 'quality.typecheck':
-      case 'quality.build': {
-        const gatePlan = await gate.plan(stepContext);
-        return { name: step.id === 'quality.typecheck' ? 'type-check' : 'build', result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-      }
-      case 'quality.unit-test':
-      case 'quality.accessibility-test':
-      case 'quality.architecture':
-        {
-          const gatePlan = await gate.plan(stepContext);
-          return { name: step.id, result: await gate.run({ ...stepContext, plan: gatePlan }), recordOptions: { includeGateResult: true } };
-        }
-      default: {
-        const gate = registry.get(step.gateId);
-        const gatePlan = await gate.plan(stepContext);
-        const result = await gate.run({ ...stepContext, plan: gatePlan });
-        return { name: step.id, result, recordOptions: { includeGateResult: true } };
-      }
-      }
-    },
-    onResult: ({ outcome, result, step }) => {
-      if (outcome.recorded) return;
-      recordResult(outcome.name ?? step.id, result, outcome.recordOptions);
-    },
+    onResult: ({ result, step }) => recordResult(
+      step.reportName ?? step.id,
+      result,
+      { includeGateResult: true },
+    ),
   });
 
   const status = execution.status === 'execution-error'

@@ -1,3 +1,5 @@
+import path from 'node:path';
+import micromatch from 'micromatch';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { resolveProjectEslintMetadata } from '../../integrations/eslint/project.js';
 import {
@@ -19,6 +21,16 @@ import {
 } from './stylelint-gate.js';
 
 const STYLE_FILE = /\.(?:css|scss|sass|less|vue)$/i;
+
+function matchingFiles(root, files, pattern) {
+  return files.filter((file) => {
+    const relative = path.isAbsolute(file) ? path.relative(root, file) : file;
+    return micromatch.isMatch(relative.split(path.sep).join('/'), pattern, {
+      dot: true,
+      matchBase: true,
+    });
+  });
+}
 
 async function inspectEslintSetup({ root, config }) {
   if (!config.preCommit.eslint.enabled) return readyGateSetup('ESLint gate is disabled');
@@ -64,9 +76,9 @@ export const stylelintGate = definePlatformGate({
   requiredTools: ['stylelint'],
   supportsFix: true,
   inspectSetup: inspectStylelintSetup,
-  plan: ({ config, files, step }) => ({
+  plan: ({ root, config, files, step }) => ({
     enabled: config.preCommit.stylelint.enabled,
-    files,
+    files: matchingFiles(root, files, config.preCommit.stylelint.pattern),
     fix: step?.mutation === 'working-tree-fix' && config.preCommit.stylelint.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled
@@ -96,9 +108,9 @@ export const eslintGate = definePlatformGate({
   requiredTools: ['eslint'],
   supportsFix: true,
   inspectSetup: inspectEslintSetup,
-  plan: ({ config, files, step }) => ({
+  plan: ({ root, config, files, step }) => ({
     enabled: config.preCommit.eslint.enabled,
-    files,
+    files: matchingFiles(root, files, config.preCommit.eslint.pattern),
     fix: step?.mutation === 'working-tree-fix' && config.preCommit.eslint.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled
@@ -124,9 +136,9 @@ export const prettierGate = definePlatformGate({
   requiredTools: ['prettier'],
   supportsFix: true,
   inspectSetup: inspectPrettierSetup,
-  plan: ({ config, files, step }) => ({
+  plan: ({ root, config, files, step }) => ({
     enabled: config.preCommit.prettier.enabled,
-    files,
+    files: matchingFiles(root, files, config.preCommit.prettier.pattern),
     fix: step?.mutation === 'working-tree-fix' && config.preCommit.prettier.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled

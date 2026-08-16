@@ -125,6 +125,30 @@ test('locks the reviewed lifecycle order independently from project configuratio
   );
   assert.equal(executionPlans.all.every((plan) => plan.locked), true);
   assert.equal(executionPlans.all.every((plan) => Object.isFrozen(plan.steps)), true);
+  assert.deepEqual(
+    executionPlans.get('ci-full').steps.map((step) => step.reportName ?? step.id),
+    [
+      'repository.structured-exceptions',
+      'dynamic-code',
+      'security.vue-unsafe-html',
+      'security.vue-target-blank',
+      'accessibility.vue-form-label',
+      'accessibility.vue-image-alt',
+      'dependencies.policy',
+      'repository.file-placement',
+      'repository.maximum-file-lines',
+      'unit-test-policy',
+      'protected-files',
+      'stylelint',
+      'eslint',
+      'prettier',
+      'type-check',
+      'quality.unit-test',
+      'quality.accessibility-test',
+      'quality.architecture',
+      'build',
+    ],
+  );
 
   const config = { executionOrder: ['repository.protected-files'] };
   assert.deepEqual(
@@ -204,6 +228,14 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
   assert.throws(
     () => validateExecutionPlan(defineExecutionPlan({ id: 'wrong-environment', environment: 'ci-full', steps: ['first'] }), registry),
     /unsupported environment/,
+  );
+  assert.throws(
+    () => defineExecutionPlan({
+      id: 'invalid-report-name',
+      environment: 'ci-full',
+      steps: [{ id: 'first', gateId: 'first', reportName: ' ' }],
+    }),
+    /reportName must be a non-empty string/,
   );
   const mutatingRegistry = createGateRegistry([
     gate('mutating', {
@@ -310,6 +342,10 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   assert.doesNotMatch(sources['orchestration/setup/hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
     assert.match(sources['orchestration/doctor/runner'], /createProjectGateRegistry\(config\)\.all/);
   assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
+  assert.doesNotMatch(
+    sources['orchestration/ci/runner'],
+    /executeStep|micromatch|quality\.(?:stylelint|eslint|prettier|typecheck|unit-test|accessibility-test|architecture|build)/,
+  );
   assert.match(sources['orchestration/pre-commit/quality-runner'], /plan: preCommitQualityPlan/);
   assert.doesNotMatch(
     sources['orchestration/pre-commit/quality-runner'],

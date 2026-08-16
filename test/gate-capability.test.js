@@ -441,3 +441,31 @@ test('records existing tool-backed capability prerequisites and side effects in 
   assert.equal(lighthouse.mutation, 'read-only');
   assert.deepEqual(lighthouse.requiredTools, ['@lhci/cli']);
 });
+
+test('keeps staged quality file applicability in each Gate plan', () => {
+  const config = {
+    preCommit: {
+      stylelint: { enabled: true, pattern: '**/*.{css,vue}', fix: true },
+      eslint: { enabled: true, pattern: '**/*.{js,vue}', fix: true },
+      prettier: { enabled: true, pattern: '**/*.vue', fix: true },
+    },
+  };
+  const context = {
+    root: 'C:/project',
+    config,
+    files: ['src/pages/app.js', 'src/styles/app.css', 'src/components/App.vue', 'test/app.ts'],
+    step: { mutation: 'read-only' },
+  };
+
+  assert.deepEqual(gateRegistry.get('quality.stylelint').plan(context).files, [
+    'src/styles/app.css',
+    'src/components/App.vue',
+  ]);
+  assert.deepEqual(gateRegistry.get('quality.eslint').plan(context).files, [
+    'src/pages/app.js',
+    'src/components/App.vue',
+  ]);
+  assert.deepEqual(gateRegistry.get('quality.prettier').plan(context).files, [
+    'src/components/App.vue',
+  ]);
+});

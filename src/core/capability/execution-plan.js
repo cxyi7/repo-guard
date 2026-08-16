@@ -43,6 +43,9 @@ function normalizeStep(step) {
       step.mutation,
       'Execution plan step mutation',
     ),
+    ...(step.reportName == null ? {} : {
+      reportName: nonEmptyString(step.reportName, 'Execution plan step reportName'),
+    }),
   });
 }
 
