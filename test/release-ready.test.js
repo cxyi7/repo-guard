@@ -44,7 +44,7 @@ function fixture(overrides = {}) {
     packages: { '': { name: packageJson.name, version: packageJson.version } },
   }, null, 2)}\n`);
   writeFileSync(path.join(root, 'index.js'), 'export const ready = true;\n');
-  writeFileSync(path.join(root, 'README.md'), '# Fixture\n');
+  writeFileSync(path.join(root, 'README.md'), `# Fixture\n\n- 当前版本：\`${packageJson.version}\`\n`);
   writeFileSync(path.join(root, 'CHANGELOG.md'), `# Changelog\n\n## ${packageJson.version}\n\n- Ready.\n`);
   writeFileSync(path.join(root, 'config.schema.json'), `${JSON.stringify({
     $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -177,6 +177,7 @@ test('reports version, changelog, schema, artifact, and sensitive-file violation
   lock.version = '2.0.0';
   writeFileSync(path.join(root, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
   writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## 2.0.0\n');
+  writeFileSync(path.join(root, 'README.md'), '# Fixture\n\n- 当前版本：`2.0.0`\n');
   writeFileSync(path.join(root, 'config.schema.json'), '{"type":"object"}\n');
   const changedManifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
   changedManifest.exports['./missing.js'] = './missing.js';
@@ -190,6 +191,7 @@ test('reports version, changelog, schema, artifact, and sensitive-file violation
   for (const rule of [
     'release/lockfile-version',
     'release/changelog',
+    'release/readme-version',
     'release/schema-version',
     'release/artifact-missing',
     'release/sensitive-artifact',

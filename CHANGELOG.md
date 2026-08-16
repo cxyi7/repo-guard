@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- 修正 README 和长期功能清单遗留的旧版本声明，并将 README 当前版本纳入发布就绪硬性检查，避免 npm 页面再次展示过期版本。
+
 ## 1.6.3
 
 - 修复 `git push` 执行 pre-push 重型门禁时长时间没有终端反馈的问题：TypeScript、单元测试、axe 和构建脚本现在会先显示中文阶段提示，再实时转发经过脱敏的 stdout/stderr。

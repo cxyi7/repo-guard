@@ -76,6 +76,17 @@ function inspectMetadata(root, manifest, packedFiles) {
     }
   }
 
+  const readmePath = path.join(root, 'README.md');
+  if (!existsSync(readmePath)) {
+    addFinding('release/readme-version', '必须提供 README.md 并声明当前包版本', 'README.md', '请创建 README.md，并添加与 package.json 一致的“当前版本”声明。');
+  } else if (SEMVER.test(manifest.version ?? '')) {
+    const versionDeclaration = `- 当前版本：\`${manifest.version}\``;
+    const readmeLines = readFileSync(readmePath, 'utf8').split(/\r\n|\n|\r/);
+    if (!readmeLines.includes(versionDeclaration)) {
+      addFinding('release/readme-version', `README.md 的当前版本声明必须是 ${manifest.version}`, 'README.md', `请添加“${versionDeclaration}”，并同步更新安装示例。`);
+    }
+  }
+
   const schemaPaths = new Set([
     ...collectExportTargets(manifest.exports).map(normalizedTarget),
     ...(Array.isArray(manifest.files) ? manifest.files.map(normalizedTarget) : []),

@@ -22,7 +22,7 @@ npm run pack:check
 确认：
 
 - Git 工作区干净；
-- `package.json` 与 `CHANGELOG.md` 版本一致；
+- `package.json`、`CHANGELOG.md` 与 `README.md` 版本一致；
 - 配置 Schema、README 和行为同步；
 - 配置迁移、通知开关、Stylelint/ESLint AI 提示、诊断修复和 Hook 安全预检测试通过；
 - Stylelint/ESLint/Prettier 暂存自动修复、部分暂存恢复和失败回滚测试通过；

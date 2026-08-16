@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.6.1`
+- 当前版本：`1.6.3`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.6.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.6.3
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -81,7 +81,7 @@ npx repo-guard doctor
 - 受控 `project.*` 外部门禁，只允许精确 npm script 和版本化 JSON 报告。
 - 报告、artifact、路径、符号链接、大小和敏感数据安全检查。
 - 统一 `GateResult`、console renderer、JSON renderer 和退出码。
-- 发布就绪检查覆盖项目 `check`、`test`、构建、可选 Lighthouse、版本、lockfile、changelog、Schema、exports、bin 和 npm pack 文件。
+- 发布就绪检查覆盖项目 `check`、`test`、构建、可选 Lighthouse、`package.json`/lockfile/CHANGELOG/README 版本一致性、Schema、exports、bin 和 npm pack 文件。
 - 发布准备只验证，不执行 `npm publish`、deploy 或生产写操作。
 
 ## 固定执行顺序
