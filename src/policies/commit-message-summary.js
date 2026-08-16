@@ -7,7 +7,7 @@ import {
   clearCommitMessageState,
   readCommitMessageState,
   saveCommitMessageState,
-} from '../integrations/git/repository-state.js';
+} from '../git/repository-state.js';
 
 const AUTO_HEADING = '【自动变更文件】';
 const MARKER_BEGIN = '<!-- repo-guard:files:start -->';

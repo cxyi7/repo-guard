@@ -792,11 +792,11 @@ test('separates Vitest project and execution facts from unit-test policy decisio
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
 });
 
-test('keeps staged fingerprints in the Git integration without a root compatibility path', () => {
+test('keeps staged fingerprints in the unified Git domain without a compatibility path', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'fingerprint.js')), false);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'integrations', 'git')), false);
   const fingerprintPath = path.join(
     SOURCE_ROOT,
-    'integrations',
     'git',
     'staged-fingerprint.js',
   );
@@ -805,14 +805,18 @@ test('keeps staged fingerprints in the Git integration without a root compatibil
   const fingerprintSource = readFileSync(fingerprintPath, 'utf8');
   assert.match(fingerprintSource, /export function createStagedFingerprint/);
   assert.match(fingerprintSource, /\['write-tree'\]/);
+  assert.match(fingerprintSource, /from ['"]\.\/execution\.js['"]/);
   assert.doesNotMatch(fingerprintSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+  assert.doesNotMatch(
+    fingerprintSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
+  );
 });
 
-test('keeps repository-local state persistence in the Git integration without a root compatibility path', () => {
+test('keeps repository-local state persistence in the unified Git domain', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'state.js')), false);
   const statePath = path.join(
     SOURCE_ROOT,
-    'integrations',
     'git',
     'repository-state.js',
   );
@@ -826,7 +830,12 @@ test('keeps repository-local state persistence in the Git integration without a 
   assert.match(stateSource, /export function clearCommitMessageState/);
   assert.match(stateSource, /repo-guard-notified\.json/);
   assert.match(stateSource, /repo-guard-commit-message\.json/);
+  assert.match(stateSource, /from ['"]\.\/repository\.js['"]/);
   assert.doesNotMatch(stateSource, /\b(?:GateResult|finding|policy|registry)\b/i);
+  assert.doesNotMatch(
+    stateSource,
+    /from ['"][^'"]*(?:gates|integrations|orchestration|policies)\//,
+  );
 });
 
 test('separates Git command execution from repository discovery without a root helper', () => {
@@ -920,7 +929,7 @@ test('keeps managed commit-message summaries in policies without a root helper',
   assert.match(summaryPolicySource, /export function prepareCommitMessage/);
   assert.match(summaryPolicySource, /export function finalizeCommitMessage/);
   assert.match(summaryPolicySource, /export function cleanupCommitMessage/);
-  assert.match(summaryPolicySource, /integrations\/git\/repository-state\.js/);
+  assert.match(summaryPolicySource, /\.\.\/git\/repository-state\.js/);
   assert.doesNotMatch(
     summaryPolicySource,
     /from ['"][^'"]*(?:gates|orchestration)\//,
@@ -1020,7 +1029,6 @@ test('separates package and staged metadata facts from dependency policy decisio
   );
   const gitPath = path.join(
     SOURCE_ROOT,
-    'integrations',
     'git',
     'staged-package-metadata.js',
   );
@@ -1034,15 +1042,16 @@ test('separates package and staged metadata facts from dependency policy decisio
     assert.equal(existsSync(target), true);
   }
 
-  const integrationSource = `${readFileSync(npmPath, 'utf8')}\n${readFileSync(gitPath, 'utf8')}`;
+  const metadataSource = `${readFileSync(npmPath, 'utf8')}\n${readFileSync(gitPath, 'utf8')}`;
   assert.doesNotMatch(
-    integrationSource,
+    metadataSource,
     /\b(?:findStructuredException|inspectDeclarations|compareLockfile|remediation)\b/,
   );
-  assert.match(integrationSource, /export function readStagedPackageMetadata/);
-  assert.match(integrationSource, /export function readPackageMetadataFile/);
+  assert.match(metadataSource, /export function readStagedPackageMetadata/);
+  assert.match(metadataSource, /export function readPackageMetadataFile/);
+  assert.match(readFileSync(gitPath, 'utf8'), /from ['"]\.\/execution\.js['"]/);
   const gateSource = readFileSync(gatePath, 'utf8');
-  assert.match(gateSource, /integrations\/git\/staged-package-metadata\.js/);
+  assert.match(gateSource, /\.\.\/\.\.\/git\/staged-package-metadata\.js/);
   assert.match(gateSource, /integrations\/npm\/package-metadata\.js/);
   assert.doesNotMatch(gateSource, /\b(?:mkdtempSync|writeFileSync|rmSync|runGit)\b/);
 });

@@ -1,4 +1,4 @@
-import { runGit } from '../../git/execution.js';
+import { runGit } from './execution.js';
 
 function readStagedFile(root, filePath) {
   const result = runGit(['show', `:${filePath}`], {

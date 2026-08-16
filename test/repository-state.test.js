@@ -16,7 +16,7 @@ import {
   readCommitMessageState,
   saveCommitMessageState,
   saveNotificationState,
-} from '../src/integrations/git/repository-state.js';
+} from '../src/git/repository-state.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.91
+
+- 将 `integrations/git` 中的仓库状态持久化、暂存指纹与 Git index 元数据读取原样迁入统一的 `src/git` 领域，删除空的 `integrations/git` 分支且不保留兼容转发。
+- 所有调用方直接依赖新的职责归属；状态文件、指纹算法、暂存元数据、错误契约、GateResult、Hook、CI、公共 exports 和退出码保持不变。
+
 ## 1.4.90
 
 - 将结构化例外的日期状态计算与有效期断言从 `policies/exception-registry.js` 迁入 `config/exception-lifecycle.js`，配置加载、迁移、doctor、pre-push 与 Gate 直接依赖配置生命周期模块。

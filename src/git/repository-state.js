@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { resolveGitPath } from '../../git/repository.js';
+import { resolveGitPath } from './repository.js';
 
 function readJson(target) {
   if (!existsSync(target)) {

@@ -26,12 +26,12 @@ import {
   VUE_IMAGE_ALT_RULE,
 } from '../../policies/vue-image-alt.js';
 import { classifyChanges } from '../../policies/change-classification.js';
-import { createStagedFingerprint } from '../../integrations/git/staged-fingerprint.js';
+import { createStagedFingerprint } from '../../git/staged-fingerprint.js';
 import {
   assertLocalEnvironmentNotStaged,
   resolveNotificationEnvironment,
 } from '../../policies/local-environment.js';
-import { notificationWasSent, saveNotificationState } from '../../integrations/git/repository-state.js';
+import { notificationWasSent, saveNotificationState } from '../../git/repository-state.js';
 import { sendWecomNotification } from '../../integrations/wecom/notification.js';
 import {
   buildNotificationText,
