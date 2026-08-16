@@ -1,9 +1,17 @@
 import { createGateRegistry } from '../core/capability/gate-registry.js';
+import { vueAccessibilityGates } from './accessibility/vue-policy-gates.js';
 import { dynamicCodeGate } from './security/dynamic-code-gate.js';
 import { platformCapabilities } from './platform-capabilities.js';
-import { nativePolicyGates } from './repository/native-policy-gates.js';
+import { repositoryPolicyGates } from './repository/repository-policy-gates.js';
 import { releaseReadinessGates } from './release/release-readiness-gates.js';
 import { defineExternalGate } from './testing/external-gate.js';
+import { vueSecurityGates } from './security/vue-policy-gates.js';
+
+const nativePolicyGates = Object.freeze([
+  ...vueSecurityGates,
+  ...vueAccessibilityGates,
+  ...repositoryPolicyGates,
+]);
 
 export const officialGates = Object.freeze([
   dynamicCodeGate,

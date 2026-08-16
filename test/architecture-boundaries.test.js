@@ -131,6 +131,7 @@ const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
   'native-result.js',
   'platform-capabilities.js',
   'registry.js',
+  'vue-policy-gate.js',
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([]);
@@ -804,6 +805,45 @@ test('separates Vitest project and execution facts from unit-test policy decisio
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/vitest\/execution\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/vitest\/project\.js/);
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
+});
+
+test('keeps native policy gates in their owning domains', () => {
+  const legacyPath = path.join(SOURCE_ROOT, 'gates', 'repository', 'native-policy-gates.js');
+  const helperPath = path.join(SOURCE_ROOT, 'gates', 'vue-policy-gate.js');
+  const repositoryPath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'repository',
+    'repository-policy-gates.js',
+  );
+  const securityPath = path.join(SOURCE_ROOT, 'gates', 'security', 'vue-policy-gates.js');
+  const accessibilityPath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'accessibility',
+    'vue-policy-gates.js',
+  );
+  assert.equal(existsSync(legacyPath), false);
+  for (const target of [helperPath, repositoryPath, securityPath, accessibilityPath]) {
+    assert.equal(existsSync(target), true);
+  }
+
+  const helperSource = readFileSync(helperPath, 'utf8');
+  const repositorySource = readFileSync(repositoryPath, 'utf8');
+  const securitySource = readFileSync(securityPath, 'utf8');
+  const accessibilitySource = readFileSync(accessibilityPath, 'utf8');
+  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates', 'registry.js'), 'utf8');
+  assert.match(helperSource, /export function defineVuePolicyGate/);
+  assert.doesNotMatch(helperSource, /vue-(?:unsafe-html|target-blank|form-label|image-alt)/);
+  assert.match(repositorySource, /export const repositoryPolicyGates/);
+  assert.doesNotMatch(repositorySource, /security\.vue-|accessibility\.vue-/);
+  assert.match(securitySource, /security\.vue-unsafe-html/);
+  assert.match(securitySource, /security\.vue-target-blank/);
+  assert.doesNotMatch(securitySource, /accessibility\.vue-/);
+  assert.match(accessibilitySource, /accessibility\.vue-form-label/);
+  assert.match(accessibilitySource, /accessibility\.vue-image-alt/);
+  assert.doesNotMatch(accessibilitySource, /security\.vue-/);
+  assert.match(registrySource, /\.\.\.vueSecurityGates,[\s\S]*\.\.\.vueAccessibilityGates,[\s\S]*\.\.\.repositoryPolicyGates/);
 });
 
 test('keeps staged fingerprints in the unified Git domain without a compatibility path', () => {

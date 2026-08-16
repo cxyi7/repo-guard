@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.93
+
+- 将 `repository/native-policy-gates.js` 拆为 repository、security 与 accessibility 领域模块，删除旧聚合路径且不保留兼容转发；Registry 按原顺序组合各领域 Gate。
+- 抽取无具体规则知识的 `gates/vue-policy-gate.js` 工厂复用 Vue policy Gate 协议；capability ID、环境、顺序、超时、结果、Hook、CI、公共 exports 和退出码保持不变。
+
 ## 1.4.92
 
 - 新增 error 级 dependency-cruiser 边界，固定 config、Git 与 policy 基础领域的单向依赖骨架：config 不得反向依赖 Git、policy 或运行层，Git 不得依赖 policy 或运行层，policy 不得依赖 Gate 或 orchestration。

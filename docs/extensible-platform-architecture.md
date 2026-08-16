@@ -69,6 +69,7 @@
 | 配置与策略 | 1.4.90 将结构化例外日期状态和有效期断言归入 `config`，`policies` 只保留 finding 匹配，不再由配置层反向依赖策略层 | 配置形状、默认值和配置生命周期属于 `config`；具体违规匹配与判定属于 `policies` 或 Gate |
 | Git 仓库能力 | 1.4.91 将状态持久化、暂存指纹和 Git index 元数据读取从 `integrations/git` 归入统一的 `git` 领域，删除重复目录分支 | Git 命令、仓库发现、变更收集与仓库本地状态属于 `git`；外部工具适配才进入 `integrations` |
 | 基础领域依赖 | 1.4.92 以 error 级 dependency-cruiser 规则固定 config、Git 与 policy 的单向依赖，允许 policy 消费 integration 的无决策事实，并用独立违规 fixture 证明每条规则 | config 不得反向依赖 Git、policy 或运行层；Git 不得依赖 policy 或运行层；policy 不得依赖 Gate 或 orchestration；新增跨层依赖必须先通过独立架构评审 |
+| 原生 Gate 归属 | 1.4.93 将 Vue security、Vue accessibility 与 repository Gate 从单个 repository 聚合文件拆回所属领域，Registry 保持原顺序组合 | Gate 实现必须位于其 capability 领域；跨领域可复用协议只能放在无具体规则知识的共享根级工厂，禁止恢复跨领域聚合实现 |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 

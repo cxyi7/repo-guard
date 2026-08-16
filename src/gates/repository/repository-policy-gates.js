@@ -9,22 +9,6 @@ import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
-import {
-  inspectUnsafeVueHtml,
-  VUE_NO_V_HTML_RULE,
-} from '../../policies/vue-unsafe-html.js';
-import {
-  inspectVueTargetBlank,
-  VUE_TARGET_BLANK_RULE,
-} from '../../policies/vue-target-blank.js';
-import {
-  inspectVueFormLabels,
-  VUE_FORM_CONTROL_LABEL_RULE,
-} from '../../policies/vue-form-label.js';
-import {
-  inspectVueImageAlts,
-  VUE_IMAGE_ALT_RULE,
-} from '../../policies/vue-image-alt.js';
 import { classifyChanges } from '../../policies/change-classification.js';
 import { createStagedFingerprint } from '../../git/staged-fingerprint.js';
 import {
@@ -54,70 +38,6 @@ function policyFinding(item, fallbackRule, fallbackRemediation = null) {
     remediation: item.remediation ?? fallbackRemediation,
   });
 }
-
-function vueGate({ id, rule, inspect, remediation, summary, manualCommand, manualOrder, doctorOrder }) {
-  return defineGate({
-    id,
-    configVersions: CONFIG_VERSION,
-    environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
-    mutation: 'read-only',
-    defaultTimeoutMs: 120000,
-    manualCommand,
-    manualOrder,
-    doctorOrder,
-    packageScript: `guard:${manualCommand}`,
-    rules: [rule],
-    inspectSetup: () => ready(`${summary} (hard requirement, rule=${rule})`),
-    plan: (context) => ({ files: projectFiles(context) }),
-    run({ root, config, plan }) {
-      const result = inspect({ root, files: plan.files, exceptions: config.exceptions });
-      const metrics = {
-        checkedFiles: result.checkedCount,
-        approvedExceptions: result.approved.length,
-        violations: result.violations.length,
-      };
-      const approvedDiagnostics = result.approved.map((item) => ({
-        level: 'warn',
-        message: `${id} approved exception: ${item.path}:${item.line}:${item.column} (${item.exception.id}, expires=${item.exception.expiresOn})`,
-      }));
-      if (result.approved.length > 0) approvedDiagnostics.push({
-        level: 'info',
-        message: `${summary} passed: ${result.checkedCount} file(s), ${result.approved.length} approved exception(s).`,
-      });
-      if (result.violations.length === 0) {
-        return passedResult(id, `${summary} passed`, { diagnostics: approvedDiagnostics, metrics });
-      }
-      return violationResult(id, `${summary} found ${result.violations.length} violation(s)`, {
-        findings: result.violations.map((item) => policyFinding(item, rule, remediation)),
-        metrics,
-        diagnostics: approvedDiagnostics,
-      });
-    },
-  });
-}
-
-export const unsafeHtmlGate = vueGate({
-  id: 'security.vue-unsafe-html', rule: VUE_NO_V_HTML_RULE,
-  inspect: inspectUnsafeVueHtml,
-  remediation: 'Replace v-html with Vue templates, components, interpolation, or textContent; if trusted rich HTML is essential, establish a reviewed sanitization boundary.',
-  summary: 'Vue v-html gate', manualCommand: 'unsafe-html', manualOrder: 80, doctorOrder: 80,
-});
-export const targetBlankGate = vueGate({
-  id: 'security.vue-target-blank', rule: VUE_TARGET_BLANK_RULE,
-  inspect: inspectVueTargetBlank,
-  remediation: 'Use a statically verifiable rel="noopener noreferrer" on the same target="_blank" element.',
-  summary: 'Vue target=_blank gate', manualCommand: 'target-blank', manualOrder: 90, doctorOrder: 90,
-});
-export const formLabelGate = vueGate({
-  id: 'accessibility.vue-form-label', rule: VUE_FORM_CONTROL_LABEL_RULE,
-  inspect: inspectVueFormLabels,
-  summary: 'Vue form label gate', manualCommand: 'form-labels', manualOrder: 100, doctorOrder: 100,
-});
-export const imageAltGate = vueGate({
-  id: 'accessibility.vue-image-alt', rule: VUE_IMAGE_ALT_RULE,
-  inspect: inspectVueImageAlts,
-  summary: 'Vue image alt gate', manualCommand: 'image-alt', manualOrder: 110, doctorOrder: 110,
-});
 
 export const exceptionRegistryGate = defineGate({
   id: 'repository.structured-exceptions', configKey: 'exceptions', configVersions: CONFIG_VERSION,
@@ -278,7 +198,7 @@ export const protectedFilesGate = defineGate({
   },
 });
 
-export const nativePolicyGates = Object.freeze([
-  unsafeHtmlGate, targetBlankGate, formLabelGate, imageAltGate, exceptionRegistryGate,
+export const repositoryPolicyGates = Object.freeze([
+  exceptionRegistryGate,
   dependencyPolicyGate, filePlacementGate, maximumFileLinesGate, protectedFilesGate,
 ]);
