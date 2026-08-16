@@ -105,7 +105,7 @@ function fileDetails(relative, content, rule) {
 }
 
 export function evaluateMaxFileLines({ root, files, config, baselineRef = 'HEAD', changes = null }) {
-  const normalizedFiles = normalizeStagedFiles(root, files, 'Maximum file lines gate');
+  const normalizedFiles = normalizeStagedFiles(root, files, '最大文件行数门禁');
   const mode = config.mode ?? DEFAULT_MODE;
   const warnAt = config.warnAt ?? DEFAULT_WARN_AT;
   const violations = [];

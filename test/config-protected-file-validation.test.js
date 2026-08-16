@@ -15,14 +15,14 @@ test('preserves the supported protected-file enforcement levels', () => {
 test('requires protected-file rules and structured exclusions', () => {
   assert.throws(
     () => validateProtectedFileConfigurationShape({ rules: [] }, CONFIG_PATH),
-    /must define at least one rule/,
+    /必须至少定义一条规则/,
   );
   assert.throws(
     () => validateProtectedFileConfigurationShape({
       rules: [{}],
       exclusions: 'generated/**',
     }, CONFIG_PATH),
-    /exclusions must be an array/,
+    /exclusions 必须是数组/,
   );
 });
 
@@ -58,31 +58,31 @@ test('normalizes protected-file rules and exclusions with compiled matchers', ()
 test('requires structured protected-file rules with supported values', () => {
   assert.throws(
     () => normalizeProtectedFileConfiguration({ rules: ['src/**'] }, CONFIG_PATH),
-    /rule 1 must be an object/,
+    /规则 1 必须是对象/,
   );
   assert.throws(
     () => normalizeProtectedFileConfiguration({
       rules: [{ pattern: 'src/**', category: 'Source', level: 'audit', action: 'fail' }],
     }, CONFIG_PATH),
-    /rule 1 has unsupported properties: action/,
+    /规则 1 包含不支持的属性： action/,
   );
   assert.throws(
     () => normalizeProtectedFileConfiguration({
       rules: [{ pattern: ' ', category: 'Source', level: 'audit' }],
     }, CONFIG_PATH),
-    /rule 1 has no pattern/,
+    /规则 1 缺少 pattern/,
   );
   assert.throws(
     () => normalizeProtectedFileConfiguration({
       rules: [{ pattern: 'src/**', category: ' ', level: 'audit' }],
     }, CONFIG_PATH),
-    /rule 1 has no category/,
+    /规则 1 缺少 category/,
   );
   assert.throws(
     () => normalizeProtectedFileConfiguration({
       rules: [{ pattern: 'src/**', category: 'Source', level: 'block' }],
     }, CONFIG_PATH),
-    /rule 1 has unsupported level: block/,
+    /规则 1 使用了不支持的级别： block/,
   );
 });
 
@@ -92,6 +92,6 @@ test('requires non-empty protected-file exclusion patterns', () => {
       rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
       exclusions: [''],
     }, CONFIG_PATH),
-    /exclusion 1 must be a non-empty string/,
+    /排除项 1 必须是非空字符串/,
   );
 });

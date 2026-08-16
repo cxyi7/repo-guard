@@ -58,7 +58,7 @@ test('requires independent approval and a bounded exception lifetime', () => {
         entries: [createException({ approvedBy: 'FRONTEND-OWNER' })],
       },
     }, CONFIG_PATH),
-    /approvedBy must be different from owner/,
+    /approvedBy 不能与 owner 相同/,
   );
   assert.throws(
     () => validateExceptionConfiguration({
@@ -67,7 +67,7 @@ test('requires independent approval and a bounded exception lifetime', () => {
         entries: [createException({ expiresOn: '2026-09-01' })],
       },
     }, CONFIG_PATH),
-    /lifetime must be between 1 and 30 days/,
+    /有效期必须介于 1 到 30 天之间/,
   );
 });
 
@@ -78,7 +78,7 @@ test('rejects duplicate exception ids and exact finding targets', () => {
         entries: [createException(), createException({ line: 13 })],
       },
     }, CONFIG_PATH),
-    /exception id is duplicated/,
+    /例外 id 重复/,
   );
   assert.throws(
     () => validateExceptionConfiguration({
@@ -89,6 +89,6 @@ test('rejects duplicate exception ids and exact finding targets', () => {
         ],
       },
     }, CONFIG_PATH),
-    /exception target is duplicated/,
+    /例外目标重复/,
   );
 });

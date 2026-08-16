@@ -21,7 +21,7 @@ export const STYLELINT_CONFIG_FILES = Object.freeze([
 ]);
 
 export function resolveProjectStylelintMetadata(root) {
-  const metadata = resolveProjectPackageMetadata(root, 'stylelint', 'Stylelint');
+  const metadata = resolveProjectPackageMetadata(root, 'stylelint', 'Stylelint 工具');
   const packageJson = JSON.parse(readFileSync(metadata.packagePath, 'utf8'));
   const importEntry = packageJson.exports?.['.']?.import?.default;
 
@@ -43,7 +43,7 @@ export async function loadProjectStylelint(root) {
   if (!stylelint || typeof stylelint.lint !== 'function') {
     throw configurationError(
       'stylelint/unsupported-project-api',
-      `Unsupported Stylelint ${metadata.version}: the lint API is not available`,
+      `不支持 Stylelint ${metadata.version}：lint API 不可用`,
     );
   }
 

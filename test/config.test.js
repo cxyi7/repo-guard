@@ -97,7 +97,7 @@ test('validates the project notification switch', () => {
   assert.equal(config.notification.enabled, false);
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
-    /notification.enabled must be a boolean/,
+    /notification.enabled 必须是布尔值/,
   );
 });
 
@@ -118,23 +118,23 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
   });
   assert.throws(
     () => validateConfig(baseConfig({ ci: { profile: 'partial' } })),
-    /ci.profile must be policy, full, or release-ready/,
+    /ci.profile 必须为 policy、full 或 release-ready/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ ci: { reportPath: '../report.json' } })),
-    /must stay inside the repository/,
+    /必须位于仓库内部/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ ci: { reportPath: 'ci-report.json' } })),
-    /must be a JSON file inside reports\//,
+    /必须是 reports\/ 内的 JSON 文件/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ ci: { reportPath: 'reports/output.txt' } })),
-    /must be a JSON file inside reports\//,
+    /必须是 reports\/ 内的 JSON 文件/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ ci: { protectedFiles: { action: 'approve' } } })),
-    /must be report or fail/,
+    /必须为 report 或 fail/,
   );
 });
 
@@ -162,7 +162,7 @@ test('validates exact, independently approved, time-limited exceptions', () => {
         entries: [{ ...validEntry, path: 'src/**/*.vue' }],
       },
     })),
-    /one exact repository-relative file/,
+    /准确的单一仓库相对文件路径/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -170,7 +170,7 @@ test('validates exact, independently approved, time-limited exceptions', () => {
         entries: [{ ...validEntry, approvedBy: 'frontend-team' }],
       },
     })),
-    /different from owner/,
+    /不能与 owner 相同/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -178,7 +178,7 @@ test('validates exact, independently approved, time-limited exceptions', () => {
         entries: [validEntry, { ...validEntry, line: 13 }],
       },
     })),
-    /exception id is duplicated/,
+    /例外 id 重复/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -186,7 +186,7 @@ test('validates exact, independently approved, time-limited exceptions', () => {
         entries: [validEntry, { ...validEntry, id: 'second-approval' }],
       },
     })),
-    /exception target is duplicated/,
+    /例外目标重复/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -196,7 +196,7 @@ test('validates exact, independently approved, time-limited exceptions', () => {
         entries: [validEntry],
       },
     })),
-    /lifetime must be between 1 and 10 days/,
+    /有效期必须介于 1 到 10 天之间/,
   );
 });
 
@@ -247,7 +247,7 @@ test('validates and normalizes architecture dependency rules', () => {
         ],
       },
     })),
-    /duplicated/,
+    /规则名称重复/,
   );
 });
 
@@ -267,11 +267,11 @@ test('validates and normalizes build gate configuration', () => {
   });
   assert.throws(
     () => validateConfig(baseConfig({ build: { script: 'vite build' } })),
-    /must be an npm script name/,
+    /必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ build: { timeoutMs: 0 } })),
-    /positive integer/,
+    /正整数/,
   );
 });
 
@@ -293,11 +293,11 @@ test('validates and normalizes Vue Lighthouse configuration', () => {
   });
   assert.throws(
     () => validateConfig(baseConfig({ lighthouse: { buildScript: 'npm run build' } })),
-    /must be an npm script name/,
+    /必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ lighthouse: { timeoutMs: 0 } })),
-    /positive integer/,
+    /正整数/,
   );
 });
 
@@ -317,11 +317,11 @@ test('validates and normalizes TypeScript gate configuration', () => {
   });
   assert.throws(
     () => validateConfig(baseConfig({ typeCheck: { script: 'vue-tsc --noEmit' } })),
-    /must be an npm script name/,
+    /必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ typeCheck: { timeoutMs: 0 } })),
-    /positive integer/,
+    /正整数/,
   );
 });
 
@@ -345,11 +345,11 @@ test('validates and normalizes axe accessibility test configuration', () => {
     () => validateConfig(baseConfig({
       accessibilityTest: { script: 'playwright test' },
     })),
-    /must be an npm script name/,
+    /必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ accessibilityTest: { testPatterns: [] } })),
-    /must be a non-empty array/,
+    /必须是非空数组/,
   );
 });
 
@@ -411,11 +411,11 @@ test('validates and normalizes unit test configuration', () => {
   });
   assert.throws(
     () => validateConfig(baseConfig({ unitTest: { requireTests: 'all' } })),
-    /requireTests must be newFiles or changedFiles/,
+    /requireTests 必须为 newFiles 或 changedFiles/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ unitTest: { sourcePatterns: [] } })),
-    /sourcePatterns must be a non-empty array/,
+    /sourcePatterns 必须是非空数组/,
   );
   const structuredCoverage = validateConfig(baseConfig({
     unitTest: {
@@ -441,19 +441,19 @@ test('validates and normalizes unit test configuration', () => {
     () => validateConfig(baseConfig({
       unitTest: { coverage: { thresholds: { changedLines: 101 } } },
     })),
-    /changedLines must be between 0 and 100/,
+    /changedLines 必须介于 0 到 100 之间/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
       unitTest: { coverage: { reportsDirectory: '../coverage' } },
     })),
-    /must stay inside the repository/,
+    /必须位于仓库内部/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
       unitTest: { coverage: { reportsDirectory: 'src' } },
     })),
-    /must be a dedicated coverage directory/,
+    /必须是专用的覆盖率目录/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -464,7 +464,7 @@ test('validates and normalizes unit test configuration', () => {
         }],
       },
     })),
-    /unsupported placeholder/,
+    /不支持的占位符/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -475,7 +475,7 @@ test('validates and normalizes unit test configuration', () => {
         }],
       },
     })),
-    /must contain \{path\} or \{name\}/,
+    /必须包含 \{path\} 或 \{name\}/,
   );
 });
 
@@ -487,7 +487,7 @@ test('requires unit tests when component interaction semantics are enabled', () 
         componentInteraction: { enabled: true },
       },
     })),
-    /componentInteraction\.enabled requires unitTest\.enabled/,
+    /componentInteraction\.enabled 要求启用 unitTest\.enabled/,
   );
 });
 
@@ -639,7 +639,7 @@ test('validates configurable file placement rules', () => {
     () => validateConfig(baseConfig({
       preCommit: { filePlacement: { mode: 'strict' } },
     })),
-    /mode must be newFiles or changedFiles/,
+    /mode 必须为 newFiles 或 changedFiles/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -654,7 +654,7 @@ test('validates configurable file placement rules', () => {
         },
       },
     })),
-    /must stay inside the repository/,
+    /必须位于仓库内部/,
   );
 });
 
@@ -667,7 +667,7 @@ test('rejects invalid maximum file line rules', () => {
         },
       },
     })),
-    /maxLines must be a positive integer/,
+    /maxLines 必须是正整数/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -677,7 +677,7 @@ test('rejects invalid maximum file line rules', () => {
         },
       },
     })),
-    /rules must be a non-empty array/,
+    /rules 必须是非空数组/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -687,19 +687,19 @@ test('rejects invalid maximum file line rules', () => {
         },
       },
     })),
-    /exclusion 1 must be a non-empty string/,
+    /排除项 1 必须是非空字符串/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
       preCommit: { maxFileLines: { mode: 'gradual' } },
     })),
-    /mode must be strict or noRegression/,
+    /mode 必须为 strict 或 noRegression/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
       preCommit: { maxFileLines: { warnAt: 0 } },
     })),
-    /warnAt must be greater than 0 and at most 1/,
+    /warnAt 必须大于 0 且不超过 1/,
   );
 });
 
@@ -712,7 +712,7 @@ test('rejects unknown and invalid staged ESLint properties', () => {
         },
       },
     })),
-    /unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 
   assert.throws(
@@ -723,7 +723,7 @@ test('rejects unknown and invalid staged ESLint properties', () => {
         },
       },
     })),
-    /non-negative integer/,
+    /非负整数/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -733,7 +733,7 @@ test('rejects unknown and invalid staged ESLint properties', () => {
         },
       },
     })),
-    /eslint.preset must be a boolean/,
+    /eslint.preset 必须是布尔值/,
   );
 });
 
@@ -746,7 +746,7 @@ test('rejects unknown and invalid staged Prettier properties', () => {
         },
       },
     })),
-    /unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 
   assert.throws(
@@ -757,7 +757,7 @@ test('rejects unknown and invalid staged Prettier properties', () => {
         },
       },
     })),
-    /requireConfig must be a boolean/,
+    /requireConfig 必须是布尔值/,
   );
 });
 
@@ -770,7 +770,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 
   assert.throws(
@@ -781,7 +781,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /non-negative integer/,
+    /非负整数/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -791,7 +791,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /maxNestingDepth must be a non-negative integer/,
+    /maxNestingDepth 必须是非负整数/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -802,7 +802,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /complexity.enabled requires preCommit.stylelint.enabled/,
+    /complexity.enabled 要求启用 preCommit.stylelint.enabled/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -812,7 +812,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /maxSpecificity must use the "id,class,type" format/,
+    /maxSpecificity 必须使用 "id,class,type" 格式/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -822,7 +822,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /maxIdSelectors must be a non-negative integer/,
+    /maxIdSelectors 必须是非负整数/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -833,7 +833,7 @@ test('rejects unknown and invalid staged Stylelint properties', () => {
         },
       },
     })),
-    /governance.enabled requires preCommit.stylelint.enabled/,
+    /governance.enabled 要求启用 preCommit.stylelint.enabled/,
   );
 });
 
@@ -858,7 +858,7 @@ test('validates and normalizes dependency governance configuration', () => {
     () => validateConfig(baseConfig({
       dependencyPolicy: { allowedProtocols: ['https:'] },
     })),
-    /protocol name without a colon/,
+    /不含冒号的协议名称/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -866,7 +866,7 @@ test('validates and normalizes dependency governance configuration', () => {
         bannedPackages: [{ name: 'request', reason: 'too short' }],
       },
     })),
-    /at least 10 characters/,
+    /至少包含 10 个字符/,
   );
 });
 
@@ -887,14 +887,14 @@ test('validates strict external project gate configuration', () => {
 
   for (const [change, pattern] of [
     [{ id: 'api-contract' }, /project\.<kebab-case>/],
-    [{ environments: ['pre-push'] }, /unique manual, ci-full, or release-ready/],
-    [{ script: 'npm test && deploy' }, /exact npm script name/],
-    [{ timeoutMs: 999 }, /between 1000 and 1800000/],
+    [{ environments: ['pre-push'] }, /不重复的 manual、ci-full 或 release-ready/],
+    [{ script: 'npm test && deploy' }, /准确的 npm 脚本名称/],
+    [{ timeoutMs: 999 }, /介于 1000 到 1800000 之间/],
     [{ report: { format: 'junit', path: 'reports/api-contract.json' } }, /repo-guard-json-v1/],
-    [{ report: { format: 'repo-guard-json-v1', path: '../api.json' } }, /normalized path/],
-    [{ report: { format: 'repo-guard-json-v1', path: 'reports\\api.json' } }, /normalized path/],
-    [{ report: { format: 'repo-guard-json-v1', path: 'reports/alias./api.json' } }, /normalized path/],
-    [{ report: { format: 'repo-guard-json-v1', path: 'reports/CON.json' } }, /normalized path/],
+    [{ report: { format: 'repo-guard-json-v1', path: '../api.json' } }, /规范化路径/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports\\api.json' } }, /规范化路径/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports/alias./api.json' } }, /规范化路径/],
+    [{ report: { format: 'repo-guard-json-v1', path: 'reports/CON.json' } }, /规范化路径/],
   ]) {
     assert.throws(
       () => validateConfig(baseConfig({ externalGates: [{ ...entry, ...change }] })),
@@ -903,14 +903,14 @@ test('validates strict external project gate configuration', () => {
   }
   assert.throws(
     () => validateConfig(baseConfig({ externalGates: [entry, entry] })),
-    /gate id is duplicated/,
+    /外部门禁 id 重复/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ externalGates: [
       entry,
       { ...entry, id: 'project.browser' },
     ] })),
-    /report path is duplicated/,
+    /报告路径重复/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ externalGates: [
@@ -921,11 +921,11 @@ test('validates strict external project gate configuration', () => {
         report: { ...entry.report, path: 'reports/API-CONTRACT.json' },
       },
     ] })),
-    /report path is duplicated/,
+    /报告路径重复/,
   );
   assert.throws(
     () => validateConfig(baseConfig({ externalGates: [{ ...entry, command: 'node test.js' }] })),
-    /unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateConfig(baseConfig({
@@ -937,6 +937,6 @@ test('validates strict external project gate configuration', () => {
       },
       externalGates: [entry],
     })),
-    /must differ from ci\.reportPath/,
+    /不能与 ci\.reportPath 相同/,
   );
 });

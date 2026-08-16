@@ -4,7 +4,7 @@ import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 
 export function resolveProjectPrettierMetadata(root) {
-  return resolveProjectPackageMetadata(root, 'prettier', 'Prettier');
+  return resolveProjectPackageMetadata(root, 'prettier', 'Prettier 工具');
 }
 
 export async function loadProjectPrettier(root) {
@@ -17,7 +17,7 @@ export async function loadProjectPrettier(root) {
   if (!prettier || typeof prettier.format !== 'function') {
     throw configurationError(
       'prettier/unsupported-project-api',
-      `Unsupported Prettier ${metadata.version}: the format API is not available`,
+      `不支持 Prettier ${metadata.version}：format API 不可用`,
     );
   }
 

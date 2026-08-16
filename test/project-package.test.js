@@ -41,7 +41,7 @@ test('reports a typed configuration issue when a project dependency is missing',
   assert.equal(error.code, 'project-package/dependency-not-installed');
   assert.deepEqual(error.details.evidence, [{
     type: 'dependency-resolution',
-    message: 'requested package: vitest; integration: Vitest',
+    message: '请求的包： vitest；集成： Vitest',
     location: { path: 'package.json' },
   }]);
   assert.match(error.expected, /devDependency/);

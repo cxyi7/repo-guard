@@ -101,7 +101,7 @@ function inspectVueStyleViolations(source, allowed) {
       violations.push(governanceViolation(
         source,
         block.start,
-        'Vue style blocks must use scoped or module unless the file is an approved global stylesheet',
+        'Vue style 块必须使用 scoped 或 module，除非该文件是已批准的全局样式表',
       ));
     }
     const globalPattern = /(?:::v-global|:global)\s*\(/gi;
@@ -110,7 +110,7 @@ function inspectVueStyleViolations(source, allowed) {
       violations.push(governanceViolation(
         source,
         contentOffset + globalMatch.index,
-        ':global() escapes component style isolation and requires an approved global stylesheet',
+        ':global() 会绕过组件样式隔离，因此必须使用已批准的全局样式表',
       ));
     }
   }
@@ -129,7 +129,7 @@ export function inspectUnexpectedGlobalStyles({ root, files, allowedPatterns }) 
       violations = [governanceViolation(
         source,
         0,
-        'Global stylesheet is outside allowedGlobalStylePatterns; move it to an approved global style location or convert it to a CSS Module',
+        '全局样式表不在 allowedGlobalStylePatterns 范围内；请将其移动到已批准的全局样式目录，或转换为 CSS Module',
       )];
     }
     return violations.length > 0 ? [{ source: filePath, violations }] : [];

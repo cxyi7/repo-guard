@@ -25,13 +25,13 @@ import { runVueLighthouse } from './lighthouse-gate.js';
 import { runTypeCheckGate } from './typecheck-gate.js';
 
 function inspectBuildSetup({ root, config }) {
-  if (!config.build.enabled) return readyGateSetup('Build gate is disabled');
+  if (!config.build.enabled) return readyGateSetup('构建门禁已禁用');
   validateBuildSetup(root, config.build);
-  return readyGateSetup(`Build gate (script=${config.build.script})`);
+  return readyGateSetup(`构建门禁（脚本=${config.build.script})`);
 }
 
 function inspectArchitectureSetup({ root, config }) {
-  if (!config.architecture.enabled) return readyGateSetup('Architecture gate is disabled');
+  if (!config.architecture.enabled) return readyGateSetup('架构门禁已禁用');
   const resolved = validateArchitectureSetup(root, config.architecture);
   if (!policyFileIsCurrent(
     root,
@@ -41,23 +41,23 @@ function inspectArchitectureSetup({ root, config }) {
   )) {
     throw configurationError(
       'architecture/missing-managed-policy',
-      `${ARCHITECTURE_POLICY_FILE} is missing the current architecture policy`,
+      `${ARCHITECTURE_POLICY_FILE} 缺少当前架构策略`,
       { details: { location: { path: ARCHITECTURE_POLICY_FILE } } },
     );
   }
-  return readyGateSetup(`Architecture gate (dependency-cruiser ${resolved.dependencyCruiser.version})`);
+  return readyGateSetup(`架构门禁（dependency-cruiser ${resolved.dependencyCruiser.version})`);
 }
 
 function inspectLighthouseSetup({ root, config }) {
-  if (!config.lighthouse.enabled) return readyGateSetup('Lighthouse gate is disabled');
+  if (!config.lighthouse.enabled) return readyGateSetup('Lighthouse 门禁已禁用');
   const resolved = validateVueLighthouseSetup(root, config.lighthouse);
-  return readyGateSetup(`Lighthouse gate (@lhci/cli ${resolved.lighthouse.version})`);
+  return readyGateSetup(`Lighthouse 门禁（@lhci/cli ${resolved.lighthouse.version})`);
 }
 
 function inspectTypecheckSetup({ root, config }) {
-  if (!config.typeCheck.enabled) return readyGateSetup('Type check gate is disabled');
+  if (!config.typeCheck.enabled) return readyGateSetup('类型检查门禁已禁用');
   validateTypeCheckSetup(root, config.typeCheck);
-  return readyGateSetup(`Type check gate (script=${config.typeCheck.script})`);
+  return readyGateSetup(`类型检查门禁（脚本=${config.typeCheck.script})`);
 }
 
 export const typecheckGate = definePlatformGate({
@@ -69,7 +69,7 @@ export const typecheckGate = definePlatformGate({
   plan: ({ config }) => ({ enabled: config.typeCheck.enabled }),
   run: ({ root, config, plan }) => plan.enabled
     ? runTypeCheckGate({ root, config: config.typeCheck })
-    : skippedResult('quality.typecheck', 'Type check is disabled'),
+    : skippedResult('quality.typecheck', '类型检查已禁用'),
 });
 
 export const architectureGate = definePlatformGate({
@@ -81,7 +81,7 @@ export const architectureGate = definePlatformGate({
   plan: ({ config }) => ({ enabled: config.architecture.enabled }),
   run: ({ root, config, plan }) => plan.enabled
     ? runArchitectureGate({ root, config: config.architecture })
-    : skippedResult('quality.architecture', 'Architecture gate is disabled'),
+    : skippedResult('quality.architecture', '架构门禁已禁用'),
 });
 
 export const buildGate = definePlatformGate({
@@ -94,7 +94,7 @@ export const buildGate = definePlatformGate({
   inspectSetup: inspectBuildSetup, plan: ({ config }) => ({ enabled: config.build.enabled }),
   run: ({ root, config, plan }) => plan.enabled
     ? runBuildGate({ root, config: config.build })
-    : skippedResult('quality.build', 'Build is disabled'),
+    : skippedResult('quality.build', '构建已禁用'),
 });
 
 export const lighthouseGate = definePlatformGate({
@@ -112,5 +112,5 @@ export const lighthouseGate = definePlatformGate({
   }),
   run: ({ root, config, plan }) => plan.enabled
     ? runVueLighthouse({ root, config: config.lighthouse, skipBuild: plan.skipBuild })
-    : skippedResult('quality.lighthouse', 'Lighthouse is disabled'),
+    : skippedResult('quality.lighthouse', 'Lighthouse 已禁用'),
 });

@@ -11,15 +11,15 @@ export function runTypeCheckGate({ root, config }) {
   const { setup, execution } = executeProjectTypeCheck({ root, config });
   const diagnostics = [{
     level: 'info',
-    message: `repo-guard TypeScript: running npm script "${config.script}" (${setup.command})...`,
+    message: `repo-guard TypeScript：正在运行 npm 脚本 "${config.script}" (${setup.command})...`,
   }];
   diagnostics.push(...processOutputDiagnostics(execution, { source: 'typescript', root }));
   if (execution.error) {
     const error = executionError(
       execution.timedOut ? 'typecheck/timeout' : 'typecheck/process-start-failed',
       execution.timedOut
-        ? `TypeScript type check exceeded ${config.timeoutMs}ms`
-        : `Unable to run TypeScript type check: ${execution.error.message}`,
+        ? `TypeScript type check 超过 ${config.timeoutMs}ms`
+        : `无法运行 TypeScript type check: ${execution.error.message}`,
       { cause: execution.error },
     );
     return createGateResult({
@@ -35,7 +35,7 @@ export function runTypeCheckGate({ root, config }) {
     return createGateResult({
       gateId: TYPE_CHECK_GATE_ID,
       status: 'violation',
-      summary: 'TypeScript type check failed',
+      summary: 'TypeScript 类型检查失败',
       diagnostics,
       findings: [processFailureFinding(TYPE_CHECK_GATE_ID, {
         exitCode: execution.status ?? 1,
@@ -45,11 +45,11 @@ export function runTypeCheckGate({ root, config }) {
       durationMs: Date.now() - startedAt,
     });
   }
-  diagnostics.push({ level: 'info', message: 'repo-guard TypeScript passed.' });
+  diagnostics.push({ level: 'info', message: 'repo-guard TypeScript 已通过。' });
   return createGateResult({
     gateId: TYPE_CHECK_GATE_ID,
     status: 'passed',
-    summary: 'TypeScript type check passed',
+    summary: 'TypeScript 类型检查已通过',
     diagnostics,
     durationMs: Date.now() - startedAt,
   });

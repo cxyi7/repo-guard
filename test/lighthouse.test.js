@@ -136,7 +136,7 @@ test('exposes the Vue Lighthouse runner through the CLI', (context) => {
     { cwd: root, encoding: 'utf8' },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /PASS {2}lighthouse/);
+  assert.match(result.stdout, /通过 {2}lighthouse/);
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'collect\nassert\n');
 });
 
@@ -155,7 +155,7 @@ test('rejects non-Vue projects before running Lighthouse', (context) => {
 
   assert.throws(
     () => runVueLighthouse({ root, config: lighthouseConfig() }),
-    /requires a Vue project/,
+    /仅支持.*Vue 项目/,
   );
 });
 
@@ -166,7 +166,7 @@ test('requires the Vue project to provide a Lighthouse config', (context) => {
 
   assert.throws(
     () => runVueLighthouse({ root, config: lighthouseConfig() }),
-    /configuration was not found/,
+    /找不到 Lighthouse 配置/,
   );
 });
 
@@ -226,7 +226,7 @@ test('pre-push rejects uncommitted configuration that could disable committed ga
 
   await assert.rejects(
     () => runPrePush(root, { input }),
-    /require a clean working tree/,
+    /要求工作树保持干净/,
   );
 });
 
@@ -243,7 +243,7 @@ test('pre-push rejects non-HEAD and multi-commit pushes when gates are enabled',
     () => runPrePush(root, {
       input: `refs/heads/base ${base} refs/heads/base ${'0'.repeat(40)}\n`,
     }),
-    /currently checked-out HEAD/,
+    /当前检出的 HEAD/,
   );
   await assert.rejects(
     () => runPrePush(root, {
@@ -253,7 +253,7 @@ test('pre-push rejects non-HEAD and multi-commit pushes when gates are enabled',
         '',
       ].join('\n'),
     }),
-    /multiple different commits/,
+    /多个不同提交/,
   );
 });
 

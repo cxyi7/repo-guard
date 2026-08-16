@@ -203,22 +203,22 @@ function stylelintFindings(root, results, maxWarnings) {
           ? message.rule
           : `stylelint/${message.rule || 'syntax-error'}`,
         severity: message.severity === 'warning' ? 'warning' : 'error',
-        message: message.text || 'Stylelint violation',
+        message: message.text || 'Stylelint 违规',
         location: {
           path: path.relative(root, result.source).replace(/\\/g, '/'),
           ...(message.line ? { line: message.line } : {}),
           ...(message.column ? { column: message.column } : {}),
         },
         remediation: message.rule
-          ? `Fix the root cause reported by Stylelint rule ${message.rule} without disabling the rule.`
-          : 'Correct the stylesheet syntax without weakening Stylelint verification.',
+          ? `修复 Stylelint 规则报告的根因：${message.rule}，且不得禁用该规则。`
+          : '修正样式表语法，且不得削弱 Stylelint 校验。',
       })),
     ...(result.invalidOptionWarnings || []).map((message) => ({
       ruleId: 'stylelint/invalid-option',
       severity: 'error',
-      message: message.text || message.message || 'Invalid Stylelint option',
+      message: message.text || message.message || 'Stylelint 选项无效',
       location: { path: path.relative(root, result.source).replace(/\\/g, '/') },
-      remediation: 'Correct the project Stylelint option while preserving the rule.',
+      remediation: '修正项目 Stylelint 选项，同时保留该规则。',
     })),
   ]);
 }
@@ -237,16 +237,16 @@ export async function runStylelintFiles({
   governanceOnly = false,
 }) {
   if (files.length === 0) {
-    return createGateResult({ gateId, status: 'skipped', summary: 'Stylelint has no applicable files' });
+    return createGateResult({ gateId, status: 'skipped', summary: 'Stylelint 没有适用文件' });
   }
 
-  const normalizedFiles = normalizeStagedFiles(root, files, 'Stylelint')
+  const normalizedFiles = normalizeStagedFiles(root, files, 'Stylelint 检查')
     .map(({ absolute }) => absolute);
   assertVueStyleLanguages(normalizedFiles, root);
 
   const configFile = findProjectStylelintConfig(root);
   if (requireConfig && !configFile) {
-    throw configurationError('stylelint/missing-project-config', 'Stylelint staged gate requires a project Stylelint configuration file');
+    throw configurationError('stylelint/missing-project-config', 'Stylelint 暂存门禁要求项目提供 Stylelint 配置文件');
   }
 
   const project = await loadProjectStylelint(root);
@@ -293,11 +293,11 @@ export async function runStylelintFiles({
   const ignoredCount = normalizedFiles.length - lintedCount;
 
   if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} passed`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
+    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} 已通过`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
   }
 
   if (!fix) {
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: stylelintFindings(root, initial.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint 发现 ${initialSummary.errors} 个错误和 ${initialSummary.warnings} 个警告`, findings: stylelintFindings(root, initial.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
   }
 
   const originalContents = captureFileContents(normalizedFiles);
@@ -342,10 +342,10 @@ export async function runStylelintFiles({
   const finalSummary = summarize(final.results);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: stylelintFindings(root, final.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
+    return createGateResult({ gateId, status: 'violation', summary: `Stylelint 自动修复后仍有 ${finalSummary.errors} 个错误和 ${finalSummary.warnings} 个警告`, findings: stylelintFindings(root, final.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
   }
 
-  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} auto-fix and verification passed`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
+  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} 自动修复和校验已通过`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
 }
 
 export async function runStyleComplexityProject({ root, files, config, exceptions }) {

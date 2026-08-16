@@ -9,7 +9,7 @@ function utcDay(value) {
 function todayText(now) {
   const date = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(date.getTime())) {
-    throw new TypeError('Exception inspection requires a valid current date');
+    throw new TypeError('例外检查需要有效的当前日期');
   }
   return date.toISOString().slice(0, 10);
 }
@@ -42,20 +42,20 @@ export function assertExceptionLifecycleCurrent(config, options) {
   if (result.expired.length === 0 && result.future.length === 0) return result;
   const invalidEntries = [...result.expired, ...result.future];
   const message = [
-    `Structured exceptions contain ${result.expired.length} expired and `
-      + `${result.future.length} future-dated entries (today=${result.today}).`,
-    `Invalid entries: ${invalidEntries
+    `结构化例外中包含 ${result.expired.length} 条已过期记录和 `
+      + `${result.future.length} 条创建日期晚于当前日期的记录（today=${result.today}）。`,
+    `无效记录：${invalidEntries
       .map((entry) => `${entry.id} [${entry.status}] ${entry.path}:${entry.line}:${entry.column}`)
-      .join(', ')}.`,
-    'Expired exceptions must be removed with the violation fixed or renewed through human review; future-dated entries are invalid.',
-    'AI must not extend dates, change locations, or alter approval metadata to bypass the gate.',
+      .join('、')}。`,
+    '已过期的例外必须在修复违规后删除，或经过人工复审后重新批准；创建日期晚于当前日期的记录无效。',
+    'AI 不得通过延长日期、改变位置或修改审批元数据来绕过门禁。',
   ].join('\n');
   throw configurationError('exceptions/invalid-validity-window', message, {
     details: {
       location: { path: 'repo-guard.config.json' },
       evidence: invalidEntries.map((entry) => ({
         type: 'structured-exception-validity',
-        message: `${entry.id} is ${entry.status}; expiresOn=${entry.expiresOn}`,
+        message: `${entry.id} 状态为 ${entry.status}；expiresOn=${entry.expiresOn}`,
         location: { path: entry.path, line: entry.line, column: entry.column },
       })),
     },

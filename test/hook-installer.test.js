@@ -127,7 +127,7 @@ test('refuses to overwrite a non-managed hook', (context) => {
 
   assert.throws(
     () => installHooks({ cwd: root }),
-    /Refusing to overwrite non-managed Git hook/,
+    /拒绝覆盖非托管 Git Hook/,
   );
 });
 
@@ -146,7 +146,7 @@ test('does not trust a managed marker embedded in custom hook text', (context) =
   assert.equal(isManagedHook(custom), false);
   assert.throws(
     () => installHooks({ cwd: root }),
-    /Refusing to overwrite non-managed Git hook/,
+    /拒绝覆盖非托管 Git Hook/,
   );
   assert.equal(readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'), custom);
 });
@@ -198,7 +198,7 @@ test('preflights every hook before upgrading any managed file', (context) => {
 
   assert.throws(
     () => installHooks({ cwd: root }),
-    /Refusing to overwrite non-managed Git hook/,
+    /拒绝覆盖非托管 Git Hook/,
   );
   assert.equal(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),

@@ -12,8 +12,8 @@ import { validateVueLighthouseSetup } from '../../integrations/lighthouse/projec
 export function runVueLighthouse({ root, config, skipBuild = false }) {
   const setup = validateVueLighthouseSetup(root, config);
   const diagnostics = [{ level: 'info', message:
-    `repo-guard Lighthouse: Vue project, @lhci/cli ${setup.lighthouse.version}, `
-    + `config=${setup.configFile}` }];
+    `repo-guard Lighthouse：Vue 项目，@lhci/cli ${setup.lighthouse.version}, `
+    + `配置=${setup.configFile}` }];
 
   const resultForExecutionFailure = (execution, label) => {
     if (!execution.error) return null;
@@ -22,8 +22,8 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
         ? 'lighthouse/process-timeout'
         : 'lighthouse/process-start-failed',
       execution.error.code === 'ETIMEDOUT'
-        ? `${label} exceeded ${config.timeoutMs}ms`
-        : `Unable to run ${label}: ${execution.error.message}`,
+        ? `${label} 超过 ${config.timeoutMs}ms`
+        : `无法运行 ${label}: ${execution.error.message}`,
       { cause: execution.error },
     );
     return createGateResult({
@@ -36,17 +36,17 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
   };
 
   if (!skipBuild && config.buildScript) {
-    diagnostics.push({ level: 'info', message: `repo-guard Lighthouse: running npm script "${config.buildScript}"...` });
+    diagnostics.push({ level: 'info', message: `repo-guard Lighthouse：正在运行 npm 脚本 "${config.buildScript}"...` });
     const execution = runLighthouseBuild(root, config.buildScript, config.timeoutMs);
     diagnostics.push(...processOutputDiagnostics(execution, { source: 'lighthouse-build', root }));
-    const failedExecution = resultForExecutionFailure(execution, 'Lighthouse build');
+    const failedExecution = resultForExecutionFailure(execution, 'Lighthouse 构建');
     if (failedExecution) return failedExecution;
     const buildExitCode = execution.status ?? 1;
     if (buildExitCode !== 0) {
       return createGateResult({
         gateId: 'quality.lighthouse',
         status: 'violation',
-        summary: `Lighthouse build failed with exit code ${buildExitCode}`,
+        summary: `Lighthouse 构建失败，退出码为 ${buildExitCode}`,
         diagnostics,
         findings: [processFailureFinding('quality.lighthouse', {
           exitCode: buildExitCode,
@@ -57,7 +57,7 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     }
   }
 
-  diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse: collecting configured Vue page results...' });
+  diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse：正在采集已配置的 Vue 页面结果...' });
   const collectExecution = runLighthousePhase(
     root,
     setup.lighthouse,
@@ -66,17 +66,17 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     config.timeoutMs,
   );
   diagnostics.push(...processOutputDiagnostics(collectExecution, { source: 'lighthouse-collect', root }));
-  const failedCollection = resultForExecutionFailure(collectExecution, 'Lighthouse collection');
+  const failedCollection = resultForExecutionFailure(collectExecution, 'Lighthouse 采集');
   if (failedCollection) return failedCollection;
   const collectExitCode = collectExecution.status ?? 1;
   if (collectExitCode !== 0) {
     return createGateResult({
       gateId: 'quality.lighthouse',
       status: 'execution-error',
-      summary: `Lighthouse collection failed with exit code ${collectExitCode}`,
+      summary: `Lighthouse 采集失败，退出码为 ${collectExitCode}`,
       error: executionError(
         'lighthouse/collect-failed',
-        `LHCI collect exited with code ${collectExitCode}`,
+        `LHCI collect 退出码为 ${collectExitCode}`,
       ),
       diagnostics,
       findings: [processFailureFinding('quality.lighthouse', {
@@ -86,7 +86,7 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     });
   }
 
-  diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse: checking project assertions...' });
+  diagnostics.push({ level: 'info', message: 'repo-guard Lighthouse：正在检查项目断言...' });
   const assertExecution = runLighthousePhase(
     root,
     setup.lighthouse,
@@ -95,14 +95,14 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     config.timeoutMs,
   );
   diagnostics.push(...processOutputDiagnostics(assertExecution, { source: 'lighthouse-assert', root }));
-  const failedAssertion = resultForExecutionFailure(assertExecution, 'Lighthouse assertions');
+  const failedAssertion = resultForExecutionFailure(assertExecution, 'Lighthouse 断言');
   if (failedAssertion) return failedAssertion;
   const assertExitCode = assertExecution.status ?? 1;
   if (assertExitCode !== 0) {
     return createGateResult({
       gateId: 'quality.lighthouse',
       status: 'violation',
-      summary: `Lighthouse assertions failed with exit code ${assertExitCode}`,
+      summary: `Lighthouse 断言失败，退出码为 ${assertExitCode}`,
       diagnostics,
       findings: [processFailureFinding('quality.lighthouse', {
         exitCode: assertExitCode,
@@ -111,16 +111,16 @@ export function runVueLighthouse({ root, config, skipBuild = false }) {
     });
   }
 
-  diagnostics.push({ level: 'info', message: `repo-guard Lighthouse passed. Raw reports: ${path.join(root, '.lighthouseci')}` });
+  diagnostics.push({ level: 'info', message: `repo-guard Lighthouse 已通过。原始报告： ${path.join(root, '.lighthouseci')}` });
   return createGateResult({
     gateId: 'quality.lighthouse',
     status: 'passed',
-    summary: 'Lighthouse assertions passed',
+    summary: 'Lighthouse 断言已通过',
     diagnostics,
     artifacts: [{
       path: path.relative(root, path.join(root, '.lighthouseci')).replace(/\\/g, '/'),
       type: 'lighthouse-report',
-      description: 'Local Lighthouse CI reports',
+      description: '本地 Lighthouse CI 报告',
     }],
   });
 }

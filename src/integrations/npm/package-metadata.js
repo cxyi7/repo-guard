@@ -8,11 +8,11 @@ export function parsePackageMetadata(source, label) {
   } catch (error) {
     throw configurationError(
       'dependency-policy/package-metadata-invalid-json',
-      `${label} must contain valid JSON: ${error.message}`,
+      `${label} 必须包含有效 JSON：${error.message}`,
       {
         cause: error,
         details: { location: { path: label } },
-        expected: `${label} contains valid JSON package metadata.`,
+        expected: `${label} 包含有效的 JSON 包元数据。`,
       },
     );
   }
@@ -26,11 +26,11 @@ export function readPackageMetadataFile(root, label) {
   } catch (error) {
     throw configurationError(
       'dependency-policy/package-metadata-read-failed',
-      `Unable to read ${label}: ${error.message}`,
+      `无法读取 ${label}：${error.message}`,
       {
         cause: error,
         details: { location: { path: label } },
-        expected: `${label} exists and is readable.`,
+        expected: `${label} 存在且可读取。`,
       },
     );
   }

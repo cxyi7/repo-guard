@@ -9,19 +9,19 @@ export function runGit(args, { allowFailure = false, cwd } = {}) {
   });
 
   if (result.error) {
-    throw executionError('git/process-start-failed', `Git command failed: ${result.error.message}`, {
+    throw executionError('git/process-start-failed', `Git 命令执行失败： ${result.error.message}`, {
       cause: result.error,
       expected: 'Git 可执行文件能够在当前仓库中启动。',
     });
   }
 
   if (!allowFailure && result.status !== 0) {
-    const message = (result.stderr || result.stdout || 'Git command failed').trim();
+    const message = (result.stderr || result.stdout || 'Git 命令执行失败').trim();
     throw executionError('git/command-failed', message, {
       details: {
-        evidence: [{ type: 'git-exit-status', message: `exit status: ${String(result.status)}` }],
+        evidence: [{ type: 'git-exit-status', message: `退出状态： ${String(result.status)}` }],
       },
-      expected: `git ${args[0] || '<command>'} completes successfully.`,
+      expected: `git ${args[0] || '<command>'} 必须成功完成。`,
     });
   }
 

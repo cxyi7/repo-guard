@@ -7,9 +7,9 @@ import {
 } from './validation-primitives.js';
 
 function normalizeFilePlacementRule(rule, index, configPath) {
-  const label = `${configPath} preCommit.filePlacement rule ${index + 1}`;
+  const label = `${configPath} preCommit.filePlacement 规则 ${index + 1}`;
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
-    throw configValidationError(`${label} must be an object`);
+    throw configValidationError(`${label} 必须是对象`);
   }
   assertKnownProperties(
     rule,
@@ -23,7 +23,7 @@ function normalizeFilePlacementRule(rule, index, configPath) {
     label,
   );
   if (typeof rule.name !== 'string' || !rule.name.trim()) {
-    throw configValidationError(`${label}.name must be a non-empty string`);
+    throw configValidationError(`${label}.name 必须是非空字符串`);
   }
   const suggestedDirectory = normalizeRelativePattern(
     rule.suggestedDirectory,
@@ -32,7 +32,7 @@ function normalizeFilePlacementRule(rule, index, configPath) {
   if (['*', '?', '{', '}', '[', ']', '!'].some((character) => (
     suggestedDirectory.includes(character)
   ))) {
-    throw configValidationError(`${label}.suggestedDirectory must be a concrete directory`);
+    throw configValidationError(`${label}.suggestedDirectory 必须是具体目录`);
   }
   return {
     name: rule.name.trim(),
@@ -57,7 +57,7 @@ export function validateFilePlacementConfiguration(preCommitValue, configPath) {
     || typeof filePlacementValue !== 'object'
     || Array.isArray(filePlacementValue)
   ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement must be an object`);
+    throw configValidationError(`${configPath} preCommit.filePlacement 必须是对象`);
   }
   assertKnownProperties(
     filePlacementValue,
@@ -68,19 +68,19 @@ export function validateFilePlacementConfiguration(preCommitValue, configPath) {
     filePlacementValue.enabled != null
     && typeof filePlacementValue.enabled !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.filePlacement.enabled 必须是布尔值`);
   }
   if (
     filePlacementValue.mode != null
     && !['newFiles', 'changedFiles'].includes(filePlacementValue.mode)
   ) {
     throw configValidationError(
-      `${configPath} preCommit.filePlacement.mode must be newFiles or changedFiles`,
+      `${configPath} preCommit.filePlacement.mode 必须为 newFiles 或 changedFiles`,
     );
   }
   const rulesValue = filePlacementValue.rules ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
   if (!Array.isArray(rulesValue) || rulesValue.length === 0) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.rules must be a non-empty array`);
+    throw configValidationError(`${configPath} preCommit.filePlacement.rules 必须是非空数组`);
   }
   return {
     enabled: filePlacementValue.enabled ?? DEFAULT_FILE_PLACEMENT_CONFIG.enabled,

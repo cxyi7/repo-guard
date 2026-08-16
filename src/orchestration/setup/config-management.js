@@ -198,15 +198,15 @@ export function createStarterConfig({
       eslint: { ...DEFAULT_ESLINT_CONFIG, enabled: true, preset: true },
     },
     rules: [
-      { pattern: 'package.json', category: 'Dependencies and package metadata', level: 'notify' },
-      { pattern: '**/package.json', category: 'Dependencies and package metadata', level: 'notify' },
-      { pattern: 'package-lock.json', category: 'Dependency lock files', level: 'notify' },
-      { pattern: '.env*', category: 'Environment configuration', level: 'notify' },
-      { pattern: 'src/main.*', category: 'Application entry', level: 'notify' },
-      { pattern: 'src/App.vue', category: 'Application entry', level: 'notify' },
-      { pattern: 'src/components/**', category: 'Shared components', level: 'notify' },
-      { pattern: '.githooks/**', category: 'Repository guard infrastructure', level: 'notify' },
-      { pattern: CONFIG_FILE, category: 'Repository guard infrastructure', level: 'notify' },
+      { pattern: 'package.json', category: '依赖与包元数据', level: 'notify' },
+      { pattern: '**/package.json', category: '依赖与包元数据', level: 'notify' },
+      { pattern: 'package-lock.json', category: '依赖锁文件', level: 'notify' },
+      { pattern: '.env*', category: '环境配置', level: 'notify' },
+      { pattern: 'src/main.*', category: '应用入口', level: 'notify' },
+      { pattern: 'src/App.vue', category: '应用入口', level: 'notify' },
+      { pattern: 'src/components/**', category: '共享组件', level: 'notify' },
+      { pattern: '.githooks/**', category: '仓库守卫基础设施', level: 'notify' },
+      { pattern: CONFIG_FILE, category: '仓库守卫基础设施', level: 'notify' },
     ],
     exclusions: [],
   };
@@ -220,7 +220,7 @@ function readProjectConfig(root) {
   try {
     return JSON.parse(readFileSync(configPath(root), 'utf8'));
   } catch (error) {
-    throw configurationError('config/management-invalid', `Unable to read ${CONFIG_FILE}: ${error.message}`);
+    throw configurationError('config/management-invalid', `无法读取 ${CONFIG_FILE}: ${error.message}`);
   }
 }
 
@@ -330,23 +330,23 @@ function featureConfig(config, feature) {
     return gate.configKey.split('.').reduce((current, key) => current[key], config);
   }
   if (feature === 'ci' || feature === 'notification') return config[feature];
-  throw configurationError('config/management-invalid', `Unsupported configurable feature: ${feature}`);
+  throw configurationError('config/management-invalid', `不支持的可配置功能： ${feature}`);
 }
 
 export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (typeof enabled !== 'boolean') {
-    throw configurationError('config/management-invalid', 'Feature state must be a boolean');
+    throw configurationError('config/management-invalid', '功能状态必须是布尔值');
   }
   const uniqueFeatures = [...new Set(requestedFeatures)];
   if (uniqueFeatures.length === 0) {
-    throw configurationError('config/management-invalid', `Choose at least one feature: ${CONFIGURABLE_FEATURES.join(', ')}`);
+    throw configurationError('config/management-invalid', `请至少选择一项功能： ${CONFIGURABLE_FEATURES.join(', ')}`);
   }
 
   const unsupported = uniqueFeatures.filter(
     (feature) => !CONFIGURABLE_FEATURES.includes(feature),
   );
   if (unsupported.length > 0) {
-    throw configurationError('config/management-invalid', `Unsupported feature(s): ${unsupported.join(', ')}`);
+    throw configurationError('config/management-invalid', `不支持的功能： ${unsupported.join(', ')}`);
   }
   const requiredFeatures = [];
   if (enabled && uniqueFeatures.includes('coverage')) requiredFeatures.push('unitTest');
@@ -389,7 +389,7 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
 export function enableQualityGates(root, requestedGates) {
   const unsupported = requestedGates.filter((gate) => !QUALITY_GATES.includes(gate));
   if (unsupported.length > 0) {
-    throw configurationError('config/management-invalid', `Unsupported quality gate(s): ${unsupported.join(', ')}`);
+    throw configurationError('config/management-invalid', `不支持的质量门禁： ${unsupported.join(', ')}`);
   }
   const result = setFeaturesEnabled(root, requestedGates, true);
   return {
@@ -401,7 +401,7 @@ export function enableQualityGates(root, requestedGates) {
 
 export function configureCi(root, { profile = 'policy' } = {}) {
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    throw configurationError('config/management-invalid', 'CI profile must be policy, full, or release-ready');
+    throw configurationError('config/management-invalid', 'CI 配置档必须为 policy、full 或 release-ready');
   }
   const migration = migrateProjectConfig(root);
   const config = migration.config;

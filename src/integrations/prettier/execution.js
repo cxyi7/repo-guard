@@ -14,7 +14,7 @@ function resolveIgnorePaths(root) {
 
 export function prepareProjectPrettierExecution({ root, files, project }) {
   const ignorePaths = resolveIgnorePaths(root);
-  const normalizedFiles = normalizeStagedFiles(root, files, 'Prettier')
+  const normalizedFiles = normalizeStagedFiles(root, files, 'Prettier 格式化')
     .map(({ absolute }) => absolute);
 
   return {

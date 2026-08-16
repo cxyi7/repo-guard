@@ -138,7 +138,7 @@ test('enforces gate timeouts and forwards the same cancellation signal to a step
   assert.equal(receivedSignal instanceof AbortSignal, true);
   assert.equal(receivedSignal.aborted, true);
   assert.equal(execution.status, 'execution-error');
-  assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
+  assert.match(execution.decisiveResult.error.message, /超过 10ms 超时时间/);
 });
 
 test('waits for cancellation-capable gates to finish cleanup after a timeout', async () => {
@@ -171,7 +171,7 @@ test('waits for cancellation-capable gates to finish cleanup after a timeout', a
   });
   assert.equal(cleaned, true);
   assert.equal(execution.status, 'execution-error');
-  assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
+  assert.match(execution.decisiveResult.error.message, /超过 10ms 超时时间/);
 });
 
 test('does not accept a passing result returned after cancellation', async () => {
@@ -199,7 +199,7 @@ test('does not accept a passing result returned after cancellation', async () =>
     }),
   });
   assert.equal(execution.status, 'execution-error');
-  assert.match(execution.decisiveResult.error.message, /exceeded its 10ms timeout/);
+  assert.match(execution.decisiveResult.error.message, /超过 10ms 超时时间/);
 });
 
 test('honors an upstream cancellation before starting an asynchronous step', async () => {
@@ -262,5 +262,5 @@ test('rejects results that do not belong to the executing gate', async () => {
     executeStep: () => result('another-gate', 'passed'),
   });
   assert.equal(execution.status, 'execution-error');
-  assert.match(execution.decisiveResult.error.message, /returned a result for another-gate/);
+  assert.match(execution.decisiveResult.error.message, /返回了属于 another-gate 的结果/);
 });

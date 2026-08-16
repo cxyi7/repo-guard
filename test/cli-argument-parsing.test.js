@@ -18,7 +18,7 @@ test('reports every unsupported option in argument order', () => {
       ['--unknown', 'target', '--unsafe'],
       new Set(['--dry-run']),
     ),
-    /Unsupported option\(s\): --unknown, --unsafe/,
+    /不支持的选项： --unknown, --unsafe/,
   );
 });
 
@@ -45,14 +45,14 @@ test('requires option values and rejects unsupported arguments', () => {
   };
   assert.throws(
     () => parseValuedOptions(['--profile'], definition),
-    /--profile requires a value/,
+    /--profile 必须提供值/,
   );
   assert.throws(
     () => parseValuedOptions(['--profile', '--dry-run'], definition),
-    /--profile requires a value/,
+    /--profile 必须提供值/,
   );
   assert.throws(
     () => parseValuedOptions(['unexpected'], definition),
-    /Unsupported option or argument: unexpected/,
+    /不支持的选项或参数： unexpected/,
   );
 });

@@ -4,6 +4,26 @@ const STREAM_BY_LEVEL = Object.freeze({
   warn: 'stderr',
   error: 'stderr',
 });
+const ISSUE_KIND_LABELS = Object.freeze({
+  violation: '规则违规',
+  configuration: '配置错误',
+  execution: '执行错误',
+  range: '范围错误',
+  security: '安全错误',
+  internal: '内部错误',
+  cancellation: '执行取消',
+});
+const SEVERITY_LABELS = Object.freeze({
+  info: '提示',
+  warning: '警告',
+  error: '错误',
+});
+const AI_ACTION_LABELS = Object.freeze({
+  'modify-code': '修改代码',
+  'update-configuration': '修改配置',
+  'review-security-impact': '审查安全影响',
+  'inspect-diagnostics-and-modify-code': '检查诊断并修改代码',
+});
 
 function resultStream(result) {
   return result.status === 'passed' || result.status === 'skipped' ? 'stdout' : 'stderr';
@@ -22,10 +42,10 @@ function renderIssue(issue, index, total) {
   const location = findingLocation(issue.location).trim() || '（无具体文件位置）';
   const lines = [
     { stream, message: `问题 ${index + 1}/${total} [${issue.id}] [${issue.ruleId}] ${location}` },
-    { stream, message: `   类型: ${issue.kind}` },
+    { stream, message: `   类型: ${ISSUE_KIND_LABELS[issue.kind] ?? '未知类型'}（${issue.kind}）` },
     { stream, message: `   规则: ${issue.ruleId}` },
     { stream, message: `   代码: ${issue.code}` },
-    { stream, message: `   严重级别: ${issue.severity}` },
+    { stream, message: `   严重级别: ${SEVERITY_LABELS[issue.severity] ?? '未知级别'}（${issue.severity}）` },
     { stream, message: `   位置: ${location}` },
     { stream, message: `   问题: ${issue.message}` },
   ];
@@ -33,11 +53,11 @@ function renderIssue(issue, index, total) {
     const evidenceLocation = findingLocation(evidence.location).trim();
     lines.push({
       stream,
-      message: `   证据 Evidence: ${evidence.message}${evidenceLocation ? ` (${evidenceLocation})` : ''}`,
+      message: `   证据: ${evidence.message}${evidenceLocation ? ` (${evidenceLocation})` : ''}`,
     });
   }
   lines.push({ stream, message: `   预期: ${issue.expected}` });
-  lines.push({ stream, message: `   修复 Remediation: ${issue.remediation.goal}` });
+  lines.push({ stream, message: `   修复目标: ${issue.remediation.goal}` });
   issue.remediation.steps.forEach((step, stepIndex) => {
     lines.push({ stream, message: `      ${stepIndex + 1}. ${step}` });
   });
@@ -49,8 +69,13 @@ function renderIssue(issue, index, total) {
   }
   lines.push({
     stream,
-    message: `   决策: ${issue.decision.aiAction}; humanApprovalRequired=${issue.decision.humanApprovalRequired}`,
+    message: `   处理方式: ${AI_ACTION_LABELS[issue.decision.aiAction] ?? '按机器动作标识处理'}`,
   });
+  lines.push({
+    stream,
+    message: `   需要人工确认: ${issue.decision.humanApprovalRequired ? '是' : '否'}`,
+  });
+  lines.push({ stream, message: `   机器动作标识: ${issue.decision.aiAction}` });
   lines.push({ stream, message: `   指纹: ${issue.fingerprint}` });
   return lines;
 }
@@ -69,12 +94,12 @@ export function renderGateResultConsole(result, { label = result.gateId } = {}) 
     lines.push({ stream: resultStream(result), message: result.summary });
   }
   if (result.status === 'skipped') {
-    lines.push({ stream: 'stdout', message: `SKIP  ${label}` });
+    lines.push({ stream: 'stdout', message: `跳过  ${label}` });
   } else if (result.status === 'passed') {
-    lines.push({ stream: 'stdout', message: `PASS  ${label}` });
+    lines.push({ stream: 'stdout', message: `通过  ${label}` });
   } else if (result.status === 'violation') {
-    lines.push({ stream: 'stderr', message: `FAIL  ${label}` });
-  } else lines.push({ stream: 'stderr', message: `ERROR ${label}` });
+    lines.push({ stream: 'stderr', message: `未通过  ${label}` });
+  } else lines.push({ stream: 'stderr', message: `错误  ${label}` });
   return lines;
 }
 

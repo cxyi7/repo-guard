@@ -57,81 +57,81 @@ test('normalizes Stylelint execution, complexity, and governance settings', () =
 test('requires a Stylelint object with valid execution settings', () => {
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: [] }, CONFIG_PATH),
-    /preCommit\.stylelint must be an object/,
+    /preCommit\.stylelint 必须是对象/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { command: 'lint' } }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { enabled: 'yes' } }, CONFIG_PATH),
-    /stylelint\.enabled must be a boolean/,
+    /stylelint\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { pattern: '  ' } }, CONFIG_PATH),
-    /stylelint\.pattern must be a non-empty string/,
+    /stylelint\.pattern 必须是非空字符串/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { fix: 'yes' } }, CONFIG_PATH),
-    /stylelint\.fix must be a boolean/,
+    /stylelint\.fix 必须是布尔值/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { maxWarnings: -1 } }, CONFIG_PATH),
-    /stylelint\.maxWarnings must be a non-negative integer/,
+    /stylelint\.maxWarnings 必须是非负整数/,
   );
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { requireConfig: 'yes' } }, CONFIG_PATH),
-    /stylelint\.requireConfig must be a boolean/,
+    /stylelint\.requireConfig 必须是布尔值/,
   );
 });
 
 test('requires valid Stylelint complexity settings and their parent gate', () => {
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { complexity: [] } }, CONFIG_PATH),
-    /stylelint\.complexity must be an object/,
+    /stylelint\.complexity 必须是对象/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { complexity: { maxNestingDepth: -1 } },
     }, CONFIG_PATH),
-    /complexity\.maxNestingDepth must be a non-negative integer/,
+    /complexity\.maxNestingDepth 必须是非负整数/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { enabled: false, complexity: { enabled: true } },
     }, CONFIG_PATH),
-    /complexity\.enabled requires preCommit\.stylelint\.enabled/,
+    /complexity\.enabled 要求启用 preCommit\.stylelint\.enabled/,
   );
 });
 
 test('requires valid Stylelint governance settings', () => {
   assert.throws(
     () => validateStylelintConfiguration({ stylelint: { governance: [] } }, CONFIG_PATH),
-    /stylelint\.governance must be an object/,
+    /stylelint\.governance 必须是对象/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { governance: { maxSpecificity: '0,3' } },
     }, CONFIG_PATH),
-    /maxSpecificity must use the "id,class,type" format/,
+    /maxSpecificity 必须使用 "id,class,type" 格式/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { governance: { maxIdSelectors: -1 } },
     }, CONFIG_PATH),
-    /maxIdSelectors must be a non-negative integer/,
+    /maxIdSelectors 必须是非负整数/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { governance: { disallowImportant: 'yes' } },
     }, CONFIG_PATH),
-    /disallowImportant must be a boolean/,
+    /disallowImportant 必须是布尔值/,
   );
   assert.throws(
     () => validateStylelintConfiguration({
       stylelint: { governance: { allowedGlobalStylePatterns: [''] } },
     }, CONFIG_PATH),
-    /allowedGlobalStylePatterns item 1 must be a non-empty string/,
+    /allowedGlobalStylePatterns 第 1 必须是非空字符串/,
   );
 });
 
@@ -140,6 +140,6 @@ test('requires Stylelint governance to keep its parent gate enabled', () => {
     () => validateStylelintConfiguration({
       stylelint: { enabled: false, governance: { enabled: true } },
     }, CONFIG_PATH),
-    /governance\.enabled requires preCommit\.stylelint\.enabled/,
+    /governance\.enabled 要求启用 preCommit\.stylelint\.enabled/,
   );
 });

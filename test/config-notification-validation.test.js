@@ -23,18 +23,18 @@ test('normalizes the project notification switch', () => {
 test('requires a notification object with a boolean switch', () => {
   assert.throws(
     () => validateNotificationConfiguration({ notification: [] }, CONFIG_PATH),
-    /notification must be an object/,
+    /notification 必须是对象/,
   );
   assert.throws(
     () => validateNotificationConfiguration({
       notification: { webhook: 'https://example.com' },
     }, CONFIG_PATH),
-    /notification has unsupported properties: webhook/,
+    /notification 包含不支持的属性： webhook/,
   );
   assert.throws(
     () => validateNotificationConfiguration({
       notification: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /notification\.enabled must be a boolean/,
+    /notification\.enabled 必须是布尔值/,
   );
 });

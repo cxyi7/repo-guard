@@ -23,7 +23,7 @@ const COVERAGE_THRESHOLD_NAMES = Object.freeze([
 function validateUnitTestValue(value, configPath) {
   const unitTestValue = value.unitTest ?? {};
   if (!unitTestValue || typeof unitTestValue !== 'object' || Array.isArray(unitTestValue)) {
-    throw configValidationError(`${configPath} unitTest must be an object`);
+    throw configValidationError(`${configPath} unitTest 必须是对象`);
   }
   assertKnownProperties(
     unitTestValue,
@@ -42,7 +42,7 @@ function validateUnitTestValue(value, configPath) {
     `${configPath} unitTest`,
   );
   if (unitTestValue.enabled != null && typeof unitTestValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} unitTest.enabled must be a boolean`);
+    throw configValidationError(`${configPath} unitTest.enabled 必须是布尔值`);
   }
   if (
     unitTestValue.script != null
@@ -51,20 +51,20 @@ function validateUnitTestValue(value, configPath) {
       || !/^[A-Za-z0-9:_-]+$/.test(unitTestValue.script.trim())
     )
   ) {
-    throw configValidationError(`${configPath} unitTest.script must be an npm script name`);
+    throw configValidationError(`${configPath} unitTest.script 必须是 npm 脚本名称`);
   }
   if (
     unitTestValue.timeoutMs != null
     && (!Number.isInteger(unitTestValue.timeoutMs) || unitTestValue.timeoutMs <= 0)
   ) {
-    throw configValidationError(`${configPath} unitTest.timeoutMs must be a positive integer`);
+    throw configValidationError(`${configPath} unitTest.timeoutMs 必须是正整数`);
   }
   return unitTestValue;
 }
 
 function normalizeCoverageThresholds(thresholdsValue, configPath) {
   if (!thresholdsValue || typeof thresholdsValue !== 'object' || Array.isArray(thresholdsValue)) {
-    throw configValidationError(`${configPath} unitTest.coverage.thresholds must be an object`);
+    throw configValidationError(`${configPath} unitTest.coverage.thresholds 必须是对象`);
   }
   assertKnownProperties(
     thresholdsValue,
@@ -77,7 +77,7 @@ function normalizeCoverageThresholds(thresholdsValue, configPath) {
     if (typeof threshold !== 'number' || !Number.isFinite(threshold)
       || threshold < 0 || threshold > 100) {
       throw configValidationError(
-        `${configPath} unitTest.coverage.thresholds.${name} must be between 0 and 100`,
+        `${configPath} unitTest.coverage.thresholds.${name} 必须介于 0 到 100 之间`,
       );
     }
     return [name, threshold];
@@ -87,7 +87,7 @@ function normalizeCoverageThresholds(thresholdsValue, configPath) {
 function validateCoverageConfiguration(unitTestValue, configPath) {
   const coverageValue = unitTestValue.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
   if (!coverageValue || typeof coverageValue !== 'object' || Array.isArray(coverageValue)) {
-    throw configValidationError(`${configPath} unitTest.coverage must be an object`);
+    throw configValidationError(`${configPath} unitTest.coverage 必须是对象`);
   }
   assertKnownProperties(
     coverageValue,
@@ -95,7 +95,7 @@ function validateCoverageConfiguration(unitTestValue, configPath) {
     `${configPath} unitTest.coverage`,
   );
   if (coverageValue.enabled != null && typeof coverageValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} unitTest.coverage.enabled must be a boolean`);
+    throw configValidationError(`${configPath} unitTest.coverage.enabled 必须是布尔值`);
   }
   const reportsDirectory = normalizeRelativePattern(
     coverageValue.reportsDirectory
@@ -108,7 +108,7 @@ function validateCoverageConfiguration(unitTestValue, configPath) {
     || !/coverage/i.test(path.posix.basename(reportsDirectory))
   ) {
     throw configValidationError(
-      `${configPath} unitTest.coverage.reportsDirectory must be a dedicated coverage directory`,
+      `${configPath} unitTest.coverage.reportsDirectory 必须是专用的覆盖率目录`,
     );
   }
   const thresholdsValue = coverageValue.thresholds
@@ -130,7 +130,7 @@ function validateComponentInteractionConfiguration(
   if (!componentInteractionValue
     || typeof componentInteractionValue !== 'object'
     || Array.isArray(componentInteractionValue)) {
-    throw configValidationError(`${configPath} unitTest.componentInteraction must be an object`);
+    throw configValidationError(`${configPath} unitTest.componentInteraction 必须是对象`);
   }
   assertKnownProperties(
     componentInteractionValue,
@@ -139,7 +139,7 @@ function validateComponentInteractionConfiguration(
   );
   if (componentInteractionValue.enabled != null
     && typeof componentInteractionValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} unitTest.componentInteraction.enabled must be a boolean`);
+    throw configValidationError(`${configPath} unitTest.componentInteraction.enabled 必须是布尔值`);
   }
   const componentPatterns = normalizePatternList(
     componentInteractionValue.componentPatterns
@@ -150,7 +150,7 @@ function validateComponentInteractionConfiguration(
     ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.enabled;
   if (enabled && !unitTestEnabled) {
     throw configValidationError(
-      `${configPath} unitTest.componentInteraction.enabled requires unitTest.enabled`,
+      `${configPath} unitTest.componentInteraction.enabled 要求启用 unitTest.enabled`,
     );
   }
   return { enabled, componentPatterns };
@@ -166,13 +166,13 @@ function normalizeUnitTestPatternField(
   const patterns = unitTestValue[field] ?? defaults;
   if (!Array.isArray(patterns) || (!allowEmpty && patterns.length === 0)) {
     throw configValidationError(
-      `${configPath} unitTest.${field} must be ${allowEmpty ? 'an' : 'a non-empty'} array`,
+      `配置项 ${configPath} unitTest.${field} ${allowEmpty ? '必须是数组' : '必须是非空数组'}`,
     );
   }
   return patterns.map((pattern, index) => {
     if (typeof pattern !== 'string' || !pattern.trim()) {
       throw configValidationError(
-        `${configPath} unitTest.${field} item ${index + 1} must be a non-empty string`,
+        `${configPath} unitTest.${field} 第 ${index + 1} 必须是非空字符串`,
       );
     }
     return normalizeGitPath(pattern.trim());
@@ -182,13 +182,13 @@ function normalizeUnitTestPatternField(
 function normalizeUnitTestMappings(unitTestValue, configPath) {
   const mappingsValue = unitTestValue.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
   if (!Array.isArray(mappingsValue) || mappingsValue.length === 0) {
-    throw configValidationError(`${configPath} unitTest.mappings must be a non-empty array`);
+    throw configValidationError(`${configPath} unitTest.mappings 必须是非空数组`);
   }
   const allowedTemplatePlaceholders = /\{(?:dir|ext|name|path)\}/g;
   return mappingsValue.map((mapping, index) => {
-    const label = `${configPath} unitTest.mappings item ${index + 1}`;
+    const label = `${configPath} unitTest.mappings 第 ${index + 1}`;
     if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
-      throw configValidationError(`${label} must be an object`);
+      throw configValidationError(`${label} 必须是对象`);
     }
     assertKnownProperties(
       mapping,
@@ -206,12 +206,12 @@ function normalizeUnitTestMappings(unitTestValue, configPath) {
       const remainingBraces = template.replace(allowedTemplatePlaceholders, '');
       if (remainingBraces.includes('{') || remainingBraces.includes('}')) {
         throw configValidationError(
-          `${label}.testTemplates contains an unsupported placeholder: ${template}`,
+          `${label}.testTemplates 包含不支持的占位符： ${template}`,
         );
       }
       if (!template.includes('{path}') && !template.includes('{name}')) {
         throw configValidationError(
-          `${label}.testTemplates must contain {path} or {name}: ${template}`,
+          `${label}.testTemplates 必须包含 {path} 或 {name}： ${template}`,
         );
       }
       return template;
@@ -234,7 +234,7 @@ export function validateUnitTestConfiguration(value, configPath) {
     && !['newFiles', 'changedFiles'].includes(unitTestValue.requireTests)
   ) {
     throw configValidationError(
-      `${configPath} unitTest.requireTests must be newFiles or changedFiles`,
+      `${configPath} unitTest.requireTests 必须为 newFiles 或 changedFiles`,
     );
   }
   const sourcePatterns = normalizeUnitTestPatternField(

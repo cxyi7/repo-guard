@@ -32,8 +32,8 @@ export function assertVueStyleLanguages(files, root) {
       const relative = path.relative(root, file).replace(/\\/g, '/');
       throw configurationError(
         'stylelint/multiple-vue-style-languages',
-        `${relative} contains multiple <style> languages: ${languages.join(', ')}. `
-        + 'Use one style language per Vue file before committing.',
+        `${relative} 包含多种 <style> 语言：${languages.join(', ')}。`
+        + '提交前每个 Vue 文件只能使用一种样式语言。',
         {
           details: { location: { path: relative } },
           expected: '每个 Vue 文件只使用一种 style 语言，使消费项目 Stylelint 配置可确定。',

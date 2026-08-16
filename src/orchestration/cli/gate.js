@@ -50,7 +50,7 @@ export async function runGate({
   });
   if (execution.status.endsWith('-error')) {
     const decisiveError = execution.decisiveResult?.error;
-    throw toRepoGuardError(decisiveError?.message ?? 'Protected-file gate could not complete', {
+    throw toRepoGuardError(decisiveError?.message ?? '受保护文件门禁无法完成', {
       kind: decisiveError?.kind ?? 'execution',
       code: decisiveError?.code ?? 'protected-files/execution-failed',
     });

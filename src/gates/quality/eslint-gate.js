@@ -27,7 +27,7 @@ export async function resolveRepoGuardEslintPreset(root, eslintVersion) {
   if (!supportsRepoGuardPreset(eslintVersion)) {
     throw configurationError(
       'eslint/unsupported-project-version',
-      `repo-guard ESLint preset requires ESLint >=9.19; project has ${eslintVersion}`,
+      `repo-guard ESLint 预设要求安装 ESLint >=9.19；项目安装的是 ${eslintVersion}`,
     );
   }
 
@@ -89,8 +89,8 @@ function blockingFindings(root, results, maxWarnings) {
         ...(message.column ? { column: message.column } : {}),
       },
       remediation: message.ruleId
-        ? `Fix the root cause reported by ESLint rule ${message.ruleId} without disabling the rule.`
-        : 'Correct the syntax or parser configuration without weakening ESLint verification.',
+        ? `修复 ESLint 规则报告的根因：${message.ruleId}，且不得禁用该规则。`
+        : '修正语法或解析器配置，且不得削弱 ESLint 校验。',
     })));
 }
 
@@ -102,7 +102,7 @@ export async function runEslintFiles({
   preset = false,
 }) {
   if (files.length === 0) {
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: 'ESLint has no applicable files' });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: 'ESLint 没有适用文件' });
   }
 
   const project = await loadProjectEslint(root);
@@ -117,17 +117,17 @@ export async function runEslintFiles({
   });
 
   if (execution.lintableFiles.length === 0) {
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: `ESLint ${project.version}: all files are ignored by the project configuration` });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: `ESLint ${project.version}：所有文件均被项目配置忽略` });
   }
 
   const initialResults = await execution.lint({ fix: false });
   const initialSummary = summarize(initialResults);
   if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${project.version} passed`, metrics: { checkedFiles: execution.lintableFiles.length, errors: 0, warnings: initialSummary.warnings } });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${project.version} 已通过`, metrics: { checkedFiles: execution.lintableFiles.length, errors: 0, warnings: initialSummary.warnings } });
   }
 
   if (!fix) {
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint found ${initialSummary.errors} error(s) and ${initialSummary.warnings} warning(s)`, findings: blockingFindings(root, initialResults, maxWarnings), metrics: { checkedFiles: execution.lintableFiles.length, errors: initialSummary.errors, warnings: initialSummary.warnings } });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint 发现 ${initialSummary.errors} 个错误和 ${initialSummary.warnings} 个警告`, findings: blockingFindings(root, initialResults, maxWarnings), metrics: { checkedFiles: execution.lintableFiles.length, errors: initialSummary.errors, warnings: initialSummary.warnings } });
   }
 
   const originalContents = captureFileContents(execution.lintableFiles);
@@ -147,8 +147,8 @@ export async function runEslintFiles({
   const finalSummary = summarize(finalResults);
   if (hasBlockingProblems(finalSummary, maxWarnings)) {
     restoreFileContents(originalContents);
-    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint auto-fix left ${finalSummary.errors} error(s) and ${finalSummary.warnings} warning(s)`, findings: blockingFindings(root, finalResults, maxWarnings), metrics: { checkedFiles: execution.lintableFiles.length, errors: finalSummary.errors, warnings: finalSummary.warnings } });
+    return createGateResult({ gateId: ESLINT_GATE_ID, status: 'violation', summary: `ESLint 自动修复后仍有 ${finalSummary.errors} 个错误和 ${finalSummary.warnings} 个警告`, findings: blockingFindings(root, finalResults, maxWarnings), metrics: { checkedFiles: execution.lintableFiles.length, errors: finalSummary.errors, warnings: finalSummary.warnings } });
   }
 
-  return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${project.version} auto-fix and verification passed`, metrics: { checkedFiles: execution.lintableFiles.length, errors: 0, warnings: finalSummary.warnings } });
+  return createGateResult({ gateId: ESLINT_GATE_ID, status: 'passed', summary: `ESLint ${project.version} 自动修复和校验已通过`, metrics: { checkedFiles: execution.lintableFiles.length, errors: 0, warnings: finalSummary.warnings } });
 }

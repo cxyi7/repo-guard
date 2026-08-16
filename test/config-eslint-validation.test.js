@@ -33,35 +33,35 @@ test('normalizes ESLint staged quality settings', () => {
 test('requires an ESLint object with supported properties', () => {
   assert.throws(
     () => validateEslintConfiguration({ eslint: [] }, CONFIG_PATH),
-    /preCommit\.eslint must be an object/,
+    /preCommit\.eslint 必须是对象/,
   );
   assert.throws(
     () => validateEslintConfiguration({
       eslint: { command: 'eslint --fix' },
     }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 });
 
 test('requires valid ESLint staged quality settings', () => {
   assert.throws(
     () => validateEslintConfiguration({ eslint: { enabled: 'yes' } }, CONFIG_PATH),
-    /eslint\.enabled must be a boolean/,
+    /eslint\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateEslintConfiguration({ eslint: { preset: 'yes' } }, CONFIG_PATH),
-    /eslint\.preset must be a boolean/,
+    /eslint\.preset 必须是布尔值/,
   );
   assert.throws(
     () => validateEslintConfiguration({ eslint: { pattern: '  ' } }, CONFIG_PATH),
-    /eslint\.pattern must be a non-empty string/,
+    /eslint\.pattern 必须是非空字符串/,
   );
   assert.throws(
     () => validateEslintConfiguration({ eslint: { fix: 'yes' } }, CONFIG_PATH),
-    /eslint\.fix must be a boolean/,
+    /eslint\.fix 必须是布尔值/,
   );
   assert.throws(
     () => validateEslintConfiguration({ eslint: { maxWarnings: -1 } }, CONFIG_PATH),
-    /eslint\.maxWarnings must be a non-negative integer/,
+    /eslint\.maxWarnings 必须是非负整数/,
   );
 });

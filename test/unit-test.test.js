@@ -174,7 +174,7 @@ test('maps JavaScript, TypeScript, JSX, TSX, and Vue sources to test candidates'
   );
   assert.throws(
     () => expectedUnitTestPath('src/fixtures/money.json'),
-    /source mapping was not found/,
+    /未找到对应的单元测试源码映射/,
   );
 });
 
@@ -259,10 +259,10 @@ test('reports missing tests for new files and supports stricter changed files mo
   })[0], {
     ruleId: 'unit-test/required-test',
     severity: 'error',
-    message: 'src/utils/existing.js requires an effective unit test',
+    message: 'src/utils/existing.js 需要有效的单元测试',
     location: { path: 'src/utils/existing.js' },
-    evidence: 'Accepted test paths: src/utils/existing.spec.js, src/utils/existing.test.js, src/utils/__tests__/existing.spec.js, src/utils/__tests__/existing.test.js',
-    remediation: 'Add an executable test at src/utils/existing.spec.js with meaningful assertions.',
+    evidence: '已接受的测试路径：src/utils/existing.spec.js, src/utils/existing.test.js, src/utils/__tests__/existing.spec.js, src/utils/__tests__/existing.test.js',
+    remediation: '在以下位置添加包含有效断言的可执行测试：src/utils/existing.spec.js。',
   });
 
   writeFileSync(path.join(root, 'src', 'utils', 'existing.spec.js'), '// TODO\n');

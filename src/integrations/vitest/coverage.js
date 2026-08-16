@@ -66,13 +66,13 @@ export function buildCoverageArguments(config) {
 
 function parsePercentage(metric, label) {
   if (!metric || typeof metric !== 'object') {
-    throw executionError('coverage/missing-total-metric', `coverage summary is missing total.${label}`);
+    throw executionError('coverage/missing-total-metric', `覆盖率摘要缺少 total.${label}`);
   }
   const covered = Number(metric.covered);
   const total = Number(metric.total);
   const percentage = total === 0 ? 100 : Number(metric.pct);
   if (![covered, total, percentage].every(Number.isFinite)) {
-    throw executionError('coverage/invalid-total-metric', `coverage summary contains invalid total.${label} values`);
+    throw executionError('coverage/invalid-total-metric', `覆盖率摘要中的 total.${label} 值无效`);
   }
   return { covered, percentage, total };
 }
@@ -82,7 +82,7 @@ export function parseCoverageSummary(content) {
   try {
     parsed = JSON.parse(content);
   } catch (error) {
-    throw executionError('coverage/invalid-summary-json', `unable to parse coverage-summary.json: ${error.message}`, { cause: error });
+    throw executionError('coverage/invalid-summary-json', `无法解析 coverage-summary.json：${error.message}`, { cause: error });
   }
   return Object.fromEntries(COVERAGE_METRICS.map((name) => (
     [name, parsePercentage(parsed.total?.[name], name)]
@@ -257,7 +257,7 @@ export function inspectCoverageReports({ root, config, changes }) {
       !existsSync(reports.summary) ? path.relative(root, reports.summary) : null,
       !existsSync(reports.lcov) ? path.relative(root, reports.lcov) : null,
     ].filter(Boolean);
-    throw executionError('coverage/reports-not-generated', `coverage reports were not generated: ${missing.join(', ')}`);
+    throw executionError('coverage/reports-not-generated', `未生成覆盖率报告：${missing.join(', ')}`);
   }
   const global = parseCoverageSummary(readFileSync(reports.summary, 'utf8'));
   const lcovFiles = parseLcov(readFileSync(reports.lcov, 'utf8'), root);

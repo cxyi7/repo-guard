@@ -14,7 +14,7 @@ import { inspectUnitTestPolicy, unitTestPolicyFindings } from './unit-test-polic
 import { validateUnitTestSetup } from './unit-test-setup.js';
 
 export function runUnitTestGate({ root, config, changes }) {
-  changeSetEntries(changes, 'Unit test gate changes');
+  changeSetEntries(changes, '单元测试门禁变更集');
   const setup = validateUnitTestSetup(root, config);
   const policy = inspectUnitTestPolicy({ root, changes, config });
   if (policy.missingTests.length > 0
@@ -23,7 +23,7 @@ export function runUnitTestGate({ root, config, changes }) {
     return createGateResult({
       gateId: 'quality.unit-test',
       status: 'violation',
-      summary: 'Unit test policy failed',
+      summary: '单元测试策略失败',
       findings: unitTestPolicyFindings(policy),
       metrics: {
         missingTests: policy.missingTests.length,
@@ -34,9 +34,9 @@ export function runUnitTestGate({ root, config, changes }) {
   }
 
   const diagnostics = [{ level: 'info', message:
-    `repo-guard unit tests: Vitest ${setup.vitest.version}, `
-    + `running npm script "${config.script}"`
-    + `${isCoverageEnabled(config.coverage) ? ' with coverage' : ''}...` }];
+    `repo-guard 单元测试：Vitest ${setup.vitest.version}, `
+    + `正在运行 npm 脚本 "${config.script}"`
+    + `${isCoverageEnabled(config.coverage) ? '（包含覆盖率）' : ''}...` }];
   prepareCoverageReports(root, config.coverage);
   const result = executeUnitTests({ root, config });
   diagnostics.push(...processOutputDiagnostics(result, { source: 'vitest', root }));
@@ -45,10 +45,10 @@ export function runUnitTestGate({ root, config, changes }) {
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',
-        summary: `Unit tests exceeded ${config.timeoutMs}ms`,
+        summary: `Unit tests 超过 ${config.timeoutMs}ms`,
         error: executionError(
           'unit-test/timeout',
-          `Unit tests exceeded ${config.timeoutMs}ms`,
+          `Unit tests 超过 ${config.timeoutMs}ms`,
           { cause: result.error },
         ),
         diagnostics,
@@ -56,7 +56,7 @@ export function runUnitTestGate({ root, config, changes }) {
     }
     const error = executionError(
       'unit-test/process-start-failed',
-      `Unable to run unit tests: ${result.error.message}`,
+      `无法运行 unit tests: ${result.error.message}`,
       { cause: result.error },
     );
     return createGateResult({
@@ -71,7 +71,7 @@ export function runUnitTestGate({ root, config, changes }) {
     return createGateResult({
       gateId: 'quality.unit-test',
       status: 'violation',
-      summary: `Unit tests failed with exit code ${result.status ?? 1}`,
+      summary: `单元测试失败，退出码为 ${result.status ?? 1}`,
       diagnostics,
       findings: [processFailureFinding('quality.unit-test', {
         exitCode: result.status ?? 1,
@@ -87,7 +87,7 @@ export function runUnitTestGate({ root, config, changes }) {
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',
-        summary: 'Coverage report inspection failed',
+        summary: '覆盖率报告检查失败',
         error: toRepoGuardError(error, {
           kind: 'execution',
           code: 'coverage/report-inspection-failed',
@@ -104,17 +104,17 @@ export function runUnitTestGate({ root, config, changes }) {
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'violation',
-        summary: 'Coverage threshold failed',
+        summary: '覆盖率阈值未通过',
         diagnostics,
         findings,
       });
     }
   }
-  diagnostics.push({ level: 'info', message: 'repo-guard unit tests passed.' });
+  diagnostics.push({ level: 'info', message: 'repo-guard 单元测试已通过。' });
   return createGateResult({
     gateId: 'quality.unit-test',
     status: 'passed',
-    summary: `Unit tests passed with Vitest ${setup.vitest.version}`,
+    summary: `单元测试已通过，Vitest ${setup.vitest.version}`,
     diagnostics,
     metrics: { coverageEnabled: isCoverageEnabled(config.coverage) ? 1 : 0 },
   });

@@ -54,13 +54,13 @@ function createHookContent(argumentsList, packageName) {
     'cd "$repo_root"',
     '',
     'if ! command -v node >/dev/null 2>&1; then',
-    '  echo "repo-guard failed: Node.js is not installed." >&2',
+    '  echo "repo-guard 失败：未安装 Node.js。" >&2',
     '  exit 1',
     'fi',
     '',
     `repo_guard_cli="$repo_root/${packageCliPath(packageName)}"`,
     'if [ ! -f "$repo_guard_cli" ]; then',
-    '  echo "repo-guard failed: package is not installed. Run npm install." >&2',
+    '  echo "repo-guard 失败：未安装依赖包。请运行 npm install。" >&2',
     '  exit 1',
     'fi',
     '',
@@ -73,7 +73,7 @@ function ensureManagedFile(target, content) {
   if (existsSync(target)) {
     const existing = readFileSync(target, 'utf8');
     if (!isManagedHook(existing)) {
-      throw securityError('hooks/non-managed-hook', `Refusing to overwrite non-managed Git hook: ${target}`, {
+      throw securityError('hooks/non-managed-hook', `拒绝覆盖非托管 Git Hook： ${target}`, {
         decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
       });
     }
@@ -86,7 +86,7 @@ function ensureManagedFile(target, content) {
 function ensurePackageScripts(root) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
-    throw configurationError('hooks/missing-package-manifest', 'package.json was not found in the repository root', {
+    throw configurationError('hooks/missing-package-manifest', '仓库根目录中未找到 package.json', {
       details: { location: { path: 'package.json' } },
     });
   }
@@ -124,8 +124,8 @@ function ensurePackageScripts(root) {
     packageJson.scripts.prepare = 'repo-guard install-hooks';
   } else if (!packageJson.scripts.prepare.includes('repo-guard install-hooks')) {
     writeConsoleMessage(
-      'repo-guard warning: package.json already has a prepare script; '
-      + 'add "repo-guard install-hooks" to it manually.',
+      'repo-guard 警告：package.json 已存在 prepare 脚本；'
+      + '请手动向其中添加 "repo-guard install-hooks"。',
       'stderr',
     );
   }
@@ -140,12 +140,12 @@ export function installHooks({
   env = process.env,
 } = {}) {
   if (env.REPO_GUARD_SKIP_HOOKS === '1') {
-    writeConsoleMessage('repo-guard: hook installation skipped by REPO_GUARD_SKIP_HOOKS=1.');
+    writeConsoleMessage('repo-guard：REPO_GUARD_SKIP_HOOKS=1，已跳过 Hook 安装。');
     return { skipped: true, root: null };
   }
   const root = findRepositoryRoot(cwd, { allowMissing: allowMissingGit });
   if (!root) {
-    writeConsoleMessage('repo-guard: no Git repository detected; hook installation skipped.');
+    writeConsoleMessage('repo-guard：未检测到 Git 仓库，已跳过 Hook 安装。');
     return { skipped: true, root: null };
   }
 
@@ -153,8 +153,8 @@ export function installHooks({
   if (configuredHooksPath && configuredHooksPath !== HOOKS_DIRECTORY) {
     throw securityError(
       'hooks/existing-hooks-path',
-      `core.hooksPath is already configured as "${configuredHooksPath}"; `
-      + `refusing to replace it with "${HOOKS_DIRECTORY}"`,
+      `core.hooksPath 已配置为 "${configuredHooksPath}"; `
+      + `拒绝将其替换为 "${HOOKS_DIRECTORY}"`,
       { decision: { aiAction: 'request-human-review', humanApprovalRequired: true } },
     );
   }
@@ -164,7 +164,7 @@ export function installHooks({
   for (const hookName of Object.keys(HOOK_COMMANDS)) {
     const target = path.join(hooksPath, hookName);
     if (existsSync(target) && !isManagedHook(readFileSync(target, 'utf8'))) {
-      throw securityError('hooks/non-managed-hook', `Refusing to overwrite non-managed Git hook: ${target}`, {
+      throw securityError('hooks/non-managed-hook', `拒绝覆盖非托管 Git Hook： ${target}`, {
         decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
       });
     }

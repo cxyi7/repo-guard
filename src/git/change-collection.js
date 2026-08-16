@@ -7,7 +7,7 @@ function malformedNameStatusError(code, message, { index, status }) {
     details: {
       evidence: [{
         type: 'git-name-status-protocol',
-        message: `entry index: ${index}; status: ${status || '<missing>'}`,
+        message: `条目索引： ${index}；状态： ${status || '<missing>'}`,
       }],
     },
     expected: 'Git --name-status -z 为每条变更提供完整的状态和路径字段。',

@@ -8,7 +8,7 @@ function readProjectPackage(root) {
   if (!existsSync(target)) {
     throw configurationError(
       'typecheck/missing-package-json',
-      'package.json was not found in repository root',
+      '仓库根目录中找不到 package.json',
     );
   }
   return JSON.parse(readFileSync(target, 'utf8'));
@@ -20,7 +20,7 @@ export function validateTypeCheckSetup(root, config) {
   if (typeof command !== 'string' || !command.trim()) {
     throw configurationError(
       'typecheck/missing-script',
-      `TypeScript gate requires package.json script "${config.script}"`,
+      `TypeScript 门禁要求 package.json 提供脚本“${config.script}”`,
     );
   }
   return { command: command.trim() };

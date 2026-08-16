@@ -69,7 +69,7 @@ export async function runCiGate({
   if (!config.ci.enabled) {
     const error = configurationError(
       'ci/disabled',
-      'CI gate is disabled. Run repo-guard install-ci or repo-guard enable ci.',
+      'CI 门禁已禁用。请运行 repo-guard install-ci 或 repo-guard enable ci。',
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
     writeCiReport(root, reportPath, {
@@ -81,7 +81,7 @@ export async function runCiGate({
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
     const error = configurationError(
       'ci/invalid-profile',
-      'CI profile must be policy, full, or release-ready',
+      'CI 配置档必须为 policy、full 或 release-ready',
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
     writeCiReport(root, reportPath, {
@@ -171,6 +171,7 @@ export async function runCiGate({
     steps,
   };
   writeCiReport(root, reportPath, report);
-  writeConsoleMessage(`repo-guard CI report: ${reportPath} (${status}).`);
+  const statusLabel = status === 'passed' ? '已通过' : '未通过';
+  writeConsoleMessage(`repo-guard CI 报告：${reportPath}（${statusLabel}）。`);
   return execution.exitCode;
 }

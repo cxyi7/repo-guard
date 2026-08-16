@@ -5,7 +5,7 @@ import {
 
 export function validateRootConfigurationContract(value, configPath) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw configValidationError(`${configPath} must contain a JSON object`);
+    throw configValidationError(`${configPath} 必须包含 JSON 对象`);
   }
   assertKnownProperties(
     value,
@@ -30,6 +30,6 @@ export function validateRootConfigurationContract(value, configPath) {
     configPath,
   );
   if (value.version !== 1) {
-    throw configValidationError(`${configPath} uses unsupported version: ${String(value.version)}`);
+    throw configValidationError(`${configPath} 使用了不支持的版本： ${String(value.version)}`);
   }
 }

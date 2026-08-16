@@ -10,10 +10,10 @@ function assertCommit(root, revision, label) {
   if (!commit) {
     throw rangeError(
       `ci-range/${label}-revision-unavailable`,
-      `CI ${label} revision is unavailable: ${revision}. Fetch enough Git history and retry.`,
+      `CI ${label} 版本不可用： ${revision}。请获取足够的 Git 历史后重试。`,
       {
-        details: { evidence: [{ type: 'git-revision', message: `${label} revision could not be resolved` }] },
-        expected: `CI ${label} revision exists in the fetched Git history.`,
+        details: { evidence: [{ type: 'git-revision', message: `${label} 版本无法解析` }] },
+        expected: `CI ${label} 版本必须存在于已获取的 Git 历史中。`,
       },
     );
   }
@@ -34,9 +34,9 @@ export function resolveCiRange(root, {
     if (env.GITLAB_CI) {
       throw rangeError(
         'ci-range/base-revision-unavailable',
-        'CI base revision is unavailable. GitLab must provide '
-        + 'CI_MERGE_REQUEST_DIFF_BASE_SHA or CI_COMMIT_BEFORE_SHA.',
-        { expected: 'GitLab provides a non-zero merge-request or previous-commit base SHA.' },
+        'CI 基准版本不可用。GitLab 必须提供 '
+        + 'CI_MERGE_REQUEST_DIFF_BASE_SHA 或 CI_COMMIT_BEFORE_SHA。',
+        { expected: 'GitLab 必须提供非零的合并请求基准 SHA 或前一提交 SHA。' },
       );
     }
     resolvedBase = gitValue(['rev-parse', '--verify', `${resolvedHead}^`], '', root);
@@ -45,8 +45,8 @@ export function resolveCiRange(root, {
   if (!resolvedBase) {
     throw rangeError(
       'ci-range/base-revision-unresolved',
-      'CI base revision could not be resolved',
-      { expected: 'A valid base commit can be resolved before collecting CI changes.' },
+      'CI 基准版本无法解析',
+      { expected: '采集 CI 变更前必须能够解析有效的基准提交。' },
     );
   }
 

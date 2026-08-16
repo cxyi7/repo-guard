@@ -86,7 +86,7 @@ test('detects and validates the consuming project typecheck script', (context) =
   assert.equal(detectProjectTypeCheckSetup(root, typeCheckConfig()).ready, true);
   assert.throws(
     () => validateTypeCheckSetup(root, typeCheckConfig({ script: 'missing' })),
-    /requires package.json script "missing"/,
+    /要求 package.json 提供脚本“missing”/,
   );
 });
 
@@ -116,7 +116,7 @@ test('exposes TypeScript through CLI and runs it first from pre-push', async (co
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /TypeScript passed/);
+  assert.match(cliResult.stdout, /TypeScript 已通过/);
   commitFixture(root);
   assert.equal(await runPrePush(root), 0);
   assert.equal(existsSync(path.join(root, 'typecheck-calls.log')), true);

@@ -33,34 +33,34 @@ function matchingFiles(root, files, pattern) {
 }
 
 async function inspectEslintSetup({ root, config }) {
-  if (!config.preCommit.eslint.enabled) return readyGateSetup('ESLint gate is disabled');
+  if (!config.preCommit.eslint.enabled) return readyGateSetup('ESLint 门禁已禁用');
   const eslint = resolveProjectEslintMetadata(root);
   if (config.preCommit.eslint.preset) await resolveRepoGuardEslintPreset(root, eslint.version);
-  return readyGateSetup(`ESLint ${eslint.version} gate`);
+  return readyGateSetup(`ESLint 门禁（版本 ${eslint.version}）`);
 }
 
 async function inspectPrettierSetup({ root, config }) {
-  if (!config.preCommit.prettier.enabled) return readyGateSetup('Prettier gate is disabled');
+  if (!config.preCommit.prettier.enabled) return readyGateSetup('Prettier 门禁已禁用');
   const prettier = resolveProjectPrettierMetadata(root);
   if (config.preCommit.prettier.requireConfig && !await resolveProjectPrettierConfigFile(root)) {
     throw configurationError(
       'prettier/missing-project-config',
-      'Prettier gate requires a project configuration file',
+      'Prettier 门禁要求项目配置文件',
     );
   }
-  return readyGateSetup(`Prettier ${prettier.version} gate`);
+  return readyGateSetup(`Prettier 门禁（版本 ${prettier.version}）`);
 }
 
 function inspectStylelintSetup({ root, config }) {
-  if (!config.preCommit.stylelint.enabled) return readyGateSetup('Stylelint gate is disabled');
+  if (!config.preCommit.stylelint.enabled) return readyGateSetup('Stylelint 门禁已禁用');
   const stylelint = resolveProjectStylelintMetadata(root);
   if (config.preCommit.stylelint.requireConfig && !findProjectStylelintConfig(root)) {
     throw configurationError(
       'stylelint/missing-project-config',
-      'Stylelint gate requires a project configuration file',
+      'Stylelint 门禁要求项目配置文件',
     );
   }
-  return readyGateSetup(`Stylelint ${stylelint.version} gate`);
+  return readyGateSetup(`Stylelint 门禁（版本 ${stylelint.version}）`);
 }
 
 export const stylelintGate = definePlatformGate({
@@ -92,7 +92,7 @@ export const stylelintGate = definePlatformGate({
         governance: config.preCommit.stylelint.governance,
         exceptions: config.exceptions,
       })
-    : skippedResult('quality.stylelint', 'Stylelint is disabled'),
+    : skippedResult('quality.stylelint', 'Stylelint 已禁用'),
 });
 
 export const eslintGate = definePlatformGate({
@@ -121,7 +121,7 @@ export const eslintGate = definePlatformGate({
         maxWarnings: config.preCommit.eslint.maxWarnings,
         preset: config.preCommit.eslint.preset,
       })
-    : skippedResult('quality.eslint', 'ESLint is disabled'),
+    : skippedResult('quality.eslint', 'ESLint 已禁用'),
 });
 
 export const prettierGate = definePlatformGate({
@@ -148,7 +148,7 @@ export const prettierGate = definePlatformGate({
         fix: plan.fix,
         requireConfig: config.preCommit.prettier.requireConfig,
       })
-    : skippedResult('quality.prettier', 'Prettier is disabled'),
+    : skippedResult('quality.prettier', 'Prettier 已禁用'),
 });
 
 function defineStyleProjectGate({

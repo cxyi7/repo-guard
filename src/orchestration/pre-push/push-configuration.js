@@ -23,7 +23,7 @@ function loadConfigAtRevision(root, revision) {
   } catch (error) {
     throw configurationError(
       'pre-push/invalid-pushed-config',
-      `Unable to parse ${CONFIG_FILE} from pushed commit ${revision.slice(0, 12)}: `
+      `无法解析 ${CONFIG_FILE}，来源为已推送提交 ${revision.slice(0, 12)}: `
       + error.message,
     );
   }
@@ -50,10 +50,10 @@ function assertExactPushSnapshot(root, revision) {
   );
   if (!head || !pushedCommit || head !== pushedCommit) {
     throw rangeError('pre-push/snapshot-mismatch', [
-      'Pre-push quality gates can only verify the currently checked-out HEAD.',
+      '预推送质量门禁只能验证当前检出的 HEAD。',
       `Pushed commit: ${(pushedCommit || revision).slice(0, 12)}; `
       + `checked-out HEAD: ${head.slice(0, 12) || 'unknown'}.`,
-      'Check out the branch being pushed and push it separately.',
+      '请检出待推送分支，并单独推送该分支。',
     ].join('\n'));
   }
 
@@ -64,10 +64,10 @@ function assertExactPushSnapshot(root, revision) {
   if (status) {
     const changed = status.split(/\r?\n/).slice(0, 10);
     throw rangeError('pre-push/dirty-working-tree', [
-      'Pre-push quality gates require a clean working tree so they test the exact pushed commit.',
+      '预推送质量门禁要求工作树保持干净，以便准确测试待推送提交。',
       ...changed.map((line) => `- ${line}`),
       ...(status.split(/\r?\n/).length > changed.length ? ['- ...'] : []),
-      'Commit, stash, or remove these changes, then push again.',
+      '请提交、暂存或移除这些变更，然后重新推送。',
     ].join('\n'));
   }
 }
@@ -83,7 +83,7 @@ export function resolvePushConfig(root, input) {
     return {
       config: null,
       skip: true,
-      skipMessage: 'only deleted refs were supplied',
+      skipMessage: '输入中仅包含已删除的引用',
     };
   }
 
@@ -99,7 +99,7 @@ export function resolvePushConfig(root, input) {
       return {
         config: null,
         skip: true,
-        skipMessage: `pushed commits do not contain ${CONFIG_FILE}`,
+        skipMessage: `待推送提交不包含 ${CONFIG_FILE}`,
       };
     }
     return { config, skip: false };
@@ -107,8 +107,8 @@ export function resolvePushConfig(root, input) {
   if (revisions.length !== 1) {
     throw rangeError(
       'pre-push/multiple-revisions',
-      'Pre-push quality gates cannot safely verify multiple different commits at once. '
-      + 'Push each branch or tag separately.',
+      'pre-push 质量门禁无法安全地同时校验多个不同提交。 '
+      + '请分别推送每个分支或标签。',
     );
   }
 

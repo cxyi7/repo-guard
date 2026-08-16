@@ -141,6 +141,6 @@ test('automatically loads the preset dependencies from the consuming project', a
   );
   await assert.rejects(
     resolveRepoGuardEslintPreset(process.cwd(), '9.18.0'),
-    /requires ESLint >=9\.19/,
+    /要求安装 ESLint >=9\.19/,
   );
 });

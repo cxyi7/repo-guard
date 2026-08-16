@@ -3,7 +3,7 @@ import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 
 export function resolveProjectEslintMetadata(root) {
-  return resolveProjectPackageMetadata(root, 'eslint', 'ESLint');
+  return resolveProjectPackageMetadata(root, 'eslint', 'ESLint 工具');
 }
 
 export async function loadProjectEslint(root) {
@@ -14,7 +14,7 @@ export async function loadProjectEslint(root) {
   if (typeof ESLint !== 'function') {
     throw configurationError(
       'eslint/unsupported-project-api',
-      `Unsupported ESLint ${metadata.version}: the ESLint class is not available`,
+      `不支持 ESLint ${metadata.version}：ESLint 类不可用`,
     );
   }
 

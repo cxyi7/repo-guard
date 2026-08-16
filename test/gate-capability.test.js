@@ -332,8 +332,7 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
   assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 1 } }), {
     status: 'ready',
-    summary: 'Dynamic code staged gate '
-      + '(hard requirement, rules=security/no-eval+security/no-function-constructor)',
+    summary: '动态代码暂存门禁（硬性要求，规则=security/no-eval+security/no-function-constructor）',
     rules: dynamicCode.rules,
   });
 });
@@ -357,11 +356,11 @@ test('keeps a supplied file scope immutable without letting the gate own console
   assert.equal(plan.files[0].relative, 'src/example.js');
   assert.throws(
     () => dynamicCodeGate.plan({ root: 'C:/repo' }),
-    /requires an explicit file scope/,
+    /要求明确的文件范围/,
   );
   assert.throws(
     () => dynamicCodeGate.run({ root: 'C:/repo', config: { exceptions: [] } }),
-    /requires an execution plan/,
+    /要求执行计划/,
   );
 });
 
@@ -379,45 +378,45 @@ test('enforces the migrated gate dependency boundary', () => {
 test('rejects duplicate identities, duplicate commands, and missing dependencies', () => {
   assert.throws(
     () => createGateRegistry([gate(), gate()]),
-    /Duplicate gate id/,
+    /门禁 id 重复/,
   );
   assert.throws(
     () => createGateRegistry([
       gate({ id: 'first', manualCommand: 'example', manualOrder: 1 }),
       gate({ id: 'second', manualCommand: 'example', manualOrder: 2 }),
     ]),
-    /Duplicate gate manual command/,
+    /门禁手动命令重复/,
   );
   assert.throws(
     () => createGateRegistry([gate({ requires: ['missing.gate'] })]),
-    /requires unknown gate/,
+    /requires 指向未知门禁/,
   );
   assert.throws(
     () => createGateRegistry([
       gate({ id: 'first', requires: ['second'] }),
       gate({ id: 'second', requires: ['first'] }),
     ]),
-    /dependency cycle/,
+    /门禁依赖环/,
   );
 });
 
 test('validates gate lifecycle, mutation, timeout, and handlers', () => {
-  assert.throws(() => gate({ environments: ['runtime'] }), /unsupported value/);
-  assert.throws(() => gate({ mutation: 'network' }), /Gate mutation/);
+  assert.throws(() => gate({ environments: ['runtime'] }), /包含不支持的值/);
+  assert.throws(() => gate({ mutation: 'network' }), /门禁 mutation/);
   assert.throws(
     () => gate({ mutation: 'working-tree-fix', allowedMutations: ['read-only'] }),
-    /must include its maximum mutation/,
+    /必须包含其最高变更级别/,
   );
-  assert.throws(() => gate({ defaultTimeoutMs: 0 }), /positive integer/);
-  assert.throws(() => gate({ run: null }), /must be functions/);
-  assert.throws(() => gate({ supportsFix: 'yes' }), /must be booleans/);
+  assert.throws(() => gate({ defaultTimeoutMs: 0 }), /正整数/);
+  assert.throws(() => gate({ run: null }), /必须是函数/);
+  assert.throws(() => gate({ supportsFix: 'yes' }), /必须是布尔值/);
   assert.throws(
     () => gate({ configKey: 'example', featureName: 'example' }),
-    /requires featureOrder/,
+    /设置 featureName 时必须同时设置 featureOrder/,
   );
   assert.throws(
     () => gate({ manualCommand: 'example' }),
-    /requires manualOrder/,
+    /设置 manualCommand 时必须同时设置 manualOrder/,
   );
 });
 

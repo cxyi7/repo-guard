@@ -17,15 +17,15 @@ export function loadConfig(root, {
   } catch (error) {
     throw configurationError(
       'config/read-failed',
-      `Unable to read ${CONFIG_FILE}: ${error.message}`,
+      `无法读取 ${CONFIG_FILE}：${error.message}`,
       {
         details: { location: { path: CONFIG_FILE } },
-        expected: `${CONFIG_FILE} must exist at the repository root and contain valid JSON.`,
+        expected: `${CONFIG_FILE} 必须位于仓库根目录，并包含有效的 JSON。`,
         remediation: {
-          goal: `Restore a readable, valid ${CONFIG_FILE}.`,
-          steps: ['Create or correct the configuration file using the documented schema.'],
-          constraints: ['Do not remove required policy sections to bypass validation.'],
-          verification: ['Run npm run guard:check.'],
+          goal: `恢复可读取且有效的 ${CONFIG_FILE}.`,
+          steps: ['按照文档中的 schema 创建或修正配置文件。'],
+          constraints: ['不得通过删除必需的策略配置来绕过校验。'],
+          verification: ['运行 npm run guard:check。'],
         },
         cause: error,
       },

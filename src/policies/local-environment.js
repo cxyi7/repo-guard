@@ -101,7 +101,7 @@ function parseValue(rawValue, lineNumber) {
   if (value.at(-1) !== quote) {
     throw localEnvironmentError(
       'local-env/unterminated-quoted-value',
-      `${LOCAL_ENV_FILE} line ${lineNumber} has an unterminated quoted value`,
+      `${LOCAL_ENV_FILE} line ${lineNumber} 有 an unterminated quoted value`,
       lineNumber,
     );
   }
@@ -128,7 +128,7 @@ export function loadLocalEnvironment(root) {
     if (!match) {
       throw localEnvironmentError(
         'local-env/invalid-entry',
-        `${LOCAL_ENV_FILE} line ${index + 1} is not a valid KEY=VALUE entry`,
+        `${LOCAL_ENV_FILE} 第 ${index + 1} 行不是有效的 KEY=VALUE 条目`,
         index + 1,
       );
     }
@@ -137,14 +137,14 @@ export function loadLocalEnvironment(root) {
     if (!allowed.has(key)) {
       throw localEnvironmentError(
         'local-env/unsupported-variable',
-        `${LOCAL_ENV_FILE} line ${index + 1} uses unsupported variable: ${key}`,
+        `${LOCAL_ENV_FILE} 第 ${index + 1} 行使用了不支持的变量：${key}`,
         index + 1,
       );
     }
     if (Object.hasOwn(output, key)) {
       throw localEnvironmentError(
         'local-env/duplicate-variable',
-        `${LOCAL_ENV_FILE} defines ${key} more than once`,
+        `${LOCAL_ENV_FILE} 多次定义了 ${key}`,
         index + 1,
       );
     }
@@ -205,19 +205,19 @@ export function assertLocalEnvironmentNotStaged(changes) {
 
   throw securityError(
     'local-env/staged-secret-file',
-    `${LOCAL_ENV_FILE} contains local secrets and must not be committed.\n`
-    + `Run "git restore --staged -- ${LOCAL_ENV_FILE}". If it was already tracked, `
-    + `run "git rm --cached -- ${LOCAL_ENV_FILE}".`,
+    `${LOCAL_ENV_FILE} 包含本地密钥，不得提交。\n`
+    + `请运行 "git restore --staged -- ${LOCAL_ENV_FILE}"。如果该文件已被跟踪，`
+    + `请运行 "git rm --cached -- ${LOCAL_ENV_FILE}"。`,
     {
       details: {
         location: { path: LOCAL_ENV_FILE },
         evidence: [{
           type: 'staged-secret-file',
-          message: `${LOCAL_ENV_FILE} is present in the staged change set`,
+          message: `${LOCAL_ENV_FILE} 出现在暂存变更集中`,
           location: { path: LOCAL_ENV_FILE },
         }],
       },
-      expected: `${LOCAL_ENV_FILE} remains local, ignored, and absent from every commit.`,
+      expected: `${LOCAL_ENV_FILE} 必须保持为本地忽略文件，且不得出现在任何提交中。`,
       remediation: {
         goal: '从暂存区移除本地凭据文件，但保留需要的本地副本',
         steps: [`运行 git restore --staged -- ${LOCAL_ENV_FILE}`],

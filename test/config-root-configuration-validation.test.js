@@ -29,7 +29,7 @@ test('requires the root configuration to be a JSON object', () => {
   for (const value of [null, [], 'invalid']) {
     assert.throws(
       () => validateRootConfigurationContract(value, CONFIG_PATH),
-      /must contain a JSON object/,
+      /必须包含 JSON 对象/,
     );
   }
 });
@@ -37,10 +37,10 @@ test('requires the root configuration to be a JSON object', () => {
 test('requires known root properties and configuration version 1', () => {
   assert.throws(
     () => validateRootConfigurationContract({ version: 1, command: 'check' }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateRootConfigurationContract({ version: 2 }, CONFIG_PATH),
-    /uses unsupported version: 2/,
+    /使用了不支持的版本： 2/,
   );
 });

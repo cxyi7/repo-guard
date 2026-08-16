@@ -72,7 +72,7 @@ test('explicit CLI audits ignored files even when the staged gate is disabled', 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /style\/selector-max-compound-selectors/);
   assert.match(result.stderr, /\[style\/selector-max-compound-selectors\] style\.css:2:1/);
-  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /修复目标:/);
 });
 
 test('allows only an exact active structured exception', async (context) => {

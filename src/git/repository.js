@@ -13,7 +13,7 @@ export function findRepositoryRoot(cwd = process.cwd(), { allowMissing = false }
       return null;
     }
     throw configurationError('git/not-a-repository', '当前工作目录不在 Git 仓库中', {
-      details: { evidence: [{ type: 'repository-discovery', message: 'git rev-parse --show-toplevel returned no repository root' }] },
+      details: { evidence: [{ type: 'repository-discovery', message: 'git rev-parse --show-toplevel 未返回仓库根目录' }] },
       expected: '从目标 Git 仓库目录或其子目录运行 repo-guard。',
       remediation: {
         goal: '切换到正确的 Git 仓库后重新运行命令',

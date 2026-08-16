@@ -46,9 +46,9 @@ const CONFIGURABLE_FEATURE_HELP = [
 ].join('|');
 
 const HELP_TEXT = `
-repo-guard - protected repository file guard
+repo-guard - 仓库保护门禁
 
-Usage:
+用法：
   repo-guard init
   repo-guard install-hooks
   repo-guard migrate
@@ -67,11 +67,11 @@ ${EARLY_MANUAL_HELP}
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
-Exit codes:
-  0  success
-  1  configuration or execution failure
-  2  policy violation or protected working tree changes
-  3  CI revision range cannot be trusted
+退出码：
+  0  成功
+  1  配置错误或执行失败
+  2  策略违规或工作树中存在受保护的变更
+  3  CI 版本范围不可信
 `.trim();
 
 export async function runCli(argumentsList) {
@@ -159,7 +159,7 @@ export async function runCli(argumentsList) {
         if (rest.length !== 1 || rest[0].startsWith('-')) {
           throw configurationError(
             'cli/invalid-external-gate-arguments',
-            'external requires one project.<kebab-case> gate id',
+            'external 命令需要一个 project.<kebab-case> 门禁 id',
           );
         }
         const result = await runExternalManualGate(rest[0]);
@@ -172,7 +172,7 @@ export async function runCli(argumentsList) {
           const result = await runRegisteredManualGate(command, rest);
           return gateResultToExitCode(result);
         }
-        throw configurationError('cli/unknown-command', `Unknown command: ${command}\n\n${HELP_TEXT}`);
+        throw configurationError('cli/unknown-command', `未知命令： ${command}\n\n${HELP_TEXT}`);
     }
   } catch (error) {
     const typedError = toRepoGuardError(error, {

@@ -29,7 +29,7 @@ function loadStagedConfig(root) {
   } catch (error) {
     throw configurationError(
       'pre-commit/invalid-staged-config',
-      `Invalid staged ${CONFIG_FILE}: ${error.message}`,
+      `无效的暂存 ${CONFIG_FILE}: ${error.message}`,
       { cause: error },
     );
   }
@@ -62,7 +62,7 @@ export async function runPreCommit(cwd = process.cwd()) {
   if (execution.status.endsWith('-error')) {
     const decisiveError = execution.decisiveResult?.error;
     throw toRepoGuardError(
-      decisiveError?.message ?? 'Pre-commit policy could not complete',
+      decisiveError?.message ?? '预提交策略无法完成',
       {
       kind: decisiveError?.kind ?? 'execution',
       code: decisiveError?.code ?? 'pre-commit/policy-failed',

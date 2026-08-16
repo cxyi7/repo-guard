@@ -53,7 +53,7 @@ export function findDynamicCodeAstReferences(source, relativePath, language = ''
     const location = error.loc ? `:${error.loc.line}:${error.loc.column + 1}` : '';
     throw executionError(
       'dynamic-code/source-parse-failed',
-      `Dynamic code gate could not parse ${relativePath}${location}: ${error.reasonCode ?? error.message}`,
+      `动态代码门禁无法解析 ${relativePath}${location}：${error.reasonCode ?? error.message}`,
       { cause: error, details: { location: { path: relativePath } } },
     );
   }

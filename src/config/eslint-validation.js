@@ -7,7 +7,7 @@ import {
 export function validateEslintConfiguration(preCommitValue, configPath) {
   const eslintValue = preCommitValue.eslint ?? {};
   if (!eslintValue || typeof eslintValue !== 'object' || Array.isArray(eslintValue)) {
-    throw configValidationError(`${configPath} preCommit.eslint must be an object`);
+    throw configValidationError(`${configPath} preCommit.eslint 必须是对象`);
   }
   assertKnownProperties(
     eslintValue,
@@ -15,25 +15,25 @@ export function validateEslintConfiguration(preCommitValue, configPath) {
     `${configPath} preCommit.eslint`,
   );
   if (eslintValue.enabled != null && typeof eslintValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.eslint.enabled must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.enabled 必须是布尔值`);
   }
   if (eslintValue.preset != null && typeof eslintValue.preset !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.eslint.preset must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.preset 必须是布尔值`);
   }
   if (
     eslintValue.pattern != null
     && (typeof eslintValue.pattern !== 'string' || !eslintValue.pattern.trim())
   ) {
-    throw configValidationError(`${configPath} preCommit.eslint.pattern must be a non-empty string`);
+    throw configValidationError(`${configPath} preCommit.eslint.pattern 必须是非空字符串`);
   }
   if (eslintValue.fix != null && typeof eslintValue.fix !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.eslint.fix must be a boolean`);
+    throw configValidationError(`${configPath} preCommit.eslint.fix 必须是布尔值`);
   }
   if (
     eslintValue.maxWarnings != null
     && (!Number.isInteger(eslintValue.maxWarnings) || eslintValue.maxWarnings < 0)
   ) {
-    throw configValidationError(`${configPath} preCommit.eslint.maxWarnings must be a non-negative integer`);
+    throw configValidationError(`${configPath} preCommit.eslint.maxWarnings 必须是非负整数`);
   }
   return {
     enabled: eslintValue.enabled ?? DEFAULT_ESLINT_CONFIG.enabled,

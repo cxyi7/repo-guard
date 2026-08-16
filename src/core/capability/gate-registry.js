@@ -6,23 +6,23 @@ function validateRegistry(gates) {
   const configKeys = new Set();
   const featureNames = new Set();
   for (const gate of gates) {
-    if (ids.has(gate.id)) throw internalError('capability/invalid-registry', `Duplicate gate id: ${gate.id}`);
+    if (ids.has(gate.id)) throw internalError('capability/invalid-registry', `门禁 id 重复： ${gate.id}`);
     ids.add(gate.id);
     if (gate.configKey) {
       if (configKeys.has(gate.configKey)) {
-        throw internalError('capability/invalid-registry', `Duplicate gate config key: ${gate.configKey}`);
+        throw internalError('capability/invalid-registry', `门禁配置键重复： ${gate.configKey}`);
       }
       configKeys.add(gate.configKey);
     }
     if (gate.featureName) {
       if (featureNames.has(gate.featureName)) {
-        throw internalError('capability/invalid-registry', `Duplicate gate feature name: ${gate.featureName}`);
+        throw internalError('capability/invalid-registry', `门禁功能名称重复： ${gate.featureName}`);
       }
       featureNames.add(gate.featureName);
     }
     if (gate.manualCommand) {
       if (commands.has(gate.manualCommand)) {
-        throw internalError('capability/invalid-registry', `Duplicate gate manual command: ${gate.manualCommand}`);
+        throw internalError('capability/invalid-registry', `门禁手动命令重复： ${gate.manualCommand}`);
       }
       commands.add(gate.manualCommand);
     }
@@ -36,10 +36,10 @@ function validateRegistry(gates) {
     })) {
       for (const reference of references) {
         if (!ids.has(reference)) {
-          throw internalError('capability/invalid-registry', `Gate ${gate.id} ${relation} unknown gate ${reference}`);
+          throw internalError('capability/invalid-registry', `门禁 ${gate.id} 的 ${relation} 指向未知门禁 ${reference}`);
         }
         if (reference === gate.id) {
-          throw internalError('capability/invalid-registry', `Gate ${gate.id} cannot ${relation} itself`);
+          throw internalError('capability/invalid-registry', `门禁 ${gate.id} 不能通过 ${relation} 指向自身`);
         }
       }
     }
@@ -54,7 +54,7 @@ function validateRegistry(gates) {
     for (const successor of gate.before) prerequisites.get(successor).add(gate.id);
   }
   const visit = (gateId) => {
-    if (visiting.has(gateId)) throw internalError('capability/invalid-registry', `Gate dependency cycle detected at ${gateId}`);
+    if (visiting.has(gateId)) throw internalError('capability/invalid-registry', `检测到门禁依赖环，起点为 ${gateId}`);
     if (visited.has(gateId)) return;
     visiting.add(gateId);
     for (const dependency of prerequisites.get(gateId)) visit(dependency);
@@ -65,7 +65,7 @@ function validateRegistry(gates) {
 }
 
 export function createGateRegistry(gates) {
-  if (!Array.isArray(gates)) throw new TypeError('Gate registry must be an array');
+  if (!Array.isArray(gates)) throw new TypeError('门禁注册表必须是数组');
   const immutableGates = Object.freeze([...gates]);
   validateRegistry(immutableGates);
   const byId = new Map(immutableGates.map((gate) => [gate.id, gate]));
@@ -86,7 +86,7 @@ export function createGateRegistry(gates) {
     ),
     get(id) {
       const gate = byId.get(id);
-      if (!gate) throw internalError('capability/invalid-registry', `Unknown gate: ${id}`);
+      if (!gate) throw internalError('capability/invalid-registry', `未知门禁： ${id}`);
       return gate;
     },
     findByManualCommand(command) {

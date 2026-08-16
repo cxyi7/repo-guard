@@ -60,17 +60,17 @@ test('normalizes build, Lighthouse, and TypeScript execution settings', () => {
 test('requires execution gate objects and boolean switches', () => {
   assert.throws(
     () => validateExecutionGateConfiguration({ build: [] }, CONFIG_PATH),
-    /build must be an object/,
+    /build 必须是对象/,
   );
   assert.throws(
     () => validateExecutionGateConfiguration({
       lighthouse: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /lighthouse\.enabled must be a boolean/,
+    /lighthouse\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateExecutionGateConfiguration({ typeCheck: 'invalid' }, CONFIG_PATH),
-    /typeCheck must be an object/,
+    /typeCheck 必须是对象/,
   );
 });
 
@@ -79,18 +79,18 @@ test('rejects invalid scripts, paths, and timeouts', () => {
     () => validateExecutionGateConfiguration({
       build: { script: 'npm run build' },
     }, CONFIG_PATH),
-    /build\.script must be an npm script name/,
+    /build\.script 必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateExecutionGateConfiguration({
       lighthouse: { configFile: '  ' },
     }, CONFIG_PATH),
-    /lighthouse\.configFile must be null or a non-empty string/,
+    /lighthouse\.configFile 必须为 null 或非空字符串/,
   );
   assert.throws(
     () => validateExecutionGateConfiguration({
       typeCheck: { timeoutMs: 0 },
     }, CONFIG_PATH),
-    /typeCheck\.timeoutMs must be a positive integer/,
+    /typeCheck\.timeoutMs 必须是正整数/,
   );
 });

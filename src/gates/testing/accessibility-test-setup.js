@@ -31,7 +31,7 @@ function readProjectPackage(root) {
   if (!existsSync(target)) {
     throw configurationError(
       'accessibility-test/missing-package-manifest',
-      'package.json was not found in repository root',
+      '仓库根目录中未找到 package.json',
       { details: { location: { path: 'package.json' } } },
     );
   }

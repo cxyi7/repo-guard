@@ -10,7 +10,7 @@ export async function runQualityFileCommand(files, cwd = process.cwd()) {
   if (execution.status.endsWith('-error')) {
     const decisiveError = execution.decisiveResult?.error;
     throw toRepoGuardError(
-      decisiveError?.message ?? 'Quality gate could not complete',
+      decisiveError?.message ?? '质量门禁无法完成',
       {
       kind: decisiveError?.kind ?? 'execution',
       code: decisiveError?.code ?? 'pre-commit/quality-failed',

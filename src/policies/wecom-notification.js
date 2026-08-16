@@ -12,14 +12,14 @@ export function loadNotificationConfig(environment = process.env) {
   const rawMobiles = environment.REPO_GUARD_MENTION_MOBILES?.trim() || '';
 
   if (!rawWebhook) {
-    throw configurationError('wecom/missing-webhook', 'REPO_GUARD_WECOM_WEBHOOK is not configured');
+    throw configurationError('wecom/missing-webhook', '未配置 REPO_GUARD_WECOM_WEBHOOK');
   }
 
   let webhook;
   try {
     webhook = new URL(rawWebhook);
   } catch {
-    throw configurationError('wecom/invalid-webhook-url', 'REPO_GUARD_WECOM_WEBHOOK is not a valid URL');
+    throw configurationError('wecom/invalid-webhook-url', 'REPO_GUARD_WECOM_WEBHOOK 不是有效 URL');
   }
 
   if (
@@ -28,7 +28,7 @@ export function loadNotificationConfig(environment = process.env) {
     || webhook.pathname !== WECOM_PATH
     || !webhook.searchParams.get('key')
   ) {
-    throw configurationError('wecom/untrusted-webhook-endpoint', 'REPO_GUARD_WECOM_WEBHOOK does not target the trusted WeCom endpoint');
+    throw configurationError('wecom/untrusted-webhook-endpoint', 'REPO_GUARD_WECOM_WEBHOOK 未指向可信的企业微信端点');
   }
 
   const mentionMobiles = [...new Set(
@@ -39,10 +39,10 @@ export function loadNotificationConfig(environment = process.env) {
   )];
 
   if (mentionMobiles.length === 0) {
-    throw configurationError('wecom/missing-mention-mobiles', 'REPO_GUARD_MENTION_MOBILES is not configured');
+    throw configurationError('wecom/missing-mention-mobiles', '未配置 REPO_GUARD_MENTION_MOBILES');
   }
   if (mentionMobiles.some((mobile) => !/^1\d{10}$/.test(mobile))) {
-    throw configurationError('wecom/invalid-mention-mobile', 'REPO_GUARD_MENTION_MOBILES contains an invalid mobile number');
+    throw configurationError('wecom/invalid-mention-mobile', 'REPO_GUARD_MENTION_MOBILES 包含无效手机号');
   }
 
   return { webhook, mentionMobiles };
@@ -53,7 +53,7 @@ function sanitizeLine(value) {
 }
 
 function sanitizeRemoteUrl(root) {
-  const remote = gitValue(['config', '--get', 'remote.origin.url'], 'not configured', root);
+  const remote = gitValue(['config', '--get', 'remote.origin.url'], '未配置', root);
   try {
     const parsed = new URL(remote);
     parsed.username = '';
@@ -66,7 +66,7 @@ function sanitizeRemoteUrl(root) {
     if (scp) {
       return `${scp[1]}:${scp[2]}`;
     }
-    return 'unrecognized remote (redacted)';
+    return '无法识别的远程仓库（已脱敏）';
   }
 }
 
@@ -75,7 +75,7 @@ function truncateUtf8(value, maxBytes) {
     return value;
   }
 
-  const suffix = '\nMessage truncated because the protected file list is too long.';
+  const suffix = '\n受保护文件列表过长，消息已截断。';
   const limit = maxBytes - Buffer.byteLength(suffix, 'utf8');
   let output = '';
 
@@ -90,12 +90,12 @@ function truncateUtf8(value, maxBytes) {
 }
 
 export function buildNotificationText(root, changes, fingerprint) {
-  const branch = gitValue(['symbolic-ref', '--short', '-q', 'HEAD'], 'DETACHED', root);
-  const head = gitValue(['rev-parse', '--short=12', 'HEAD'], 'INITIAL', root);
-  const userName = gitValue(['config', '--get', 'user.name'], 'not configured', root);
+  const branch = gitValue(['symbolic-ref', '--short', '-q', 'HEAD'], '游离状态', root);
+  const head = gitValue(['rev-parse', '--short=12', 'HEAD'], '初始提交', root);
+  const userName = gitValue(['config', '--get', 'user.name'], '未配置', root);
   const userEmail = gitValue(['config', '--get', 'user.email'], '', root);
   const actor = userEmail ? `${userName} <${userEmail}>` : userName;
-  const shortstat = gitValue(['diff', '--cached', '--shortstat'], 'no statistics', root);
+  const shortstat = gitValue(['diff', '--cached', '--shortstat'], '无统计信息', root);
 
   const lines = [
     '【Protected repository files changed】',
@@ -116,7 +116,7 @@ export function buildNotificationText(root, changes, fingerprint) {
       ),
     ),
     '',
-    'Only metadata is included. Review the staged diff in Git.',
+    '此处仅包含元数据，请在 Git 中审查暂存差异。',
   ];
 
   return truncateUtf8(lines.join('\n'), MAX_TEXT_BYTES);

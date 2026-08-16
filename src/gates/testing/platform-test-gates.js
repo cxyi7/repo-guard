@@ -23,7 +23,7 @@ import { inspectUnitTestPolicy, unitTestPolicyFindings } from './unit-test-polic
 import { validateUnitTestSetup } from './unit-test-setup.js';
 
 function inspectUnitTestSetup({ root, config }) {
-  if (!config.unitTest.enabled) return readyGateSetup('Unit test gate is disabled');
+  if (!config.unitTest.enabled) return readyGateSetup('单元测试门禁已禁用');
   const resolved = validateUnitTestSetup(root, config.unitTest);
   if (!policyFileIsCurrent(
     root,
@@ -33,15 +33,15 @@ function inspectUnitTestSetup({ root, config }) {
   )) {
     throw configurationError(
       'unit-test/missing-managed-policy',
-      `${UNIT_TEST_POLICY_FILE} is missing the current unit test policy`,
+      `${UNIT_TEST_POLICY_FILE} 缺少当前单元测试策略`,
       { details: { location: { path: UNIT_TEST_POLICY_FILE } } },
     );
   }
-  return readyGateSetup(`Unit test gate (Vitest ${resolved.vitest.version})`);
+  return readyGateSetup(`单元测试门禁（Vitest ${resolved.vitest.version})`);
 }
 
 function inspectAccessibilitySetup({ root, config }) {
-  if (!config.accessibilityTest.enabled) return readyGateSetup('Accessibility test gate is disabled');
+  if (!config.accessibilityTest.enabled) return readyGateSetup('无障碍测试门禁已禁用');
   validateAccessibilityTestSetup(root, config.accessibilityTest);
   if (!policyFileIsCurrent(
     root,
@@ -51,11 +51,11 @@ function inspectAccessibilitySetup({ root, config }) {
   )) {
     throw configurationError(
       'accessibility-test/missing-managed-policy',
-      `${ACCESSIBILITY_TEST_POLICY_FILE} is missing the current accessibility policy`,
+      `${ACCESSIBILITY_TEST_POLICY_FILE} 缺少当前无障碍策略`,
       { details: { location: { path: ACCESSIBILITY_TEST_POLICY_FILE } } },
     );
   }
-  return readyGateSetup('Accessibility test gate');
+  return readyGateSetup('无障碍测试门禁');
 }
 
 export const unitTestGate = definePlatformGate({
@@ -71,7 +71,7 @@ export const unitTestGate = definePlatformGate({
     policyOnly: step?.id === 'quality.unit-test-policy',
   }),
   run: ({ root, config, changes, plan }) => {
-    if (!plan.enabled) return skippedResult('quality.unit-test', 'Unit tests are disabled');
+    if (!plan.enabled) return skippedResult('quality.unit-test', '单元测试已禁用');
     if (!plan.policyOnly) return runUnitTestGate({ root, config: config.unitTest, changes });
     const policy = inspectUnitTestPolicy({ root, changes, config: config.unitTest });
     const violations = policy.missingTests.length
@@ -81,12 +81,12 @@ export const unitTestGate = definePlatformGate({
       ? createGateResult({
           gateId: 'quality.unit-test',
           status: 'passed',
-          summary: 'Unit test policy passed',
+          summary: '单元测试策略已通过',
         })
       : createGateResult({
           gateId: 'quality.unit-test',
           status: 'violation',
-          summary: `Unit test policy found ${violations} violation(s)`,
+          summary: `单元测试策略发现 ${violations} 项违规`,
           findings: unitTestPolicyFindings(policy),
         });
   },
@@ -104,5 +104,5 @@ export const accessibilityTestGate = definePlatformGate({
   plan: ({ config }) => ({ enabled: config.accessibilityTest.enabled }),
   run: ({ root, config, plan }) => plan.enabled
     ? runAccessibilityTestGate({ root, config: config.accessibilityTest })
-    : skippedResult('quality.accessibility-test', 'Accessibility tests are disabled'),
+    : skippedResult('quality.accessibility-test', '无障碍测试已禁用'),
 });

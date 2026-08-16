@@ -31,9 +31,9 @@ export function buildManagedTextBlock({
   const ends = markerIndexes(lines, endMarker);
 
   if (starts.length !== ends.length || starts.length > 1) {
-    throw configurationError('managed-text/malformed-markers', `${target} contains malformed repo-guard managed markers`, {
+    throw configurationError('managed-text/malformed-markers', `${target} 包含格式错误的 repo-guard 托管标记`, {
       details: { location: { path: target } },
-      expected: `${target} contains at most one correctly ordered managed marker pair.`,
+      expected: `${target} 最多只能包含一组顺序正确的托管标记。`,
     });
   }
 
@@ -44,9 +44,9 @@ export function buildManagedTextBlock({
   }
 
   if (ends[0] <= starts[0]) {
-    throw configurationError('managed-text/malformed-markers', `${target} contains malformed repo-guard managed markers`, {
+    throw configurationError('managed-text/malformed-markers', `${target} 包含格式错误的 repo-guard 托管标记`, {
       details: { location: { path: target } },
-      expected: `${target} contains a start marker before its matching end marker.`,
+      expected: `${target} 必须先出现开始标记，再出现与之匹配的结束标记。`,
     });
   }
 

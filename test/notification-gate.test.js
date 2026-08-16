@@ -48,7 +48,7 @@ test('enabled notification still requires WeCom credentials', async (context) =>
 
   await assert.rejects(
     () => runGate({ cwd: root }),
-    /REPO_GUARD_WECOM_WEBHOOK is not configured/,
+    /未配置 REPO_GUARD_WECOM_WEBHOOK/,
   );
 });
 

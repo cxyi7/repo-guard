@@ -16,8 +16,8 @@ import {
 export function runMigrate(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const result = migrateProjectConfig(root);
-  writeConsoleMessage(`repo-guard configuration: ${path.join(root, CONFIG_FILE)}`);
-  writeConsoleMessage(`- migration: ${result.changed ? 'updated' : 'already current'}`);
+  writeConsoleMessage(`repo-guard 配置： ${path.join(root, CONFIG_FILE)}`);
+  writeConsoleMessage(`- 迁移：${result.changed ? '已更新' : '已是最新状态'}`);
   return 0;
 }
 
@@ -27,7 +27,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
   if (enabled && requestedFeatures.includes('architecture')) {
     const policy = ensureArchitecturePolicy(root, loadConfig(root).architecture);
     writeConsoleMessage(
-      `repo-guard architecture policy: ${policy.changed ? 'updated' : 'already current'}`,
+      `repo-guard 架构策略：${policy.changed ? '已更新' : '已是最新状态'}`,
     );
   }
   if (enabled && requestedFeatures.includes('accessibilityTest')) {
@@ -36,7 +36,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
       loadConfig(root).accessibilityTest,
     );
     writeConsoleMessage(
-      `repo-guard accessibility test policy: ${policy.changed ? 'updated' : 'already current'}`,
+      `repo-guard 无障碍测试策略：${policy.changed ? '已更新' : '已是最新状态'}`,
     );
   }
   if (enabled && requestedFeatures.some((feature) => (
@@ -44,21 +44,21 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
   ))) {
     const policy = ensureUnitTestPolicy(root, loadConfig(root).unitTest);
     writeConsoleMessage(
-      `repo-guard unit test policy: ${policy.changed ? 'updated' : 'already current'}`,
+      `repo-guard 单元测试策略：${policy.changed ? '已更新' : '已是最新状态'}`,
     );
   }
-  const state = enabled ? 'enabled' : 'disabled';
-  writeConsoleMessage(`repo-guard features: ${path.join(root, CONFIG_FILE)}`);
+  const state = enabled ? '已启用' : '已禁用';
+  writeConsoleMessage(`repo-guard 功能： ${path.join(root, CONFIG_FILE)}`);
   if (result.migrated) {
-    writeConsoleMessage('- configuration: migrated');
+    writeConsoleMessage('- 配置：已迁移');
   }
   for (const feature of result.changed) {
     writeConsoleMessage(`- ${feature}: ${state}`);
   }
   for (const feature of result.unchanged) {
-    writeConsoleMessage(`- ${feature}: already ${state}`);
+    writeConsoleMessage(`- ${feature}：已经是 ${state}`);
   }
-  writeConsoleMessage('- run "repo-guard doctor" to verify project dependencies and configuration');
+  writeConsoleMessage('- 运行 "repo-guard doctor" 校验项目依赖和配置');
   return 0;
 }
 

@@ -18,7 +18,7 @@ const STATUS_BY_KIND = Object.freeze({
 
 function requireText(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new TypeError(`${label} must be a non-empty string`);
+    throw new TypeError(`${label} 必须是非空字符串`);
   }
   return value;
 }
@@ -33,10 +33,10 @@ export class RepoGuardError extends Error {
     decision = null,
     cause,
   } = {}) {
-    super(requireText(message, 'RepoGuardError message'), cause === undefined ? undefined : { cause });
-    requireText(code, 'RepoGuardError code');
+    super(requireText(message, 'RepoGuardError 消息'), cause === undefined ? undefined : { cause });
+    requireText(code, 'RepoGuardError 代码');
     if (!ERROR_KINDS.includes(kind)) {
-      throw new TypeError(`RepoGuardError kind must be one of: ${ERROR_KINDS.join(', ')}`);
+      throw new TypeError(`RepoGuardError kind 必须是以下值之一： ${ERROR_KINDS.join(', ')}`);
     }
     this.name = 'RepoGuardError';
     this.code = code;

@@ -68,12 +68,12 @@ export function validateConfig(value, configPath = CONFIG_FILE) {
     throw toRepoGuardError(error, {
       kind: 'configuration',
       code: 'config/invalid',
-      expected: `${configPath} must match the supported repo-guard configuration contract.`,
+      expected: `${configPath} 必须符合 repo-guard 支持的配置契约。`,
       remediation: {
-        goal: `Correct ${configPath} without weakening enabled gates or policies.`,
-        steps: ['Use the reported field path and validation message to correct the invalid value.'],
-        constraints: ['Do not disable a gate solely to bypass configuration validation.'],
-        verification: ['Run npm run guard:check after updating the configuration.'],
+        goal: `修正 ${configPath}，且不得削弱已启用的门禁或策略。`,
+        steps: ['根据报告中的字段路径和校验消息修正无效值。'],
+        constraints: ['不得仅为绕过配置校验而禁用门禁。'],
+        verification: ['更新配置后运行 npm run guard:check。'],
       },
     });
   }

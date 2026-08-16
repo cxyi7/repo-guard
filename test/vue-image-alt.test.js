@@ -150,7 +150,7 @@ test('exposes a full-project image-alt CLI with unified reporting', (context) =>
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/img-alt/);
-  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /修复目标:/);
   assert.match(result.stderr, /alt=""/);
   assert.match(result.stderr, /role="presentation"/);
 
@@ -168,6 +168,6 @@ test('exposes a full-project image-alt CLI with unified reporting', (context) =>
     encoding: 'utf8',
   });
   assert.equal(approved.status, 0, approved.stderr);
-  assert.match(approved.stderr, /approved exception.*reviewed-legacy-image/);
-  assert.match(approved.stdout, /1 approved exception/);
+  assert.match(approved.stderr, /已批准例外.*reviewed-legacy-image/);
+  assert.match(approved.stdout, /1 条已批准例外/);
 });

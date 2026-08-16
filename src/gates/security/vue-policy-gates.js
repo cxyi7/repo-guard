@@ -11,15 +11,15 @@ import { defineVuePolicyGate } from '../vue-policy-gate.js';
 export const unsafeHtmlGate = defineVuePolicyGate({
   id: 'security.vue-unsafe-html', rule: VUE_NO_V_HTML_RULE,
   inspect: inspectUnsafeVueHtml,
-  remediation: 'Replace v-html with Vue templates, components, interpolation, or textContent; if trusted rich HTML is essential, establish a reviewed sanitization boundary.',
-  summary: 'Vue v-html gate', manualCommand: 'unsafe-html', manualOrder: 80, doctorOrder: 80,
+  remediation: '使用 Vue 模板、组件、插值或 textContent 替代 v-html；如果必须使用可信富文本 HTML，请建立经过审查的净化边界。',
+  summary: 'Vue v-html 门禁', manualCommand: 'unsafe-html', manualOrder: 80, doctorOrder: 80,
 });
 
 export const targetBlankGate = defineVuePolicyGate({
   id: 'security.vue-target-blank', rule: VUE_TARGET_BLANK_RULE,
   inspect: inspectVueTargetBlank,
-  remediation: 'Use a statically verifiable rel="noopener noreferrer" on the same target="_blank" element.',
-  summary: 'Vue target=_blank gate', manualCommand: 'target-blank', manualOrder: 90, doctorOrder: 90,
+  remediation: '在同一个 target="_blank" 元素上使用可静态校验的 rel="noopener noreferrer"。',
+  summary: 'Vue target=_blank 门禁', manualCommand: 'target-blank', manualOrder: 90, doctorOrder: 90,
 });
 
 export const vueSecurityGates = Object.freeze([unsafeHtmlGate, targetBlankGate]);

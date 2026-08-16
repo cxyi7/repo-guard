@@ -178,7 +178,7 @@ test('returns native structured findings and metrics from the registered capabil
   }, {
     ruleId: NO_EVAL_RULE,
     severity: 'error',
-    message: 'eval dynamically executes runtime text',
+    message: 'eval 会动态执行运行时文本',
     location: { path: 'src/runtime.ts', line: 1, column: 33 },
   });
   assert.equal(result.findings[0].kind, 'violation');
@@ -199,8 +199,8 @@ test('exposes a full-project CLI with structured findings', (context) => {
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /\[security\/no-eval\] src\/runtime\.ts:1:40/);
-  assert.match(result.stderr, /Evidence:/);
-  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /证据:/);
+  assert.match(result.stderr, /修复目标:/);
 
   const [finding] = findDynamicCodeExecution(source, 'src/runtime.ts');
   writeFileSync(
@@ -216,6 +216,6 @@ test('exposes a full-project CLI with structured findings', (context) => {
     encoding: 'utf8',
   });
   assert.equal(approved.status, 0, approved.stderr);
-  assert.match(approved.stderr, /approved exception.*reviewed-legacy-runtime/);
-  assert.match(approved.stdout, /1 approved exception/);
+  assert.match(approved.stderr, /已批准例外.*reviewed-legacy-runtime/);
+  assert.match(approved.stdout, /1 条已批准例外/);
 });

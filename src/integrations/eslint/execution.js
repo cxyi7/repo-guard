@@ -21,7 +21,7 @@ export async function prepareProjectEslintExecution({
     fix,
     ...(baseConfig ? { baseConfig } : {}),
   });
-  const normalizedFiles = normalizeStagedFiles(root, files, 'ESLint')
+  const normalizedFiles = normalizeStagedFiles(root, files, 'ESLint 检查')
     .map(({ absolute }) => absolute);
   const initialEslint = new project.ESLint(eslintOptions(false));
   const lintableFiles = await collectLintableFiles(initialEslint, normalizedFiles);

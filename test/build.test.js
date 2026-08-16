@@ -85,7 +85,7 @@ test('detects and validates the consuming project build script', (context) => {
   assert.equal(detectProjectBuildSetup(root, buildConfig()).ready, true);
   assert.throws(
     () => validateBuildSetup(root, buildConfig({ script: 'missing' })),
-    /requires package.json script "missing"/,
+    /要求 package.json 提供脚本“missing”/,
   );
 });
 
@@ -115,7 +115,7 @@ test('exposes build through CLI and runs it from pre-push', async (context) => {
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /build passed/);
+  assert.match(cliResult.stdout, /构建已通过/);
   commitFixture(root);
   assert.equal(await runPrePush(root), 0);
   assert.equal(

@@ -164,6 +164,6 @@ test('exposes a full-project target-blank CLI with unified reporting', (context)
     encoding: 'utf8',
   });
   assert.equal(approved.status, 0, approved.stderr);
-  assert.match(approved.stderr, /approved exception.*reviewed-external-link/);
-  assert.match(approved.stdout, /1 approved exception/);
+  assert.match(approved.stderr, /已批准例外.*reviewed-external-link/);
+  assert.match(approved.stdout, /1 条已批准例外/);
 });

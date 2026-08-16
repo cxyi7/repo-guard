@@ -58,13 +58,13 @@ test('rejects invalid architecture scalars and exclusion expressions', () => {
     () => validateArchitectureConfiguration({
       architecture: { timeoutMs: 0 },
     }, CONFIG_PATH),
-    /architecture\.timeoutMs must be a positive integer/,
+    /architecture\.timeoutMs 必须是正整数/,
   );
   assert.throws(
     () => validateArchitectureConfiguration({
       architecture: { exclude: '(' },
     }, CONFIG_PATH),
-    /architecture\.exclude must be a valid regex/,
+    /architecture\.exclude 必须是有效的正则表达式/,
   );
 });
 
@@ -73,7 +73,7 @@ test('rejects duplicate rules and invalid condition expressions', () => {
     () => validateArchitectureConfiguration({
       architecture: { rules: [architectureRule(), architectureRule()] },
     }, CONFIG_PATH),
-    /architecture rule name is duplicated/,
+    /architecture 规则名称重复/,
   );
   assert.throws(
     () => validateArchitectureConfiguration({
@@ -81,6 +81,6 @@ test('rejects duplicate rules and invalid condition expressions', () => {
         rules: [architectureRule({ from: { path: '(' } })],
       },
     }, CONFIG_PATH),
-    /architecture rule 1\.from\.path must be a valid regex/,
+    /architecture 规则 1\.from\.path 必须是有效的正则表达式/,
   );
 });

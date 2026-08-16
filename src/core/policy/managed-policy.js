@@ -4,10 +4,10 @@ import { buildManagedTextBlock } from './managed-text-block.js';
 
 export function defineManagedPolicy({ id, file = 'AGENTS.md', buildLines }) {
   if (!/^[a-z][a-z0-9-]*$/.test(id)) {
-    throw new TypeError(`Managed policy id must be kebab-case: ${id}`);
+    throw new TypeError(`托管策略 id 必须使用 kebab-case： ${id}`);
   }
   if (typeof buildLines !== 'function') {
-    throw new TypeError(`Managed policy ${id} requires a buildLines function`);
+    throw new TypeError(`托管策略 ${id} 必须提供 buildLines 函数`);
   }
   return Object.freeze({
     id,

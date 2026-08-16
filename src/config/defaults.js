@@ -66,21 +66,21 @@ export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
   rules: Object.freeze([
     Object.freeze({
       name: 'no-circular',
-      comment: 'Do not create circular dependencies.',
+      comment: '禁止创建循环依赖。',
       severity: 'error',
       from: Object.freeze({ path: '^src/' }),
       to: Object.freeze({ circular: true }),
     }),
     Object.freeze({
       name: 'no-unresolved',
-      comment: 'Every project import must resolve.',
+      comment: '项目中的每个导入都必须能够解析。',
       severity: 'error',
       from: Object.freeze({ path: '^src/' }),
       to: Object.freeze({ couldNotResolve: true }),
     }),
     Object.freeze({
       name: 'no-production-to-tests',
-      comment: 'Production code must not import test-only modules.',
+      comment: '生产代码不得导入仅供测试使用的模块。',
       severity: 'error',
       from: Object.freeze({ path: '^src/', pathNot: DEFAULT_ARCHITECTURE_TEST_PATTERN }),
       to: Object.freeze({ path: DEFAULT_ARCHITECTURE_TEST_PATTERN }),

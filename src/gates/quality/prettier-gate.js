@@ -26,13 +26,13 @@ async function collectFormatting(execution, root, requireConfig) {
     if (requireConfig && inspection.config === null) {
       throw configurationError(
         'prettier/missing-project-config',
-        `Prettier configuration was not found for staged file: ${path.relative(root, file)}`,
+        `暂存文件未找到 Prettier 配置： ${path.relative(root, file)}`,
       );
     }
     if (!inspection.inferredParser) {
       throw configurationError(
         'prettier/parser-not-inferred',
-        `Prettier could not infer a parser for staged file: ${path.relative(root, file)}`,
+        `Prettier 无法推断暂存文件的解析器： ${path.relative(root, file)}`,
       );
     }
     formatting.push(await execution.format(inspection));
@@ -48,7 +48,7 @@ export async function runPrettierFiles({
   requireConfig,
 }) {
   if (files.length === 0) {
-    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'skipped', summary: 'Prettier has no applicable files' });
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'skipped', summary: 'Prettier 没有适用文件' });
   }
 
   const project = await loadProjectPrettier(root);
@@ -61,11 +61,11 @@ export async function runPrettierFiles({
   const changed = formatting.filter(({ formatted, original }) => formatted !== original);
 
   if (changed.length === 0) {
-    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${project.version} passed`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: 0 } });
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${project.version} 已通过`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: 0 } });
   }
 
   if (!fix) {
-    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'violation', summary: `Prettier requires formatting in ${changed.length} file(s)`, findings: changed.map(({ file }) => ({ ruleId: 'prettier/format', severity: 'error', message: 'File does not match the project Prettier configuration', location: { path: path.relative(root, file).replace(/\\/g, '/') }, remediation: 'Run the project Prettier formatter and stage the result.' })), metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
+    return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'violation', summary: `Prettier 要求格式化 ${changed.length} 个文件`, findings: changed.map(({ file }) => ({ ruleId: 'prettier/format', severity: 'error', message: '文件不符合项目 Prettier 配置', location: { path: path.relative(root, file).replace(/\\/g, '/') }, remediation: '运行项目 Prettier 格式化工具并暂存结果。' })), metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
   }
 
   const originalContents = captureFileContents(changed.map(({ file }) => file));
@@ -79,5 +79,5 @@ export async function runPrettierFiles({
     });
   }
 
-  return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${project.version} formatted ${changed.length} file(s)`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
+  return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${project.version} 已格式化 ${changed.length} 个文件`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: changed.length } });
 }

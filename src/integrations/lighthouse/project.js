@@ -19,12 +19,12 @@ export const LIGHTHOUSE_CONFIG_FILES = Object.freeze([
 export function readProjectPackage(root) {
   const packagePath = path.join(root, 'package.json');
   if (!existsSync(packagePath)) {
-    throw configurationError('lighthouse/invalid-setup', `package.json was not found in repository root: ${root}`);
+    throw configurationError('lighthouse/invalid-setup', `仓库根目录中找不到 package.json：${root}`);
   }
   try {
     return JSON.parse(readFileSync(packagePath, 'utf8'));
   } catch (error) {
-    throw configurationError('lighthouse/invalid-setup', `Unable to read package.json: ${error.message}`);
+    throw configurationError('lighthouse/invalid-setup', `无法读取 package.json：${error.message}`);
   }
 }
 
@@ -44,12 +44,12 @@ export function detectVueProject(root) {
 export function findProjectLighthouseConfig(root, configuredFile = null) {
   if (configuredFile) {
     if (path.isAbsolute(configuredFile)) {
-      throw configurationError('lighthouse/invalid-setup', 'lighthouse.configFile must be relative to the repository root');
+      throw configurationError('lighthouse/invalid-setup', 'lighthouse.configFile 必须是相对于仓库根目录的路径');
     }
     const resolved = path.resolve(root, configuredFile);
     const relative = path.relative(root, resolved);
     if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw configurationError('lighthouse/invalid-setup', 'lighthouse.configFile must stay inside the repository root');
+      throw configurationError('lighthouse/invalid-setup', 'lighthouse.configFile 必须位于仓库根目录内');
     }
     return existsSync(resolved) ? relative.replace(/\\/g, '/') : null;
   }
@@ -64,8 +64,8 @@ export function resolveProjectLighthouseMetadata(root) {
     packagePath = requireFromProject.resolve('@lhci/cli/package.json');
   } catch {
     throw configurationError('lighthouse/invalid-setup',
-      'Lighthouse CI is enabled but is not installed by this project. '
-      + 'Install @lhci/cli as a project devDependency.',
+      'Lighthouse CI 已启用，但当前项目未安装该工具。'
+      + '请将 @lhci/cli 安装为项目的 devDependency。',
     );
   }
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
@@ -74,12 +74,12 @@ export function resolveProjectLighthouseMetadata(root) {
     : packageJson.bin?.lhci;
   if (typeof binEntry !== 'string') {
     throw configurationError('lighthouse/invalid-setup',
-      `Unsupported Lighthouse CI ${packageJson.version || 'unknown'}: the lhci executable is missing`,
+      `不支持 Lighthouse CI ${packageJson.version || '未知版本'}：缺少 lhci 可执行文件`,
     );
   }
   const binPath = path.resolve(path.dirname(packagePath), binEntry);
   if (!existsSync(binPath)) {
-    throw configurationError('lighthouse/invalid-setup', `Unsupported Lighthouse CI ${packageJson.version}: ${binEntry} was not found`);
+    throw configurationError('lighthouse/invalid-setup', `不支持 Lighthouse CI ${packageJson.version}：找不到 ${binEntry}`);
   }
   return {
     binPath,
@@ -91,17 +91,17 @@ export function resolveProjectLighthouseMetadata(root) {
 export function validateVueLighthouseSetup(root, config) {
   const { isVue, packageJson } = detectVueProject(root);
   if (!isVue) {
-    throw configurationError('lighthouse/invalid-setup', 'Lighthouse support currently requires a Vue project with vue in package.json');
+    throw configurationError('lighthouse/invalid-setup', 'Lighthouse 当前仅支持在 package.json 中声明 vue 的 Vue 项目');
   }
 
   const lighthouse = resolveProjectLighthouseMetadata(root);
   const configFile = findProjectLighthouseConfig(root, config.configFile);
   if (!configFile) {
     const expected = config.configFile || 'lighthouserc.*';
-    throw configurationError('lighthouse/invalid-setup', `Lighthouse configuration was not found: ${expected}`);
+    throw configurationError('lighthouse/invalid-setup', `找不到 Lighthouse 配置：${expected}`);
   }
   if (config.buildScript && !packageJson.scripts?.[config.buildScript]) {
-    throw configurationError('lighthouse/invalid-setup', `Lighthouse build script was not found: package.json#scripts.${config.buildScript}`);
+    throw configurationError('lighthouse/invalid-setup', `找不到 Lighthouse 构建脚本：package.json#scripts.${config.buildScript}`);
   }
 
   return {

@@ -54,13 +54,13 @@ async function runManualGate(gate, {
 }
 
 export async function runExternalManualGate(gateId, cwd = process.cwd()) {
-  if (!gateId.startsWith('project.')) throw configurationError('manual-gate/not-external-gate', `${gateId} is not an external project gate`);
+  if (!gateId.startsWith('project.')) throw configurationError('manual-gate/not-external-gate', `${gateId} 不是外部项目门禁`);
   const root = findRepositoryRoot(cwd);
   const config = loadConfig(root);
   const registry = createProjectGateRegistry(config);
   const gate = registry.get(gateId);
   if (!gate.environments.includes('manual')) {
-    throw configurationError('manual-gate/unsupported-environment', `External gate ${gateId} does not support manual execution`);
+    throw configurationError('manual-gate/unsupported-environment', `外部门禁 ${gateId} 不支持手动执行`);
   }
   return await runManualGate(gate, { cwd, registry });
 }

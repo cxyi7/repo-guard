@@ -17,7 +17,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
   }
 
   if (!messageFile) {
-    throw configurationError('hook-message/missing-file', `hook-message ${mode || '<missing>'} requires a commit message file`);
+    throw configurationError('hook-message/missing-file', `hook-message ${mode || '<missing>'} 需要提交消息文件`);
   }
 
   const config = loadConfig(root);
@@ -30,5 +30,5 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     return 0;
   }
 
-  throw configurationError('hook-message/unsupported-mode', `Unsupported hook-message mode: ${mode || '<missing>'}`);
+  throw configurationError('hook-message/unsupported-mode', `不支持的 hook-message 模式： ${mode || '<missing>'}`);
 }

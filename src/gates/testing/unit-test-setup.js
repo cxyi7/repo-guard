@@ -9,14 +9,14 @@ export function validateUnitTestSetup(root, config) {
   if (!packageJson) {
     throw configurationError(
       'unit-test/missing-package-json',
-      'package.json was not found in repository root',
+      '仓库根目录中未找到 package.json',
     );
   }
   const command = packageJson.scripts?.[config.script];
   if (typeof command !== 'string' || !command.trim()) {
     throw configurationError(
       'unit-test/missing-script',
-      `Unit test gate requires package.json script "${config.script}"`,
+      `单元测试门禁要求 package.json 提供脚本“${config.script}”`,
     );
   }
   return {

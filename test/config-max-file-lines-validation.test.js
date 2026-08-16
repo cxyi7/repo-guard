@@ -39,31 +39,31 @@ test('normalizes maximum file line modes, rules, and exclusions', () => {
 test('requires a maximum file lines object with valid settings', () => {
   assert.throws(
     () => validateMaxFileLinesConfiguration({ maxFileLines: [] }, CONFIG_PATH),
-    /preCommit\.maxFileLines must be an object/,
+    /preCommit\.maxFileLines 必须是对象/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { command: 'check' },
     }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /maxFileLines\.enabled must be a boolean/,
+    /maxFileLines\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { mode: 'gradual' },
     }, CONFIG_PATH),
-    /mode must be strict or noRegression/,
+    /mode 必须为 strict 或 noRegression/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { warnAt: 0 },
     }, CONFIG_PATH),
-    /warnAt must be greater than 0 and at most 1/,
+    /warnAt 必须大于 0 且不超过 1/,
   );
 });
 
@@ -72,25 +72,25 @@ test('requires structured maximum file line rules', () => {
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { rules: [] },
     }, CONFIG_PATH),
-    /rules must be a non-empty array/,
+    /rules 必须是非空数组/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { rules: ['invalid'] },
     }, CONFIG_PATH),
-    /rule 1 must be an object/,
+    /规则 1 必须是对象/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { rules: [{ pattern: '  ', maxLines: 100 }] },
     }, CONFIG_PATH),
-    /rule 1\.pattern must be a non-empty string/,
+    /规则 1\.pattern 必须是非空字符串/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { rules: [{ pattern: '**/*.vue', maxLines: 0 }] },
     }, CONFIG_PATH),
-    /rule 1\.maxLines must be a positive integer/,
+    /规则 1\.maxLines 必须是正整数/,
   );
 });
 
@@ -99,12 +99,12 @@ test('requires valid maximum file line exclusions', () => {
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { exclusions: 'src/generated/**' },
     }, CONFIG_PATH),
-    /exclusions must be an array/,
+    /exclusions 必须是数组/,
   );
   assert.throws(
     () => validateMaxFileLinesConfiguration({
       maxFileLines: { exclusions: [''] },
     }, CONFIG_PATH),
-    /exclusion 1 must be a non-empty string/,
+    /排除项 1 必须是非空字符串/,
   );
 });

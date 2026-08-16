@@ -136,7 +136,7 @@ test('rejects publishing from a release-ready external gate', (contextTest) => {
   assert.throws(
     () => createProjectGateRegistry(projectConfig).get('project.contract')
       .inspectSetup(context(root, projectConfig)),
-    /must not publish or deploy/,
+    /不得执行发布或部署/,
   );
 });
 
@@ -204,8 +204,8 @@ test('rejects release check and test scripts that publish or deploy', (contextTe
   const projectConfig = config();
   const registry = createProjectGateRegistry(projectConfig);
   const gateContext = context(root, projectConfig);
-  assert.throws(() => registry.get('release.check').inspectSetup(gateContext), /must not publish or deploy/);
-  assert.throws(() => registry.get('release.test').inspectSetup(gateContext), /must not publish or deploy/);
+  assert.throws(() => registry.get('release.check').inspectSetup(gateContext), /不得执行发布或部署/);
+  assert.throws(() => registry.get('release.test').inspectSetup(gateContext), /不得执行发布或部署/);
 });
 
 test('requires the exact side-effect-free pack check contract', (contextTest) => {
@@ -221,7 +221,7 @@ test('requires the exact side-effect-free pack check contract', (contextTest) =>
   const gateContext = context(root, projectConfig);
   assert.throws(
     () => createProjectGateRegistry(projectConfig).get('release.package').inspectSetup(gateContext),
-    /to equal "npm pack --dry-run --json --ignore-scripts"/,
+    /必须等于 "npm pack --dry-run --json --ignore-scripts"/,
   );
 });
 

@@ -52,7 +52,7 @@ export function findingFromPolicy(item, {
     ruleId: item.rule,
     code: item.issue ?? item.rule,
     severity,
-    message: item.message ?? `Violation of ${item.rule}`,
+    message: item.message ?? `违反规则 ${item.rule}`,
     location: item.path
       ? {
           path: item.path,

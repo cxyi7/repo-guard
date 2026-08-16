@@ -163,14 +163,14 @@ test('rejects every attempt to reorder or expand the protected pre-commit plan',
   [steps[0], steps[1]] = [steps[1], steps[0]];
   assert.throws(
     () => defineProtectedPreCommitPlan({ steps }),
-    /order and mutation contract cannot be changed/,
+    /不得更改.*计划顺序和变更契约/,
   );
 
   const relabeled = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
   relabeled[0].mutation = 'read-only';
   assert.throws(
     () => defineProtectedPreCommitPlan({ steps: relabeled }),
-    /order and mutation contract cannot be changed/,
+    /不得更改.*计划顺序和变更契约/,
   );
 
   const withTypeCheck = [
@@ -179,14 +179,14 @@ test('rejects every attempt to reorder or expand the protected pre-commit plan',
   ];
   assert.throws(
     () => defineProtectedPreCommitPlan({ steps: withTypeCheck }),
-    /forbids project-wide, type-check, test, build, and network gate quality\.typecheck/,
+    /禁止项目级、类型检查、测试、构建和网络门禁：quality\.typecheck/,
   );
 
   assert.throws(
     () => defineProtectedPreCommitPlan({
       steps: [...executionPlans.get('pre-commit').steps, 'quality.lighthouse'],
     }),
-    /network gate quality\.lighthouse/,
+    /禁止项目级、类型检查、测试、构建和网络门禁：quality\.lighthouse/,
   );
 
   assert.deepEqual(
@@ -211,23 +211,23 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
   assert.equal(validateExecutionPlan(valid, registry), valid);
   assert.throws(
     () => validateExecutionPlan(defineExecutionPlan({ id: 'unknown', environment: 'pre-commit', steps: ['missing'] }), registry),
-    /Unknown gate/,
+    /未知门禁/,
   );
   assert.throws(
     () => validateExecutionPlan(defineExecutionPlan({ id: 'wrong-order', environment: 'pre-commit', steps: ['second', 'first'] }), registry),
-    /runs second before first|runs first after second/,
+    /在.*first.*之前运行了 second|在.*second.*之后运行了 first/,
   );
   assert.throws(
     () => validateExecutionPlan(defineExecutionPlan({ id: 'missing-dependency', environment: 'pre-commit', steps: ['second'] }), registry),
-    /omits dependency first/,
+    /遗漏了.*依赖 first/,
   );
   assert.throws(
     () => createExecutionPlanRegistry([valid, valid], registry),
-    /Duplicate execution plan id/,
+    /执行计划 id 重复/,
   );
   assert.throws(
     () => validateExecutionPlan(defineExecutionPlan({ id: 'wrong-environment', environment: 'ci-full', steps: ['first'] }), registry),
-    /unsupported environment/,
+    /不支持的环境/,
   );
   assert.throws(
     () => defineExecutionPlan({
@@ -235,7 +235,7 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
       environment: 'ci-full',
       steps: [{ id: 'first', gateId: 'first', reportName: ' ' }],
     }),
-    /reportName must be a non-empty string/,
+    /reportName 必须是非空字符串/,
   );
   const mutatingRegistry = createGateRegistry([
     gate('mutating', {
@@ -249,7 +249,7 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
       defineExecutionPlan({ id: 'unsafe-ci', environment: 'ci-full', steps: ['mutating'] }),
       mutatingRegistry,
     ),
-    /cannot run mutating with working-tree-fix/,
+    /不能在.*以 working-tree-fix 运行 mutating/,
   );
   assert.doesNotThrow(() => validateExecutionPlan(
     defineExecutionPlan({
@@ -271,7 +271,7 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
       }),
       mislabeledRegistry,
     ),
-    /cannot relabel mislabeled-read as read-only/,
+    /不能将 mislabeled-read 的变更级别改为 read-only/,
   );
 
   const managedRegistry = createGateRegistry([
@@ -282,7 +282,7 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
       defineExecutionPlan({ id: 'managed-policy', environment: 'ci-policy', steps: ['managed'] }),
       managedRegistry,
     ),
-    /cannot run managed with managed-files/,
+    /不能在.*以 managed-files 运行 managed/,
   );
 });
 
@@ -292,25 +292,25 @@ test('rejects duplicate config keys, invalid relation references, ordering cycle
       gate('first', { configKey: 'shared' }),
       gate('second', { configKey: 'shared' }),
     ]),
-    /Duplicate gate config key/,
+    /门禁配置键重复/,
   );
   assert.throws(
     () => createGateRegistry([
       gate('first', { configKey: 'first', featureName: 'shared', featureOrder: 1 }),
       gate('second', { configKey: 'second', featureName: 'shared', featureOrder: 2 }),
     ]),
-    /Duplicate gate feature name/,
+    /门禁功能名称重复/,
   );
   assert.throws(
     () => createGateRegistry([gate('first', { before: ['missing'] })]),
-    /before unknown gate/,
+    /before 指向未知门禁/,
   );
   assert.throws(
     () => createGateRegistry([
       gate('first', { before: ['second'] }),
       gate('second', { before: ['first'] }),
     ]),
-    /cycle/,
+    /门禁依赖环/,
   );
   const conflictRegistry = createGateRegistry([
     gate('first', { conflicts: ['second'] }),
@@ -321,7 +321,7 @@ test('rejects duplicate config keys, invalid relation references, ordering cycle
       defineExecutionPlan({ id: 'conflict', environment: 'pre-commit', steps: ['first', 'second'] }),
       conflictRegistry,
     ),
-    /conflicting gates/,
+    /冲突门禁/,
   );
 });
 

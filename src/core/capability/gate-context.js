@@ -17,9 +17,9 @@ function deepFreeze(value, seen = new Set()) {
 
 export function createChangeSet({ source, changes = [], revision = null }) {
   if (typeof source !== 'string' || source.trim() === '') {
-    throw new TypeError('ChangeSet source must be a non-empty string');
+    throw new TypeError('ChangeSet source 必须是非空字符串');
   }
-  if (!Array.isArray(changes)) throw new TypeError('ChangeSet changes must be an array');
+  if (!Array.isArray(changes)) throw new TypeError('ChangeSet changes 必须是数组');
   const normalizedRevision = revision == null ? null : deepFreeze({ ...revision });
   return Object.freeze({
     source,
@@ -28,15 +28,15 @@ export function createChangeSet({ source, changes = [], revision = null }) {
   });
 }
 
-export function changeSetEntries(value, label = 'ChangeSet') {
+export function changeSetEntries(value, label = '变更集') {
   if (value && Array.isArray(value.entries)) return value.entries;
-  throw new TypeError(`${label} must be a ChangeSet`);
+  throw new TypeError(`${label} 必须是 ChangeSet`);
 }
 
 export function createStructuredLogger({ log, info, warn, error } = console) {
   for (const [level, handler] of Object.entries({ log, info, warn, error })) {
     if (typeof handler !== 'function') {
-      throw new TypeError(`Structured logger ${level} must be a function`);
+      throw new TypeError(`结构化日志方法 ${level} 必须是函数`);
     }
   }
   return Object.freeze({
@@ -59,17 +59,17 @@ export function createGateContext({
   files = [],
 }) {
   if (typeof root !== 'string' || root.trim() === '') {
-    throw new TypeError('GateContext root must be a non-empty string');
+    throw new TypeError('GateContext root 必须是非空字符串');
   }
   if (typeof environment !== 'string' || environment.trim() === '') {
-    throw new TypeError('GateContext environment must be a non-empty string');
+    throw new TypeError('GateContext environment 必须是非空字符串');
   }
   if (!changes || !Array.isArray(changes.entries)) {
-    throw new TypeError('GateContext changes must be a ChangeSet');
+    throw new TypeError('GateContext changes 必须是 ChangeSet');
   }
-  if (!Array.isArray(files)) throw new TypeError('GateContext files must be an array');
+  if (!Array.isArray(files)) throw new TypeError('GateContext files 必须是数组');
   if (!(signal instanceof AbortSignal)) {
-    throw new TypeError('GateContext signal must be an AbortSignal');
+    throw new TypeError('GateContext signal 必须是 AbortSignal');
   }
   return Object.freeze({
     root,

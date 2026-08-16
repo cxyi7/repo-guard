@@ -16,7 +16,7 @@ export function parsePrePushUpdates(input) {
           'pre-push/malformed-update',
           'Git pre-push 输入记录不完整，无法确定待推送范围',
           {
-            details: { evidence: [{ type: 'pre-push-protocol', message: 'expected localRef localSha remoteRef remoteSha' }] },
+            details: { evidence: [{ type: 'pre-push-protocol', message: '应提供 localRef、localSha、remoteRef 和 remoteSha' }] },
             expected: '每条 pre-push 输入包含本地引用、本地 SHA、远端引用和远端 SHA。',
           },
         );

@@ -13,10 +13,10 @@ export function runAccessibilityTestGate({ root, config }) {
     return createGateResult({
       gateId: ACCESSIBILITY_TEST_GATE_ID,
       status: 'configuration-error',
-      summary: `Accessibility test setup has ${inspection.problems.length} problem(s)`,
+      summary: `Accessibility test setup 有 ${inspection.problems.length} problem(s)`,
       error: configurationError(
         'accessibility-test/invalid-setup',
-        'Accessibility test setup is invalid',
+        '无障碍测试设置无效',
       ),
       findings: inspection.problems.map((problem) => ({
         kind: 'configuration',
@@ -41,8 +41,8 @@ export function runAccessibilityTestGate({ root, config }) {
     .map(({ name, version }) => `${name} ${version}`)
     .join(', ');
   const diagnostics = [{ level: 'info', message:
-    `repo-guard accessibility tests: ${integrations}; `
-    + `${inspection.files.length} file(s), running npm script "${config.script}"...` }];
+    `repo-guard 无障碍测试： ${integrations}; `
+    + `${inspection.files.length} 个文件, 正在运行 npm 脚本 "${config.script}"...` }];
   const result = executeAccessibilityTests({ root, config });
   diagnostics.push(...processOutputDiagnostics(result, { source: 'axe', root }));
   if (result.error) {
@@ -50,10 +50,10 @@ export function runAccessibilityTestGate({ root, config }) {
       return createGateResult({
         gateId: ACCESSIBILITY_TEST_GATE_ID,
         status: 'execution-error',
-        summary: `Accessibility tests exceeded ${config.timeoutMs}ms`,
+        summary: `Accessibility tests 超过 ${config.timeoutMs}ms`,
         error: executionError(
           'accessibility-test/timeout',
-          `Accessibility tests exceeded ${config.timeoutMs}ms`,
+          `Accessibility tests 超过 ${config.timeoutMs}ms`,
           { cause: result.error },
         ),
         diagnostics,
@@ -61,7 +61,7 @@ export function runAccessibilityTestGate({ root, config }) {
     }
     const error = executionError(
       'accessibility-test/process-start-failed',
-      `Unable to run accessibility tests: ${result.error.message}`,
+      `无法运行 accessibility tests: ${result.error.message}`,
       { cause: result.error },
     );
     return createGateResult({
@@ -76,7 +76,7 @@ export function runAccessibilityTestGate({ root, config }) {
     return createGateResult({
       gateId: ACCESSIBILITY_TEST_GATE_ID,
       status: 'violation',
-      summary: `Accessibility tests failed with exit code ${result.status ?? 1}`,
+      summary: `无障碍测试失败，退出码为 ${result.status ?? 1}`,
       diagnostics,
       findings: [processFailureFinding(ACCESSIBILITY_TEST_GATE_ID, {
         exitCode: result.status ?? 1,
@@ -85,11 +85,11 @@ export function runAccessibilityTestGate({ root, config }) {
       metrics: { testFiles: inspection.files.length },
     });
   }
-  diagnostics.push({ level: 'info', message: 'repo-guard accessibility tests passed.' });
+  diagnostics.push({ level: 'info', message: 'repo-guard 无障碍测试已通过。' });
   return createGateResult({
     gateId: ACCESSIBILITY_TEST_GATE_ID,
     status: 'passed',
-    summary: `Accessibility tests passed (${integrations}; ${inspection.files.length} file(s))`,
+    summary: `无障碍测试已通过（${integrations}; ${inspection.files.length} 个文件)`,
     diagnostics,
     metrics: { testFiles: inspection.files.length },
   });

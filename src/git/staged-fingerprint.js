@@ -3,7 +3,7 @@ import { gitValue, runGit } from './execution.js';
 
 export function createStagedFingerprint(root, protectedChanges) {
   const payload = {
-    head: gitValue(['rev-parse', 'HEAD'], 'INITIAL', root),
+    head: gitValue(['rev-parse', 'HEAD'], '初始提交', root),
     indexTree: runGit(['write-tree'], { cwd: root }).stdout.trim(),
     protectedChanges: [...protectedChanges]
       .sort((left, right) => {

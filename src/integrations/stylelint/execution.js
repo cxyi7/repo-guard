@@ -18,7 +18,7 @@ export async function inspectProjectStylelintRuleInputs({ project, root, files }
     if (!projectConfig) {
       throw configurationError(
         'stylelint/unresolved-project-config',
-        `Stylelint could not resolve project configuration for ${file}`,
+        `Stylelint 无法解析 ${file} 的项目配置`,
       );
     }
     return {

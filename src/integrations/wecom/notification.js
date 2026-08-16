@@ -32,7 +32,7 @@ export function sendWecomNotification(webhook, content, mentionMobiles) {
           try {
             result = JSON.parse(Buffer.concat(chunks).toString('utf8'));
           } catch {
-            reject(executionError('wecom/invalid-response', 'WeCom returned a non-JSON response'));
+            reject(executionError('wecom/invalid-response', '企业微信返回了非 JSON 响应'));
             return;
           }
 
@@ -40,8 +40,8 @@ export function sendWecomNotification(webhook, content, mentionMobiles) {
             reject(
               executionError(
                 'wecom/api-rejected-notification',
-                `WeCom notification failed: errcode=${result.errcode}, `
-                + `errmsg=${result.errmsg || 'unknown error'}`,
+                `企业微信通知失败：errcode=${result.errcode}，`
+                + `错误信息（errmsg）=${result.errmsg || '未知错误'}`,
               ),
             );
             return;
@@ -52,11 +52,11 @@ export function sendWecomNotification(webhook, content, mentionMobiles) {
       },
     );
 
-    request.on('timeout', () => request.destroy(executionError('wecom/timeout', 'WeCom request timed out')));
+    request.on('timeout', () => request.destroy(executionError('wecom/timeout', '企业微信请求超时')));
     request.on('error', (error) => reject(toRepoGuardError(error, {
       kind: 'execution',
       code: 'wecom/request-failed',
-      message: `WeCom notification failed: ${error.message}`,
+      message: `企业微信通知失败：${error.message}`,
     })));
     request.end(payload);
   });

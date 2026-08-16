@@ -21,7 +21,7 @@ export async function runPrePush(cwd = process.cwd(), {
   const root = findRepositoryRoot(cwd);
   const resolved = resolvePushConfig(root, input);
   if (resolved.skip) {
-    writeConsoleMessage(`repo-guard pre-push: ${resolved.skipMessage}; quality gates skipped.`);
+    writeConsoleMessage(`repo-guard pre-push： ${resolved.skipMessage}；已跳过质量门禁。`);
     return gateStatusToExitCode('skipped');
   }
   const { config } = resolved;

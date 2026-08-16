@@ -95,7 +95,7 @@ test('classifies active, expiring, expired, and future-dated exceptions', () => 
     () => assertExceptionLifecycleCurrent(registry(result.entries), {
       now: new Date('2026-08-11T10:00:00Z'),
     }),
-    /future-dated entries are invalid/,
+    /创建日期晚于当前日期的记录无效/,
   );
 });
 
@@ -124,7 +124,7 @@ test('loadConfig blocks expired entries while the report CLI can explain them', 
   const root = createFixture([expired]);
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.throws(() => loadConfig(root), /Expired exceptions/);
+  assert.throws(() => loadConfig(root), /已过期的例外/);
   const result = spawnSync(process.execPath, [CLI_PATH, 'exceptions'], {
     cwd: root,
     encoding: 'utf8',
@@ -148,7 +148,7 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /PASS {2}exceptions/);
+  assert.match(cliResult.stdout, /通过 {2}exceptions/);
 
   const config = loadConfig(root).exceptions;
   assert.equal(ensureExceptionPolicy(root, config).changed, true);

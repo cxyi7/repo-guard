@@ -13,17 +13,17 @@ export function runInstallCiCommand(cwd = process.cwd(), {
   stage,
   dryRun,
 } = {}) {
-  if (provider !== 'gitlab') throw configurationError('install-ci/unsupported-provider', 'Only the gitlab CI provider is supported');
+  if (provider !== 'gitlab') throw configurationError('install-ci/unsupported-provider', '仅支持 gitlab CI 提供方');
   const root = findRepositoryRoot(cwd);
   const result = installGitLabCi(root, { profile, stage, dryRun });
-  writeConsoleMessage(`repo-guard GitLab CI ${dryRun ? 'preview' : 'installation'}:`);
-  writeConsoleMessage(`- template: ${GITLAB_TEMPLATE_FILE} (${result.templateChanged ? 'updated' : 'current'})`);
-  writeConsoleMessage(`- profile: ${result.profile}`);
+  writeConsoleMessage(`repo-guard GitLab CI 操作：${dryRun ? '预览' : '安装'}`);
+  writeConsoleMessage(`- 模板：${GITLAB_TEMPLATE_FILE}（${result.templateChanged ? '已更新' : '当前版本'}）`);
+  writeConsoleMessage(`- 配置档： ${result.profile}`);
   if (result.integrated) {
-    writeConsoleMessage(`- ${GITLAB_CI_FILE}: integrated at stage ${result.stage}`);
+    writeConsoleMessage(`- ${GITLAB_CI_FILE}：已集成到 stage ${result.stage}`);
   } else {
-    writeConsoleMessage(`- ${GITLAB_CI_FILE}: not modified because ${result.conflict}`, 'stderr');
-    writeConsoleMessage('Add this reviewed snippet to the existing GitLab CI configuration:', 'stderr');
+    writeConsoleMessage(`- ${GITLAB_CI_FILE}：未修改，原因：${result.conflict}`, 'stderr');
+    writeConsoleMessage('请将以下已审查片段添加到现有 GitLab CI 配置中：', 'stderr');
     writeConsoleMessage(result.manualSnippet, 'stderr');
   }
   return 0;

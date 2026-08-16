@@ -10,9 +10,9 @@ export function normalizeStagedFiles(root, files, label) {
     if (relative.startsWith('..') || path.isAbsolute(relative)) {
       throw securityError(
         'staged-files/outside-repository',
-        `${label} staged file is outside the repository`,
+        `${label} 暂存文件位于仓库之外`,
         {
-          details: { evidence: [{ type: 'scope-escape', message: `rejected staged path: ${String(file)}` }] },
+          details: { evidence: [{ type: 'scope-escape', message: `已拒绝的暂存路径： ${String(file)}` }] },
           expected: '暂存文件规范化后仍位于当前仓库根目录内。',
         },
       );

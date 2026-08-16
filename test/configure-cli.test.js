@@ -42,7 +42,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
 
   const migrateResult = run(root, ['migrate']);
   assert.equal(migrateResult.status, 0, migrateResult.stderr);
-  assert.match(migrateResult.stdout, /migration: updated/);
+  assert.match(migrateResult.stdout, /迁移：已更新/);
 
   const enableResult = run(
     root,
@@ -65,20 +65,20 @@ test('CLI migrates configuration and enables selected gates', (context) => {
     ],
   );
   assert.equal(enableResult.status, 0, enableResult.stderr);
-  assert.match(enableResult.stdout, /eslint: enabled/);
-  assert.match(enableResult.stdout, /prettier: enabled/);
-  assert.match(enableResult.stdout, /stylelint: enabled/);
-  assert.match(enableResult.stdout, /styleComplexity: enabled/);
-  assert.match(enableResult.stdout, /styleGovernance: enabled/);
-  assert.match(enableResult.stdout, /lighthouse: enabled/);
-  assert.match(enableResult.stdout, /maxFileLines: enabled/);
-  assert.match(enableResult.stdout, /architecture: enabled/);
-  assert.match(enableResult.stdout, /build: enabled/);
-  assert.match(enableResult.stdout, /typeCheck: enabled/);
-  assert.match(enableResult.stdout, /unitTest: enabled/);
-  assert.match(enableResult.stdout, /componentInteraction: enabled/);
-  assert.match(enableResult.stdout, /accessibilityTest: enabled/);
-  assert.match(enableResult.stdout, /coverage: enabled/);
+  assert.match(enableResult.stdout, /eslint: 已启用/);
+  assert.match(enableResult.stdout, /prettier: 已启用/);
+  assert.match(enableResult.stdout, /stylelint: 已启用/);
+  assert.match(enableResult.stdout, /styleComplexity: 已启用/);
+  assert.match(enableResult.stdout, /styleGovernance: 已启用/);
+  assert.match(enableResult.stdout, /lighthouse: 已启用/);
+  assert.match(enableResult.stdout, /maxFileLines: 已启用/);
+  assert.match(enableResult.stdout, /architecture: 已启用/);
+  assert.match(enableResult.stdout, /build: 已启用/);
+  assert.match(enableResult.stdout, /typeCheck: 已启用/);
+  assert.match(enableResult.stdout, /unitTest: 已启用/);
+  assert.match(enableResult.stdout, /componentInteraction: 已启用/);
+  assert.match(enableResult.stdout, /accessibilityTest: 已启用/);
+  assert.match(enableResult.stdout, /coverage: 已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -112,7 +112,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
 
   const disableResult = run(root, ['disable', 'notification']);
   assert.equal(disableResult.status, 0, disableResult.stderr);
-  assert.match(disableResult.stdout, /notification: disabled/);
+  assert.match(disableResult.stdout, /notification: 已禁用/);
   const disabledConfig = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
@@ -135,7 +135,7 @@ test('init enables Stylelint when the project already provides it and a config',
 
   const initResult = run(root, ['init']);
   assert.equal(initResult.status, 0, initResult.stderr);
-  assert.match(initResult.stdout, /Stylelint .* enabled/);
+  assert.match(initResult.stdout, /Stylelint .*已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -164,7 +164,7 @@ test('init enables build when the project script is ready', (context) => {
 
   const initResult = run(root, ['init']);
   assert.equal(initResult.status, 0, initResult.stderr);
-  assert.match(initResult.stdout, /Build: enabled/);
+  assert.match(initResult.stdout, /构建：已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -195,7 +195,7 @@ test('init enables unit tests and writes AI policy when Vitest is ready', (conte
 
   const initResult = run(root, ['init']);
   assert.equal(initResult.status, 0, initResult.stderr);
-  assert.match(initResult.stdout, /Unit tests: enabled/);
+  assert.match(initResult.stdout, /单元测试：已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -223,7 +223,7 @@ test('init enables TypeScript when the typecheck script is ready', (context) => 
 
   const initResult = run(root, ['init']);
   assert.equal(initResult.status, 0, initResult.stderr);
-  assert.match(initResult.stdout, /TypeScript: enabled/);
+  assert.match(initResult.stdout, /TypeScript：已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -257,7 +257,7 @@ test('init enables architecture and writes AI policy when dependency-cruiser is 
 
   const initResult = run(root, ['init']);
   assert.equal(initResult.status, 0, initResult.stderr);
-  assert.match(initResult.stdout, /Architecture: enabled/);
+  assert.match(initResult.stdout, /架构检查：已启用/);
 
   const config = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),

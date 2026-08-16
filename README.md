@@ -9,7 +9,7 @@ Prettier 格式化、选择器与样式嵌套复杂度、依赖声明治理、�
 ## 安装
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.4.98
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.5.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -425,13 +425,13 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 
 退出码 `0` 表示通过，`1` 表示配置或执行错误，`2` 表示门禁违规，`3` 表示无法取得可信变更范围。内部统一结果模型将这些情况稳定区分为 `passed`、`skipped`、`violation`、`configuration-error`、`execution-error` 和 `range-error`；manual CLI、CI 与 pre-push 只通过同一个状态映射器产生退出码。规则与 runner 只返回结构化 findings、diagnostics、metrics 和 artifacts；console 与 CI JSON 由统一报告层生成。消费项目脚本的 stdout/stderr 会先被捕获为 diagnostics，CI `gateResult` 也完整保留 diagnostics，不再存在 runner 直接输出或继承 stdio 的旁路。识别出仓库后，JSON 报告即使失败也会写入 `ci.reportPath`，该路径必须是 `reports/` 内的 `.json` 文件且不能覆盖 Git 已跟踪文件或经过符号链接；模板以 `when: always` 保留整个目录。保护文件默认仅报告；设置 `ci.protectedFiles.action` 为 `fail` 时会阻断 CI。审批人要求仍应由 GitLab approval rules/CODEOWNERS 管理，repo-guard 不调用平台 API，也不保存 Token。
 
-内部 `GateResult` JSON 使用 `schemaVersion: 2`。`issues` 是交给 AI 的规范入口：每项都包含稳定的 `id/kind/gateId/ruleId/code/severity`、仓库相对 `location`、明确的 `message/evidence/expected`、结构化 `remediation`、`decision.aiAction`、是否需要人工批准以及用于去重的 `fingerprint`。`findings` 保留规则发现集合，错误状态会把同结构的 typed error 追加到 `issues`；规则违规使用 `kind: violation`，配置、执行、范围、安全、内部和取消错误不会伪装成规则违规。CI 在尚未进入执行计划时发生的配置或范围错误，也会把同一结构写入顶层报告的 `gateResult`，不再只留下一个错误字符串。完整 Schema 可从 `@cxyi7/repo-guard/gate-result.schema.json` 引用。
+内部 `GateResult` JSON 使用 `schemaVersion: 2`。`issues` 是交给 AI 的规范入口：每项都包含稳定的 `id/kind/gateId/ruleId/code/severity`、仓库相对 `location`、明确的中文 `message/evidence/expected`、结构化中文 `remediation`、`decision.aiAction`、是否需要人工批准以及用于去重的 `fingerprint`。`findings` 保留规则发现集合，错误状态会把同结构的 typed error 追加到 `issues`；规则违规使用 `kind: violation`，配置、执行、范围、安全、内部和取消错误不会伪装成规则违规。CI 在尚未进入执行计划时发生的配置或范围错误，也会把同一结构写入顶层报告的 `gateResult`，不再只留下一个错误字符串。机器 ID、命令、路径、包名、协议枚举和第三方规则 ID 保持原值；第三方原始输出只进入明确标记的 diagnostics，不能替代中文问题说明。完整 Schema 可从 `@cxyi7/repo-guard/gate-result.schema.json` 引用。
 
 规则不满足必须返回 finding，不能 `throw`。仓库维护的 `src` 与 `test` 禁止构造裸 `Error`/`AggregateError`，也禁止直接重抛未分类的 `error`；配置、解析、Git、项目工具、外部门禁、通知、Gate 编排、CLI 和 CI 边界必须直接产生或转换为 `RepoGuardError`。只有统一结果模型、Capability 构造器和少数明确列入静态白名单的参数契约可以使用 `TypeError`。递归边界测试排除 `.tmp`、构建缓存和第三方依赖，但不给仓库自有文件增加例外。`createGateResult` 仍会拒绝直接传入原生错误，因此第三方工具异常也不能绕过分类、稳定代码和统一 renderer。消费项目缺少 `package.json`、没有安装所需工具或工具运行入口无法解析时，依赖解析边界会分别保留稳定错误码、结构化证据和修复步骤，不再降级为笼统执行异常。
 
 Git 变更收集同样属于领域边界。`git diff --name-status -z` 返回不完整的普通、重命名或复制记录时，报告会使用稳定的 `git-changes/*` execution error，并明确指出协议记录类型、预期字段和验证方式；不得把无法解析的记录当作空变更继续执行。
 
-`diagnostics` 与可操作问题分离，每条固定包含 `source`、`stream`、`level`、`message`、`redacted` 和 `truncated`。所有项目工具输出在进入 renderer 前都会统一脱敏、将当前仓库根路径替换为 `<repo>` 并限制长度；finding、error、artifact 与 evidence 的位置只保留仓库相对路径或明确的 `<absolute>/<outside>` 占位。console 只根据相同数据生成中文标签块，不拥有独立错误文案。
+`diagnostics` 与可操作问题分离，每条固定包含 `source`、`stream`、`level`、`message`、`redacted` 和 `truncated`。所有项目工具输出在进入 renderer 前都会统一脱敏、将当前仓库根路径替换为 `<repo>` 并限制长度；finding、error、artifact 与 evidence 的位置只保留仓库相对路径或明确的 `<absolute>/<outside>` 占位。console 只根据相同数据生成中文标签块，不拥有独立错误文案。仓库级 `npm run check` 会扫描所有自有用户文案；1.4.98 遗留的英文债务已经全部迁移，精确内容指纹基线保持为 0。任何新功能都不能新增、替换或复制纯英文警告、错误、状态与修复说明，也不能扩大或重新生成迁移基线。
 
 ### 外部门禁脚本
 
@@ -1299,6 +1299,15 @@ repo-guard gate --dry-run
 `doctor` 会检查 Node.js、配置、结构化例外及 AI 例外规范、硬性 Vue 表单 label、图片 alt、`v-html` 与 `target="_blank"` 门禁、依赖治理、Hook 版本、依赖架构和 AI 架构规范、TypeScript 和构建脚本、项目 Vitest 和测试脚本、AI 测试规范、Lighthouse CI、
 Stylelint、ESLint、Prettier、单文件行数、文件归位门禁配置和通知设置。`enable`/`disable` 只修改指定功能的 `enabled` 字段，随后应运行
 `doctor` 验证业务项目依赖和配置是否完整。
+
+## 升级到 1.5.0
+
+```bash
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.5.0
+npx repo-guard doctor
+```
+
+1.5.0 建立简体中文用户文案硬性契约，并将自动检查接入仓库 `npm run check`。所有新功能的 repo-guard 自有状态、警告、错误、证据、预期和完整修复说明都必须使用中文；历史英文债务已全部迁移，零基线禁止再次引入。控制台状态和结构标签已经统一为中文，机器协议字段保持不变；问题指纹不再包含展示文案，因此后续中文措辞调整不会造成问题 ID 漂移。外部门禁提供的非中文摘要和问题不会直接进入主要说明，repo-guard 会生成中文回退文案，并仅在 diagnostics 中保留经过脱敏、截断和明确标记的第三方原文。
 
 ## 升级到 1.4.98
 

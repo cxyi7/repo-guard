@@ -38,7 +38,7 @@ export function defineVuePolicyGate({
     doctorOrder,
     packageScript: `guard:${manualCommand}`,
     rules: [rule],
-    inspectSetup: () => ({ status: 'ready', summary: `${summary} (hard requirement, rule=${rule})` }),
+    inspectSetup: () => ({ status: 'ready', summary: `${summary}（硬性要求，规则=${rule}）` }),
     plan: (context) => ({ files: projectFiles(context) }),
     run({ root, config, plan }) {
       const result = inspect({ root, files: plan.files, exceptions: config.exceptions });
@@ -49,16 +49,16 @@ export function defineVuePolicyGate({
       };
       const approvedDiagnostics = result.approved.map((item) => ({
         level: 'warn',
-        message: `${id} approved exception: ${item.path}:${item.line}:${item.column} (${item.exception.id}, expires=${item.exception.expiresOn})`,
+        message: `${id} 已批准例外：${item.path}:${item.line}:${item.column}（${item.exception.id}，到期日期=${item.exception.expiresOn}）`,
       }));
       if (result.approved.length > 0) approvedDiagnostics.push({
         level: 'info',
-        message: `${summary} passed: ${result.checkedCount} file(s), ${result.approved.length} approved exception(s).`,
+        message: `${summary} 已通过：检查 ${result.checkedCount} 个文件，${result.approved.length} 条已批准例外。`,
       });
       if (result.violations.length === 0) {
-        return passedResult(id, `${summary} passed`, { diagnostics: approvedDiagnostics, metrics });
+        return passedResult(id, `${summary}已通过`, { diagnostics: approvedDiagnostics, metrics });
       }
-      return violationResult(id, `${summary} found ${result.violations.length} violation(s)`, {
+      return violationResult(id, `${summary}发现 ${result.violations.length} 项违规`, {
         findings: result.violations.map((item) => policyFinding(item, rule, remediation)),
         metrics,
         diagnostics: approvedDiagnostics,

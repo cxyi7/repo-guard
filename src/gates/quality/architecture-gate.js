@@ -42,22 +42,22 @@ export function runArchitectureGate({ root, config }) {
       return createGateResult({
         gateId: ARCHITECTURE_GATE_ID,
         status: 'execution-error',
-        summary: `Architecture analysis exceeded ${config.timeoutMs}ms`,
+        summary: `架构分析超过 ${config.timeoutMs}ms`,
         error: executionError(
           'architecture/timeout',
-          `Architecture analysis exceeded ${config.timeoutMs}ms`,
+          `架构分析超过 ${config.timeoutMs}ms`,
           { cause: execution.error },
         ),
       });
     }
     throw executionError(
       'architecture/process-start-failed',
-      `Unable to run dependency-cruiser: ${execution.error.message}`,
+      `无法运行 dependency-cruiser： ${execution.error.message}`,
       { cause: execution.error },
     );
   }
   if (execution.status !== 0) {
-    const message = `dependency-cruiser failed with exit code ${execution.status}`;
+    const message = `dependency-cruiser 执行失败，退出码为 ${execution.status}`;
     return createGateResult({
       gateId: ARCHITECTURE_GATE_ID,
       status: 'execution-error',
@@ -77,11 +77,11 @@ export function runArchitectureGate({ root, config }) {
     return createGateResult({
       gateId: ARCHITECTURE_GATE_ID,
       status: 'violation',
-      summary: `Architecture found ${report.violations.length} violation(s)`,
+      summary: `架构检查发现 ${report.violations.length} 项违规`,
       findings: report.violations.map((violation) => ({
         ruleId: `architecture/${violation.rule?.name || 'dependency'}`,
         severity: violationSeverity(violation) === 'warn' ? 'warning' : 'error',
-        message: violation.rule?.name || 'Architecture dependency violation',
+        message: violation.rule?.name || '架构依赖违规',
         location: violation.from ? { path: violation.from } : null,
         evidence: [
           violation.to ? `${violation.from} -> ${violation.to}` : null,
@@ -95,7 +95,7 @@ export function runArchitectureGate({ root, config }) {
   return createGateResult({
     gateId: ARCHITECTURE_GATE_ID,
     status: 'passed',
-    summary: `Architecture passed across ${report.modulesCruised} module(s)`,
+    summary: `架构检查已通过，共检查 ${report.modulesCruised} 个模块`,
     metrics: { modules: report.modulesCruised, violations: report.violations.length },
   });
 }

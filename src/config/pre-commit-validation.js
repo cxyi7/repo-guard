@@ -11,7 +11,7 @@ import {
 export function validatePreCommitConfiguration(value, configPath) {
   const preCommitValue = value.preCommit ?? {};
   if (!preCommitValue || typeof preCommitValue !== 'object' || Array.isArray(preCommitValue)) {
-    throw configValidationError(`${configPath} preCommit must be an object`);
+    throw configValidationError(`${configPath} preCommit 必须是对象`);
   }
   assertKnownProperties(
     preCommitValue,

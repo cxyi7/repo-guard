@@ -67,7 +67,7 @@ export function resolveProjectPackageMetadata(
           location: { path: 'package.json' },
           evidence: [{
             type: 'dependency-resolution',
-            message: `requested package: ${packageName}; integration: ${displayName}`,
+            message: `请求的包： ${packageName}；集成： ${displayName}`,
             location: { path: 'package.json' },
           }],
         },
@@ -90,7 +90,7 @@ export function resolveProjectPackageMetadata(
             location: { path: 'package.json' },
             evidence: [{
               type: 'dependency-entry-resolution',
-              message: `package manifest resolved but runtime entry did not: ${packageName}`,
+              message: `已解析包清单，但无法解析运行时入口： ${packageName}`,
               location: {
                 path: path.relative(root, dependencyPackagePath).replaceAll('\\', '/'),
               },

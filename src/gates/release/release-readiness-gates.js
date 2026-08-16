@@ -22,7 +22,7 @@ function releaseCacheDirectory(root) {
 
 function projectManifest(root) {
   const manifestPath = path.join(root, 'package.json');
-  if (!existsSync(manifestPath)) throw configurationError('release-readiness/missing-package-manifest', 'package.json is required for release readiness', {
+  if (!existsSync(manifestPath)) throw configurationError('release-readiness/missing-package-manifest', '发布就绪检查要求提供 package.json', {
     details: { location: { path: 'package.json' } },
   });
   return JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -31,30 +31,30 @@ function projectManifest(root) {
 function inspectReleaseScript(root, script) {
   const scripts = projectManifest(root).scripts ?? {};
   if (typeof scripts[script] !== 'string' || scripts[script].trim() === '') {
-    throw configurationError('release-readiness/missing-script', `Release readiness requires package.json script ${script}`, {
+    throw configurationError('release-readiness/missing-script', `发布就绪检查要求 package.json 提供脚本 ${script}`, {
       details: { location: { path: 'package.json' } },
     });
   }
   assertReleaseScriptReadOnly(scripts, script);
-  return { status: 'ready', summary: `Release readiness npm script (${script})` };
+  return { status: 'ready', summary: `发布就绪 npm 脚本（${script}）` };
 }
 
 function scriptResult(gateId, script, execution, durationMs) {
   if (execution.status === 0) {
-    return passedResult(gateId, `npm run ${script} passed`, { durationMs });
+    return passedResult(gateId, `npm run ${script} 已通过`, { durationMs });
   }
   const diagnostics = [execution.stdout, execution.stderr]
     .filter((output) => output.trim())
     .map((message) => ({ level: 'error', message: message.trim() }));
-  return violationResult(gateId, `npm run ${script} failed`, {
+  return violationResult(gateId, `npm run ${script} 失败`, {
     durationMs,
     diagnostics,
     findings: [{
       ruleId: `release/${script}`,
       severity: 'error',
-      message: `npm run ${script} exited with status ${execution.status}`,
+      message: `npm run ${script} 退出状态为 ${execution.status}`,
       location: { path: 'package.json' },
-      remediation: `Fix the ${script} script failure before release.`,
+      remediation: `发布前修复 ${script} 脚本失败问题。`,
     }],
   });
 }
@@ -102,12 +102,12 @@ const packageGate = defineGate({
     if (packScript !== 'npm pack --dry-run --json --ignore-scripts') {
       throw configurationError(
         'release-readiness/unsafe-pack-check-script',
-        'Release readiness requires package.json script pack:check '
-        + 'to equal "npm pack --dry-run --json --ignore-scripts"',
+        '发布就绪检查要求 package.json 的 pack:check 脚本'
+        + '必须等于 "npm pack --dry-run --json --ignore-scripts"',
         { details: { location: { path: 'package.json' } } },
       );
     }
-    return { status: 'ready', summary: 'npm package release metadata' };
+    return { status: 'ready', summary: 'npm 包发布元数据' };
   },
   plan: () => Object.freeze({ dryRun: true, ignoreScripts: true }),
   run: async ({ root, signal }) => {
@@ -122,11 +122,11 @@ const packageGate = defineGate({
       return createGateResult({
         gateId: 'release.package',
         status: 'execution-error',
-        summary: 'npm pack --dry-run failed',
+        summary: 'npm pack --dry-run 失败',
         durationMs,
         error: executionError(
           'release/npm-pack-failed',
-          result.execution.stderr.trim() || 'npm pack --dry-run failed',
+          result.execution.stderr.trim() || 'npm pack --dry-run 失败',
         ),
       });
     }
@@ -138,8 +138,8 @@ const packageGate = defineGate({
       violations: result.findings.length,
     };
     return result.findings.length === 0
-      ? passedResult('release.package', `Package ${result.packageEntry.name}@${result.packageEntry.version} is release-ready`, { metrics, durationMs })
-      : violationResult('release.package', `Package release metadata has ${result.findings.length} violation(s)`, { findings: result.findings, metrics, durationMs });
+      ? passedResult('release.package', `包 ${result.packageEntry.name}@${result.packageEntry.version} 已满足发布条件`, { metrics, durationMs })
+      : violationResult('release.package', `Package release metadata 有 ${result.findings.length} 项违规`, { findings: result.findings, metrics, durationMs });
   },
 });
 

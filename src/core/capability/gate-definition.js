@@ -10,18 +10,18 @@ const MUTATIONS = ['read-only', 'working-tree-fix', 'managed-files', 'external-w
 
 function nonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new TypeError(`${label} must be a non-empty string`);
+    throw new TypeError(`${label} 必须是非空字符串`);
   }
   return value;
 }
 
 function stringArray(value, label, allowed = null) {
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
-    throw new TypeError(`${label} must be an array of strings`);
+    throw new TypeError(`${label} 必须是字符串数组`);
   }
-  if (new Set(value).size !== value.length) throw new TypeError(`${label} must be unique`);
+  if (new Set(value).size !== value.length) throw new TypeError(`${label} 不得包含重复值`);
   if (allowed && value.some((entry) => !allowed.includes(entry))) {
-    throw new TypeError(`${label} contains an unsupported value`);
+    throw new TypeError(`${label} 包含不支持的值`);
   }
   return Object.freeze([...value]);
 }
@@ -57,58 +57,58 @@ export function defineGate({
   plan,
   run,
 }) {
-  nonEmptyString(id, 'Gate id');
-  if (configKey != null) nonEmptyString(configKey, 'Gate configKey');
-  if (featureName != null) nonEmptyString(featureName, 'Gate featureName');
+  nonEmptyString(id, '门禁 id');
+  if (configKey != null) nonEmptyString(configKey, '门禁 configKey');
+  if (featureName != null) nonEmptyString(featureName, '门禁 featureName');
   if (featureName != null && configKey == null) {
-    throw new TypeError('Gate featureName requires configKey');
+    throw new TypeError('门禁设置 featureName 时必须同时设置 configKey');
   }
   if (featureName != null && featureOrder == null) {
-    throw new TypeError('Gate featureName requires featureOrder');
+    throw new TypeError('门禁设置 featureName 时必须同时设置 featureOrder');
   }
   for (const [value, label] of [
-    [featureOrder, 'Gate featureOrder'],
-    [doctorOrder, 'Gate doctorOrder'],
-    [manualOrder, 'Gate manualOrder'],
+    [featureOrder, '门禁 featureOrder'],
+    [doctorOrder, '门禁 doctorOrder'],
+    [manualOrder, '门禁 manualOrder'],
   ]) {
     if (value != null && (!Number.isInteger(value) || value < 0)) {
-      throw new TypeError(`${label} must be a non-negative integer or null`);
+      throw new TypeError(`${label} 必须是非负整数或 null`);
     }
   }
-  if (manualCommand != null) nonEmptyString(manualCommand, 'Gate manualCommand');
+  if (manualCommand != null) nonEmptyString(manualCommand, '门禁 manualCommand');
   if (manualCommand != null && manualOrder == null) {
-    throw new TypeError('Gate manualCommand requires manualOrder');
+    throw new TypeError('门禁设置 manualCommand 时必须同时设置 manualOrder');
   }
   if (packageScript != null && manualCommand == null) {
-    throw new TypeError('Gate packageScript requires manualCommand');
+    throw new TypeError('门禁设置 packageScript 时必须同时设置 manualCommand');
   }
-  if (packageScript != null) nonEmptyString(packageScript, 'Gate packageScript');
+  if (packageScript != null) nonEmptyString(packageScript, '门禁 packageScript');
   if (!Array.isArray(configVersions)
     || configVersions.length === 0
     || configVersions.some((version) => !Number.isInteger(version) || version < 1)) {
-    throw new TypeError('Gate configVersions must contain positive integers');
+    throw new TypeError('门禁 configVersions 必须只包含正整数');
   }
   if (!MUTATIONS.includes(mutation)) {
-    throw new TypeError(`Gate mutation must be one of: ${MUTATIONS.join(', ')}`);
+    throw new TypeError(`门禁 mutation 必须是以下值之一： ${MUTATIONS.join(', ')}`);
   }
   const normalizedAllowedMutations = stringArray(
     allowedMutations,
-    'Gate allowedMutations',
+    '门禁 allowedMutations',
     MUTATIONS,
   );
   if (!normalizedAllowedMutations.includes(mutation)) {
-    throw new TypeError('Gate allowedMutations must include its maximum mutation');
+    throw new TypeError('门禁 allowedMutations 必须包含其最高变更级别');
   }
   if (!Number.isInteger(defaultTimeoutMs) || defaultTimeoutMs < 1) {
-    throw new TypeError('Gate defaultTimeoutMs must be a positive integer');
+    throw new TypeError('门禁 defaultTimeoutMs 必须是正整数');
   }
   if (typeof supportsFix !== 'boolean' || typeof supportsCancellation !== 'boolean') {
-    throw new TypeError('Gate supportsFix and supportsCancellation must be booleans');
+    throw new TypeError('门禁 supportsFix 和 supportsCancellation 必须是布尔值');
   }
   if (typeof inspectSetup !== 'function'
     || typeof plan !== 'function'
     || typeof run !== 'function') {
-    throw new TypeError('Gate inspectSetup, plan, and run must be functions');
+    throw new TypeError('门禁 inspectSetup、plan 和 run 必须是函数');
   }
   return Object.freeze({
     id,
@@ -117,25 +117,25 @@ export function defineGate({
     featureName,
     featureOrder,
     configVersions: Object.freeze([...configVersions]),
-    environments: stringArray(environments, 'Gate environments', ENVIRONMENTS),
+    environments: stringArray(environments, '门禁 environments', ENVIRONMENTS),
     mutation,
     allowedMutations: normalizedAllowedMutations,
     defaultTimeoutMs,
-    requires: stringArray(requires, 'Gate requires'),
-    before: stringArray(before, 'Gate before'),
-    after: stringArray(after, 'Gate after'),
-    conflicts: stringArray(conflicts, 'Gate conflicts'),
+    requires: stringArray(requires, '门禁 requires'),
+    before: stringArray(before, '门禁 before'),
+    after: stringArray(after, '门禁 after'),
+    conflicts: stringArray(conflicts, '门禁 conflicts'),
     manualCommand,
-    manualOptions: stringArray(manualOptions, 'Gate manualOptions'),
+    manualOptions: stringArray(manualOptions, '门禁 manualOptions'),
     manualOrder,
     doctorOrder,
     packageScript,
-    rules: stringArray(rules, 'Gate rules'),
-    requiredTools: stringArray(requiredTools, 'Gate requiredTools'),
-    requiredScripts: stringArray(requiredScripts, 'Gate requiredScripts'),
-    requiredEnvironment: stringArray(requiredEnvironment, 'Gate requiredEnvironment'),
-    requiredSecrets: stringArray(requiredSecrets, 'Gate requiredSecrets'),
-    artifactTypes: stringArray(artifactTypes, 'Gate artifactTypes'),
+    rules: stringArray(rules, '门禁 rules'),
+    requiredTools: stringArray(requiredTools, '门禁 requiredTools'),
+    requiredScripts: stringArray(requiredScripts, '门禁 requiredScripts'),
+    requiredEnvironment: stringArray(requiredEnvironment, '门禁 requiredEnvironment'),
+    requiredSecrets: stringArray(requiredSecrets, '门禁 requiredSecrets'),
+    artifactTypes: stringArray(artifactTypes, '门禁 artifactTypes'),
     supportsFix,
     supportsCancellation,
     inspectSetup,

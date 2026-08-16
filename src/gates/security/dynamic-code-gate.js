@@ -113,7 +113,7 @@ function normalizedFinding(finding) {
   return {
     ruleId: finding.rule,
     severity: 'error',
-    message: `${name} dynamically executes runtime text`,
+    message: `${name} 会动态执行运行时文本`,
     location: {
       path: finding.path,
       line: finding.line,
@@ -126,15 +126,15 @@ function normalizedFinding(finding) {
 
 export function inspectDynamicCodeSetup({ config }) {
   if (!config || !Number.isInteger(config.version)) {
-    return { status: 'invalid', summary: 'configuration is unavailable' };
+    return { status: 'invalid', summary: '配置不可用' };
   }
   if (!dynamicCodeGate.configVersions.includes(config.version)) {
-    return { status: 'unsupported', summary: `configuration version ${config.version} is unsupported` };
+    return { status: 'unsupported', summary: `不支持配置版本 ${config.version}` };
   }
   return {
     status: 'ready',
-    summary: 'Dynamic code staged gate '
-      + `(hard requirement, rules=${dynamicCodeGate.rules.join('+')})`,
+    summary: '动态代码暂存门禁'
+      + `（硬性要求，规则=${dynamicCodeGate.rules.join('+')}）`,
     rules: dynamicCodeGate.rules,
   };
 }
@@ -146,23 +146,23 @@ export function buildDynamicCodeGateResult({ root, files, exceptions }) {
     const findings = inspection.violations.map(normalizedFinding);
     const diagnostics = inspection.approved.map((finding) => ({
       level: 'warn',
-      message: `Dynamic code approved exception: ${finding.path}:${finding.line}:`
+      message: `动态代码已批准例外：${finding.path}:${finding.line}:`
         + `${finding.column} ${finding.rule} (${finding.exception.id}, `
-        + `expires=${finding.exception.expiresOn}).`,
+        + `到期日期=${finding.exception.expiresOn}）。`,
     }));
     if (findings.length === 0) {
       diagnostics.push({
         level: 'log',
-        message: `Dynamic code gate passed: ${inspection.checkedCount} file(s), `
-          + `${inspection.approved.length} approved exception(s).`,
+        message: `动态代码门禁已通过：检查 ${inspection.checkedCount} 个文件，`
+          + `${inspection.approved.length} 条已批准例外。`,
       });
     }
     return createGateResult({
       gateId: DYNAMIC_CODE_GATE_ID,
       status: findings.length > 0 ? 'violation' : 'passed',
       summary: findings.length > 0
-        ? `${findings.length} unapproved dynamic code execution(s)`
-        : `${inspection.checkedCount} file(s) passed dynamic code inspection`,
+        ? `${findings.length} 项未批准的动态代码执行`
+        : `${inspection.checkedCount} 个文件通过动态代码检查`,
       findings,
       metrics: {
         checkedFiles: inspection.checkedCount,
@@ -208,7 +208,7 @@ export const dynamicCodeGate = defineGate({
   inspectSetup: inspectDynamicCodeSetup,
   plan({ root, files }) {
     if (!Array.isArray(files)) {
-      throw new TypeError('Dynamic code gate requires an explicit file scope');
+      throw new TypeError('动态代码门禁要求明确的文件范围');
     }
     return Object.freeze({
       root,
@@ -217,7 +217,7 @@ export const dynamicCodeGate = defineGate({
   },
   run({ root, config, plan }) {
     if (!plan || !Array.isArray(plan.files)) {
-      throw new TypeError('Dynamic code gate requires an execution plan');
+      throw new TypeError('动态代码门禁要求执行计划');
     }
     return buildDynamicCodeGateResult({
       root,

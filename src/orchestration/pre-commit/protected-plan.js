@@ -43,15 +43,15 @@ function sameStep(actual, expected) {
 
 export function validateProtectedPreCommitPlan(plan, registry = gateRegistry) {
   if (plan.id !== 'pre-commit' || plan.environment !== 'pre-commit' || !plan.locked) {
-    throw internalError('pre-commit/invalid-protected-plan', 'Protected pre-commit plan must be locked to the pre-commit lifecycle');
+    throw internalError('pre-commit/invalid-protected-plan', '受保护的 pre-commit 计划必须锁定到 pre-commit 生命周期');
   }
   const forbidden = plan.steps.find(({ gateId }) => FORBIDDEN_PRE_COMMIT_GATE_IDS.includes(gateId));
   if (forbidden) {
-    throw internalError('pre-commit/invalid-protected-plan', `Protected pre-commit plan forbids project-wide, type-check, test, build, and network gate ${forbidden.gateId}`);
+    throw internalError('pre-commit/invalid-protected-plan', `受保护的 pre-commit 计划禁止项目级、类型检查、测试、构建和网络门禁：${forbidden.gateId}`);
   }
   if (plan.steps.length !== PROTECTED_PRE_COMMIT_STEPS.length
     || plan.steps.some((step, index) => !sameStep(step, PROTECTED_PRE_COMMIT_STEPS[index]))) {
-    throw internalError('pre-commit/invalid-protected-plan', 'Protected pre-commit plan order and mutation contract cannot be changed');
+    throw internalError('pre-commit/invalid-protected-plan', '不得更改受保护的 pre-commit 计划顺序和变更契约');
   }
   return validateExecutionPlan(plan, registry);
 }

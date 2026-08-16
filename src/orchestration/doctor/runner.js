@@ -37,7 +37,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   const warnings = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
-  if (fix && ci) throw configurationError('doctor/conflicting-options', 'doctor --fix and --ci cannot be combined');
+  if (fix && ci) throw configurationError('doctor/conflicting-options', 'doctor --fix 与 --ci 不能同时使用');
   const repairResult = fix
     ? repairRepository(root)
     : { repairErrors: [], repairs: [] };
@@ -45,17 +45,17 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   errors.push(...repairResult.repairErrors);
 
   if (nodeVersionIsSupported()) {
-    checks.push(`Node.js ${process.versions.node}`);
+    checks.push(`Node.js 版本：${process.versions.node}`);
   } else {
     errors.push(
-      `Node.js ${process.versions.node} is unsupported; expected ${REQUIRED_NODE_RANGE}`,
+      `Node.js 版本：${process.versions.node} 不受支持；要求 ${REQUIRED_NODE_RANGE}`,
     );
   }
 
   let config;
   try {
     config = loadConfig(root, { allowExpiredExceptions: true });
-    checks.push(`configuration (${config.rules.length} rules, ${config.exclusions.length} exclusions)`);
+    checks.push(`配置（${config.rules.length} 条规则，${config.exclusions.length} 条排除项）`);
   } catch (error) {
     errors.push(error.message);
   }
@@ -66,19 +66,19 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     if (!existsSync(policyPath)
       || !isExceptionPolicyCurrent(readFileSync(policyPath, 'utf8'), config.exceptions)) {
       errors.push(
-        `${EXCEPTION_POLICY_FILE} is missing the repo-guard structured exception policy; `
-        + 'run repo-guard doctor --fix',
+        `${EXCEPTION_POLICY_FILE} 缺少 repo-guard 结构化例外策略；`
+        + '请运行 repo-guard doctor --fix',
       );
     } else {
-      checks.push(`${EXCEPTION_POLICY_FILE} structured exception policy`);
+      checks.push(`${EXCEPTION_POLICY_FILE} 结构化例外策略`);
     }
     if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
       errors.push(renderExceptionRegistrySummary(exceptionResult));
     } else {
       checks.push(
-        `Structured exceptions (${exceptionResult.entries.length} total, `
-        + `${exceptionResult.active.length} active, `
-        + `${exceptionResult.expiring.length} expiring)`,
+        `结构化例外（${exceptionResult.entries.length} 条，共计；`
+        + `${exceptionResult.active.length} 条生效；`
+        + `${exceptionResult.expiring.length} 条即将到期）`,
       );
     }
     if (exceptionResult.expiring.length > 0
@@ -91,27 +91,27 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   if (!ci) {
     const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
     if (hooksPath === '.githooks') {
-      checks.push('core.hooksPath=.githooks');
+      checks.push('Git Hook 路径：core.hooksPath=.githooks');
     } else {
-      errors.push(`core.hooksPath is "${hooksPath || 'not configured'}"`);
+      errors.push(`core.hooksPath 当前为“${hooksPath || '未配置'}”`);
     }
 
     for (const hookName of managedHookNames) {
       const target = path.join(root, '.githooks', hookName);
       if (!existsSync(target)) {
-        errors.push(`missing Git hook: .githooks/${hookName}`);
+        errors.push(`缺少 Git Hook： .githooks/${hookName}`);
         continue;
       }
       if (!isManagedHook(readFileSync(target, 'utf8'))) {
-        errors.push(`Git hook is not managed by repo-guard: .githooks/${hookName}`);
+        errors.push(`Git Hook 未由 repo-guard 托管： .githooks/${hookName}`);
         continue;
       }
       if (!isCurrentManagedHook(readFileSync(target, 'utf8'))) {
-        errors.push(`Git hook is outdated: .githooks/${hookName}; run repo-guard install-hooks`);
+        errors.push(`Git Hook 已过期： .githooks/${hookName}；请运行 repo-guard install-hooks`);
       }
     }
     if (errors.every((message) => !message.includes('Git hook'))) {
-      checks.push(`${managedHookNames.length} managed Git hooks`);
+      checks.push(`${managedHookNames.length} 个托管 Git Hook`);
     }
   }
 
@@ -121,40 +121,40 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
     if (!existsSync(localEnvironmentPath)) {
       if (notificationRequired) {
-        errors.push(`missing local notification template: ${LOCAL_ENV_FILE}; run repo-guard init`);
+        errors.push(`缺少本地通知模板： ${LOCAL_ENV_FILE}；请运行 repo-guard init`);
       } else {
-        checks.push(`${LOCAL_ENV_FILE} is not required by the current notification settings`);
+        checks.push(`${LOCAL_ENV_FILE} 在当前通知设置下不是必需的`);
       }
     } else {
       const { ignored, tracked } = getLocalEnvironmentGitStatus(root);
       if (tracked) {
         errors.push(
-          `${LOCAL_ENV_FILE} is tracked by Git; run "git rm --cached -- ${LOCAL_ENV_FILE}"`,
+          `${LOCAL_ENV_FILE} 已被 Git 跟踪；请运行 "git rm --cached -- ${LOCAL_ENV_FILE}"`,
         );
       } else if (!ignored) {
-        errors.push(`${LOCAL_ENV_FILE} is not ignored by Git; run repo-guard init`);
+        errors.push(`${LOCAL_ENV_FILE} 未被 Git 忽略；请运行 repo-guard init`);
       } else {
-        checks.push(`${LOCAL_ENV_FILE} is local and ignored`);
+        checks.push(`${LOCAL_ENV_FILE} 是本地文件且已被忽略`);
       }
     }
 
     if (config && !config.notification.enabled) {
-      checks.push('WeCom notification is disabled');
+      checks.push('企业微信通知已禁用');
     } else if (notificationRequired) {
       try {
         loadNotificationConfig(resolveNotificationEnvironment(root));
-        checks.push('WeCom notification configuration');
+        checks.push('企业微信通知配置');
       } catch (error) {
         errors.push(error.message);
       }
     } else if (config) {
-      checks.push('WeCom notification is not required because no notify rules are configured');
+      checks.push('未配置 notify 规则，因此不需要企业微信通知');
     }
   } else if (config) {
-    checks.push('CI mode does not require local Git hooks or WeCom credentials');
+    checks.push('CI 模式不需要本地 Git Hook 或企业微信凭据');
     const ciInspection = inspectGitLabCi(root, config);
     if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
-    else checks.push(`GitLab CI integration (${config.ci.profile} profile)`);
+    else checks.push(`GitLab CI 集成（${config.ci.profile} 配置档）`);
   }
 
   if (config) {
@@ -166,14 +166,14 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
         const setup = await gate.inspectSetup({ root, config });
         if (setup == null) continue;
         if (setup.status === 'ready') checks.push(setup.summary);
-        else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
+        else errors.push(`${gate.id} 设置状态为 ${setup.status}: ${setup.summary}`);
       } catch (error) {
         errors.push(error.message);
       }
     }
     for (const externalGate of config.externalGates) {
       if (!externalGate.enabled) {
-        checks.push(`External gate ${externalGate.id} is disabled`);
+        checks.push(`外部门禁 ${externalGate.id} 已禁用`);
         continue;
       }
       try {
@@ -186,25 +186,25 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
           : gate.environments[0];
         const setup = await gate.inspectSetup({ root, config, environment });
         if (setup.status === 'ready') checks.push(setup.summary);
-        else errors.push(`${gate.id} setup is ${setup.status}: ${setup.summary}`);
+        else errors.push(`${gate.id} 设置状态为 ${setup.status}: ${setup.summary}`);
       } catch (error) {
         errors.push(error.message);
       }
     }
   }
 
-  writeConsoleMessage(`repo-guard doctor: ${root}`);
+  writeConsoleMessage(`repo-guard doctor 检查目录：${root}`);
   for (const repair of repairResult.repairs) {
-    writeConsoleMessage(`  FIX   ${repair}`);
+    writeConsoleMessage(`  已修复 ${repair}`);
   }
   for (const check of checks) {
-    writeConsoleMessage(`  OK    ${check}`);
+    writeConsoleMessage(`  正常   ${check}`);
   }
   for (const warning of warnings) {
-    writeConsoleMessage(`  WARN  ${warning}`, 'stderr');
+    writeConsoleMessage(`  警告   ${warning}`, 'stderr');
   }
   for (const error of errors) {
-    writeConsoleMessage(`  ERROR ${error}`, 'stderr');
+    writeConsoleMessage(`  错误 ${error}`, 'stderr');
   }
 
   return errors.length === 0 ? 0 : 1;

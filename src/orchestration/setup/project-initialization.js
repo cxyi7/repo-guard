@@ -68,73 +68,73 @@ export function runInit(cwd = process.cwd()) {
     ? ensureUnitTestPolicy(root, config.unitTest)
     : null;
 
-  writeConsoleMessage(`repo-guard initialized in ${root}`);
-  writeConsoleMessage(`- hooks path: ${result.hooksPath}`);
-  writeConsoleMessage(`- hooks: ${result.hooks.join(', ')}`);
-  writeConsoleMessage(`- .gitattributes: ${result.gitAttributes.changed ? 'updated' : 'preserved'}`);
+  writeConsoleMessage(`repo-guard 已在以下目录完成初始化：${root}`);
+  writeConsoleMessage(`- Git Hook 路径：${result.hooksPath}`);
+  writeConsoleMessage(`- 已安装的 Git Hook：${result.hooks.join(', ')}`);
+  writeConsoleMessage(`- Git 属性文件 .gitattributes：${result.gitAttributes.changed ? '已更新' : '已保留'}`);
   writeConsoleMessage(
-    `- .gitignore: ${result.localEnvironment.gitIgnore.changed ? 'updated' : 'preserved'}`,
+    `- Git 忽略文件 .gitignore：${result.localEnvironment.gitIgnore.changed ? '已更新' : '已保留'}`,
   );
   writeConsoleMessage(
-    `- .env.config: ${result.localEnvironment.envFile.created ? 'created' : 'preserved'}`,
+    `- 环境配置 .env.config：${result.localEnvironment.envFile.created ? '已创建' : '已保留'}`,
   );
-  writeConsoleMessage(`- config: ${CONFIG_FILE}${configCreated ? ' (created)' : ' (preserved)'}`);
+  writeConsoleMessage(`- 配置：${CONFIG_FILE}${configCreated ? '（已创建）' : '（已保留）'}`);
   writeConsoleMessage(
-    `- ${EXCEPTION_POLICY_FILE}: ${exceptionPolicy.changed ? 'updated' : 'preserved'} `
-    + '(structured exception policy)',
+    `- ${EXCEPTION_POLICY_FILE}：${exceptionPolicy.changed ? '已更新' : '已保留'} `
+    + '（结构化例外策略）',
   );
   if (architecturePolicy) {
     writeConsoleMessage(
-      `- ${ARCHITECTURE_POLICY_FILE}: ${architecturePolicy.changed ? 'updated' : 'preserved'}`,
+      `- ${ARCHITECTURE_POLICY_FILE}：${architecturePolicy.changed ? '已更新' : '已保留'}`,
     );
   }
   if (accessibilityTestPolicy) {
     writeConsoleMessage(
-      `- ${ACCESSIBILITY_TEST_POLICY_FILE}: `
-      + `${accessibilityTestPolicy.changed ? 'updated' : 'preserved'} `
-      + '(axe accessibility test policy)',
+      `- ${ACCESSIBILITY_TEST_POLICY_FILE}：`
+      + `${accessibilityTestPolicy.changed ? '已更新' : '已保留'} `
+      + '（axe 无障碍测试策略）',
     );
   }
   if (unitTestPolicy) {
     writeConsoleMessage(
-      `- ${UNIT_TEST_POLICY_FILE}: ${unitTestPolicy.changed ? 'updated' : 'preserved'}`,
+      `- ${UNIT_TEST_POLICY_FILE}：${unitTestPolicy.changed ? '已更新' : '已保留'}`,
     );
   }
   if (configCreated && stylelintSetup.ready) {
     writeConsoleMessage(
-      `- Stylelint ${stylelintSetup.metadata.version}: enabled with ${stylelintSetup.configFile}`,
+      `- Stylelint ${stylelintSetup.metadata.version}：已启用，使用 ${stylelintSetup.configFile}`,
     );
   } else if (configCreated) {
-    writeConsoleMessage('- Stylelint: disabled until the project installs Stylelint and adds a config');
+    writeConsoleMessage('- Stylelint：已禁用；项目安装 Stylelint 并添加配置后可启用');
   }
   if (configCreated) {
     writeConsoleMessage(
       architectureSetup.ready
-        ? `- Architecture: enabled with dependency-cruiser ${architectureSetup.setup.dependencyCruiser.version}`
-        : '- Architecture: disabled until the project installs dependency-cruiser and provides src',
+        ? `- 架构检查：已启用，使用 dependency-cruiser ${architectureSetup.setup.dependencyCruiser.version}`
+        : '- 架构检查：已禁用；项目安装 dependency-cruiser 并提供 src 后可启用',
     );
     writeConsoleMessage(
       buildSetup.ready
-        ? `- Build: enabled with npm script "${DEFAULT_BUILD_CONFIG.script}"`
-        : '- Build: disabled until the project adds a build script',
+        ? `- 构建：已启用，使用 npm 脚本 "${DEFAULT_BUILD_CONFIG.script}"`
+        : '- 构建：已禁用；项目添加构建脚本后可启用',
     );
-    writeConsoleMessage('- Lighthouse: disabled until the Vue project adds @lhci/cli and lighthouserc');
+    writeConsoleMessage('- Lighthouse：已禁用；Vue 项目添加 @lhci/cli 和 lighthouserc 后可启用');
     writeConsoleMessage(
       typeCheckSetup.ready
-        ? `- TypeScript: enabled with npm script "${DEFAULT_TYPE_CHECK_CONFIG.script}"`
-        : '- TypeScript: disabled until the project adds a typecheck script',
+        ? `- TypeScript：已启用，使用 npm 脚本 "${DEFAULT_TYPE_CHECK_CONFIG.script}"`
+        : '- TypeScript：已禁用；项目添加 typecheck 脚本后可启用',
     );
     writeConsoleMessage(
       unitTestSetup.ready
-        ? `- Unit tests: enabled with npm script "${DEFAULT_UNIT_TEST_CONFIG.script}"`
-        : '- Unit tests: disabled until the project installs Vitest and adds test:unit',
+        ? `- 单元测试：已启用，使用 npm 脚本 "${DEFAULT_UNIT_TEST_CONFIG.script}"`
+        : '- 单元测试：已禁用；项目安装 Vitest 并添加 test:unit 后可启用',
     );
     writeConsoleMessage(
       accessibilityTestSetup.ready
-        ? `- Accessibility tests: enabled with npm script "${DEFAULT_ACCESSIBILITY_TEST_CONFIG.script}"`
-        : '- Accessibility tests: disabled until the project adds a complete axe test:a11y setup',
+        ? `- 无障碍测试：已启用，使用 npm 脚本 "${DEFAULT_ACCESSIBILITY_TEST_CONFIG.script}"`
+        : '- 无障碍测试：已禁用；项目添加完整的 axe test:a11y 设置后可启用',
     );
   }
-  writeConsoleMessage('- run "repo-guard doctor" after configuring notification environment variables');
+  writeConsoleMessage('- 配置通知环境变量后运行 "repo-guard doctor"');
   return 0;
 }

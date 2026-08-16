@@ -14,7 +14,7 @@ function assertNoSymlinkPath(root, reportPath) {
   for (const segment of reportPath.split('/')) {
     current = path.join(current, segment);
     if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
-      throw securityError('ci-report/symlink-traversal', `CI report path must not traverse a symbolic link: ${reportPath}`, {
+      throw securityError('ci-report/symlink-traversal', `CI 报告路径不得穿过符号链接： ${reportPath}`, {
         details: { location: { path: reportPath } },
         expected: 'CI 报告路径的每个现有目录都是真实目录而非符号链接。',
       });
@@ -29,7 +29,7 @@ export function writeCiReport(root, reportPath, report) {
     allowFailure: true,
     cwd: root,
   }).status === 0;
-  if (tracked) throw securityError('ci-report/tracked-file-overwrite', `CI report path must not overwrite a tracked file: ${normalized}`, {
+  if (tracked) throw securityError('ci-report/tracked-file-overwrite', `CI 报告路径不得覆盖已跟踪文件： ${normalized}`, {
     details: { location: { path: normalized } },
     expected: 'CI 报告仅写入未跟踪的 reports/ 生成文件。',
   });

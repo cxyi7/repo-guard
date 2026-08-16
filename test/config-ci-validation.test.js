@@ -61,14 +61,14 @@ test('rejects duplicate and conflicting external report paths case-insensitively
         }),
       ],
     }, CONFIG_PATH),
-    /external gate report path is duplicated/,
+    /外部门禁报告路径重复/,
   );
   assert.throws(
     () => validateCiConfiguration({
       ci: { reportPath: 'reports/API-CONTRACT.json' },
       externalGates: [gate],
     }, CONFIG_PATH),
-    /must differ from ci\.reportPath/,
+    /不能与 ci\.reportPath 相同/,
   );
 });
 
@@ -77,12 +77,12 @@ test('preserves strict external gate field and environment validation', () => {
     () => validateCiConfiguration({
       externalGates: [externalGate({ environments: ['manual', 'manual'] })],
     }, CONFIG_PATH),
-    /unique manual, ci-full, or release-ready values/,
+    /不重复的 manual、ci-full 或 release-ready 值/,
   );
   assert.throws(
     () => validateCiConfiguration({
       externalGates: [externalGate({ command: 'npm test' })],
     }, CONFIG_PATH),
-    /unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 });

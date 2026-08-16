@@ -156,7 +156,7 @@ function inspectDeclarations(packageJson, source, config) {
     if (!declarations || typeof declarations !== 'object' || Array.isArray(declarations)) {
       findings.push({
         ...declarationLocation(source, section, section),
-        message: `package.json ${section} must be an object`,
+        message: `package.json ${section} 必须是对象`,
         path: 'package.json',
         rule: 'dependencies/invalid-declarations',
         section,
@@ -174,8 +174,8 @@ function inspectDeclarations(packageJson, source, config) {
           section,
           name,
           rule: 'dependencies/banned-package',
-          message: `${name} is banned: ${ban.reason}`
-            + (ban.replacement ? `; use ${ban.replacement}` : ''),
+          message: `${name} 已被禁用： ${ban.reason}`
+            + (ban.replacement ? `；请改用 ${ban.replacement}` : ''),
           specifier,
         }));
       }
@@ -185,7 +185,7 @@ function inspectDeclarations(packageJson, source, config) {
           section,
           name,
           rule: 'dependencies/invalid-specifier',
-          message: `${name} must use a non-empty string dependency specifier`,
+          message: `${name} 必须使用非空字符串依赖说明符`,
           specifier,
         }));
         continue;
@@ -197,7 +197,7 @@ function inspectDeclarations(packageJson, source, config) {
           section,
           name,
           rule: 'dependencies/disallowed-source',
-          message: `${name} uses disallowed ${sourceKind}: source`,
+          message: `${name} 使用了不允许的 ${sourceKind}：来源`,
           specifier,
         }));
       } else if (
@@ -210,7 +210,7 @@ function inspectDeclarations(packageJson, source, config) {
           section,
           name,
           rule: 'dependencies/non-exact-version',
-          message: `${name} must use an exact version; found ${specifier}`,
+          message: `${name} 必须使用精确版本；当前为 ${specifier}`,
           specifier,
         }));
       }
@@ -225,7 +225,7 @@ function inspectDeclarations(packageJson, source, config) {
       section: nonPeerSections[0],
       name,
       rule: 'dependencies/duplicate-declaration',
-      message: `${name} is declared in multiple dependency sections: ${nonPeerSections.join(', ')}`,
+      message: `${name} 在多个依赖区段中重复声明： ${nonPeerSections.join(', ')}`,
     }));
   }
   return findings;
@@ -236,7 +236,7 @@ function compareLockfile(packageJson, lockfile, lockSource) {
   if (!root || !Number.isInteger(lockfile.lockfileVersion) || lockfile.lockfileVersion < 2) {
     return [{
       ...location(lockSource, 0),
-      message: 'package-lock.json must use lockfileVersion 2 or newer with a root package entry',
+      message: 'package-lock.json 必须使用 lockfileVersion 2 或更高版本，并包含根包条目',
       path: 'package-lock.json',
       rule: 'dependencies/invalid-lockfile',
     }];
@@ -251,8 +251,8 @@ function compareLockfile(packageJson, lockfile, lockSource) {
       findings.push({
         ...declarationLocation(lockSource, section, name),
         dependency: name,
-        message: `package-lock root ${section}.${name} does not match package.json `
-          + `(expected=${expected[name] ?? '<absent>'}, actual=${actual[name] ?? '<absent>'})`,
+        message: `package-lock root ${section}.${name} 与 package.json 不匹配 `
+          + `（预期=${expected[name] ?? '<absent>'}，实际=${actual[name] ?? '<absent>'})`,
         path: 'package-lock.json',
         rule: 'dependencies/lockfile-mismatch',
         section,
@@ -269,7 +269,7 @@ function inspectPackageMetadata({ packageFile, lockFile, config, exceptions }) {
       findings.push({
         line: 1,
         column: 1,
-        message: 'package-lock.json is required for reproducible npm installs',
+        message: '为保证 npm 安装可复现，必须提供 package-lock.json',
         path: 'package.json',
         rule: 'dependencies/missing-lockfile',
       });
@@ -308,7 +308,7 @@ export function inspectStagedDependencyPolicy({ root, config, exceptions }) {
     return { approved: [], violations: [{
       line: 1,
       column: 1,
-      message: 'The root package.json cannot be deleted or omitted',
+      message: '不得删除或遗漏根 package.json',
       path: 'package.json',
       rule: 'dependencies/missing-manifest',
     }] };

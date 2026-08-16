@@ -113,7 +113,7 @@ test('resolves explicit and GitLab CI change ranges without requiring a clean ch
     () => resolveCiRange(fixture.root, {
       env: { GITLAB_CI: 'true', CI_COMMIT_SHA: fixture.head },
     }),
-    /CI base revision is unavailable/,
+    /CI 基准版本不可用/,
   );
 });
 
@@ -243,7 +243,7 @@ test('keeps dynamic-code execution errors distinct from policy violations', asyn
   assert.equal(step.status, 'error');
   assert.equal(step.exitCode, 1);
   assert.equal(step.gateResult.status, 'execution-error');
-  assert.match(step.gateResult.error.message, /Dynamic code gate could not parse/);
+  assert.match(step.gateResult.error.message, /动态代码门禁无法解析/);
 });
 
 test('installs a managed GitLab include and preserves existing pipeline jobs', async (context) => {
@@ -322,7 +322,7 @@ test('generates the GitLab template but does not rewrite complex existing includ
 
   const result = installGitLabCi(fixture.root, { profile: 'full' });
   assert.equal(result.integrated, false);
-  assert.match(result.conflict, /already defines include/);
+  assert.match(result.conflict, /已定义 include/);
   assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
   assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), true);
 });
@@ -383,8 +383,8 @@ test('doctor detects attempts to weaken the managed GitLab job', (context) => {
     'utf8',
   )));
   const { problems } = inspectGitLabCi(fixture.root, installedConfig);
-  assert.ok(problems.includes('repo_guard must not use allow_failure: true'));
-  assert.ok(problems.includes('repo_guard must not override or suppress the managed CI script'));
+  assert.ok(problems.includes('repo_guard 不得使用 allow_failure: true'));
+  assert.ok(problems.includes('repo_guard 不得覆盖或屏蔽托管 CI 脚本'));
 });
 
 test('rejects report paths that could modify project files', async (context) => {
@@ -427,7 +427,7 @@ test('rejects report paths that could modify project files', async (context) => 
       reportPath: 'reports/tracked.json',
       env: {},
     }),
-    /must not overwrite a tracked file/,
+    /不得覆盖已跟踪文件/,
   );
   assert.equal(readFileSync(path.join(fixture.root, 'reports', 'tracked.json'), 'utf8'), '{}\n');
 
@@ -495,12 +495,12 @@ test('supports simple inline stages and defers ambiguous YAML to manual integrat
   writeFileSync(path.join(ambiguous.root, '.gitlab-ci.yml'), original);
   const deferred = installGitLabCi(ambiguous.root);
   assert.equal(deferred.integrated, false);
-  assert.match(deferred.conflict, /unsupported YAML syntax/);
+  assert.match(deferred.conflict, /不支持的 YAML 语法/);
   assert.equal(readFileSync(path.join(ambiguous.root, '.gitlab-ci.yml'), 'utf8'), original);
   assert.match(deferred.manualSnippet, /stage: <existing-stage>/);
   assert.throws(
     () => installGitLabCi(inline.root, { stage: 'release' }),
-    /stage is not declared/,
+    /stage 未声明/,
   );
 });
 
@@ -525,7 +525,7 @@ test('requires the managed marker at the start and detects any template modifica
     path.join(foreign.root, GITLAB_TEMPLATE_FILE),
     'custom: true\n# repo-guard-gitlab-template:v1\n',
   );
-  assert.throws(() => installGitLabCi(foreign.root), /Refusing to overwrite non-managed/);
+  assert.throws(() => installGitLabCi(foreign.root), /拒绝覆盖非托管/);
 
   installGitLabCi(modified.root);
   const templatePath = path.join(modified.root, GITLAB_TEMPLATE_FILE);
@@ -538,6 +538,6 @@ test('requires the managed marker at the start and detects any template modifica
     'utf8',
   )));
   assert.ok(inspectGitLabCi(modified.root, installedConfig).problems.some(
-    (problem) => problem.includes('was modified or is outdated'),
+    (problem) => problem.includes('已被修改或过期'),
   ));
 });

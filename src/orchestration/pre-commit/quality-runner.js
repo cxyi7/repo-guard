@@ -67,7 +67,7 @@ function executionConfig(config, {
 }
 
 export async function runQualityExecution({ root, files, config }) {
-  const normalizedFiles = normalizeStagedFiles(root, files, 'Quality gate');
+  const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
   const eslintConfig = config.preCommit.eslint;
   const prettierConfig = config.preCommit.prettier;
   const stylelintConfig = config.preCommit.stylelint;
@@ -188,9 +188,9 @@ export async function runQualityExecution({ root, files, config }) {
             return await gate.run({ ...stepContext, plan: gatePlan });
           }
         default:
-          throw internalError('pre-commit/unsupported-quality-step', `Unsupported protected pre-commit quality step: ${step.id}`);
+          throw internalError('pre-commit/unsupported-quality-step', `不支持的受保护 pre-commit 质量步骤： ${step.id}`);
       }
-        return skipped(step, `${step.id} has no matching staged files or is disabled`);
+        return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
       },
       onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
     });

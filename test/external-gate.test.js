@@ -139,14 +139,14 @@ test('exposes only the explicit external CLI entry for project gate ids', (conte
     encoding: 'utf8',
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /PASS {2}project\.api-contract/);
+  assert.match(result.stdout, /通过 {2}project\.api-contract/);
 
   const rejected = spawnSync(process.execPath, [CLI_PATH, 'external', 'quality.build'], {
     cwd: root,
     encoding: 'utf8',
   });
   assert.equal(rejected.status, 1);
-  assert.match(rejected.stderr, /not an external project gate/);
+  assert.match(rejected.stderr, /不是外部项目门禁/);
 });
 
 test('runs enabled external gates at the end of CI full and records native JSON', async (context) => {
@@ -207,19 +207,22 @@ test('requires violation reports to use exit code 2 and include an error finding
   const result = await runExternalManualGate('project.api-contract', root);
   assert.equal(result.status, 'violation');
   assert.equal(result.findings[0].ruleId, 'api/contract-drift');
+  assert.equal(result.summary, '外部门禁 project.api-contract 发现违规');
+  assert.equal(result.findings[0].message, '外部门禁规则 api/contract-drift 报告了问题');
+  assert.ok(result.diagnostics.some(({ message }) => message.includes('Response changed')));
 });
 
 test('rejects contradictory, unknown, sensitive, and stale report behavior', async (context) => {
   const fixtures = [
-    { report: passedReport(), exitCode: 2, pattern: /requires script exit code 0/ },
-    { report: passedReport({ unexpected: true }), exitCode: 0, pattern: /unknown field/ },
-    { report: passedReport({ summary: 'token=super-secret' }), exitCode: 0, pattern: /contains sensitive data/ },
+    { report: passedReport(), exitCode: 2, pattern: /脚本退出码必须为 0/ },
+    { report: passedReport({ unexpected: true }), exitCode: 0, pattern: /包含未知字段/ },
+    { report: passedReport({ summary: 'token=super-secret' }), exitCode: 0, pattern: /包含敏感数据/ },
     {
       report: passedReport({
         artifacts: [{ path: 'reports\\nested\\result.txt', type: 'text' }],
       }),
       exitCode: 0,
-      pattern: /normalized path/,
+      pattern: /规范化路径/,
     },
     {
       report: passedReport({
@@ -231,17 +234,17 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
         }],
       }),
       exitCode: 0,
-      pattern: /normalized repository-relative path/,
+      pattern: /规范化的仓库相对路径/,
     },
     {
       report: passedReport({ artifacts: [{ path: 'reports/result.txt:secret', type: 'text' }] }),
       exitCode: 0,
-      pattern: /normalized path/,
+      pattern: /规范化路径/,
     },
     {
       report: passedReport({ artifacts: [{ path: 'reports/result.', type: 'text' }] }),
       exitCode: 0,
-      pattern: /normalized path/,
+      pattern: /规范化路径/,
     },
   ];
   for (const fixture of fixtures) {
@@ -259,7 +262,7 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
   writeFileSync(path.join(missingRoot, 'reports', 'external.json'), `${JSON.stringify(passedReport())}\n`);
   const missing = await runExternalManualGate('project.api-contract', missingRoot);
   assert.equal(missing.status, 'execution-error');
-  assert.match(missing.summary, /did not generate/);
+  assert.match(missing.summary, /未生成/);
   assert.equal(readFileSync(path.join(missingRoot, 'scripts', 'external.mjs'), 'utf8'), 'process.exitCode = 0;\n');
 
   const trackedRoot = createFixture({ report: passedReport(), trackReport: true });
@@ -268,7 +271,7 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
   assert.equal(tracked.status, 'execution-error');
   assert.equal(tracked.error.kind, 'security');
   assert.equal(tracked.error.code, 'external-gate/tracked-file-overwrite');
-  assert.match(tracked.summary, /must not overwrite a tracked file/);
+  assert.match(tracked.summary, /不得覆盖已跟踪文件/);
 });
 
 test('terminates the complete npm process tree when an external gate times out', async (context) => {
@@ -289,7 +292,7 @@ test('terminates the complete npm process tree when an external gate times out',
   );
   const result = await runExternalManualGate('project.api-contract', root);
   assert.equal(result.status, 'execution-error');
-  assert.match(result.summary, /exceeded its 1000ms timeout/);
+  assert.match(result.summary, /超过 1000ms 超时时间/);
   await new Promise((resolve) => setTimeout(resolve, 2000));
   assert.equal(existsSync(path.join(root, 'reports', 'orphan.txt')), false);
 });

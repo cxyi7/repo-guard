@@ -42,12 +42,12 @@ test('delegates staged quality settings to their domain validators', () => {
 test('requires a pre-commit object with only staged quality properties', () => {
   assert.throws(
     () => validatePreCommitConfiguration({ preCommit: [] }, CONFIG_PATH),
-    /preCommit must be an object/,
+    /preCommit 必须是对象/,
   );
   assert.throws(
     () => validatePreCommitConfiguration({
       preCommit: { unitTest: { enabled: true } },
     }, CONFIG_PATH),
-    /preCommit has unsupported properties: unitTest/,
+    /preCommit 包含不支持的属性： unitTest/,
   );
 });

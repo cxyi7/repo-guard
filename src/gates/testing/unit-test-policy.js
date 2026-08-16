@@ -45,7 +45,7 @@ export function expectedUnitTestPaths(
   if (!mapping) {
     throw configurationError(
       'unit-test/missing-source-mapping',
-      `Unit test source mapping was not found for: ${normalizedSource}.`,
+      `未找到对应的单元测试源码映射： ${normalizedSource}.`,
       {
         details: { location: { path: normalizedSource } },
         expected: '每个受单元测试策略约束的源文件都匹配一条 unitTest.mappings 规则。',
@@ -158,7 +158,7 @@ function inspectComponentInteractions({ root, changes, config }) {
 }
 
 export function inspectUnitTestPolicy({ root, changes, config }) {
-  changes = changeSetEntries(changes, 'Unit test policy changes');
+  changes = changeSetEntries(changes, '单元测试策略变更集');
   const missingTests = [];
   const bypasses = [];
 
@@ -241,33 +241,33 @@ export function unitTestPolicyFindings({
       ruleId: missing.reason === 'empty' ? 'unit-test/non-empty-test' : 'unit-test/required-test',
       severity: 'error',
       message: missing.sourcePath
-        ? `${missing.sourcePath} requires an effective unit test`
-        : `${missing.expectedTestPath} does not contain an effective unit test`,
+        ? `${missing.sourcePath} 需要有效的单元测试`
+        : `${missing.expectedTestPath} 不包含有效的单元测试`,
       location: { path: missing.sourcePath ?? missing.expectedTestPath },
       evidence: missing.expectedTestPaths?.length
-        ? `Accepted test paths: ${missing.expectedTestPaths.join(', ')}`
+        ? `已接受的测试路径：${missing.expectedTestPaths.join(', ')}`
         : null,
-      remediation: `Add an executable test at ${missing.expectedTestPath} with meaningful assertions.`,
+      remediation: `在以下位置添加包含有效断言的可执行测试：${missing.expectedTestPath}。`,
     })),
     ...bypasses.map((bypass) => ({
       ruleId: 'unit-test/no-bypass',
       severity: 'error',
-      message: `Unit test bypass detected: ${bypass.expression}`,
+      message: `检测到单元测试绕过： ${bypass.expression}`,
       location: {
         path: bypass.filePath,
         ...(bypass.line ? { line: bypass.line } : {}),
       },
-      remediation: 'Remove the skip, todo, or only bypass and make the test pass normally.',
+      remediation: '移除 skip、todo 或 only 绕过，并让测试正常通过。',
     })),
     ...componentInteractions.map((issue) => ({
       ruleId: 'unit-test/vue-component-interaction',
       severity: 'error',
-      message: `${issue.sourcePath} lacks a complete component interaction test`,
+      message: `${issue.sourcePath} 缺少完整的组件交互测试`,
       location: { path: issue.sourcePath },
       evidence: issue.testPaths.length > 0
-        ? `Inspected tests: ${issue.testPaths.join(', ')}`
+        ? `已检查的测试：${issue.testPaths.join(', ')}`
         : null,
-      remediation: 'Import and mount the component, perform a real user interaction, then assert its observable result in the same test.',
+      remediation: '导入并挂载组件，执行真实用户交互，然后在同一测试中断言可观察结果。',
     })),
   ];
 }

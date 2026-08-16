@@ -31,33 +31,33 @@ test('normalizes Prettier staged formatting settings', () => {
 test('requires a Prettier object with supported properties', () => {
   assert.throws(
     () => validatePrettierConfiguration({ prettier: [] }, CONFIG_PATH),
-    /preCommit\.prettier must be an object/,
+    /preCommit\.prettier 必须是对象/,
   );
   assert.throws(
     () => validatePrettierConfiguration({
       prettier: { command: 'prettier --write' },
     }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
 });
 
 test('requires valid Prettier staged formatting settings', () => {
   assert.throws(
     () => validatePrettierConfiguration({ prettier: { enabled: 'yes' } }, CONFIG_PATH),
-    /prettier\.enabled must be a boolean/,
+    /prettier\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validatePrettierConfiguration({ prettier: { pattern: '  ' } }, CONFIG_PATH),
-    /prettier\.pattern must be a non-empty string/,
+    /prettier\.pattern 必须是非空字符串/,
   );
   assert.throws(
     () => validatePrettierConfiguration({ prettier: { fix: 'yes' } }, CONFIG_PATH),
-    /prettier\.fix must be a boolean/,
+    /prettier\.fix 必须是布尔值/,
   );
   assert.throws(
     () => validatePrettierConfiguration({
       prettier: { requireConfig: 'yes' },
     }, CONFIG_PATH),
-    /prettier\.requireConfig must be a boolean/,
+    /prettier\.requireConfig 必须是布尔值/,
   );
 });

@@ -128,7 +128,7 @@ test('detects dependency-cruiser and generates a repo-owned configuration', (con
       root,
       architectureConfig({ sourcePaths: ['--output-type'] }),
     ),
-    /cannot start with/,
+    /不能以.*开头/,
   );
   assert.deepEqual(createDependencyCruiserConfig(architectureConfig(), setup), {
     forbidden: architectureConfig().rules,
@@ -231,7 +231,7 @@ test('exposes architecture through CLI and pre-push', async (context) => {
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /PASS {2}architecture/);
+  assert.match(cliResult.stdout, /通过 {2}architecture/);
   assert.equal(spawnSync('git', ['config', 'user.name', 'repo-guard test'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'repo-guard@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);

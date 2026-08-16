@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.4.98",
+  "version": "1.5.0",
   "description": "Structured Git and GitLab CI policy gates for Vue security, accessibility, code quality, dependencies, architecture, builds, coverage, and tests",
   "keywords": [
     "git-hooks",
@@ -42,7 +42,7 @@
   },
   "files": [
     "bin",
-    "scripts",
+    "scripts/check-syntax.js",
     "src",
     "config.schema.json",
     "external-report.schema.json",
@@ -55,7 +55,8 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
     "architecture:check": "depcruise --config .dependency-cruiser.cjs --output-type err-long src",
-    "check": "npm run lint && npm run architecture:check && node scripts/check-syntax.js",
+    "check": "npm run lint && npm run architecture:check && node scripts/check-syntax.js && node scripts/check-user-facing-language.js",
+    "language:prune-baseline": "node scripts/prune-user-facing-language-baseline.js",
     "pack:check": "npm pack --dry-run --json --ignore-scripts",
     "prepublishOnly": "npm run check && npm test"
   },

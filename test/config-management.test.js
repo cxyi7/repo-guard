@@ -186,7 +186,7 @@ test('rejects legacy boolean coverage during migration', (context) => {
   }));
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.throws(() => migrateProjectConfig(root), /unitTest\.coverage must be an object/);
+  assert.throws(() => migrateProjectConfig(root), /unitTest\.coverage 必须是对象/);
 });
 
 test('enables selected quality gates and preserves explicit settings', (context) => {
@@ -215,7 +215,7 @@ test('rejects unsupported gates without rewriting configuration', (context) => {
 
   assert.throws(
     () => enableQualityGates(root, ['biome']),
-    /Unsupported quality gate/,
+    /不支持的质量门禁/,
   );
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });
@@ -386,7 +386,7 @@ test('rejects invalid values before migration can rewrite the file', (context) =
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
-  assert.throws(() => migrateProjectConfig(root), /non-negative integer/);
+  assert.throws(() => migrateProjectConfig(root), /非负整数/);
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });
 
@@ -415,11 +415,11 @@ test('migration and feature toggles cannot proceed while a structured exception 
 
   assert.throws(
     () => migrateProjectConfig(root),
-    /Expired exceptions/,
+    /已过期的例外/,
   );
   assert.throws(
     () => setFeaturesEnabled(root, ['notification'], false),
-    /Expired exceptions/,
+    /已过期的例外/,
   );
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });

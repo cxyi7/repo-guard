@@ -8,7 +8,7 @@ export function runInstallHooks(cwd = process.cwd()) {
     allowMissingGit: true,
   });
   if (!result.skipped) {
-    writeConsoleMessage(`repo-guard hooks installed in ${result.root}`);
+    writeConsoleMessage(`repo-guard Hook 已安装到 ${result.root}`);
   }
   return 0;
 }

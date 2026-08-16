@@ -10,7 +10,7 @@ export function inspectCoverageGate({ root, config, changes }) {
   const report = inspectCoverageReports({
     root,
     config,
-    changes: changeSetEntries(changes, 'Coverage changes'),
+    changes: changeSetEntries(changes, '覆盖率变更集'),
   });
   if (!report) return null;
 
@@ -41,11 +41,11 @@ function coverageFinding(ruleId, label, metric, evidence = null) {
   return {
     ruleId,
     severity: 'error',
-    message: `${label} coverage is ${metric.percentage.toFixed(2)}%; required ${metric.threshold}%`,
-    evidence: evidence ?? `${metric.covered}/${metric.total} items are covered.`,
+    message: `${label} 覆盖率为 ${metric.percentage.toFixed(2)}%；要求至少 ${metric.threshold}%`,
+    evidence: evidence ?? `已覆盖 ${metric.covered}/${metric.total} 个项目。`,
     remediation: (
-      'Add effective tests for the uncovered behavior without excluding production code, '
-      + 'reusing stale reports, or reducing the configured threshold.'
+      '为未覆盖的行为添加有效测试，且不得排除生产代码、'
+      + '复用过期报告或降低已配置阈值。'
     ),
   };
 }
@@ -58,7 +58,7 @@ export function coverageFindings(result, root) {
   if (!result.changed.passed) {
     const details = [
       result.changed.missingFiles.length > 0
-        ? `Missing LCOV files: ${result.changed.missingFiles.join(', ')}`
+        ? `缺少 LCOV 文件：${result.changed.missingFiles.join(', ')}`
         : null,
       result.changed.uncovered.length > 0
         ? `Uncovered changed lines: ${result.changed.uncovered.slice(0, 30).join(', ')}`

@@ -69,44 +69,44 @@ test('normalizes unit test execution, coverage, interaction, and mapping setting
 test('requires a unit test object with valid execution settings', () => {
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: [] }, CONFIG_PATH),
-    /unitTest must be an object/,
+    /unitTest 必须是对象/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: { command: 'test:unit' } }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: { enabled: 'yes' } }, CONFIG_PATH),
-    /unitTest\.enabled must be a boolean/,
+    /unitTest\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
       unitTest: { script: 'npm run test:unit' },
     }, CONFIG_PATH),
-    /unitTest\.script must be an npm script name/,
+    /unitTest\.script 必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: { timeoutMs: 0 } }, CONFIG_PATH),
-    /unitTest\.timeoutMs must be a positive integer/,
+    /unitTest\.timeoutMs 必须是正整数/,
   );
 });
 
 test('validates coverage directories and thresholds', () => {
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: { coverage: [] } }, CONFIG_PATH),
-    /unitTest\.coverage must be an object/,
+    /unitTest\.coverage 必须是对象/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
       unitTest: { coverage: { reportsDirectory: 'src' } },
     }, CONFIG_PATH),
-    /must be a dedicated coverage directory/,
+    /必须是专用的覆盖率目录/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
       unitTest: { coverage: { thresholds: { changedLines: 101 } } },
     }, CONFIG_PATH),
-    /changedLines must be between 0 and 100/,
+    /changedLines 必须介于 0 到 100 之间/,
   );
 });
 
@@ -115,26 +115,26 @@ test('validates component interaction and test selection settings', () => {
     () => validateUnitTestConfiguration({
       unitTest: { componentInteraction: { enabled: true } },
     }, CONFIG_PATH),
-    /componentInteraction\.enabled requires unitTest\.enabled/,
+    /componentInteraction\.enabled 要求启用 unitTest\.enabled/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
       unitTest: { requireTests: 'all' },
     }, CONFIG_PATH),
-    /requireTests must be newFiles or changedFiles/,
+    /requireTests 必须为 newFiles 或 changedFiles/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
       unitTest: { sourcePatterns: [] },
     }, CONFIG_PATH),
-    /sourcePatterns must be a non-empty array/,
+    /sourcePatterns 必须是非空数组/,
   );
 });
 
 test('validates unit test mapping templates', () => {
   assert.throws(
     () => validateUnitTestConfiguration({ unitTest: { mappings: [] } }, CONFIG_PATH),
-    /unitTest\.mappings must be a non-empty array/,
+    /unitTest\.mappings 必须是非空数组/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
@@ -145,7 +145,7 @@ test('validates unit test mapping templates', () => {
         }],
       },
     }, CONFIG_PATH),
-    /unsupported placeholder/,
+    /不支持的占位符/,
   );
   assert.throws(
     () => validateUnitTestConfiguration({
@@ -156,6 +156,6 @@ test('validates unit test mapping templates', () => {
         }],
       },
     }, CONFIG_PATH),
-    /must contain \{path\} or \{name\}/,
+    /必须包含 \{path\} 或 \{name\}/,
   );
 });

@@ -129,7 +129,7 @@ test('exposes a full-project unsafe-html CLI with unified failure reporting', (c
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /\[vue\/no-v-html\] src\/Panel\.vue:1:16/);
-  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /修复目标:/);
 
   const [finding] = findVueVHtml(source, 'src/Panel.vue');
   writeFileSync(
@@ -145,6 +145,6 @@ test('exposes a full-project unsafe-html CLI with unified failure reporting', (c
     encoding: 'utf8',
   });
   assert.equal(approved.status, 0, approved.stderr);
-  assert.match(approved.stderr, /approved exception.*reviewed-rich-text/);
-  assert.match(approved.stdout, /1 approved exception/);
+  assert.match(approved.stderr, /已批准例外.*reviewed-rich-text/);
+  assert.match(approved.stdout, /1 条已批准例外/);
 });

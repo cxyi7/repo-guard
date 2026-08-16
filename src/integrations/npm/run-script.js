@@ -8,7 +8,7 @@ function npmInvocation(script, extraArguments) {
     process.env.npm_execpath,
     path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
   ].find((candidate) => candidate && existsSync(candidate));
-  if (!npmCli) throw executionError('npm/cli-not-found', 'Unable to locate npm CLI');
+  if (!npmCli) throw executionError('npm/cli-not-found', '找不到 npm CLI');
   return {
     command: process.execPath,
     argumentsList: [npmCli, 'run', script, ...(extraArguments.length ? ['--', ...extraArguments] : [])],

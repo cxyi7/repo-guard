@@ -37,12 +37,12 @@ function resultFromOutcome(outcome) {
 
 function validateResult(gate, result) {
   if (!result || typeof result !== 'object') {
-    throw internalError('orchestration/invalid-gate-result', `Gate ${gate.id} must return a GateResult`);
+    throw internalError('orchestration/invalid-gate-result', `门禁 ${gate.id} 必须返回 GateResult`);
   }
   if (result.gateId !== gate.id) {
     throw internalError(
       'orchestration/mismatched-gate-result',
-      `Gate ${gate.id} returned a result for ${String(result.gateId)}`,
+      `门禁 ${gate.id} 返回了属于 ${String(result.gateId)} 的结果`,
     );
   }
   return createGateResult(result);
@@ -80,19 +80,19 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
   const controller = new AbortController();
   const upstream = context.signal;
   const onUpstreamAbort = () => controller.abort(
-    abortError(upstream.reason, `Execution plan was cancelled before ${step.id} completed`),
+    abortError(upstream.reason, `执行计划在 ${step.id} 完成前被取消`),
   );
   if (upstream?.aborted) onUpstreamAbort();
   else upstream?.addEventListener('abort', onUpstreamAbort, { once: true });
 
   if (controller.signal.aborted) {
     upstream?.removeEventListener('abort', onUpstreamAbort);
-    throw abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`);
+    throw abortError(controller.signal.reason, `门禁 ${gate.id} 已取消`);
   }
 
   const timeoutError = executionError(
     'orchestration/gate-timeout',
-    `Gate ${gate.id} exceeded its ${gate.defaultTimeoutMs}ms timeout`,
+    `门禁 ${gate.id} 超过 ${gate.defaultTimeoutMs}ms 超时时间`,
     {
       details: { timeoutMs: gate.defaultTimeoutMs },
       remediation: {
@@ -111,13 +111,13 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
       'abort',
       () => {
         if (!gate.supportsCancellation) {
-          reject(abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`));
+          reject(abortError(controller.signal.reason, `门禁 ${gate.id} 已取消`));
           return;
         }
         cancellationCleanupTimeout = setTimeout(
           () => reject(executionError(
             'orchestration/cancellation-timeout',
-            `Gate ${gate.id} did not stop within 5000ms after cancellation`,
+            `门禁 ${gate.id} 取消后未在 5000ms 内停止`,
           )),
           5000,
         );
@@ -139,7 +139,7 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
             gate.id,
             configurationError(
               `gate/${gate.id}/setup-${setup.status}`,
-              `${gate.id} setup is ${setup.status}: ${setup.summary}`,
+              `${gate.id} 设置状态为 ${setup.status}: ${setup.summary}`,
             ),
           );
         }
@@ -149,7 +149,7 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
           step,
         });
         if (controller.signal.aborted) {
-          throw abortError(controller.signal.reason, `Gate ${gate.id} was cancelled`);
+          throw abortError(controller.signal.reason, `门禁 ${gate.id} 已取消`);
         }
         return outcome;
       }),

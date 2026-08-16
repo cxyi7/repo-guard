@@ -41,25 +41,25 @@ test('normalizes file placement modes, rules, patterns, and directories', () => 
 test('requires a file placement object with valid switches and modes', () => {
   assert.throws(
     () => validateFilePlacementConfiguration({ filePlacement: [] }, CONFIG_PATH),
-    /preCommit\.filePlacement must be an object/,
+    /preCommit\.filePlacement 必须是对象/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
       filePlacement: { command: 'check' },
     }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
       filePlacement: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /filePlacement\.enabled must be a boolean/,
+    /filePlacement\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
       filePlacement: { mode: 'strict' },
     }, CONFIG_PATH),
-    /mode must be newFiles or changedFiles/,
+    /mode 必须为 newFiles 或 changedFiles/,
   );
 });
 
@@ -68,13 +68,13 @@ test('requires structured file placement rules', () => {
     () => validateFilePlacementConfiguration({
       filePlacement: { rules: [] },
     }, CONFIG_PATH),
-    /rules must be a non-empty array/,
+    /rules 必须是非空数组/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
       filePlacement: { rules: ['invalid'] },
     }, CONFIG_PATH),
-    /rule 1 must be an object/,
+    /规则 1 必须是对象/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
@@ -87,7 +87,7 @@ test('requires structured file placement rules', () => {
         }],
       },
     }, CONFIG_PATH),
-    /rule 1\.name must be a non-empty string/,
+    /规则 1\.name 必须是非空字符串/,
   );
 });
 
@@ -103,7 +103,7 @@ test('rejects unsafe file placement patterns and suggested directories', () => {
         }],
       },
     }, CONFIG_PATH),
-    /must stay inside the repository/,
+    /必须位于仓库内部/,
   );
   assert.throws(
     () => validateFilePlacementConfiguration({
@@ -116,6 +116,6 @@ test('rejects unsafe file placement patterns and suggested directories', () => {
         }],
       },
     }, CONFIG_PATH),
-    /suggestedDirectory must be a concrete directory/,
+    /suggestedDirectory 必须是具体目录/,
   );
 });

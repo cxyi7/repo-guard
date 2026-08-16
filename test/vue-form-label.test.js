@@ -176,7 +176,7 @@ test('exposes a full-project form-labels CLI with unified reporting', (context) 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /vue\/form-control-label/);
   assert.match(result.stderr, /<label>/);
-  assert.match(result.stderr, /Remediation:/);
+  assert.match(result.stderr, /修复目标:/);
   assert.match(result.stderr, /非空静态 aria-label/);
 
   const [finding] = findVueFormLabelIssues(source, 'src/Form.vue');
@@ -193,6 +193,6 @@ test('exposes a full-project form-labels CLI with unified reporting', (context) 
     encoding: 'utf8',
   });
   assert.equal(approved.status, 0, approved.stderr);
-  assert.match(approved.stderr, /approved exception.*reviewed-legacy-control/);
-  assert.match(approved.stdout, /1 approved exception/);
+  assert.match(approved.stderr, /已批准例外.*reviewed-legacy-control/);
+  assert.match(approved.stdout, /1 条已批准例外/);
 });

@@ -15,7 +15,7 @@ function resolveDependencyCruiser(root) {
   const metadata = resolveProjectPackageMetadata(
     root,
     'dependency-cruiser',
-    'Architecture dependency gate',
+    '架构依赖门禁',
     { requireEntry: false },
   );
   const packageJson = JSON.parse(readFileSync(metadata.packagePath, 'utf8'));
@@ -27,14 +27,14 @@ function resolveDependencyCruiser(root) {
   if (typeof bin !== 'string' || !bin.trim()) {
     throw configurationError(
       'architecture/missing-cli-binary',
-      'Installed dependency-cruiser does not expose a supported CLI binary',
+      '已安装的 dependency-cruiser 未提供受支持的 CLI 可执行文件',
     );
   }
   const cliPath = path.resolve(path.dirname(metadata.packagePath), bin);
   if (!existsSync(cliPath)) {
     throw configurationError(
       'architecture/cli-file-missing',
-      'dependency-cruiser CLI file was not found in the installed package',
+      '在已安装的 dependency-cruiser 包中找不到 CLI 文件',
     );
   }
   return { ...metadata, cliPath };
@@ -51,7 +51,7 @@ export function validateArchitectureSetup(root, config) {
   if (optionLikeSource) {
     throw configurationError(
       'architecture/option-like-source',
-      `Architecture source path cannot start with "-": ${optionLikeSource}`,
+      `架构检查的源路径不能以“-”开头：${optionLikeSource}`,
     );
   }
   const missingSources = config.sourcePaths.filter((sourcePath) => (
@@ -60,14 +60,14 @@ export function validateArchitectureSetup(root, config) {
   if (missingSources.length > 0) {
     throw configurationError(
       'architecture/missing-source-path',
-      `Architecture source path does not exist: ${missingSources.join(', ')}`,
+      `架构检查的源路径不存在：${missingSources.join(', ')}`,
     );
   }
   const tsConfig = resolveTypeScriptConfig(root, config.tsConfig);
   if (tsConfig && !existsSync(path.join(root, tsConfig))) {
     throw configurationError(
       'architecture/missing-tsconfig',
-      `Architecture tsConfig does not exist: ${tsConfig}`,
+      `架构检查的 tsConfig 不存在：${tsConfig}`,
     );
   }
   return { dependencyCruiser, tsConfig };
@@ -91,7 +91,7 @@ export function parseArchitectureReport(output) {
   } catch (error) {
     throw executionError(
       'architecture/invalid-json-report',
-      `dependency-cruiser returned invalid JSON: ${error.message}`,
+      `dependency-cruiser 返回了无效 JSON：${error.message}`,
       { cause: error },
     );
   }
@@ -99,7 +99,7 @@ export function parseArchitectureReport(output) {
   if (!Array.isArray(violations)) {
     throw executionError(
       'architecture/invalid-report-shape',
-      'dependency-cruiser JSON report is missing summary.violations',
+      'dependency-cruiser JSON 报告缺少 summary.violations',
     );
   }
   return {

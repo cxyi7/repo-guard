@@ -24,6 +24,18 @@ const MAX_ARTIFACTS = 20;
 const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
 const SAFE_GENERATED_SEGMENT = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/;
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const HAN_TEXT = /\p{Script=Han}/u;
+
+function localizedExternalText(value, fallback, diagnostics, label, level = 'info') {
+  if (value == null || HAN_TEXT.test(value)) return value;
+  diagnostics.push({
+    source: 'external-report',
+    stream: level === 'info' ? 'stdout' : 'stderr',
+    level,
+    message: `${label}原文：${value}`,
+  });
+  return fallback;
+}
 
 function externalReportError(code, message, options = {}) {
   return executionError(`external-gate/${code}`, message, {
@@ -31,7 +43,7 @@ function externalReportError(code, message, options = {}) {
     remediation: {
       goal: '修复外部门禁脚本或报告生成器，使报告完整、最新且可验证',
       steps: ['根据错误码和消息修复报告字段、退出码或 artifact 输出'],
-      constraints: ['不得伪造 passed 状态、删除 error finding 或跳过报告校验'],
+      constraints: ['不得伪造通过状态、删除错误级问题项或跳过报告校验'],
       verification: ['重新运行同一 project.* 门禁并验证报告通过 Schema 与安全检查'],
     },
     ...options,
@@ -62,24 +74,24 @@ function assertSafeGeneratedPath(root, relative, label, { mustExist = true } = {
     || segments[0] !== 'reports'
     || segments.length < 2
     || segments.some((segment) => !isSafeGeneratedSegment(segment))) {
-    throw externalReportSecurityError('unsafe-report-path', `${label} must use a normalized path inside reports/`);
+    throw externalReportSecurityError('unsafe-report-path', `${label} 必须使用 reports/ 内的规范化路径`);
   }
   const target = path.resolve(root, relative);
   const reportsRoot = path.resolve(root, 'reports');
   if (target === reportsRoot || !target.startsWith(`${reportsRoot}${path.sep}`)) {
-    throw externalReportSecurityError('report-path-escape', `${label} must stay inside reports/`);
+    throw externalReportSecurityError('report-path-escape', `${label} 必须位于 reports/ 内`);
   }
   let current = root;
   for (const segment of relative.split('/')) {
     current = path.join(current, segment);
     if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
-      throw externalReportSecurityError('symlink-traversal', `${label} must not traverse a symbolic link: ${relative}`, {
+      throw externalReportSecurityError('symlink-traversal', `${label} 不得穿过符号链接： ${relative}`, {
         details: { location: { path: relative } },
       });
     }
   }
   if (mustExist && (!existsSync(target) || !lstatSync(target).isFile())) {
-    throw externalReportError('missing-generated-file', `${label} was not generated as a regular file: ${relative}`, {
+    throw externalReportError('missing-generated-file', `${label} 未生成为常规文件： ${relative}`, {
       details: { location: { path: relative } },
     });
   }
@@ -87,14 +99,14 @@ function assertSafeGeneratedPath(root, relative, label, { mustExist = true } = {
   const tracked = runGit(['ls-files', '-z'], { cwd: root }).stdout
     .split('\0')
     .some((trackedPath) => trackedPath.toLowerCase() === relativeKey);
-  if (tracked) throw externalReportSecurityError('tracked-file-overwrite', `${label} must not overwrite a tracked file: ${relative}`, {
+  if (tracked) throw externalReportSecurityError('tracked-file-overwrite', `${label} 不得覆盖已跟踪文件： ${relative}`, {
     details: { location: { path: relative } },
   });
   return target;
 }
 
 function nonEmpty(value, label) {
-  if (typeof value !== 'string' || !value.trim()) throw externalReportError('invalid-field', `${label} must be a non-empty string`);
+  if (typeof value !== 'string' || !value.trim()) throw externalReportError('invalid-field', `${label} 必须是非空字符串`);
   return value;
 }
 
@@ -105,132 +117,175 @@ function repositoryPath(value, label) {
     || path.posix.isAbsolute(normalized)
     || /^[A-Za-z]:\//.test(normalized)
     || segments.some((segment) => !segment || segment === '.' || segment === '..')) {
-    throw externalReportSecurityError('unsafe-artifact-path', `${label} must be a normalized repository-relative path`);
+    throw externalReportSecurityError('unsafe-artifact-path', `${label} 必须是规范化的仓库相对路径`);
   }
   return normalized;
 }
 
 function assertExactProperties(value, allowed, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw externalReportError('invalid-object', `${label} must be an object`);
+    throw externalReportError('invalid-object', `${label} 必须是对象`);
   }
   const unknown = Object.keys(value).filter((key) => !allowed.includes(key));
-  if (unknown.length > 0) throw externalReportError('unknown-fields', `${label} contains unknown field(s): ${unknown.join(', ')}`);
+  if (unknown.length > 0) throw externalReportError('unknown-fields', `${label} 包含未知字段： ${unknown.join(', ')}`);
 }
 
 function validateReport(config, raw, root, startedAt, execution) {
   if (Buffer.byteLength(raw) > MAX_REPORT_BYTES) {
-    throw externalReportError('report-too-large', `External gate report exceeded ${MAX_REPORT_BYTES} bytes`);
+    throw externalReportError('report-too-large', `外部门禁报告超过 ${MAX_REPORT_BYTES} 字节`);
   }
   if (containsSensitiveExternalData(raw)) {
-    throw externalReportSecurityError('sensitive-report-data', `External gate ${config.id} report contains sensitive data`);
+    throw externalReportSecurityError('sensitive-report-data', `外部门禁 ${config.id} 的报告包含敏感数据`);
   }
   let report;
   try { report = JSON.parse(raw); } catch (error) {
-    throw externalReportError('invalid-json', `External gate ${config.id} report is invalid JSON: ${error.message}`, { cause: error });
+    throw externalReportError('invalid-json', `外部门禁 ${config.id} 的报告不是有效 JSON：${error.message}`, { cause: error });
   }
   assertExactProperties(
     report,
     ['schemaVersion', 'gateId', 'status', 'summary', 'findings', 'metrics', 'artifacts'],
-    `External gate ${config.id} report`,
+    `外部门禁 ${config.id} 的报告`,
   );
   for (const field of ['schemaVersion', 'gateId', 'status', 'summary', 'findings', 'metrics', 'artifacts']) {
-    if (!Object.hasOwn(report, field)) throw externalReportError('missing-field', `External gate ${config.id} report is missing ${field}`);
+    if (!Object.hasOwn(report, field)) throw externalReportError('missing-field', `外部门禁 ${config.id} 的报告缺少 ${field}`);
   }
-  if (report.schemaVersion !== 1) throw externalReportError('unsupported-schema', `External gate ${config.id} requires report schemaVersion 1`);
-  if (report.gateId !== config.id) throw externalReportError('gate-id-mismatch', `External gate report gateId must be ${config.id}`);
+  if (report.schemaVersion !== 1) throw externalReportError('unsupported-schema', `外部门禁 ${config.id} 要求报告的 schemaVersion 为 1`);
+  if (report.gateId !== config.id) throw externalReportError('gate-id-mismatch', `外部门禁报告 gateId 必须为 ${config.id}`);
   if (!['passed', 'violation'].includes(report.status)) {
-    throw externalReportError('invalid-status', `External gate ${config.id} report status must be passed or violation`);
+    throw externalReportError('invalid-status', `外部门禁 ${config.id} 报告的 status 必须为 passed 或 violation`);
   }
   const expectedExitCode = report.status === 'passed' ? 0 : 2;
   if (execution.status !== expectedExitCode) {
     throw externalReportError(
       'exit-status-mismatch',
-      `External gate ${config.id} report status ${report.status} requires script exit code `
-      + `${expectedExitCode}; received ${String(execution.status)}`,
+      `外部门禁 ${config.id} 报告的 status 为 ${report.status} 时，脚本退出码必须为 `
+      + `${expectedExitCode}；实际收到 ${String(execution.status)}`,
     );
   }
-  nonEmpty(report.summary, `External gate ${config.id} report summary`);
+  nonEmpty(report.summary, `外部门禁 ${config.id} 的报告摘要`);
   if (!Array.isArray(report.findings) || !Array.isArray(report.artifacts)) {
-    throw externalReportError('invalid-collections', `External gate ${config.id} findings and artifacts must be arrays`);
+    throw externalReportError('invalid-collections', `外部门禁 ${config.id} 的 findings 和 artifacts 必须是数组`);
   }
   if (report.artifacts.length > MAX_ARTIFACTS) {
-    throw externalReportError('too-many-artifacts', `External gate ${config.id} report exceeds ${MAX_ARTIFACTS} artifacts`);
+    throw externalReportError('too-many-artifacts', `外部门禁 ${config.id} 的报告超过 ${MAX_ARTIFACTS} 个产物`);
   }
   if (!report.metrics || typeof report.metrics !== 'object' || Array.isArray(report.metrics)) {
-    throw externalReportError('invalid-metrics', `External gate ${config.id} metrics must be an object`);
-  }
-  const findings = report.findings.map((finding, index) => {
-    assertExactProperties(
-      finding,
-      ['ruleId', 'severity', 'message', 'location', 'evidence', 'remediation'],
-      `External gate finding ${index + 1}`,
-    );
-    if (finding.location != null) {
-      assertExactProperties(
-        finding.location,
-        ['path', 'line', 'column', 'endLine', 'endColumn'],
-        `External gate finding ${index + 1} location`,
-      );
-      return {
-        ...finding,
-        location: {
-          ...finding.location,
-          path: repositoryPath(
-            finding.location.path,
-            `External gate finding ${index + 1} location path`,
-          ),
-        },
-      };
-    }
-    return finding;
-  });
-  const hasErrorFinding = findings.some(({ severity }) => severity === 'error');
-  if (report.status === 'passed' && hasErrorFinding) {
-    throw externalReportError('passed-with-error-findings', `External gate ${config.id} passed report must not contain error findings`);
-  }
-  if (report.status === 'violation' && !hasErrorFinding) {
-    throw externalReportError('violation-without-error-finding', `External gate ${config.id} violation report requires an error finding`);
-  }
-  const artifacts = report.artifacts.map((artifact, index) => {
-    assertExactProperties(
-      artifact,
-      ['path', 'type', 'description'],
-      `External gate artifact ${index + 1}`,
-    );
-    const artifactPath = nonEmpty(artifact?.path, `External gate artifact ${index + 1} path`);
-    const target = assertSafeGeneratedPath(root, artifactPath, `External gate artifact ${index + 1}`);
-    if (statSync(target).size > MAX_ARTIFACT_BYTES) {
-      throw externalReportError('artifact-too-large', `External gate artifact exceeds ${MAX_ARTIFACT_BYTES} bytes: ${artifactPath}`, {
-        details: { location: { path: artifactPath } },
-      });
-    }
-    if (containsSensitiveExternalData(readFileSync(target))) {
-      throw externalReportSecurityError('sensitive-artifact-data', `External gate artifact contains sensitive data: ${artifactPath}`, {
-        details: { location: { path: artifactPath } },
-      });
-    }
-    return artifact;
-  });
-  const artifactPaths = artifacts.map(({ path: artifactPath }) => artifactPath.toLowerCase());
-  if (new Set(artifactPaths).size !== artifactPaths.length) {
-    throw externalReportError('duplicate-artifacts', `External gate ${config.id} report contains duplicate artifact paths`);
-  }
-  if (artifactPaths.includes(config.report.path.toLowerCase())) {
-    throw externalReportError('primary-report-repeated', `External gate ${config.id} artifacts must not repeat its primary report path`);
+    throw externalReportError('invalid-metrics', `外部门禁 ${config.id} 的 metrics 必须是对象`);
   }
   const diagnostics = processOutputDiagnostics(execution, {
     source: `external-gate:${config.id}`,
     root,
   });
+  const findings = report.findings.map((finding, index) => {
+    assertExactProperties(
+      finding,
+      ['ruleId', 'severity', 'message', 'location', 'evidence', 'remediation'],
+      `外部门禁问题项 ${index + 1}`,
+    );
+    const level = finding.severity === 'error'
+      ? 'error'
+      : finding.severity === 'warning' ? 'warn' : 'info';
+    const localizedFinding = {
+      ...finding,
+      message: localizedExternalText(
+        finding.message,
+        `外部门禁规则 ${finding.ruleId} 报告了问题`,
+        diagnostics,
+        `外部门禁问题项 ${index + 1} 的消息`,
+        level,
+      ),
+      evidence: localizedExternalText(
+        finding.evidence,
+        '外部门禁提供了原始证据，请查看诊断信息。',
+        diagnostics,
+        `外部门禁问题项 ${index + 1} 的证据`,
+        level,
+      ),
+      remediation: localizedExternalText(
+        finding.remediation,
+        `请修复规则 ${finding.ruleId} 对应的问题后重新运行外部门禁。`,
+        diagnostics,
+        `外部门禁问题项 ${index + 1} 的修复说明`,
+        level,
+      ),
+    };
+    if (finding.location != null) {
+      assertExactProperties(
+        finding.location,
+        ['path', 'line', 'column', 'endLine', 'endColumn'],
+        `外部门禁问题项 ${index + 1} 的位置`,
+      );
+      return {
+        ...localizedFinding,
+        location: {
+          ...finding.location,
+          path: repositoryPath(
+            finding.location.path,
+            `外部门禁问题项 ${index + 1} 的位置路径`,
+          ),
+        },
+      };
+    }
+    return localizedFinding;
+  });
+  const hasErrorFinding = findings.some(({ severity }) => severity === 'error');
+  if (report.status === 'passed' && hasErrorFinding) {
+    throw externalReportError('passed-with-error-findings', `外部门禁 ${config.id} 的 passed 报告不得包含 error 级问题项`);
+  }
+  if (report.status === 'violation' && !hasErrorFinding) {
+    throw externalReportError('violation-without-error-finding', `外部门禁 ${config.id} 的 violation 报告必须包含 error 级问题项`);
+  }
+  const artifacts = report.artifacts.map((artifact, index) => {
+    assertExactProperties(
+      artifact,
+      ['path', 'type', 'description'],
+      `外部门禁产物 ${index + 1}`,
+    );
+    const artifactPath = nonEmpty(artifact?.path, `外部门禁产物 ${index + 1} 的路径`);
+    const target = assertSafeGeneratedPath(root, artifactPath, `外部门禁产物 ${index + 1}`);
+    if (statSync(target).size > MAX_ARTIFACT_BYTES) {
+      throw externalReportError('artifact-too-large', `外部门禁产物超过 ${MAX_ARTIFACT_BYTES} 字节：${artifactPath}`, {
+        details: { location: { path: artifactPath } },
+      });
+    }
+    if (containsSensitiveExternalData(readFileSync(target))) {
+      throw externalReportSecurityError('sensitive-artifact-data', `外部门禁产物包含敏感数据： ${artifactPath}`, {
+        details: { location: { path: artifactPath } },
+      });
+    }
+    return {
+      ...artifact,
+      description: localizedExternalText(
+        artifact.description,
+        `外部门禁产物 ${index + 1}`,
+        diagnostics,
+        `外部门禁产物 ${index + 1} 的说明`,
+      ),
+    };
+  });
+  const artifactPaths = artifacts.map(({ path: artifactPath }) => artifactPath.toLowerCase());
+  if (new Set(artifactPaths).size !== artifactPaths.length) {
+    throw externalReportError('duplicate-artifacts', `外部门禁 ${config.id} 的报告包含重复的产物路径`);
+  }
+  if (artifactPaths.includes(config.report.path.toLowerCase())) {
+    throw externalReportError('primary-report-repeated', `外部门禁 ${config.id} 的产物不得重复使用主报告路径`);
+  }
   return createGateResult({
     gateId: config.id,
     status: report.status,
-    summary: report.summary,
+    summary: localizedExternalText(
+      report.summary,
+      report.status === 'passed'
+        ? `外部门禁 ${config.id} 已通过`
+        : `外部门禁 ${config.id} 发现违规`,
+      diagnostics,
+      '外部门禁报告摘要',
+      report.status === 'passed' ? 'info' : 'error',
+    ),
     findings,
     metrics: report.metrics,
     artifacts: [
-      { path: config.report.path, type: 'repo-guard-json-v1', description: 'External gate report' },
+      { path: config.report.path, type: 'repo-guard-json-v1', description: '外部门禁报告' },
       ...artifacts,
     ],
     durationMs: Date.now() - startedAt,
@@ -254,37 +309,37 @@ export function defineExternalGate(config) {
     artifactTypes: ['repo-guard-json-v1'],
     supportsCancellation: true,
     inspectSetup({ root, environment }) {
-      if (!config.enabled) return { status: 'ready', summary: `${config.id} is disabled` };
+      if (!config.enabled) return { status: 'ready', summary: `${config.id} 已禁用` };
       if (!config.environments.includes(environment)) {
-        return { status: 'misconfigured', summary: `${config.id} does not support ${environment}` };
+        return { status: 'misconfigured', summary: `${config.id} 不支持 ${environment}` };
       }
       const command = readPackage(root).scripts?.[config.script];
       if (typeof command !== 'string' || !command.trim()) {
-        throw configurationError('external-gate/missing-script', `External gate ${config.id} requires package.json script "${config.script}"`, {
+        throw configurationError('external-gate/missing-script', `外部门禁 ${config.id} 要求 package.json 提供脚本“${config.script}”`, {
           details: { location: { path: 'package.json' } },
         });
       }
       if (environment === 'release-ready') {
         assertReleaseScriptReadOnly(readPackage(root).scripts ?? {}, config.script);
       }
-      assertSafeGeneratedPath(root, config.report.path, 'External gate report', { mustExist: false });
-      return { status: 'ready', summary: `${config.id} uses npm script ${config.script}` };
+      assertSafeGeneratedPath(root, config.report.path, '外部门禁报告', { mustExist: false });
+      return { status: 'ready', summary: `${config.id} 使用 npm 脚本 ${config.script}` };
     },
     plan: ({ root }) => ({
       enabled: config.enabled,
-      reportPath: assertSafeGeneratedPath(root, config.report.path, 'External gate report', { mustExist: false }),
+      reportPath: assertSafeGeneratedPath(root, config.report.path, '外部门禁报告', { mustExist: false }),
     }),
     async run({ root, signal, plan }) {
-      if (!plan.enabled) return skippedResult(config.id, `${config.id} is disabled`);
+      if (!plan.enabled) return skippedResult(config.id, `${config.id} 已禁用`);
       if (existsSync(plan.reportPath)) unlinkSync(plan.reportPath);
       const startedAt = Date.now();
       const execution = await runExactNpmScript({ root, script: config.script, signal });
-      if (!existsSync(plan.reportPath)) throw externalReportError('report-not-generated', `External gate ${config.id} did not generate ${config.report.path}`, {
+      if (!existsSync(plan.reportPath)) throw externalReportError('report-not-generated', `外部门禁 ${config.id} 未生成 ${config.report.path}`, {
         details: { location: { path: config.report.path } },
       });
-      const verifiedReportPath = assertSafeGeneratedPath(root, config.report.path, 'External gate report');
+      const verifiedReportPath = assertSafeGeneratedPath(root, config.report.path, '外部门禁报告');
       const reportStat = statSync(verifiedReportPath);
-      if (reportStat.mtimeMs < startedAt - 1000) throw externalReportError('stale-report', `External gate ${config.id} report is stale`, {
+      if (reportStat.mtimeMs < startedAt - 1000) throw externalReportError('stale-report', `外部门禁 ${config.id} 的报告已过期`, {
         details: { location: { path: config.report.path } },
       });
       return validateReport(config, readFileSync(verifiedReportPath, 'utf8'), root, startedAt, execution);

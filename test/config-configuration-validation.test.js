@@ -42,14 +42,14 @@ test('assembles every normalized configuration domain in contract order', () => 
 test('preserves root, protected-file, and domain validation order', () => {
   assert.throws(
     () => validateConfigValue({ version: 2 }, CONFIG_PATH),
-    /uses unsupported version: 2/,
+    /使用了不支持的版本： 2/,
   );
   assert.throws(
     () => validateConfigValue({ version: 1, notification: [] }, CONFIG_PATH),
-    /must define at least one rule/,
+    /必须至少定义一条规则/,
   );
   assert.throws(
     () => validateConfigValue(sparseConfig({ notification: [] }), CONFIG_PATH),
-    /notification must be an object/,
+    /notification 必须是对象/,
   );
 });

@@ -31,13 +31,13 @@ test('normalizes accessibility test execution settings and patterns', () => {
 test('requires an accessibility test object and boolean switch', () => {
   assert.throws(
     () => validateAccessibilityConfiguration({ accessibilityTest: [] }, CONFIG_PATH),
-    /accessibilityTest must be an object/,
+    /accessibilityTest 必须是对象/,
   );
   assert.throws(
     () => validateAccessibilityConfiguration({
       accessibilityTest: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /accessibilityTest\.enabled must be a boolean/,
+    /accessibilityTest\.enabled 必须是布尔值/,
   );
 });
 
@@ -46,24 +46,24 @@ test('rejects unknown properties and invalid execution settings', () => {
     () => validateAccessibilityConfiguration({
       accessibilityTest: { command: 'test:a11y' },
     }, CONFIG_PATH),
-    /has unsupported properties: command/,
+    /包含不支持的属性： command/,
   );
   assert.throws(
     () => validateAccessibilityConfiguration({
       accessibilityTest: { script: 'playwright test' },
     }, CONFIG_PATH),
-    /accessibilityTest\.script must be an npm script name/,
+    /accessibilityTest\.script 必须是 npm 脚本名称/,
   );
   assert.throws(
     () => validateAccessibilityConfiguration({
       accessibilityTest: { timeoutMs: 0 },
     }, CONFIG_PATH),
-    /accessibilityTest\.timeoutMs must be a positive integer/,
+    /accessibilityTest\.timeoutMs 必须是正整数/,
   );
   assert.throws(
     () => validateAccessibilityConfiguration({
       accessibilityTest: { testPatterns: [] },
     }, CONFIG_PATH),
-    /accessibilityTest\.testPatterns must be a non-empty array/,
+    /accessibilityTest\.testPatterns 必须是非空数组/,
   );
 });

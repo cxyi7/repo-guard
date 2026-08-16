@@ -140,7 +140,7 @@ const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
 
 const REVIEWED_PACKAGE_FILES = Object.freeze([
   'bin',
-  'scripts',
+  'scripts/check-syntax.js',
   'src',
   'config.schema.json',
   'external-report.schema.json',
@@ -2696,4 +2696,35 @@ test('keeps CLI execution in CLI orchestration behind the reviewed npm bin entry
     'CLI module',
     { allowModuleResolution: true },
   );
+});
+
+test('enforces Chinese user-facing text as a non-growing repository contract', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  const agentsSource = readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  const checkerSource = readFileSync(
+    path.join(ROOT, 'scripts', 'check-user-facing-language.js'),
+    'utf8',
+  );
+  const prunerSource = readFileSync(
+    path.join(ROOT, 'scripts', 'prune-user-facing-language-baseline.js'),
+    'utf8',
+  );
+  const baseline = JSON.parse(readFileSync(
+    path.join(ROOT, 'scripts', 'user-facing-language-baseline.json'),
+    'utf8',
+  ));
+
+  assert.match(packageJson.scripts.check, /node scripts\/check-user-facing-language\.js/);
+  assert.equal(
+    packageJson.scripts['language:prune-baseline'],
+    'node scripts/prune-user-facing-language-baseline.js',
+  );
+  assert.match(agentsSource, /user-facing statuses, warnings, errors/);
+  assert.match(agentsSource, /migration baseline may only shrink/);
+  assert.match(checkerSource, /compareLanguageDebt/);
+  assert.doesNotMatch(checkerSource, /writeFileSync|write-initial-baseline/);
+  assert.match(prunerSource, /pruneLanguageDebtBaseline/);
+  assert.doesNotMatch(prunerSource, /createLanguageDebtBaseline/);
+  assert.equal(baseline.schemaVersion, 1);
+  assert.equal(baseline.debtCount, 0);
 });

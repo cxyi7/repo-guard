@@ -19,8 +19,8 @@ export function runCheck(cwd = process.cwd()) {
     const result = createGateResult({
       gateId: 'repository.protected-files',
       status: 'passed',
-      summary: 'No protected working tree changes',
-      diagnostics: [{ level: 'info', message: `Repository: ${root}` }],
+      summary: '工作树中没有受保护的变更',
+      diagnostics: [{ level: 'info', message: `仓库： ${root}` }],
     });
     writeGateResultConsole(result, { label: 'check' });
     return gateStatusToExitCode(result.status);
@@ -28,14 +28,14 @@ export function runCheck(cwd = process.cwd()) {
   const result = createGateResult({
     gateId: 'repository.protected-files',
     status: 'violation',
-    summary: `Found ${protectedChanges.length} protected working tree change(s)`,
+    summary: `发现 ${protectedChanges.length} 项受保护的工作树变更`,
     findings: protectedChanges.map((change) => ({
       ruleId: `repository/protected-${change.category}`,
       severity: 'error',
-      message: `${change.status} ${displayPath(change)} is protected`,
+      message: `${change.status} ${displayPath(change)} 受保护`,
       location: { path: change.path },
-      evidence: change.states?.length ? `Git states: ${change.states.join('/')}` : null,
-      remediation: 'Review the protected change and obtain the required human approval before proceeding.',
+      evidence: change.states?.length ? `Git 状态：${change.states.join('/')}` : null,
+      remediation: '审查受保护的变更，并在继续之前取得所需的人工批准。',
     })),
   });
   writeGateResultConsole(result, { label: 'check' });

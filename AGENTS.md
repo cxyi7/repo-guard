@@ -12,6 +12,13 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Preserve partially staged and unstaged changes through `lint-staged`.
 - Managed Hook upgrades must accept known older markers but generate only the current version.
 - Every behavior change requires tests and synchronized README/config schema updates.
+- All repo-guard-authored user-facing statuses, warnings, errors, evidence, expectations,
+  remediation steps, constraints, and verification guidance must use Simplified Chinese.
+  Keep stable machine identifiers, commands, paths, package names, and third-party rule IDs
+  unchanged. Isolate third-party raw diagnostics from the primary Chinese explanation and
+  label them explicitly. The English-text migration baseline may only shrink; after translating
+  existing debt, use `npm run language:prune-baseline` and review that it only removes allowances.
+  Never add, replace, or regenerate baseline entries to bypass the language check.
 - Version every independently released change by impact: use a patch release for one small
   rule or localized compatible enhancement, a minor release for a substantial new gate or
   workflow, and explicitly review any incompatible change before selecting a major release.

@@ -11,9 +11,9 @@ export function readUnitTestProjectPackage(root) {
 
 export function resolveUnitTestProjectTools(root, config) {
   return {
-    vitest: resolveProjectPackageMetadata(root, 'vitest', 'Vitest'),
+    vitest: resolveProjectPackageMetadata(root, 'vitest', 'Vitest 工具'),
     vueTestUtils: config.componentInteraction.enabled
-      ? resolveProjectPackageMetadata(root, '@vue/test-utils', 'Vue Test Utils')
+      ? resolveProjectPackageMetadata(root, '@vue/test-utils', 'Vue Test Utils 工具')
       : null,
   };
 }

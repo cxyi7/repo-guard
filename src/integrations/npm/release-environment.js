@@ -31,7 +31,7 @@ export function assertReleaseScriptReadOnly(scripts, script) {
     if (FORBIDDEN_RELEASE_OPERATION.test(command)) {
       throw securityError(
         'release-readiness/forbidden-operation',
-        `Release readiness script ${current} must not publish or deploy`,
+        `发布就绪脚本 ${current} 不得执行发布或部署`,
         {
           details: { location: { path: 'package.json' } },
           expected: 'release-ready 仅执行只读检查，不发布、不部署且不改变外部状态。',

@@ -13,7 +13,7 @@ test('reports unsupported properties through the structured configuration error'
     () => assertKnownProperties({ enabled: true, extra: true }, new Set(['enabled']), 'gate'),
     (error) => {
       assert.equal(error.code, 'config/invalid-value');
-      assert.match(error.message, /gate has unsupported properties: extra/);
+      assert.match(error.message, /gate 包含不支持的属性： extra/);
       assert.equal(error.details.location.path, CONFIG_FILE);
       return true;
     },
@@ -24,19 +24,19 @@ test('normalizes valid dates and rejects impossible calendar dates', () => {
   assert.equal(normalizeIsoDate('2024-02-29', 'createdOn'), '2024-02-29');
   assert.throws(
     () => normalizeIsoDate('2023-02-29', 'createdOn'),
-    /createdOn must be a valid calendar date/,
+    /createdOn 必须是有效的日历日期/,
   );
   assert.throws(
     () => normalizeIsoDate('29-02-2024', 'createdOn'),
-    /createdOn must use YYYY-MM-DD/,
+    /createdOn 必须使用 YYYY-MM-DD 格式/,
   );
 });
 
 test('normalizes repository patterns and rejects paths that escape the repository', () => {
   assert.equal(normalizeRelativePattern('.\\src\\**\\*.js', 'pattern'), 'src/**/*.js');
-  assert.throws(() => normalizeRelativePattern('../secret', 'pattern'), /stay inside/);
-  assert.throws(() => normalizeRelativePattern('!src/**', 'pattern'), /stay inside/);
-  assert.throws(() => normalizeRelativePattern('C:\\secret', 'pattern'), /stay inside/);
+  assert.throws(() => normalizeRelativePattern('../secret', 'pattern'), /必须位于仓库内部/);
+  assert.throws(() => normalizeRelativePattern('!src/**', 'pattern'), /必须位于仓库内部/);
+  assert.throws(() => normalizeRelativePattern('C:\\secret', 'pattern'), /必须位于仓库内部/);
 });
 
 test('normalizes pattern lists and enforces empty-list policy', () => {
@@ -45,11 +45,11 @@ test('normalizes pattern lists and enforces empty-list policy', () => {
     ['src/**', 'docs/**'],
   );
   assert.deepEqual(normalizePatternList([], 'patterns', { allowEmpty: true }), []);
-  assert.throws(() => normalizePatternList([], 'patterns'), /non-empty array/);
+  assert.throws(() => normalizePatternList([], 'patterns'), /必须是非空数组/);
 });
 
 test('requires normalized JSON report paths inside reports', () => {
   assert.equal(validateCiReportPath('reports\\ci.json'), 'reports/ci.json');
-  assert.throws(() => validateCiReportPath('coverage/ci.json'), /inside reports/);
-  assert.throws(() => validateCiReportPath('reports/ci.txt'), /JSON file/);
+  assert.throws(() => validateCiReportPath('coverage/ci.json'), /reports\/ 内的 JSON 文件/);
+  assert.throws(() => validateCiReportPath('reports/ci.txt'), /JSON 文件/);
 });

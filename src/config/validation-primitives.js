@@ -27,24 +27,24 @@ export function configValidationError(message) {
 export function assertKnownProperties(value, allowed, label) {
   const unknown = Object.keys(value).filter((key) => !allowed.has(key));
   if (unknown.length > 0) {
-    throw configValidationError(`${label} has unsupported properties: ${unknown.join(', ')}`);
+    throw configValidationError(`${label} 包含不支持的属性： ${unknown.join(', ')}`);
   }
 }
 
 export function normalizeIsoDate(value, label) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw configValidationError(`${label} must use YYYY-MM-DD`);
+    throw configValidationError(`${label} 必须使用 YYYY-MM-DD 格式`);
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw configValidationError(`${label} must be a valid calendar date`);
+    throw configValidationError(`${label} 必须是有效的日历日期`);
   }
   return value;
 }
 
 export function normalizeRelativePattern(value, label) {
   if (typeof value !== 'string' || !value.trim()) {
-    throw configValidationError(`${label} must be a non-empty string`);
+    throw configValidationError(`${label} 必须是非空字符串`);
   }
   const pattern = normalizeGitPath(value.trim());
   if (
@@ -54,24 +54,24 @@ export function normalizeRelativePattern(value, label) {
     || pattern.startsWith('!')
     || pattern.split('/').includes('..')
   ) {
-    throw configValidationError(`${label} must stay inside the repository`);
+    throw configValidationError(`${label} 必须位于仓库内部`);
   }
   return pattern;
 }
 
-export function validateCiReportPath(value, label = 'CI report path') {
+export function validateCiReportPath(value, label = 'CI 报告路径') {
   const reportPath = normalizeRelativePattern(value, label);
   if (!/^reports\/.+\.json$/.test(reportPath)) {
-    throw configValidationError(`${label} must be a JSON file inside reports/`);
+    throw configValidationError(`${label} 必须是 reports/ 内的 JSON 文件`);
   }
   return reportPath;
 }
 
 export function normalizePatternList(value, label, { allowEmpty = false } = {}) {
   if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
-    throw configValidationError(`${label} must be ${allowEmpty ? 'an array' : 'a non-empty array'}`);
+    throw configValidationError(`${label} ${allowEmpty ? '必须是数组' : '必须是非空数组'}`);
   }
   return value.map((pattern, index) => (
-    normalizeRelativePattern(pattern, `${label} item ${index + 1}`)
+    normalizeRelativePattern(pattern, `${label} 第 ${index + 1}`)
   ));
 }

@@ -29,14 +29,14 @@ export const FINDING_SEVERITIES = Object.freeze([...FINDING_SEVERITY_VALUES]);
 
 function requireNonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new TypeError(`${label} must be a non-empty string`);
+    throw new TypeError(`${label} 必须是非空字符串`);
   }
   return value;
 }
 
 function requireNonNegativeNumber(value, label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new TypeError(`${label} must be a non-negative finite number`);
+    throw new TypeError(`${label} 必须是非负有限数值`);
   }
   return value;
 }
@@ -47,7 +47,7 @@ function publicText(value, label) {
 }
 
 function repositoryPath(value) {
-  const normalized = requireNonEmptyString(value, 'Issue location path').replaceAll('\\', '/');
+  const normalized = requireNonEmptyString(value, '问题位置路径').replaceAll('\\', '/');
   const cwd = process.cwd().replaceAll('\\', '/').replace(/\/$/, '');
   if (normalized === cwd) return '.';
   if (normalized.startsWith(`${cwd}/`)) return normalized.slice(cwd.length + 1);
@@ -68,7 +68,7 @@ function normalizeLocation(location) {
   for (const key of ['line', 'column', 'endLine', 'endColumn']) {
     if (location[key] == null) continue;
     if (!Number.isInteger(location[key]) || location[key] < 1) {
-      throw new TypeError(`Finding location ${key} must be a positive integer`);
+      throw new TypeError(`Finding location ${key} 必须是正整数`);
     }
     normalized[key] = location[key];
   }
@@ -82,16 +82,16 @@ function normalizeEvidence(evidence, fallbackLocation = null) {
   ];
   return Object.freeze(items.map((item) => {
     if (item == null || typeof item !== 'object' || Array.isArray(item)) {
-      throw new TypeError('Issue evidence entries must be strings or objects');
+      throw new TypeError('Issue evidence 中的条目必须是字符串或对象');
     }
     const normalized = {
       type: item.type ?? 'observation',
-      message: publicText(item.message, 'Issue evidence message'),
+      message: publicText(item.message, '问题证据消息'),
       location: normalizeLocation(item.location ?? fallbackLocation),
     };
-    requireNonEmptyString(normalized.type, 'Issue evidence type');
+    requireNonEmptyString(normalized.type, '问题证据类型');
     if (item.source != null) {
-      normalized.source = publicText(item.source, 'Issue evidence source');
+      normalized.source = publicText(item.source, '问题证据来源');
     }
     return Object.freeze(normalized);
   }));
@@ -136,25 +136,25 @@ function normalizeRemediation(remediation, ruleId, kind) {
   }
   if (typeof remediation === 'string') {
     return Object.freeze({
-      goal: publicText(remediation, 'Issue remediation goal'),
+      goal: publicText(remediation, '问题修复目标'),
       steps: Object.freeze([]),
       constraints: Object.freeze([]),
       verification: Object.freeze([]),
     });
   }
   if (typeof remediation !== 'object' || Array.isArray(remediation)) {
-    throw new TypeError('Issue remediation must be a string or object');
+    throw new TypeError('Issue remediation 必须是字符串或对象');
   }
   const stringList = (value, label) => {
     if (value == null) return Object.freeze([]);
-    if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
+    if (!Array.isArray(value)) throw new TypeError(`${label} 必须是数组`);
     return Object.freeze(value.map((item) => publicText(item, label)));
   };
   return Object.freeze({
-    goal: publicText(remediation.goal, 'Issue remediation goal'),
-    steps: stringList(remediation.steps, 'Issue remediation steps'),
-    constraints: stringList(remediation.constraints, 'Issue remediation constraints'),
-    verification: stringList(remediation.verification, 'Issue remediation verification'),
+    goal: publicText(remediation.goal, '问题修复目标'),
+    steps: stringList(remediation.steps, '问题修复步骤'),
+    constraints: stringList(remediation.constraints, '问题修复约束'),
+    verification: stringList(remediation.verification, '问题修复验证方式'),
   });
 }
 
@@ -166,28 +166,31 @@ function normalizeDecision(decision, kind) {
       : { aiAction: 'modify-code', humanApprovalRequired: false };
   if (decision == null) return Object.freeze(defaults);
   if (typeof decision !== 'object' || Array.isArray(decision)) {
-    throw new TypeError('Issue decision must be an object');
+    throw new TypeError('Issue decision 必须是对象');
   }
   const humanApprovalRequired = decision.humanApprovalRequired
     ?? defaults.humanApprovalRequired;
   if (typeof humanApprovalRequired !== 'boolean') {
-    throw new TypeError('Issue decision humanApprovalRequired must be a boolean');
+    throw new TypeError('Issue decision humanApprovalRequired 必须是布尔值');
   }
   return Object.freeze({
-    aiAction: requireNonEmptyString(decision.aiAction ?? defaults.aiAction, 'Issue decision aiAction'),
+    aiAction: requireNonEmptyString(decision.aiAction ?? defaults.aiAction, '问题决策的 aiAction'),
     humanApprovalRequired,
   });
 }
 
-function issueFingerprint({ gateId, ruleId, code, location, message }) {
+function issueFingerprint({ gateId, ruleId, code, kind, severity, location }) {
   const identity = [
     gateId ?? '',
     ruleId ?? '',
     code,
-    message,
+    kind,
+    severity,
     location?.path ?? '',
     location?.line ?? '',
     location?.column ?? '',
+    location?.endLine ?? '',
+    location?.endColumn ?? '',
   ].join('\u0000');
   return createHash('sha256').update(identity).digest('hex');
 }
@@ -208,22 +211,23 @@ export function createFinding({
   fingerprint,
 }) {
   if (!ISSUE_KIND_VALUES.includes(kind)) {
-    throw new TypeError(`Issue kind must be one of: ${ISSUE_KIND_VALUES.join(', ')}`);
+    throw new TypeError(`Issue kind 必须是以下值之一： ${ISSUE_KIND_VALUES.join(', ')}`);
   }
-  requireNonEmptyString(gateId, 'Issue gateId');
-  requireNonEmptyString(ruleId, 'Finding ruleId');
-  requireNonEmptyString(code, 'Issue code');
+  requireNonEmptyString(gateId, '问题所属门禁的 gateId');
+  requireNonEmptyString(ruleId, '问题项的 ruleId');
+  requireNonEmptyString(code, '问题代码');
   if (!FINDING_SEVERITIES.includes(severity)) {
-    throw new TypeError(`Finding severity must be one of: ${FINDING_SEVERITY_VALUES.join(', ')}`);
+    throw new TypeError(`Finding severity 必须是以下值之一： ${FINDING_SEVERITY_VALUES.join(', ')}`);
   }
-  requireNonEmptyString(message, 'Finding message');
+  requireNonEmptyString(message, '问题项消息');
   const normalizedLocation = normalizeLocation(location);
-  const normalizedMessage = publicText(message, 'Finding message');
+  const normalizedMessage = publicText(message, '问题项消息');
   const normalizedFingerprint = fingerprint ?? issueFingerprint({
     gateId,
     ruleId,
     code,
-    message: normalizedMessage,
+    kind,
+    severity,
     location: normalizedLocation,
   });
   return Object.freeze({
@@ -238,23 +242,23 @@ export function createFinding({
     evidence: normalizeEvidence(evidence, normalizedLocation),
     expected: expected == null
       ? `满足 ${ruleId} 的规则要求。`
-      : publicText(expected, 'Issue expected'),
+      : publicText(expected, '问题预期结果'),
     remediation: normalizeRemediation(remediation, ruleId, kind),
     decision: normalizeDecision(decision, kind),
-    fingerprint: requireNonEmptyString(normalizedFingerprint, 'Issue fingerprint'),
+    fingerprint: requireNonEmptyString(normalizedFingerprint, '问题指纹'),
   });
 }
 
 export function createArtifact({ path, type, description = null }) {
   const normalizedPath = repositoryPath(path);
-  requireNonEmptyString(type, 'Artifact type');
+  requireNonEmptyString(type, '产物类型');
   if (description != null && typeof description !== 'string') {
-    throw new TypeError('Artifact description must be a string or null');
+    throw new TypeError('Artifact description 必须是字符串或 null');
   }
   return Object.freeze({
     path: normalizedPath,
     type,
-    description: description == null ? null : publicText(description, 'Artifact description'),
+    description: description == null ? null : publicText(description, '产物说明'),
   });
 }
 
@@ -295,13 +299,13 @@ export function normalizeError(error, { gateId = 'unknown', fallbackKind = 'exec
 
 function normalizeMetrics(metrics) {
   if (metrics == null || typeof metrics !== 'object' || Array.isArray(metrics)) {
-    throw new TypeError('GateResult metrics must be an object');
+    throw new TypeError('GateResult metrics 必须是对象');
   }
   const normalized = {};
   for (const [name, value] of Object.entries(metrics)) {
-    requireNonEmptyString(name, 'GateResult metric name');
+    requireNonEmptyString(name, '门禁结果指标名称');
     if (typeof value !== 'number' || !Number.isFinite(value)) {
-      throw new TypeError(`GateResult metric ${name} must be a finite number`);
+      throw new TypeError(`GateResult 指标 ${name} 必须是有限数值`);
     }
     normalized[name] = value;
   }
@@ -310,25 +314,25 @@ function normalizeMetrics(metrics) {
 
 function normalizeDiagnostic(diagnostic) {
   if (diagnostic == null || typeof diagnostic !== 'object') {
-    throw new TypeError('GateResult diagnostic must be an object');
+    throw new TypeError('GateResult diagnostic 必须是对象');
   }
   if (!DIAGNOSTIC_LEVEL_VALUES.includes(diagnostic.level)) {
     throw new TypeError(
-      `GateResult diagnostic level must be one of: ${DIAGNOSTIC_LEVEL_VALUES.join(', ')}`,
+      `GateResult diagnostic level 必须是以下值之一： ${DIAGNOSTIC_LEVEL_VALUES.join(', ')}`,
     );
   }
   if (typeof diagnostic.message !== 'string') {
-    throw new TypeError('GateResult diagnostic message must be a string');
+    throw new TypeError('GateResult diagnostic message 必须是字符串');
   }
   const stream = diagnostic.stream ?? (diagnostic.level === 'error' || diagnostic.level === 'warn'
     ? 'stderr'
     : 'stdout');
   if (stream !== 'stdout' && stream !== 'stderr') {
-    throw new TypeError('GateResult diagnostic stream must be stdout or stderr');
+    throw new TypeError('GateResult diagnostic stream 必须为 stdout 或 stderr');
   }
   const safeMessage = sanitizeProcessOutput(diagnostic.message, { root: process.cwd() });
   return Object.freeze({
-    source: publicText(diagnostic.source ?? 'repo-guard', 'GateResult diagnostic source'),
+    source: publicText(diagnostic.source ?? 'repo-guard', '门禁结果诊断来源'),
     stream,
     level: diagnostic.level,
     message: safeMessage.text,
@@ -348,13 +352,13 @@ export function createGateResult({
   error = null,
   diagnostics = [],
 }) {
-  requireNonEmptyString(gateId, 'GateResult gateId');
+  requireNonEmptyString(gateId, '门禁结果的 gateId');
   if (!GATE_STATUSES.includes(status)) {
-    throw new TypeError(`GateResult status must be one of: ${GATE_STATUS_VALUES.join(', ')}`);
+    throw new TypeError(`GateResult status 必须是以下值之一： ${GATE_STATUS_VALUES.join(', ')}`);
   }
-  requireNonEmptyString(summary, 'GateResult summary');
+  requireNonEmptyString(summary, '门禁结果摘要');
   if (!Array.isArray(findings) || !Array.isArray(artifacts) || !Array.isArray(diagnostics)) {
-    throw new TypeError('GateResult findings, artifacts, and diagnostics must be arrays');
+    throw new TypeError('GateResult findings、artifacts 和 diagnostics 必须是数组');
   }
   const fallbackKind = status.endsWith('-error') ? status.slice(0, -6) : 'execution';
   const normalizedIssueError = error != null
@@ -363,18 +367,18 @@ export function createGateResult({
     && typeof error.id === 'string'
     && typeof error.fingerprint === 'string';
   if (error != null && !isRepoGuardError(error) && !normalizedIssueError) {
-    throw new TypeError('GateResult error must be a RepoGuardError created at the domain boundary');
+    throw new TypeError('GateResult error 必须是在领域边界创建的 RepoGuardError');
   }
   const normalizedError = normalizeError(error, { gateId, fallbackKind });
   if (status.endsWith('-error') && normalizedError == null) {
-    throw new TypeError(`GateResult status ${status} requires an error`);
+    throw new TypeError(`GateResult status 为 ${status} 时必须包含 error`);
   }
   if (!status.endsWith('-error') && normalizedError != null) {
-    throw new TypeError(`GateResult status ${status} must not include an error`);
+    throw new TypeError(`GateResult status 为 ${status} 时不得包含 error`);
   }
   if (status.endsWith('-error') && errorStatus(error, fallbackKind) !== status) {
     throw new TypeError(
-      `GateResult status ${status} does not match ${normalizedError.kind} error ${normalizedError.code}`,
+      `GateResult status ${status} 与 ${normalizedError.kind} 错误 ${normalizedError.code} 不匹配`,
     );
   }
   const normalizedFindings = findings.map((finding) => {
@@ -388,14 +392,14 @@ export function createGateResult({
   return Object.freeze({
     gateId,
     status,
-    summary: publicText(summary, 'GateResult summary'),
+    summary: publicText(summary, '门禁结果摘要'),
     findings: Object.freeze(normalizedFindings),
     issues: Object.freeze(normalizedError
       ? [...normalizedFindings, normalizedError]
       : [...normalizedFindings]),
     artifacts: Object.freeze(artifacts.map((artifact) => createArtifact(artifact))),
     metrics: normalizeMetrics(metrics),
-    durationMs: requireNonNegativeNumber(durationMs, 'GateResult durationMs'),
+    durationMs: requireNonNegativeNumber(durationMs, '门禁结果的 durationMs'),
     error: normalizedError,
     diagnostics: Object.freeze(diagnostics.map(normalizeDiagnostic)),
   });
@@ -403,7 +407,7 @@ export function createGateResult({
 
 export function gateStatusToExitCode(status) {
   if (!GATE_STATUSES.includes(status)) {
-    throw new TypeError(`Unknown GateStatus: ${status}`);
+    throw new TypeError(`未知的 GateStatus： ${status}`);
   }
   if (status === 'passed' || status === 'skipped') return 0;
   if (status === 'violation') return 2;

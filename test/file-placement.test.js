@@ -146,5 +146,5 @@ test('full-project inspection checks tracked and non-ignored untracked files reg
     encoding: 'utf8',
   });
   assert.equal(cliResult.status, 0, cliResult.stderr);
-  assert.match(cliResult.stdout, /File placement project check passed/);
+  assert.match(cliResult.stdout, /文件归类项目检查已通过/);
 });

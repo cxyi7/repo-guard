@@ -52,13 +52,13 @@ test('rejects invalid switches and protocol names', () => {
     () => validateDependencyPolicyConfiguration({
       dependencyPolicy: { enabled: 'yes' },
     }, CONFIG_PATH),
-    /dependencyPolicy\.enabled must be a boolean/,
+    /dependencyPolicy\.enabled 必须是布尔值/,
   );
   assert.throws(
     () => validateDependencyPolicyConfiguration({
       dependencyPolicy: { allowedProtocols: ['https:'] },
     }, CONFIG_PATH),
-    /protocol name without a colon/,
+    /不含冒号的协议名称/,
   );
 });
 
@@ -71,7 +71,7 @@ test('rejects duplicate banned packages and incomplete guidance', () => {
     () => validateDependencyPolicyConfiguration({
       dependencyPolicy: { bannedPackages: [bannedPackage, bannedPackage] },
     }, CONFIG_PATH),
-    /banned package is duplicated/,
+    /禁用包重复/,
   );
   assert.throws(
     () => validateDependencyPolicyConfiguration({
@@ -79,6 +79,6 @@ test('rejects duplicate banned packages and incomplete guidance', () => {
         bannedPackages: [{ ...bannedPackage, replacement: '  ' }],
       },
     }, CONFIG_PATH),
-    /replacement must be null or a non-empty string/,
+    /replacement 必须为 null 或非空字符串/,
   );
 });

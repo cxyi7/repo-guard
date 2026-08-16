@@ -59,7 +59,7 @@ function parseTest(source, testPath) {
     const location = error.loc ? `:${error.loc.line}:${error.loc.column + 1}` : '';
     throw executionError(
       'component-interaction/test-parse-failed',
-      `Component interaction gate could not parse ${testPath}${location}: `
+      `组件交互门禁无法解析 ${testPath}${location}：`
       + `${error.reasonCode ?? error.message}`,
       { cause: error, details: { location: { path: testPath } } },
     );

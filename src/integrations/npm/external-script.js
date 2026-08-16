@@ -35,7 +35,7 @@ async function terminateProcessTree(child) {
         if (status === 0 || child.exitCode != null || child.signalCode != null) resolve();
         else reject(executionError(
           'external-gate/process-tree-termination-failed',
-          `Unable to terminate external gate process tree (taskkill exit ${status})`,
+          `无法终止外部门禁进程树（taskkill 退出码为 ${status}）`,
         ));
       });
     });
@@ -63,7 +63,7 @@ export function containsSensitiveExternalData(value) {
 
 async function runExactNpmInvocation({ root, argumentsList, signal, env = process.env }) {
   const npmCli = npmCliPath();
-  if (!npmCli) throw executionError('npm/cli-not-found', 'Unable to locate the npm CLI used by this Node.js installation');
+  if (!npmCli) throw executionError('npm/cli-not-found', '找不到当前 Node.js 安装所使用的 npm CLI');
   return await new Promise((resolve, reject) => {
     let settled = false;
     let terminating = false;
@@ -106,7 +106,7 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
       if (size > OUTPUT_LIMIT) {
         void terminate(executionError(
           'external-gate/output-limit-exceeded',
-          `External gate output exceeded ${OUTPUT_LIMIT} bytes`,
+          `外部门禁输出超过 ${OUTPUT_LIMIT} 字节`,
         ));
         return;
       }
@@ -133,7 +133,7 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
     const abort = () => {
       const error = signal.reason instanceof Error
         ? signal.reason
-        : cancellationError('external-gate/cancelled', 'External gate execution was cancelled');
+        : cancellationError('external-gate/cancelled', '外部门禁执行已取消');
       void terminate(error);
     };
     if (signal.aborted) abort();
@@ -149,7 +149,7 @@ export async function runExactNpmScript({ root, script, signal, env }) {
 export async function runExactNpmCommand({ root, argumentsList, signal, env }) {
   if (!Array.isArray(argumentsList) || argumentsList.length === 0
     || argumentsList.some((argument) => typeof argument !== 'string' || argument === '')) {
-    throw new TypeError('npm argumentsList must contain non-empty strings');
+    throw new TypeError('npm argumentsList 必须包含非空字符串');
   }
   return await runExactNpmInvocation({ root, argumentsList, signal, env });
 }
