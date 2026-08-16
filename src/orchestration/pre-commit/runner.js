@@ -7,7 +7,6 @@ import {
 } from '../../core/capability/gate-context.js';
 import {
   configurationError,
-  internalError,
   toRepoGuardError,
 } from '../../core/error/repo-guard-error.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
@@ -58,25 +57,6 @@ export async function runPreCommit(cwd = process.cwd()) {
     registry: gateRegistry,
     context,
     stopOnFailure: true,
-    executeStep: async ({ context: stepContext, gate, step }) => {
-      switch (step.id) {
-        case 'dependencies.policy':
-          {
-            const gatePlan = await gate.plan(stepContext);
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'repository.protected-files':
-          {
-            const gatePlan = await gate.plan(stepContext);
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        default:
-          throw internalError(
-            'pre-commit/unsupported-plan-step',
-            `Unsupported protected pre-commit policy step: ${step.id}`,
-          );
-      }
-    },
     onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
   });
   if (execution.status.endsWith('-error')) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.97
+
+- 删除 pre-commit 最终策略 runner 对依赖策略与保护文件 Gate 的重复硬编码分发，直接使用统一 orchestrator 的 Gate `plan`/`run` 执行。
+- 暂存质量与保护文件仍保持独立模块，受保护 Execution Plan、固定顺序、lint-staged 隔离、部分暂存恢复、配置、GateResult、Hook、CI、公共 exports 和退出码保持不变。
+
 ## 1.4.96
 
 - 删除 CI runner 对官方与外部 Gate 的具体分发 switch，统一使用 orchestrator 的 Gate `plan`/`run` 执行；CI runner 只保留范围、上下文、报告聚合与持久化职责。

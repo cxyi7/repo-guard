@@ -332,6 +332,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     'orchestration/setup/hook-installer',
     'orchestration/ci/runner',
     'orchestration/pre-commit/quality-runner',
+    'orchestration/pre-commit/runner',
     'orchestration/pre-push/runner',
   ].map((name) => [name, readFileSync(new URL(`../src/${name}.js`, import.meta.url), 'utf8')]));
 
@@ -350,6 +351,14 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
   assert.doesNotMatch(
     sources['orchestration/pre-commit/quality-runner'],
     /run\w+Project|quality\.typecheck|quality\.lighthouse/,
+  );
+  assert.match(
+    sources['orchestration/pre-commit/runner'],
+    /orchestratePlan\(\{[\s\S]*plan: preCommitPolicyPlan/,
+  );
+  assert.doesNotMatch(
+    sources['orchestration/pre-commit/runner'],
+    /executeStep|unsupported-plan-step|dependencies\.policy|repository\.protected-files/,
   );
   assert.match(sources['orchestration/pre-push/runner'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
   assert.doesNotMatch(

@@ -73,6 +73,7 @@
 | 平台 Gate 归属 | 1.4.94 将暂存质量、项目质量与测试 Gate 从跨领域平台聚合文件拆回所属领域，Registry 按既定顺序显式组合 | 平台 Gate 按单一能力职责分组；共享 helper 不得知道具体 Gate，Registry 只负责发现与组合，不承载执行策略 |
 | pre-push capability 分发 | 1.4.95 删除 runner 对具体质量 Gate ID 的 switch，直接使用统一 orchestrator 的默认 `plan`/`run` 分发 | pre-push runner 只拥有推送配置、变更范围、上下文、首错停止与呈现职责；能力发现和顺序分别属于 Registry 与 Execution Plan |
 | CI capability 分发 | 1.4.96 删除 runner 对具体 Gate ID 的 switch；步骤报告名由 Execution Plan 声明，质量文件 pattern 由 Gate plan 判定 | CI runner 只拥有 revision range、项目文件上下文、报告聚合与持久化；新增能力不得要求 runner 增加 Gate 专用分支 |
+| pre-commit 策略分发 | 1.4.97 删除最终策略 runner 对依赖策略与保护文件 Gate 的重复 switch，直接使用统一 orchestrator 默认分发 | 暂存质量与保护文件必须保持独立；固定顺序和允许的 mutation 由受保护 Plan 守护，runner 不重复声明具体策略 Gate |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 
