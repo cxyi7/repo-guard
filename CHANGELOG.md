@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+
+- 新增可配置的 `repository.code-placement` 代码位置门禁：业务项目可以为每段精确代码文本配置多个允许文件和搜索范围，代码出现在其他文件时阻止提交并输出中文位置与修复指引。
+- pre-commit 在 Stylelint、ESLint 和 Prettier 完成且 `lint-staged` 更新索引后，只读扫描最终暂存快照；未暂存内容不会误阻断本次提交，CI policy 会重新检查完整提交以防止绕过本地 Hook。
+- 新增 `repo-guard code-placement`、`guard:code-placement` 和 `codePlacement` 功能开关，并同步配置验证、Schema、README、固定执行计划与架构边界测试。
+
 ## 1.5.0
 
 - 建立简体中文用户文案硬性契约：repo-guard 自有状态、警告、错误、证据、预期、修复目标、步骤、约束和验证说明必须使用中文；机器 ID、命令、路径、包名、协议枚举和第三方规则 ID 保持稳定。

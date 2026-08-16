@@ -131,6 +131,15 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 150,
     packageScript: 'guard:file-placement',
   }),
+  reviewedGateDescriptor('repository.code-placement', POLICY_ENVIRONMENTS, {
+    configKey: 'codePlacement',
+    featureName: 'codePlacement',
+    featureOrder: 45,
+    manualCommand: 'code-placement',
+    manualOrder: 155,
+    doctorOrder: 155,
+    packageScript: 'guard:code-placement',
+  }),
   reviewedGateDescriptor('repository.maximum-file-lines', CI_POLICY_ENVIRONMENTS, {
     configKey: 'preCommit.maxFileLines',
     featureName: 'maxFileLines',

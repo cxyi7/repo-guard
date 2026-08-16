@@ -51,6 +51,8 @@ function writeConfig(root, {
     'src/App.vue',
   ],
   dependencyPolicyEnabled = false,
+  codePlacementEnabled = false,
+  codePlacementRules = [],
   maxFileLinesEnabled = false,
   filePlacementEnabled = false,
   filePlacementMode = 'newFiles',
@@ -70,6 +72,10 @@ function writeConfig(root, {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
+      codePlacement: {
+        enabled: codePlacementEnabled,
+        rules: codePlacementRules,
+      },
       dependencyPolicy: {
         enabled: dependencyPolicyEnabled,
         requireExactVersions: true,
@@ -351,6 +357,35 @@ test('does not block modified legacy resources in newFiles mode', async (context
 
   assert.equal(await runPreCommit(root), 0);
   assert.match(git(root, ['show', ':src/components/legacy.png']), /updated/);
+});
+
+test('blocks restricted code in a staged disallowed file but ignores an unstaged copy', async (context) => {
+  const restrictedCode = 'const signature = createPaymentSignature(payload);';
+  const root = createRepository({
+    enabled: false,
+    codePlacementEnabled: true,
+    codePlacementRules: [{
+      name: '支付签名',
+      content: restrictedCode,
+      allowedFiles: ['src/payment/signature.js'],
+      scanPatterns: ['src/**/*.js'],
+    }],
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src', 'payment'), { recursive: true });
+  mkdirSync(path.join(root, 'src', 'orders'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'payment', 'signature.js'), `${restrictedCode}\n`);
+  writeFileSync(path.join(root, 'src', 'orders', 'submit.js'), 'export const submit = true;\n');
+  commitBaseline(root);
+
+  writeFileSync(path.join(root, 'src', 'orders', 'submit.js'), `${restrictedCode}\n`);
+  writeFileSync(path.join(root, 'sample.js'), 'const value = 2;\n');
+  git(root, ['add', 'sample.js']);
+  assert.equal(await runPreCommit(root), 0);
+
+  git(root, ['add', 'src/orders/submit.js']);
+  assert.equal(await runPreCommit(root), 1);
+  assert.match(git(root, ['show', ':src/orders/submit.js']), /createPaymentSignature/);
 });
 
 test('dynamic-code gate still checks files ignored by ESLint', async (context) => {

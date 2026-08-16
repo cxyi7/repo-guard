@@ -2,6 +2,7 @@ import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { validateAccessibilityConfiguration } from './accessibility-validation.js';
 import { validateArchitectureConfiguration } from './architecture-validation.js';
 import { validateCiConfiguration } from './ci-validation.js';
+import { validateCodePlacementConfiguration } from './code-placement-validation.js';
 import { validateDependencyPolicyConfiguration } from './dependency-policy-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
@@ -22,6 +23,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
   const notification = validateNotificationConfiguration(value, configPath);
 
   const { ci, externalGates } = validateCiConfiguration(value, configPath);
+
+  const codePlacement = validateCodePlacementConfiguration(value, configPath);
 
   const exceptions = validateExceptionConfiguration(value, configPath);
 
@@ -47,6 +50,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     notification,
     ci,
     externalGates,
+    codePlacement,
     exceptions,
     dependencyPolicy,
     architecture,

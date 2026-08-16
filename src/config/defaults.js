@@ -140,6 +140,10 @@ export const DEFAULT_FILE_PLACEMENT_CONFIG = Object.freeze({
     }),
   ]),
 });
+export const DEFAULT_CODE_PLACEMENT_CONFIG = Object.freeze({
+  enabled: false,
+  rules: Object.freeze([]),
+});
 export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   enabled: false,
   configFile: null,

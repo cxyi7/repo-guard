@@ -137,6 +137,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard file-placement',
   );
   assert.equal(
+    packageJson.scripts['guard:code-placement'],
+    'repo-guard code-placement',
+  );
+  assert.equal(
     packageJson.scripts['guard:enable-unit-test'],
     'repo-guard enable unitTest',
   );

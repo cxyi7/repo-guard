@@ -280,6 +280,10 @@ git push
     ],
     "exclusions": ["src/main.{js,ts}", "src/**/index.{js,ts}", "src/generated/**"]
   },
+  "codePlacement": {
+    "enabled": false,
+    "rules": []
+  },
   "lighthouse": {
     "enabled": false,
     "configFile": null,
@@ -476,6 +480,49 @@ repo-guard external project.api-contract
 ```
 
 完整报告 Schema 可从 `@cxyi7/repo-guard/external-report.schema.json` 引用。报告与 artifact 必须使用 `/` 分隔的标准仓库相对路径并位于 `reports/`，不能覆盖 Git 已跟踪文件、不能经过符号链接；外部报告路径还必须与 CI 主报告路径不同。报告上限 1 MiB，artifact 最多 20 个且每个不超过 10 MiB。repo-guard 会拒绝旧报告、未知字段、状态/退出码矛盾、路径穿越和敏感信息，并对脚本输出中的常见 Token、密码、Cookie、Authorization 与私钥内容脱敏；超时、取消或输出超限会终止完整 npm 进程树。外部门禁不会进入 pre-commit、pre-push 或 CI policy。
+
+### 代码位置门禁
+
+`codePlacement` 用于限制某段业务代码只能出现在指定文件中。功能默认关闭，
+项目配置规则并启用后，受限代码出现在任何其他搜索文件中都会阻止提交。
+
+```json
+{
+  "codePlacement": {
+    "enabled": true,
+    "rules": [
+      {
+        "name": "支付签名实现",
+        "content": "const signature = createPaymentSignature(payload);",
+        "allowedFiles": [
+          "src/payment/signature.ts",
+          "src/admin/payment-signature.ts"
+        ],
+        "scanPatterns": ["src/**/*.{js,jsx,ts,tsx,vue}"]
+      }
+    ]
+  }
+}
+```
+
+| 字段 | 默认值 | 说明 |
+|---|---:|---|
+| `enabled` | `false` | 是否在 pre-commit 和 CI policy 中强制检查 |
+| `rules` | `[]` | 受限代码规则；启用时至少配置一条 |
+| `name` | 无 | 用于中文问题说明和 AI 修复指引的规则名称 |
+| `content` | 无 | 需要限制位置的单行或多行精确代码文本 |
+| `allowedFiles` | 无 | 允许出现该代码的一个或多个仓库相对文件 glob |
+| `scanPatterns` | 无 | 搜索受限代码的仓库相对文件 glob |
+
+匹配时只将 CRLF 和 CR 统一为 LF，不忽略其他空白，也不将语义相似但文本不同的代码视为相同。
+pre-commit 在 Stylelint、ESLint 和 Prettier 完成并由 `lint-staged` 更新索引后，检查最终暂存快照；
+未暂存内容不会阻止本次提交。CI policy 会重新扫描完整提交。手动全项目检查：
+
+```bash
+npx repo-guard code-placement
+# 或
+npm run guard:code-placement
+```
 
 ### 文件归位门禁
 
@@ -1275,9 +1322,10 @@ repo-guard target-blank
 repo-guard form-labels
 repo-guard image-alt
 repo-guard accessibility-test
-repo-guard enable eslint prettier stylelint styleComplexity styleGovernance maxFileLines filePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build ci
+repo-guard enable eslint prettier stylelint styleComplexity styleGovernance maxFileLines filePlacement codePlacement dependencies architecture typeCheck unitTest accessibilityTest coverage build ci
 repo-guard disable filePlacement
 repo-guard file-placement
+repo-guard code-placement
 repo-guard dependencies
 repo-guard style-complexity
 repo-guard build

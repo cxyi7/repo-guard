@@ -5,6 +5,7 @@ import {
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_CI_CONFIG,
+  DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
@@ -49,6 +50,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
 
   assert.deepEqual(config.notification, { enabled: true });
   assert.deepEqual(config.ci, DEFAULT_CI_CONFIG);
+  assert.deepEqual(config.codePlacement, DEFAULT_CODE_PLACEMENT_CONFIG);
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);

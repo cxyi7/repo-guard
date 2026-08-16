@@ -145,6 +145,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     { name: 'accessibility.vue-image-alt', status: 'passed' },
     { name: 'dependencies.policy', status: 'skipped' },
     { name: 'repository.file-placement', status: 'skipped' },
+    { name: 'repository.code-placement', status: 'skipped' },
     { name: 'repository.maximum-file-lines', status: 'skipped' },
     { name: 'unit-test-policy', status: 'skipped' },
     { name: 'protected-files', status: 'passed' },

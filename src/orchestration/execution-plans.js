@@ -35,6 +35,7 @@ export const ciPolicyPlan = defineExecutionPlan({
     'accessibility.vue-image-alt',
     'dependencies.policy',
     'repository.file-placement',
+    'repository.code-placement',
     'repository.maximum-file-lines',
     {
       id: 'quality.unit-test-policy',
@@ -63,6 +64,7 @@ export const ciFullPlan = defineExecutionPlan({
     'accessibility.vue-image-alt',
     'dependencies.policy',
     'repository.file-placement',
+    'repository.code-placement',
     'repository.maximum-file-lines',
     {
       id: 'quality.unit-test-policy',

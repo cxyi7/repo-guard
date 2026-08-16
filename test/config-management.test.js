@@ -60,6 +60,8 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.preCommit.filePlacement.mode, 'newFiles');
   assert.equal(config.preCommit.filePlacement.rules.length, 2);
+  assert.equal(config.codePlacement.enabled, false);
+  assert.deepEqual(config.codePlacement.rules, []);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
   assert.equal(config.preCommit.maxFileLines.mode, 'strict');
   assert.equal(config.preCommit.maxFileLines.warnAt, 0.85);
@@ -373,6 +375,29 @@ test('disables and re-enables the default file placement gate', (context) => {
   const enabled = setFeaturesEnabled(root, ['filePlacement'], true);
   assert.deepEqual(enabled.changed, ['filePlacement']);
   assert.equal(readConfig(root).preCommit.filePlacement.enabled, true);
+});
+
+test('enables and disables a configured code placement gate', (context) => {
+  const root = createFixture(sparseConfig({
+    codePlacement: {
+      enabled: false,
+      rules: [{
+        name: '支付签名',
+        content: 'createPaymentSignature(payload)',
+        allowedFiles: ['src/payment/signature.ts'],
+        scanPatterns: ['src/**/*.ts'],
+      }],
+    },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['codePlacement'], true);
+  assert.deepEqual(enabled.changed, ['codePlacement']);
+  assert.equal(readConfig(root).codePlacement.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['codePlacement'], false);
+  assert.deepEqual(disabled.changed, ['codePlacement']);
+  assert.equal(readConfig(root).codePlacement.enabled, false);
 });
 
 test('rejects invalid values before migration can rewrite the file', (context) => {

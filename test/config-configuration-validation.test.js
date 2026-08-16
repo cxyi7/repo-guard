@@ -21,6 +21,7 @@ test('assembles every normalized configuration domain in contract order', () => 
     'notification',
     'ci',
     'externalGates',
+    'codePlacement',
     'exceptions',
     'dependencyPolicy',
     'architecture',

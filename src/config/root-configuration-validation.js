@@ -15,6 +15,7 @@ export function validateRootConfigurationContract(value, configPath) {
       'notification',
       'ci',
       'externalGates',
+      'codePlacement',
       'exceptions',
       'dependencyPolicy',
       'architecture',

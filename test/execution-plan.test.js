@@ -48,6 +48,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.maximum-file-lines',
       'repository.file-placement',
       'dependencies.policy',
+      'repository.code-placement',
       'repository.protected-files',
     ],
   );
@@ -73,6 +74,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'accessibility.vue-image-alt',
       'dependencies.policy',
       'repository.file-placement',
+      'repository.code-placement',
       'repository.maximum-file-lines',
       'quality.unit-test-policy',
       'repository.protected-files',
@@ -89,6 +91,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'accessibility.vue-image-alt',
       'dependencies.policy',
       'repository.file-placement',
+      'repository.code-placement',
       'repository.maximum-file-lines',
       'quality.unit-test-policy',
       'repository.protected-files',
@@ -113,6 +116,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'accessibility.vue-image-alt',
       'dependencies.policy',
       'repository.file-placement',
+      'repository.code-placement',
       'repository.maximum-file-lines',
       'quality.unit-test-policy',
       'repository.protected-files',
@@ -136,6 +140,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'accessibility.vue-image-alt',
       'dependencies.policy',
       'repository.file-placement',
+      'repository.code-placement',
       'repository.maximum-file-lines',
       'unit-test-policy',
       'protected-files',
@@ -195,7 +200,7 @@ test('rejects every attempt to reorder or expand the protected pre-commit plan',
   );
   assert.deepEqual(
     preCommitPolicyPlan.steps.map(({ id }) => id),
-    ['dependencies.policy', 'repository.protected-files'],
+    ['dependencies.policy', 'repository.code-placement', 'repository.protected-files'],
   );
 });
 

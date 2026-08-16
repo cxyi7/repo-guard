@@ -2141,6 +2141,43 @@ test('keeps file placement rules and project scope in policies without a root he
   );
 });
 
+test('separates code placement content facts, policy decisions, and GateResult adaptation', () => {
+  const configPath = path.join(SOURCE_ROOT, 'config', 'code-placement-validation.js');
+  const indexFactsPath = path.join(SOURCE_ROOT, 'git', 'index-content.js');
+  const projectFactsPath = path.join(SOURCE_ROOT, 'core', 'project', 'text-files.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'code-placement.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'repository', 'code-placement-gate.js');
+
+  for (const expectedPath of [
+    configPath,
+    indexFactsPath,
+    projectFactsPath,
+    policyPath,
+    gatePath,
+  ]) {
+    assert.equal(existsSync(expectedPath), true);
+  }
+
+  const configSource = readFileSync(configPath, 'utf8');
+  const indexFactsSource = readFileSync(indexFactsPath, 'utf8');
+  const projectFactsSource = readFileSync(projectFactsPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const gateSource = readFileSync(gatePath, 'utf8');
+
+  assert.match(configSource, /export function validateCodePlacementConfiguration/);
+  assert.doesNotMatch(configSource, /from ['"][^'"]*(?:git|policies|gates|orchestration)\//);
+  assert.match(indexFactsSource, /export function readIndexTextFiles/);
+  assert.doesNotMatch(indexFactsSource, /micromatch|GateResult|finding|policy/i);
+  assert.match(projectFactsSource, /export function readProjectTextFiles/);
+  assert.doesNotMatch(projectFactsSource, /micromatch|GateResult|finding|policy/i);
+  assert.match(policySource, /export function inspectCodePlacement/);
+  assert.match(policySource, /export function selectCodePlacementFiles/);
+  assert.doesNotMatch(policySource, /from ['"][^'"]*(?:git|gates|orchestration)\//);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/git\/index-content\.js['"]/);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/policies\/code-placement\.js['"]/);
+  assert.doesNotMatch(gateSource, /from ['"][^'"]*orchestration\//);
+});
+
 test('keeps maximum file line rules in policies without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'max-file-lines.js')), false);
   const maxFileLinesPath = path.join(

@@ -76,6 +76,7 @@
 | pre-commit 策略分发 | 1.4.97 删除最终策略 runner 对依赖策略与保护文件 Gate 的重复 switch，直接使用统一 orchestrator 默认分发 | 暂存质量与保护文件必须保持独立；固定顺序和允许的 mutation 由受保护 Plan 守护，runner 不重复声明具体策略 Gate |
 | 样式治理结果语义 | 1.4.98 将 policy 领域结果统一为 `violations`，只在 Stylelint Gate 的协议适配边界转换为原生 `warnings` | 领域命名必须表达真实语义；不得在 policy 中用 warning 名称承载 error 级违规，第三方协议字段只能停留在对应适配边界 |
 | 中文用户文案契约 | 1.5.0 将 repo-guard 自有状态、警告、错误和修复说明固定为简体中文，并以债务数为 0 的精确指纹基线接入标准检查 | 新功能不得新增纯英文用户文案；机器标识保持稳定，第三方原始诊断必须与主要中文说明隔离，零基线不得扩大或重新生成 |
+| 代码位置契约 | 1.6.0 将索引文本读取、项目文本读取、位置判定和 GateResult 分别放入 Git/core、policy 和 repository gate 领域 | pre-commit 必须在 `lint-staged` 写回后检查最终 Git 索引，不得读取未暂存业务改动；位置策略不得接管 Git 或流程编排 |
 
 根级扁平文件债务与过渡 `commands` 层均已清空；后续通过 dependency-cruiser、目录清单、职责归属测试和惰性导入测试持续证明边界没有回退。
 
@@ -164,7 +165,7 @@ CLI 再将内部状态稳定映射为现有退出码，避免每个 runner 自�
 │  └─ security/                 Secret 脱敏、路径和 artifact 安全
 │
 ├─ gates/
-│  ├─ repository/               保护文件、文件归位、文件规模
+│  ├─ repository/               保护文件、代码/文件归位、文件规模
 │  ├─ quality/                  ESLint、Prettier、Stylelint
 │  ├─ security/                 动态代码、Vue 安全规则
 │  ├─ accessibility/            label、alt、axe 编排
@@ -372,6 +373,7 @@ defineExecutionPlan({
     'repository.maximum-file-lines',
     'repository.file-placement',
     'dependencies.staged-policy',
+    'repository.code-placement',
     'repository.protected-files',
   ],
 });
@@ -393,6 +395,7 @@ defineExecutionPlan({
 
 - 保护文件；
 - 文件归位和行数；
+- 指定代码只能出现在允许文件中；
 - 依赖声明与锁文件；
 - 动态代码执行；
 - Vue `v-html`、`target=_blank`、label 和 alt；
@@ -471,6 +474,7 @@ lint-staged 隔离暂存内容
   → 文件归位
   → 恢复未暂存内容并写回最终暂存结果
   → 暂存依赖策略
+  → 最终 Git 索引代码位置策略
   → 独立的保护文件门禁
   → 提交信息文件清单
 ```

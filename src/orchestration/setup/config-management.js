@@ -13,6 +13,7 @@ import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_COMPONENT_INTERACTION_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_CONFIG,
@@ -77,6 +78,19 @@ function cloneArchitectureConfig(value = {}) {
       ...rule,
       from: structuredClone(rule.from),
       to: structuredClone(rule.to),
+    })),
+  };
+}
+
+function cloneCodePlacementConfig(value = {}) {
+  const rules = value.rules ?? DEFAULT_CODE_PLACEMENT_CONFIG.rules;
+  return {
+    ...DEFAULT_CODE_PLACEMENT_CONFIG,
+    ...value,
+    rules: rules.map((rule) => ({
+      ...rule,
+      allowedFiles: [...rule.allowedFiles],
+      scanPatterns: [...rule.scanPatterns],
     })),
   };
 }
@@ -163,6 +177,7 @@ export function createStarterConfig({
       protectedFiles: { ...DEFAULT_CI_CONFIG.protectedFiles },
     },
     externalGates: [],
+    codePlacement: cloneCodePlacementConfig(),
     exceptions: cloneExceptionsConfig(),
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
@@ -266,6 +281,7 @@ export function migrateProjectConfig(root, {
       },
     },
     externalGates: prepared.externalGates ?? [],
+    codePlacement: cloneCodePlacementConfig(prepared.codePlacement),
     exceptions: cloneExceptionsConfig(prepared.exceptions),
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
     architecture: cloneArchitectureConfig(prepared.architecture),
