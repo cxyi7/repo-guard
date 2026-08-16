@@ -26,12 +26,14 @@ export function validateTypeCheckSetup(root, config) {
   return { command: command.trim() };
 }
 
-export function executeProjectTypeCheck({ root, config }) {
+export async function executeProjectTypeCheck({ root, config, signal = null, output = null }) {
   const setup = validateTypeCheckSetup(root, config);
-  const execution = runProjectScript({
+  const execution = await runProjectScript({
     root,
     script: config.script,
     timeoutMs: config.timeoutMs,
+    signal,
+    output,
   });
   return Object.freeze({ setup, execution });
 }

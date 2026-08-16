@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.3
+
+- 修复 `git push` 执行 pre-push 重型门禁时长时间没有终端反馈的问题：TypeScript、单元测试、axe 和构建脚本现在会先显示中文阶段提示，再实时转发经过脱敏的 stdout/stderr。
+- 项目脚本统一使用可取消的异步进程执行，继续保留退出码、超时、失败诊断和完整进程树终止行为；dependency-cruiser JSON 仍由机器解析，但会即时显示架构检查进度。
+
 ## 1.6.2
 
 - 修复 Windows CRLF 导致 `doctor` 将内容正确的 `AGENTS.md` 结构化例外、架构和单元测试策略误报为缺失的问题；换行符差异不再触发 `doctor --fix` 重写。

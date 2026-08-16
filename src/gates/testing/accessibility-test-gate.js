@@ -1,5 +1,6 @@
 import { configurationError, executionError } from '../../core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
+import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import { executeAccessibilityTests } from '../../integrations/npm/accessibility.js';
@@ -7,7 +8,13 @@ import { inspectAccessibilityTestSetup } from './accessibility-test-setup.js';
 
 const ACCESSIBILITY_TEST_GATE_ID = 'quality.accessibility-test';
 
-export function runAccessibilityTestGate({ root, config }) {
+export async function runAccessibilityTestGate({
+  root,
+  config,
+  signal = null,
+  liveOutput = false,
+  writeProgress = null,
+}) {
   const inspection = inspectAccessibilityTestSetup(root, config);
   if (inspection.problems.length > 0) {
     return createGateResult({
@@ -40,13 +47,21 @@ export function runAccessibilityTestGate({ root, config }) {
   const integrations = inspection.integrations
     .map(({ name, version }) => `${name} ${version}`)
     .join(', ');
-  const diagnostics = [{ level: 'info', message:
-    `repo-guard 无障碍测试： ${integrations}; `
-    + `${inspection.files.length} 个文件, 正在运行 npm 脚本 "${config.script}"...` }];
-  const result = executeAccessibilityTests({ root, config });
-  diagnostics.push(...processOutputDiagnostics(result, { source: 'axe', root }));
+  const progressMessage = `repo-guard 无障碍测试： ${integrations}; `
+    + `${inspection.files.length} 个文件, 正在运行 npm 脚本 "${config.script}"...`;
+  if (liveOutput) writeProgress?.(progressMessage);
+  const diagnostics = liveOutput ? [] : [{ level: 'info', message: progressMessage }];
+  const result = await executeAccessibilityTests({
+    root,
+    config,
+    signal,
+    output: terminalProcessOutput(liveOutput),
+  });
+  if (!liveOutput) {
+    diagnostics.push(...processOutputDiagnostics(result, { source: 'axe', root }));
+  }
   if (result.error) {
-    if (result.error.code === 'ETIMEDOUT') {
+    if (result.timedOut) {
       return createGateResult({
         gateId: ACCESSIBILITY_TEST_GATE_ID,
         status: 'execution-error',

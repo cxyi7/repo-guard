@@ -1,6 +1,7 @@
 import { executionError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
+import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
 import {
@@ -13,7 +14,14 @@ import { coverageFindings, inspectCoverageGate } from './coverage-gate.js';
 import { inspectUnitTestPolicy, unitTestPolicyFindings } from './unit-test-policy.js';
 import { validateUnitTestSetup } from './unit-test-setup.js';
 
-export function runUnitTestGate({ root, config, changes }) {
+export async function runUnitTestGate({
+  root,
+  config,
+  changes,
+  signal = null,
+  liveOutput = false,
+  writeProgress = null,
+}) {
   changeSetEntries(changes, '单元测试门禁变更集');
   const setup = validateUnitTestSetup(root, config);
   const policy = inspectUnitTestPolicy({ root, changes, config });
@@ -33,15 +41,23 @@ export function runUnitTestGate({ root, config, changes }) {
     });
   }
 
-  const diagnostics = [{ level: 'info', message:
-    `repo-guard 单元测试：Vitest ${setup.vitest.version}, `
+  const progressMessage = `repo-guard 单元测试：Vitest ${setup.vitest.version}, `
     + `正在运行 npm 脚本 "${config.script}"`
-    + `${isCoverageEnabled(config.coverage) ? '（包含覆盖率）' : ''}...` }];
+    + `${isCoverageEnabled(config.coverage) ? '（包含覆盖率）' : ''}...`;
+  if (liveOutput) writeProgress?.(progressMessage);
+  const diagnostics = liveOutput ? [] : [{ level: 'info', message: progressMessage }];
   prepareCoverageReports(root, config.coverage);
-  const result = executeUnitTests({ root, config });
-  diagnostics.push(...processOutputDiagnostics(result, { source: 'vitest', root }));
+  const result = await executeUnitTests({
+    root,
+    config,
+    signal,
+    output: terminalProcessOutput(liveOutput),
+  });
+  if (!liveOutput) {
+    diagnostics.push(...processOutputDiagnostics(result, { source: 'vitest', root }));
+  }
   if (result.error) {
-    if (result.error.code === 'ETIMEDOUT') {
+    if (result.timedOut) {
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',

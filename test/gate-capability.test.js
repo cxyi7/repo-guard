@@ -209,6 +209,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 40,
     packageScript: 'guard:typecheck',
     requiredScripts: ['config:typeCheck.script'],
+    supportsCancellation: true,
   }),
   reviewedGateDescriptor(
     'quality.unit-test',
@@ -224,6 +225,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       requiredTools: ['vitest'],
       requiredScripts: ['config:unitTest.script'],
       artifactTypes: ['coverage-report'],
+      supportsCancellation: true,
     },
   ),
   reviewedGateDescriptor(
@@ -239,6 +241,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       doctorOrder: 60,
       packageScript: 'guard:accessibility-test',
       requiredScripts: ['config:accessibilityTest.script'],
+      supportsCancellation: true,
     },
   ),
   reviewedGateDescriptor('quality.architecture', ['manual', 'pre-push', 'ci-full'], {
@@ -265,6 +268,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       packageScript: 'guard:build',
       requiredScripts: ['config:build.script'],
       artifactTypes: ['build-output'],
+      supportsCancellation: true,
     },
   ),
   reviewedGateDescriptor('quality.lighthouse', ['manual', 'pre-push', 'release-ready'], {

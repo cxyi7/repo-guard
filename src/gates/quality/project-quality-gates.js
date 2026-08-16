@@ -24,6 +24,15 @@ import { runBuildGate } from './build-gate.js';
 import { runVueLighthouse } from './lighthouse-gate.js';
 import { runTypeCheckGate } from './typecheck-gate.js';
 
+function processExecutionOptions({ environment, logger, signal }) {
+  const liveOutput = environment === 'pre-push';
+  return {
+    signal,
+    liveOutput,
+    writeProgress: liveOutput ? logger.info : null,
+  };
+}
+
 function inspectBuildSetup({ root, config }) {
   if (!config.build.enabled) return readyGateSetup('构建门禁已禁用');
   validateBuildSetup(root, config.build);
@@ -65,10 +74,15 @@ export const typecheckGate = definePlatformGate({
   featureOrder: 130, doctorOrder: 40, environments: ['manual', 'pre-push', 'ci-full'],
   defaultTimeoutMs: DEFAULT_TYPE_CHECK_CONFIG.timeoutMs,
   manualCommand: 'typecheck', manualOrder: 50, packageScript: 'guard:typecheck',
+  supportsCancellation: true,
   requiredScripts: ['config:typeCheck.script'], inspectSetup: inspectTypecheckSetup,
   plan: ({ config }) => ({ enabled: config.typeCheck.enabled }),
-  run: ({ root, config, plan }) => plan.enabled
-    ? runTypeCheckGate({ root, config: config.typeCheck })
+  run: ({ root, config, plan, ...context }) => plan.enabled
+    ? runTypeCheckGate({
+        root,
+        config: config.typeCheck,
+        ...processExecutionOptions(context),
+      })
     : skippedResult('quality.typecheck', '类型检查已禁用'),
 });
 
@@ -79,8 +93,12 @@ export const architectureGate = definePlatformGate({
   manualCommand: 'architecture', manualOrder: 40, packageScript: 'guard:architecture',
   requiredTools: ['dependency-cruiser'], inspectSetup: inspectArchitectureSetup,
   plan: ({ config }) => ({ enabled: config.architecture.enabled }),
-  run: ({ root, config, plan }) => plan.enabled
-    ? runArchitectureGate({ root, config: config.architecture })
+  run: ({ root, config, plan, ...context }) => plan.enabled
+    ? runArchitectureGate({
+        root,
+        config: config.architecture,
+        ...processExecutionOptions(context),
+      })
     : skippedResult('quality.architecture', '架构门禁已禁用'),
 });
 
@@ -90,10 +108,15 @@ export const buildGate = definePlatformGate({
   environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_BUILD_CONFIG.timeoutMs,
   manualCommand: 'build', manualOrder: 30, packageScript: 'guard:build',
+  supportsCancellation: true,
   requiredScripts: ['config:build.script'], artifactTypes: ['build-output'],
   inspectSetup: inspectBuildSetup, plan: ({ config }) => ({ enabled: config.build.enabled }),
-  run: ({ root, config, plan }) => plan.enabled
-    ? runBuildGate({ root, config: config.build })
+  run: ({ root, config, plan, ...context }) => plan.enabled
+    ? runBuildGate({
+        root,
+        config: config.build,
+        ...processExecutionOptions(context),
+      })
     : skippedResult('quality.build', '构建已禁用'),
 });
 

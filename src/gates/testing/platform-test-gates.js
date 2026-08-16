@@ -22,6 +22,15 @@ import { runUnitTestGate } from './unit-test-gate.js';
 import { inspectUnitTestPolicy, unitTestPolicyFindings } from './unit-test-policy.js';
 import { validateUnitTestSetup } from './unit-test-setup.js';
 
+function processExecutionOptions({ environment, logger, signal }) {
+  const liveOutput = environment === 'pre-push';
+  return {
+    signal,
+    liveOutput,
+    writeProgress: liveOutput ? logger.info : null,
+  };
+}
+
 function inspectUnitTestSetup({ root, config }) {
   if (!config.unitTest.enabled) return readyGateSetup('单元测试门禁已禁用');
   const resolved = validateUnitTestSetup(root, config.unitTest);
@@ -64,15 +73,21 @@ export const unitTestGate = definePlatformGate({
   environments: ['manual', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_UNIT_TEST_CONFIG.timeoutMs,
   manualCommand: 'unit-test', manualOrder: 60, packageScript: 'guard:unit-test',
+  supportsCancellation: true,
   requiredTools: ['vitest'], requiredScripts: ['config:unitTest.script'],
   artifactTypes: ['coverage-report'], inspectSetup: inspectUnitTestSetup,
   plan: ({ config, step }) => ({
     enabled: config.unitTest.enabled,
     policyOnly: step?.id === 'quality.unit-test-policy',
   }),
-  run: ({ root, config, changes, plan }) => {
+  run: ({ root, config, changes, plan, ...context }) => {
     if (!plan.enabled) return skippedResult('quality.unit-test', '单元测试已禁用');
-    if (!plan.policyOnly) return runUnitTestGate({ root, config: config.unitTest, changes });
+    if (!plan.policyOnly) return runUnitTestGate({
+      root,
+      config: config.unitTest,
+      changes,
+      ...processExecutionOptions(context),
+    });
     const policy = inspectUnitTestPolicy({ root, changes, config: config.unitTest });
     const violations = policy.missingTests.length
       + policy.bypasses.length
@@ -99,10 +114,15 @@ export const accessibilityTestGate = definePlatformGate({
   defaultTimeoutMs: DEFAULT_ACCESSIBILITY_TEST_CONFIG.timeoutMs,
   manualCommand: 'accessibility-test', manualOrder: 120,
   packageScript: 'guard:accessibility-test',
+  supportsCancellation: true,
   requiredScripts: ['config:accessibilityTest.script'],
   inspectSetup: inspectAccessibilitySetup,
   plan: ({ config }) => ({ enabled: config.accessibilityTest.enabled }),
-  run: ({ root, config, plan }) => plan.enabled
-    ? runAccessibilityTestGate({ root, config: config.accessibilityTest })
+  run: ({ root, config, plan, ...context }) => plan.enabled
+    ? runAccessibilityTestGate({
+        root,
+        config: config.accessibilityTest,
+        ...processExecutionOptions(context),
+      })
     : skippedResult('quality.accessibility-test', '无障碍测试已禁用'),
 });

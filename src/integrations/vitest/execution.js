@@ -1,26 +1,19 @@
-import { spawnSync } from 'node:child_process';
+import { runProjectScript } from '../npm/run-script.js';
 import { buildCoverageArguments } from './coverage.js';
 
-export function executeUnitTests({ root, config }) {
-  const scriptArgs = ['run', config.script];
+export async function executeUnitTests({
+  root,
+  config,
+  signal = null,
+  output = null,
+}) {
   const coverageArgs = buildCoverageArguments(config);
-  if (coverageArgs.length > 0) {
-    scriptArgs.push('--', ...coverageArgs);
-  }
-  const command = process.platform === 'win32'
-    ? process.env.ComSpec || 'cmd.exe'
-    : 'npm';
-  const args = process.platform === 'win32'
-    ? ['/d', '/s', '/c', `npm ${scriptArgs.map((argument) => (
-      /[\s&|<>^()]/.test(argument) ? `"${argument.replaceAll('"', '""')}"` : argument
-    )).join(' ')}`]
-    : scriptArgs;
-  return spawnSync(command, args, {
-    cwd: root,
-    env: process.env,
-    stdio: 'pipe',
-    encoding: 'utf8',
-    timeout: config.timeoutMs,
-    windowsHide: true,
+  return await runProjectScript({
+    root,
+    script: config.script,
+    timeoutMs: config.timeoutMs,
+    extraArguments: coverageArgs,
+    signal,
+    output,
   });
 }

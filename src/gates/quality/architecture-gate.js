@@ -35,7 +35,13 @@ function architectureRepairAdvice(ruleName) {
   return '检查规则定义、依赖方向和相关调用方，修复违规根因并保持现有功能不变。';
 }
 
-export function runArchitectureGate({ root, config }) {
+export function runArchitectureGate({
+  root,
+  config,
+  liveOutput = false,
+  writeProgress = null,
+}) {
+  if (liveOutput) writeProgress?.('repo-guard 架构：正在运行 dependency-cruiser...');
   const { execution } = executeArchitectureAnalysis({ root, config });
   if (execution.error) {
     if (execution.error.code === 'ETIMEDOUT') {

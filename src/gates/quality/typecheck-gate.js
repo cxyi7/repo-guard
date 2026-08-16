@@ -1,19 +1,36 @@
 import { executionError } from '../../core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
+import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
-import { executeProjectTypeCheck } from '../../integrations/npm/typecheck.js';
+import {
+  executeProjectTypeCheck,
+  validateTypeCheckSetup,
+} from '../../integrations/npm/typecheck.js';
 
 export const TYPE_CHECK_GATE_ID = 'quality.typecheck';
 
-export function runTypeCheckGate({ root, config }) {
+export async function runTypeCheckGate({
+  root,
+  config,
+  signal = null,
+  liveOutput = false,
+  writeProgress = null,
+}) {
   const startedAt = Date.now();
-  const { setup, execution } = executeProjectTypeCheck({ root, config });
-  const diagnostics = [{
-    level: 'info',
-    message: `repo-guard TypeScript：正在运行 npm 脚本 "${config.script}" (${setup.command})...`,
-  }];
-  diagnostics.push(...processOutputDiagnostics(execution, { source: 'typescript', root }));
+  const setup = validateTypeCheckSetup(root, config);
+  const progressMessage = `repo-guard TypeScript：正在运行 npm 脚本 "${config.script}" (${setup.command})...`;
+  if (liveOutput) writeProgress?.(progressMessage);
+  const { execution } = await executeProjectTypeCheck({
+    root,
+    config,
+    signal,
+    output: terminalProcessOutput(liveOutput),
+  });
+  const diagnostics = liveOutput ? [] : [{ level: 'info', message: progressMessage }];
+  if (!liveOutput) {
+    diagnostics.push(...processOutputDiagnostics(execution, { source: 'typescript', root }));
+  }
   if (execution.error) {
     const error = executionError(
       execution.timedOut ? 'typecheck/timeout' : 'typecheck/process-start-failed',

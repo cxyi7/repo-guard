@@ -639,7 +639,7 @@ test('separates build execution facts from gate decisions without a root runner'
     integrationSource,
     /\b(?:createGateResult|processFailureFinding|executionError)\b/,
   );
-  assert.match(integrationSource, /export function executeProjectBuild/);
+  assert.match(integrationSource, /export async function executeProjectBuild/);
   assert.match(
     readFileSync(gatePath, 'utf8'),
     /integrations\/npm\/build\.js/,
@@ -664,7 +664,7 @@ test('separates typecheck execution facts from gate decisions without a root run
     integrationSource,
     /\b(?:createGateResult|processFailureFinding|executionError)\b/,
   );
-  assert.match(integrationSource, /export function executeProjectTypeCheck/);
+  assert.match(integrationSource, /export async function executeProjectTypeCheck/);
   assert.match(
     readFileSync(gatePath, 'utf8'),
     /integrations\/npm\/typecheck\.js/,
@@ -736,6 +736,7 @@ test('separates axe project and execution facts from accessibility test decision
     integrationSource,
     /\b(?:createGateResult|processFailureFinding|remediation|problems)\b/,
   );
+  assert.match(integrationSource, /export async function executeAccessibilityTests/);
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/npm\/accessibility\.js/);
   assert.match(readFileSync(gatePath, 'utf8'), /\.\/accessibility-test-setup\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/axe\/project\.js/);
@@ -801,7 +802,7 @@ test('separates Vitest project and execution facts from unit-test policy decisio
     integrationSource,
     /\b(?:createGateResult|changeSetEntries|remediation|unitTestPolicyFindings)\b/,
   );
-  assert.match(integrationSource, /export function executeUnitTests/);
+  assert.match(integrationSource, /export async function executeUnitTests/);
   assert.match(readFileSync(gatePath, 'utf8'), /integrations\/vitest\/execution\.js/);
   assert.match(readFileSync(setupPath, 'utf8'), /integrations\/vitest\/project\.js/);
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);

@@ -89,15 +89,15 @@ test('detects and validates the consuming project build script', (context) => {
   );
 });
 
-test('runs the consuming project build script and blocks failures', (context) => {
+test('runs the consuming project build script and blocks failures', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const passed = runBuildGate({ root, config: buildConfig() });
+  const passed = await runBuildGate({ root, config: buildConfig() });
   assert.equal(passed.status, 'passed');
   assert.equal(passed.diagnostics.some(({ message }) => message.includes('build-fixture')), true);
   writeFileSync(path.join(root, 'fail-build'), 'fail\n');
-  const failed = runBuildGate({ root, config: buildConfig() });
+  const failed = await runBuildGate({ root, config: buildConfig() });
   assert.equal(failed.status, 'violation');
   assert.equal(failed.diagnostics.some(({ message }) => message.includes('build-fixture')), true);
   assert.equal(

@@ -90,15 +90,15 @@ test('detects and validates the consuming project typecheck script', (context) =
   );
 });
 
-test('runs the consuming project typecheck script and blocks failures', (context) => {
+test('runs the consuming project typecheck script and blocks failures', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const passed = runTypeCheckGate({ root, config: typeCheckConfig() });
+  const passed = await runTypeCheckGate({ root, config: typeCheckConfig() });
   assert.equal(passed.status, 'passed');
   assert.equal(passed.diagnostics.some(({ message }) => message.includes('typecheck-fixture')), true);
   writeFileSync(path.join(root, 'fail-typecheck'), 'fail\n');
-  const failed = runTypeCheckGate({ root, config: typeCheckConfig() });
+  const failed = await runTypeCheckGate({ root, config: typeCheckConfig() });
   assert.equal(failed.status, 'violation');
   assert.equal(failed.diagnostics.some(({ message }) => message.includes('typecheck-fixture')), true);
   assert.equal(

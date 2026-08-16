@@ -1,19 +1,36 @@
 import { executionError } from '../../core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
+import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
-import { executeProjectBuild } from '../../integrations/npm/build.js';
+import {
+  executeProjectBuild,
+  validateBuildSetup,
+} from '../../integrations/npm/build.js';
 
 export const BUILD_GATE_ID = 'quality.build';
 
-export function runBuildGate({ root, config }) {
+export async function runBuildGate({
+  root,
+  config,
+  signal = null,
+  liveOutput = false,
+  writeProgress = null,
+}) {
   const startedAt = Date.now();
-  const { setup, execution } = executeProjectBuild({ root, config });
-  const diagnostics = [{
-    level: 'info',
-    message: `repo-guard 构建：正在运行 npm 脚本 "${config.script}" (${setup.command})...`,
-  }];
-  diagnostics.push(...processOutputDiagnostics(execution, { source: 'build', root }));
+  const setup = validateBuildSetup(root, config);
+  const progressMessage = `repo-guard 构建：正在运行 npm 脚本 "${config.script}" (${setup.command})...`;
+  if (liveOutput) writeProgress?.(progressMessage);
+  const { execution } = await executeProjectBuild({
+    root,
+    config,
+    signal,
+    output: terminalProcessOutput(liveOutput),
+  });
+  const diagnostics = liveOutput ? [] : [{ level: 'info', message: progressMessage }];
+  if (!liveOutput) {
+    diagnostics.push(...processOutputDiagnostics(execution, { source: 'build', root }));
+  }
   if (execution.error) {
     const error = executionError(
       execution.timedOut ? 'build/timeout' : 'build/process-start-failed',

@@ -470,7 +470,7 @@ test('rechecks the mapped component when only its interaction test changes', (co
   assert.equal(result.componentInteractions[0].sourcePath, 'src/components/Editor.vue');
 });
 
-test('runs the consuming project script and returns native results', (context) => {
+test('runs the consuming project script and returns native results', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src', 'utils'), { recursive: true });
@@ -480,7 +480,7 @@ test('runs the consuming project script and returns native results', (context) =
     "it('works', () => { expect(1).toBe(1); });\n",
   );
 
-  const passed = runUnitTestGate({
+  const passed = await runUnitTestGate({
     root,
     config: unitTestConfig(),
     changes: [
@@ -493,7 +493,7 @@ test('runs the consuming project script and returns native results', (context) =
   assert.equal(readFileSync(path.join(root, 'test-calls.log'), 'utf8'), '\n');
 
   writeFileSync(path.join(root, 'fail-tests'), 'yes\n');
-  const failed = runUnitTestGate({
+  const failed = await runUnitTestGate({
     root,
     config: unitTestConfig(),
   });
@@ -522,7 +522,7 @@ test('requires Vue Test Utils only when component interaction semantics are enab
   assert.equal(validateUnitTestSetup(root, config).vueTestUtils.version, '2.4.11');
 });
 
-test('enforces structured global and changed-line coverage after tests pass', (context) => {
+test('enforces structured global and changed-line coverage after tests pass', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src', 'utils'), { recursive: true });
@@ -544,25 +544,25 @@ test('enforces structured global and changed-line coverage after tests pass', (c
       changedLines: 90,
     },
   };
-  assert.equal(runUnitTestGate({
+  assert.equal((await runUnitTestGate({
     root,
     config: unitTestConfig({ coverage }),
     changes: [
       { status: 'A', oldPath: null, path: 'src/utils/money.js' },
       { status: 'A', oldPath: null, path: 'src/utils/money.spec.js' },
     ],
-  }).status, 'passed');
+  })).status, 'passed');
   const args = readFileSync(path.join(root, 'test-calls.log'), 'utf8');
   assert.match(args, /--coverage\.reporter=json-summary/);
   assert.match(args, /--coverage\.reporter=lcov/);
   assert.match(args, /--coverage\.include=src\/utils/);
 
   rmSync(path.join(root, 'write-coverage'));
-  assert.equal(runUnitTestGate({
+  assert.equal((await runUnitTestGate({
     root,
     config: unitTestConfig({ coverage }),
     changes: [],
-  }).status, 'execution-error');
+  })).status, 'execution-error');
 });
 
 test('maintains an idempotent AGENTS unit test policy without replacing project text', (context) => {

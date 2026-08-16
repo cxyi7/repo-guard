@@ -208,18 +208,18 @@ test('rejects an obvious no-op accessibility test script', (context) => {
   assert.equal(result.problems.some(({ code }) => code === 'no-op-script'), true);
 });
 
-test('runs the project accessibility script and blocks failures', (context) => {
+test('runs the project accessibility script and blocks failures', async (context) => {
   const source = "import { axe } from 'vitest-axe';\ntest('a11y', async () => { expect(await axe(document.body)).toHaveNoViolations(); });\n";
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const passed = runAccessibilityTestGate({ root, config: config() });
+  const passed = await runAccessibilityTestGate({ root, config: config() });
   assert.equal(passed.status, 'passed');
   assert.equal(passed.diagnostics.some(({ message }) => message.includes('accessibility-fixture')), true);
   assert.equal(readFileSync(path.join(root, 'a11y-calls.log'), 'utf8'), 'run\n');
 
   writeFileSync(path.join(root, 'fail-a11y'), 'yes\n');
-  const failed = runAccessibilityTestGate({ root, config: config() });
+  const failed = await runAccessibilityTestGate({ root, config: config() });
   assert.equal(failed.status, 'violation');
   assert.equal(failed.diagnostics.some(({ message }) => message.includes('accessibility-fixture')), true);
 });

@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { executionError } from '../../core/error/repo-guard-error.js';
+import { runStreamingProcess } from '../../core/execution/streaming-process.js';
 
 function npmInvocation(script, extraArguments) {
   const npmCli = [
@@ -15,21 +15,22 @@ function npmInvocation(script, extraArguments) {
   };
 }
 
-export function runProjectScript({
+export async function runProjectScript({
   root,
   script,
   timeoutMs,
   extraArguments = [],
+  signal = null,
+  output = null,
 }) {
   const invocation = npmInvocation(script, extraArguments);
-  const execution = spawnSync(invocation.command, invocation.argumentsList, {
-    cwd: root,
-    env: process.env,
-    stdio: 'pipe',
-    encoding: 'utf8',
-    timeout: timeoutMs,
-    windowsHide: true,
-    shell: false,
+  const execution = await runStreamingProcess({
+    command: invocation.command,
+    argumentsList: invocation.argumentsList,
+    root,
+    timeoutMs,
+    signal,
+    output,
   });
   return Object.freeze({
     command: invocation.command,
@@ -39,6 +40,6 @@ export function runProjectScript({
     error: execution.error ?? null,
     stdout: execution.stdout ?? '',
     stderr: execution.stderr ?? '',
-    timedOut: execution.error?.code === 'ETIMEDOUT',
+    timedOut: execution.timedOut,
   });
 }

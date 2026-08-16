@@ -46,7 +46,7 @@ repo/
 │  ├─ core/                          稳定领域契约与无业务偏好的基础能力
 │  │  ├─ capability/                 Gate、Registry、Execution Plan、GateContext
 │  │  ├─ error/                      RepoGuardError 和错误分类
-│  │  ├─ execution/                  文件快照、暂存文件和进程输出安全
+│  │  ├─ execution/                  文件快照、暂存文件、可取消进程和实时输出安全
 │  │  ├─ policy/                     受管理文本块和策略生命周期基础能力
 │  │  ├─ project/                    Node、package 和项目文本事实
 │  │  ├─ report/                     console 与 JSON renderer
@@ -277,8 +277,8 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 
 | 能力 | 配置位置 | 执行位置 | 主要行为 |
 |---|---|---|---|
-| TypeScript | `typeCheck` | manual、pre-push、CI full | 运行项目精确 typecheck npm script，不进入 pre-commit |
-| 构建 | `build` | manual、pre-push、CI full、release-ready | 运行项目构建脚本，检查脚本存在性、超时和进程失败 |
+| TypeScript | `typeCheck` | manual、pre-push、CI full | 运行项目精确 typecheck npm script；pre-push 实时显示脱敏输出，不进入 pre-commit |
+| 构建 | `build` | manual、pre-push、CI full、release-ready | 运行项目构建脚本，检查脚本存在性、超时和进程失败；pre-push 实时显示脱敏输出 |
 | Lighthouse | `lighthouse` | manual、pre-push、release-ready | 使用项目的 `@lhci/cli`、Chrome、路由和断言，只执行 collect/assert |
 
 Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 路由，不隐式执行 LHCI upload。
@@ -362,6 +362,8 @@ typecheck
 ```
 
 每项按配置启用状态决定执行或跳过，并对本次推送使用精确变更范围。
+
+pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步进程能力执行：门禁开始前立即显示中文进度，子进程 stdout/stderr 经路径和敏感信息脱敏后实时写入终端，同时保留执行结果用于失败判定。超时或计划取消会终止完整进程树。dependency-cruiser 的 stdout 是结构化 JSON，不直接转发，但架构门禁会在分析开始前显示进度。
 
 ### 6.3 CI 与 release-ready
 
@@ -485,7 +487,7 @@ npm 包根入口只公开稳定构造和结果契约：
 
 - repo-guard 自有状态、警告、错误、证据、期望和修复说明必须使用简体中文。
 - 机器 ID、命令、路径、包名、协议枚举和第三方规则 ID 保持稳定原值。
-- 第三方原始输出只能进入标记了 source/stream 的 diagnostics，不能替代主要中文问题说明。
+- 第三方原始输出只能进入标记了 source/stream 的 diagnostics，或作为经过脱敏的 pre-push 实时输出；不能替代主要中文问题说明。
 - 标准检查使用零英文债务基线；新增功能不能扩大或重新生成该基线。
 - 输出会脱敏常见 Token、Cookie、密码、Authorization 和私钥，并限制长度。
 - finding、error、artifact 和 evidence 的路径只保留仓库相对路径或安全占位。

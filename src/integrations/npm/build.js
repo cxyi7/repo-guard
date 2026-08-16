@@ -26,12 +26,14 @@ export function validateBuildSetup(root, config) {
   return { command: command.trim() };
 }
 
-export function executeProjectBuild({ root, config }) {
+export async function executeProjectBuild({ root, config, signal = null, output = null }) {
   const setup = validateBuildSetup(root, config);
-  const execution = runProjectScript({
+  const execution = await runProjectScript({
     root,
     script: config.script,
     timeoutMs: config.timeoutMs,
+    signal,
+    output,
   });
   return Object.freeze({ setup, execution });
 }
