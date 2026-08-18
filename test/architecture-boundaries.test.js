@@ -140,6 +140,7 @@ const REVIEWED_TOP_LEVEL_PROJECT_FILES = Object.freeze([]);
 
 const REVIEWED_PACKAGE_FILES = Object.freeze([
   'bin',
+  'docs',
   'scripts/check-syntax.js',
   'src',
   'config.schema.json',
@@ -154,6 +155,7 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
   'README.md',
   'bin',
   'config.schema.json',
+  'docs',
   'external-report.schema.json',
   'gate-result.schema.json',
   'package.json',
@@ -2095,7 +2097,8 @@ test('keeps managed GitLab CI installation in setup orchestration without a root
   const gitLabCiSource = readFileSync(gitLabCiPath, 'utf8');
   assert.match(gitLabCiSource, /export function inspectGitLabCi/);
   assert.match(gitLabCiSource, /export function installGitLabCi/);
-  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v1/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v2/);
+  assert.doesNotMatch(gitLabCiSource, /# repo-guard-gitlab-template:v1/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:start/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:end/);
   assert.doesNotMatch(gitLabCiSource, /from ['"][^'"]*integrations\//);

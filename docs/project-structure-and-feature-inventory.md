@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.7.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.8.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -13,9 +13,10 @@
             └─ 1.6.2 Windows 托管文本换行兼容修复
                  └─ 1.6.3 pre-push 实时进程输出
                     └─ 1.7.0 CI Gate 独立策略
+                       └─ 1.8.0 GitLab 应用交付托管标准
 ```
 
-因此，`1.7.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.8.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -32,6 +33,7 @@
 - [x] axe 组件与 E2E 可访问性测试门禁。
 - [x] TypeScript、项目构建、dependency-cruiser 架构和 Lighthouse 独立门禁。
 - [x] GitLab CI `policy`、`full` 和 `release-ready` 三种固定配置档。
+- [x] 可选的 GitLab 应用交付托管标准，统一 Job、分支规则、依赖安装、缓存和发布触发语义，由消费项目通过固定 `ci:*` npm scripts 持有业务发布实现。
 - [x] 受控外部门禁，可通过精确 npm script 接入项目自有测试。
 - [x] 结构化例外、统一 `GateResult`、统一退出码、console/JSON 报告和中文修复指引。
 - [x] 报告路径、artifact、敏感信息、符号链接和本地通知凭据安全检查。
@@ -311,11 +313,15 @@ Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 
 
 CI 使用明确 base/head 或 GitLab 提供的可信范围。浅克隆缺少基准提交时返回范围错误，不会把未知范围当成空变更。
 
-CI 始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。
+CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，只调用消费项目显式提供的固定 npm scripts。
 
 `ci.gatePolicy` 在现有固定计划之上提供 CI 专属的 Gate 激活和阻断策略：`inherit` 保持原行为，`off` 在 setup 前跳过，`report` 执行但不影响 CI 总退出码，`enforce` 执行并阻断失败。该策略不进入 pre-commit 或 pre-push；显式 `report/enforce` 只修改单个 CI 步骤的不可变上下文副本。
 
 CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready` environment 自动派生。每个官方 CI Gate 必须至少出现在一个受审计划，否则仓库测试失败；计划内的每一步由统一策略控制器自动处理。文件型 Gate 可以通过 Registry `ciScopes` 声明是否支持 `changed-files`，未声明的 Gate 只能使用 `all-files`。
+
+`ci.pipeline` 是独立于 Gate 策略的可选 GitLab 应用交付层。它复用原有受管 include 与 `install-ci`/`doctor --ci`，固定生成门禁、验证、测试发布、生产发布和可选快速发布 Job；消费项目不能通过配置注入 shell 命令，只能提供固定名称的 `ci:*` npm scripts。模板只识别并生成当前 v2 marker，不保留旧模板兼容分支。
+
+交付配置仅包含阶段、验证/发布镜像、测试/生产分支、Runner 标签、旧 peer dependency 兼容、快速发布与通知开关。`repo_guard` 固定在 `.pre` stage，受管验证与发布 Job 只会在门禁通过后继续。实际微信小程序上传、Web 镜像构建、蓝绿切换、密钥、端口和外部服务地址均由消费项目脚本或 GitLab 受保护变量拥有。`ci.pipeline` 不改变 pre-commit、pre-push 或 `ci.gatePolicy` 的语义。
 
 ### 5.10 发布就绪
 

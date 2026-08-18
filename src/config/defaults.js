@@ -264,12 +264,26 @@ export const DEFAULT_CI_GATE_POLICY_CONFIG = Object.freeze({
   defaultMode: 'inherit',
   gates: Object.freeze({}),
 });
+export const DEFAULT_CI_PIPELINE_CONFIG = Object.freeze({
+  enabled: false,
+  verifyStage: 'build',
+  deployStage: 'deploy',
+  verifyImage: 'node:22.23.2',
+  deployImage: 'node:22.23.2',
+  testBranches: Object.freeze(['dev']),
+  productionBranches: Object.freeze(['publish']),
+  runnerTags: Object.freeze(['docker']),
+  legacyPeerDeps: false,
+  quickDeploy: false,
+  notifications: false,
+});
 export const DEFAULT_CI_CONFIG = Object.freeze({
   enabled: false,
   profile: 'policy',
   reportPath: 'reports/repo-guard.json',
   protectedFiles: Object.freeze({ action: 'report' }),
   gatePolicy: DEFAULT_CI_GATE_POLICY_CONFIG,
+  pipeline: DEFAULT_CI_PIPELINE_CONFIG,
 });
 export const DEFAULT_EXCEPTIONS_CONFIG = Object.freeze({
   warningDays: 14,

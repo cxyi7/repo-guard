@@ -352,7 +352,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   assert.match(installedRoot, /extends: \.repo_guard_policy/);
   assert.match(installedRoot, /stage: verify/);
   const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
-  assert.match(template, /repo-guard-gitlab-template:v1/);
+  assert.match(template, /repo-guard-gitlab-template:v2/);
   assert.match(template, /npx --no-install repo-guard ci --profile policy/);
   assert.match(template, /npx --no-install repo-guard ci --profile release-ready/);
   assert.match(template, /node:22\.23\.2/);
@@ -382,6 +382,106 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   assert.equal(repeat.templateChanged, false);
   assert.equal(readFileSync(rootPath, 'utf8'), windowsRoot);
   assert.equal(readFileSync(templatePath, 'utf8'), windowsTemplate);
+});
+
+test('installs the managed application-delivery contract from project configuration', (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  const manifestPath = path.join(fixture.root, 'package.json');
+  const manifest = {
+    ...JSON.parse(readFileSync(manifestPath, 'utf8')),
+    scripts: {
+      'ci:verify': 'node verify.js',
+      'ci:deploy:test': 'node deploy.js test',
+      'ci:deploy:production': 'node deploy.js production',
+      'ci:deploy:quick': 'node deploy.js quick',
+      'ci:notify': 'node notify.js',
+    },
+  };
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  writeFileSync(
+    path.join(fixture.root, '.gitlab-ci.yml'),
+    'stages:\n  - build\n  - deploy\n\nexisting_job:\n  stage: build\n  script:\n    - echo existing\n',
+  );
+  writeFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    `${JSON.stringify({
+      ...sparseCiConfig(),
+      ci: {
+        pipeline: {
+          enabled: true,
+          testBranches: ['dev', 'future/*'],
+          productionBranches: ['publish'],
+          runnerTags: ['docker'],
+          deployImage: 'registry.example.com:5050/ci/node-docker:22',
+          legacyPeerDeps: true,
+          quickDeploy: true,
+          notifications: true,
+        },
+      },
+    }, null, 2)}\n`,
+  );
+
+  const installed = installGitLabCi(fixture.root, { profile: 'full' });
+  assert.equal(installed.pipelineEnabled, true);
+  assert.equal(installed.stage, '.pre');
+  const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
+  const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
+  assert.match(template, /\.repo_guard_pipeline_legacy_peer_deps_base:/);
+  assert.match(template, /npm ci --legacy-peer-deps/);
+  assert.match(template, /GIT_DEPTH: "0"/);
+  assert.match(root, /repo_guard:[\s\S]*stage: \.pre/);
+  assert.match(root, /repo_guard_verify:/);
+  assert.match(root, /npm run ci:verify/);
+  assert.match(root, /repo_guard_deploy_test:/);
+  assert.match(root, /image: registry\.example\.com:5050\/ci\/node-docker:22/);
+  assert.match(root, /\$CI_COMMIT_BRANCH == "dev"/);
+  assert.match(root, /\$CI_COMMIT_BRANCH =~ \/\^future\\\/\.\*\$\//);
+  assert.match(root, /repo_guard_deploy_production:[\s\S]*npm run ci:deploy:production/);
+  assert.match(root, /repo_guard_deploy_quick:[\s\S]*allow_failure: true/);
+  assert.match(root, /after_script:\n[ ]{4}- npm run ci:notify/);
+  assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
+  const installedConfig = validateConfig(JSON.parse(readFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    'utf8',
+  )));
+  assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
+
+  const scriptsWithoutNotification = Object.fromEntries(
+    Object.entries(manifest.scripts).filter(([name]) => name !== 'ci:notify'),
+  );
+  writeFileSync(
+    manifestPath,
+    `${JSON.stringify({ ...manifest, scripts: scriptsWithoutNotification }, null, 2)}\n`,
+  );
+  assert.ok(inspectGitLabCi(fixture.root, installedConfig).problems.some(
+    (problem) => problem.includes('ci:notify'),
+  ));
+  assert.throws(
+    () => installGitLabCi(fixture.root, { profile: 'full', stage: 'build' }),
+    /固定使用 \.pre stage/,
+  );
+});
+
+test('refuses to install managed delivery until required project scripts exist', (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  const original = 'stages: [build, deploy]\n';
+  writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), original);
+  writeFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    `${JSON.stringify({
+      ...sparseCiConfig(),
+      ci: { pipeline: { enabled: true, quickDeploy: true, notifications: true } },
+    }, null, 2)}\n`,
+  );
+
+  assert.throws(
+    () => installGitLabCi(fixture.root),
+    /ci:verify.*ci:deploy:test.*ci:deploy:production.*ci:deploy:quick.*ci:notify/,
+  );
+  assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
+  assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), false);
 });
 
 test('installs the release-ready GitLab profile without embedding publish or deploy', (context) => {
@@ -421,6 +521,48 @@ test('generates the GitLab template but does not rewrite complex existing includ
   assert.match(result.conflict, /已定义 include/);
   assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
   assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), true);
+});
+
+test('reserves managed delivery job names only while application delivery is enabled', (context) => {
+  const gateOnly = repository();
+  const managedDelivery = repository();
+  context.after(() => {
+    rmSync(gateOnly.root, { recursive: true, force: true });
+    rmSync(managedDelivery.root, { recursive: true, force: true });
+  });
+  const existingJob = 'repo_guard_verify:\n  stage: build\n  script:\n    - npm run verify\n';
+  writeFileSync(path.join(gateOnly.root, '.gitlab-ci.yml'), existingJob);
+  writeFileSync(
+    path.join(gateOnly.root, 'repo-guard.config.json'),
+    `${JSON.stringify(sparseCiConfig(), null, 2)}\n`,
+  );
+  assert.equal(installGitLabCi(gateOnly.root).integrated, true);
+  assert.match(readFileSync(path.join(gateOnly.root, '.gitlab-ci.yml'), 'utf8'), /repo_guard_verify:/);
+
+  const manifestPath = path.join(managedDelivery.root, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  writeFileSync(manifestPath, `${JSON.stringify({
+    ...manifest,
+    scripts: {
+      'ci:verify': 'node verify.js',
+      'ci:deploy:test': 'node deploy.js test',
+      'ci:deploy:production': 'node deploy.js production',
+    },
+  }, null, 2)}\n`);
+  writeFileSync(
+    path.join(managedDelivery.root, '.gitlab-ci.yml'),
+    `stages: [build, deploy]\n${existingJob}`,
+  );
+  writeFileSync(
+    path.join(managedDelivery.root, 'repo-guard.config.json'),
+    `${JSON.stringify({
+      ...sparseCiConfig(),
+      ci: { pipeline: { enabled: true } },
+    }, null, 2)}\n`,
+  );
+  const result = installGitLabCi(managedDelivery.root);
+  assert.equal(result.integrated, false);
+  assert.match(result.conflict, /保留作业 repo_guard_verify/);
 });
 
 test('exposes install-ci and ci through the package CLI', (context) => {
@@ -600,7 +742,7 @@ test('supports simple inline stages and defers ambiguous YAML to manual integrat
   );
 });
 
-test('requires the managed marker at the start and detects any template modification', (context) => {
+test('requires the current managed marker and detects any template modification', (context) => {
   const foreign = repository();
   const modified = repository();
   context.after(() => {
@@ -619,7 +761,7 @@ test('requires the managed marker at the start and detects any template modifica
   mkdirSync(path.join(foreign.root, '.gitlab', 'ci'), { recursive: true });
   writeFileSync(
     path.join(foreign.root, GITLAB_TEMPLATE_FILE),
-    'custom: true\n# repo-guard-gitlab-template:v1\n',
+    '# repo-guard-gitlab-template:v1\ncustom: true\n',
   );
   assert.throws(() => installGitLabCi(foreign.root), /拒绝覆盖非托管/);
 

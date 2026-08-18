@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.7.0`
+- 当前版本：`1.8.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.7.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.8.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -77,6 +77,7 @@ npx repo-guard doctor
 ### CI、外部门禁与发布准备
 
 - GitLab CI `policy`、`full`、`release-ready` 三种固定配置档。
+- 可选托管 GitLab 应用交付外壳，项目通过固定 `ci:*` scripts 保留自身构建与部署实现。
 - 使用可信 base/head 计算精确变更范围；范围不可信时不会静默跳过。
 - 受控 `project.*` 外部门禁，只允许精确 npm script 和版本化 JSON 报告。
 - 报告、artifact、路径、符号链接、大小和敏感数据安全检查。
@@ -337,6 +338,58 @@ CI 始终只读，不执行 fix、不安装 Hook、不读取本地企业微信�
 `scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
 
 CI Gate 由 Registry 的 CI environment 元数据自动发现，配置 Schema 使用稳定 Gate id 的通用键约束，不维护容易遗漏的手写 Gate 枚举。仓库测试还要求每个官方 CI Gate 至少属于一个受审固定执行计划；因此未来新增 CI Gate 时，如果忘记进入执行计划，发布检查会直接失败，而进入计划后会自动获得 `inherit/off/report/enforce` 策略能力。
+
+### 托管应用交付流水线
+
+`1.8.0` 在原有 `install-ci` 受管 include 上增加可选的应用交付标准，不引入另一套 CI 安装方式。npm 包负责生成和校验 GitLab Job、分支规则、阶段、Node 环境、npm 缓存、依赖安装、门禁先行以及手动发布语义；消费项目继续拥有实际构建、上传和部署实现。
+
+消费项目只需实现固定的 npm scripts：
+
+| script | 何时需要 | 项目职责 |
+|---|---|---|
+| `ci:verify` | 始终 | 对非交付分支执行项目自己的构建或验证 |
+| `ci:deploy:test` | 始终 | 发布测试环境；可读取 `CI_COMMIT_BRANCH` 区分 `dev`、`test` 或 `future/*` |
+| `ci:deploy:production` | 配置了生产分支时 | 执行人工确认后的生产发布 |
+| `ci:deploy:quick` | `quickDeploy: true` | 执行任意分支的人工快速发布 |
+| `ci:notify` | `notifications: true` | 根据 GitLab 的 `CI_JOB_STATUS` 发送项目自有通知 |
+
+示例配置：
+
+```json
+{
+  "ci": {
+    "enabled": true,
+    "profile": "policy",
+    "pipeline": {
+      "enabled": true,
+      "verifyStage": "build",
+      "deployStage": "deploy",
+      "verifyImage": "node:22.23.2",
+      "deployImage": "node:22.23.2",
+      "testBranches": ["dev", "future/*"],
+      "productionBranches": ["publish"],
+      "runnerTags": ["docker"],
+      "legacyPeerDeps": true,
+      "quickDeploy": true,
+      "notifications": true
+    }
+  }
+}
+```
+
+配置并补齐 scripts 后运行：
+
+```bash
+repo-guard install-ci --provider gitlab --profile policy --dry-run
+repo-guard install-ci --provider gitlab --profile policy
+repo-guard doctor --ci
+```
+
+启用后，`repo_guard` 固定在 GitLab 的 `.pre` stage 覆盖分支和合并请求流水线，确保受管验证与发布 Job 在门禁通过后才执行；测试发布自动执行，生产与快速发布保持手动，其中快速发布允许失败。验证作业会跳过已由测试或生产发布脚本负责构建的分支，避免重复构建。`verifyImage` 和 `deployImage` 分别控制验证与发布容器，二者都必须包含 Node.js 与 npm；Web 容器发布可以把 `deployImage` 指向项目内部维护的 Node.js + Docker CLI 镜像。`install-ci` 与 `doctor --ci` 会拒绝缺少固定 scripts、阶段未声明、保留 Job 名冲突、模板被改写或模板版本不匹配等状态。
+
+三个现有项目建议采用同一个外壳：`owner` 与 `employee` 的 `ci:deploy:*` 继续调用各自的 `mp-ci-deploy.js`；`front` 的 `ci:deploy:test` 根据分支调用其 Web 构建、镜像和蓝绿部署脚本。镜像仓库、端口、微信小程序机器人、密钥和通知地址仍由项目脚本或 GitLab 受保护变量持有，不进入 repo-guard 配置。
+
+逐项目配置与迁移顺序见 [三个现有项目的 GitLab CI 接入映射](docs/managed-gitlab-ci-adoption.md)。
 
 ### 外部门禁
 

@@ -10,6 +10,7 @@ import { assertExceptionLifecycleCurrent } from '../../config/exception-lifecycl
 import { validateConfig } from '../../config/configuration-validation.js';
 import {
   DEFAULT_CI_CONFIG,
+  DEFAULT_CI_PIPELINE_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
@@ -52,6 +53,18 @@ function cloneExceptionsConfig(value = {}) {
     ...DEFAULT_EXCEPTIONS_CONFIG,
     ...value,
     entries: (value.entries ?? DEFAULT_EXCEPTIONS_CONFIG.entries).map((entry) => ({ ...entry })),
+  };
+}
+
+function cloneCiPipelineConfig(value = {}) {
+  return {
+    ...DEFAULT_CI_PIPELINE_CONFIG,
+    ...value,
+    testBranches: [...(value.testBranches ?? DEFAULT_CI_PIPELINE_CONFIG.testBranches)],
+    productionBranches: [
+      ...(value.productionBranches ?? DEFAULT_CI_PIPELINE_CONFIG.productionBranches),
+    ],
+    runnerTags: [...(value.runnerTags ?? DEFAULT_CI_PIPELINE_CONFIG.runnerTags)],
   };
 }
 
@@ -179,6 +192,7 @@ export function createStarterConfig({
         ...DEFAULT_CI_CONFIG.gatePolicy,
         gates: { ...DEFAULT_CI_CONFIG.gatePolicy.gates },
       },
+      pipeline: cloneCiPipelineConfig(),
     },
     externalGates: [],
     codePlacement: cloneCodePlacementConfig(),
@@ -291,6 +305,7 @@ export function migrateProjectConfig(root, {
           ...(prepared.ci?.gatePolicy?.gates ?? {}),
         },
       },
+      pipeline: cloneCiPipelineConfig(prepared.ci?.pipeline),
     },
     externalGates: prepared.externalGates ?? [],
     codePlacement: cloneCodePlacementConfig(prepared.codePlacement),

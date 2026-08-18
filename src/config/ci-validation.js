@@ -1,6 +1,7 @@
 import {
   DEFAULT_CI_CONFIG,
   DEFAULT_CI_GATE_POLICY_CONFIG,
+  DEFAULT_CI_PIPELINE_CONFIG,
 } from './defaults.js';
 import {
   CI_GATE_POLICY_MODES,
@@ -12,6 +13,112 @@ import {
   validateCiReportPath,
 } from './validation-primitives.js';
 
+function validatePipelineStage(value, label) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_.:-]+$/.test(value)) {
+    throw configValidationError(`${label} 必须是规范的 GitLab CI stage 名称`);
+  }
+  return value;
+}
+
+function validatePipelineImage(value, label) {
+  if (typeof value !== 'string'
+    || value.length > 255
+    || !/^[A-Za-z0-9](?:[A-Za-z0-9._/:@-]*[A-Za-z0-9])?$/.test(value)) {
+    throw configValidationError(`${label} 必须是规范的容器镜像引用`);
+  }
+  return value;
+}
+
+function validatePipelineStringArray(value, label, pattern, { allowEmpty = false } = {}) {
+  if (!Array.isArray(value)
+    || (!allowEmpty && value.length === 0)
+    || value.some((item) => typeof item !== 'string' || !pattern.test(item))
+    || new Set(value).size !== value.length) {
+    throw configValidationError(`${label} 必须是不重复的规范字符串数组`);
+  }
+  return [...value];
+}
+
+function validateManagedPipeline(value, configPath) {
+  const pipelineValue = value === undefined ? {} : value;
+  const label = `${configPath} ci.pipeline`;
+  if (!pipelineValue || typeof pipelineValue !== 'object' || Array.isArray(pipelineValue)) {
+    throw configValidationError(`${label} 必须是对象`);
+  }
+  assertKnownProperties(
+    pipelineValue,
+    new Set([
+      'enabled',
+      'verifyStage',
+      'deployStage',
+      'verifyImage',
+      'deployImage',
+      'testBranches',
+      'productionBranches',
+      'runnerTags',
+      'legacyPeerDeps',
+      'quickDeploy',
+      'notifications',
+    ]),
+    label,
+  );
+  for (const property of ['enabled', 'legacyPeerDeps', 'quickDeploy', 'notifications']) {
+    if (pipelineValue[property] != null && typeof pipelineValue[property] !== 'boolean') {
+      throw configValidationError(`${label}.${property} 必须是布尔值`);
+    }
+  }
+  const verifyStage = validatePipelineStage(
+    pipelineValue.verifyStage ?? DEFAULT_CI_PIPELINE_CONFIG.verifyStage,
+    `${label}.verifyStage`,
+  );
+  const deployStage = validatePipelineStage(
+    pipelineValue.deployStage ?? DEFAULT_CI_PIPELINE_CONFIG.deployStage,
+    `${label}.deployStage`,
+  );
+  if (verifyStage === deployStage) {
+    throw configValidationError(`${label}.verifyStage 和 deployStage 必须使用不同阶段`);
+  }
+  const verifyImage = validatePipelineImage(
+    pipelineValue.verifyImage ?? DEFAULT_CI_PIPELINE_CONFIG.verifyImage,
+    `${label}.verifyImage`,
+  );
+  const deployImage = validatePipelineImage(
+    pipelineValue.deployImage ?? DEFAULT_CI_PIPELINE_CONFIG.deployImage,
+    `${label}.deployImage`,
+  );
+  const branchPattern = /^(?!\/)(?!.*\/\/)(?!.*\*.*\*)[A-Za-z0-9._/*-]+$/;
+  const testBranches = validatePipelineStringArray(
+    pipelineValue.testBranches ?? DEFAULT_CI_PIPELINE_CONFIG.testBranches,
+    `${label}.testBranches`,
+    branchPattern,
+  );
+  const productionBranches = validatePipelineStringArray(
+    pipelineValue.productionBranches ?? DEFAULT_CI_PIPELINE_CONFIG.productionBranches,
+    `${label}.productionBranches`,
+    branchPattern,
+    { allowEmpty: true },
+  );
+  const runnerTags = validatePipelineStringArray(
+    pipelineValue.runnerTags ?? DEFAULT_CI_PIPELINE_CONFIG.runnerTags,
+    `${label}.runnerTags`,
+    /^[A-Za-z0-9_.:-]+$/,
+    { allowEmpty: true },
+  );
+  return {
+    enabled: pipelineValue.enabled ?? DEFAULT_CI_PIPELINE_CONFIG.enabled,
+    verifyStage,
+    deployStage,
+    verifyImage,
+    deployImage,
+    testBranches,
+    productionBranches,
+    runnerTags,
+    legacyPeerDeps: pipelineValue.legacyPeerDeps ?? DEFAULT_CI_PIPELINE_CONFIG.legacyPeerDeps,
+    quickDeploy: pipelineValue.quickDeploy ?? DEFAULT_CI_PIPELINE_CONFIG.quickDeploy,
+    notifications: pipelineValue.notifications ?? DEFAULT_CI_PIPELINE_CONFIG.notifications,
+  };
+}
+
 export function validateCiConfiguration(value, configPath) {
   const ciValue = value.ci ?? {};
   if (!ciValue || typeof ciValue !== 'object' || Array.isArray(ciValue)) {
@@ -19,7 +126,7 @@ export function validateCiConfiguration(value, configPath) {
   }
   assertKnownProperties(
     ciValue,
-    new Set(['enabled', 'profile', 'reportPath', 'protectedFiles', 'gatePolicy']),
+    new Set(['enabled', 'profile', 'reportPath', 'protectedFiles', 'gatePolicy', 'pipeline']),
     `${configPath} ci`,
   );
   if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
@@ -174,6 +281,7 @@ export function validateCiConfiguration(value, configPath) {
       reportPath: ciReportPath,
       protectedFiles: { action: ciProtectedFilesAction },
       gatePolicy: { defaultMode, gates: gatePolicies },
+      pipeline: validateManagedPipeline(ciValue.pipeline, configPath),
     },
     externalGates,
   };

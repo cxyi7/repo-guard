@@ -19,6 +19,7 @@ export function runInstallCiCommand(cwd = process.cwd(), {
   writeConsoleMessage(`repo-guard GitLab CI 操作：${dryRun ? '预览' : '安装'}`);
   writeConsoleMessage(`- 模板：${GITLAB_TEMPLATE_FILE}（${result.templateChanged ? '已更新' : '当前版本'}）`);
   writeConsoleMessage(`- 配置档： ${result.profile}`);
+  writeConsoleMessage(`- 应用交付：${result.pipelineEnabled ? '已托管' : '未启用'}`);
   if (result.integrated) {
     writeConsoleMessage(`- ${GITLAB_CI_FILE}：已集成到 stage ${result.stage}`);
   } else {

@@ -86,6 +86,19 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.ci.profile, 'policy');
   assert.equal(config.ci.reportPath, 'reports/repo-guard.json');
   assert.deepEqual(config.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
+  assert.deepEqual(config.ci.pipeline, {
+    enabled: false,
+    verifyStage: 'build',
+    deployStage: 'deploy',
+    verifyImage: 'node:22.23.2',
+    deployImage: 'node:22.23.2',
+    testBranches: ['dev'],
+    productionBranches: ['publish'],
+    runnerTags: ['docker'],
+    legacyPeerDeps: false,
+    quickDeploy: false,
+    notifications: false,
+  });
   assert.deepEqual(config.externalGates, []);
   assert.deepEqual(config.exceptions, {
     warningDays: 14,

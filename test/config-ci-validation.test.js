@@ -45,6 +45,7 @@ test('normalizes CI configuration and copies external gate environments', () => 
     reportPath: 'reports/custom.json',
     protectedFiles: { action: 'fail' },
     gatePolicy: { defaultMode: 'inherit', gates: {} },
+    pipeline: DEFAULT_CI_CONFIG.pipeline,
   });
   assert.deepEqual(result.externalGates, [gate]);
   assert.notEqual(result.externalGates[0].environments, gate.environments);
@@ -81,6 +82,80 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
     assert.throws(
       () => validateCiConfiguration({ ci: { gatePolicy } }, CONFIG_PATH),
       message,
+    );
+  }
+});
+
+test('validates the managed delivery pipeline with fixed project-owned script contracts', () => {
+  const result = validateCiConfiguration({
+    ci: {
+      pipeline: {
+        enabled: true,
+        verifyStage: 'verify',
+        deployStage: 'release',
+        verifyImage: 'node:22.23.2-alpine',
+        deployImage: 'registry.example.com:5050/ci/node-docker:22',
+        testBranches: ['dev', 'future/*'],
+        productionBranches: ['publish'],
+        runnerTags: ['docker', 'internal'],
+        legacyPeerDeps: true,
+        quickDeploy: true,
+        notifications: true,
+      },
+    },
+  }, CONFIG_PATH);
+
+  assert.deepEqual(result.ci.pipeline, {
+    enabled: true,
+    verifyStage: 'verify',
+    deployStage: 'release',
+    verifyImage: 'node:22.23.2-alpine',
+    deployImage: 'registry.example.com:5050/ci/node-docker:22',
+    testBranches: ['dev', 'future/*'],
+    productionBranches: ['publish'],
+    runnerTags: ['docker', 'internal'],
+    legacyPeerDeps: true,
+    quickDeploy: true,
+    notifications: true,
+  });
+  assert.deepEqual(
+    validateCiConfiguration({
+      ci: {
+        pipeline: {
+          testBranches: ['dev', 'test'],
+          productionBranches: [],
+          runnerTags: [],
+        },
+      },
+    }, CONFIG_PATH).ci.pipeline,
+    {
+      ...DEFAULT_CI_CONFIG.pipeline,
+      testBranches: ['dev', 'test'],
+      productionBranches: [],
+      runnerTags: [],
+    },
+  );
+  assert.deepEqual(
+    validateCiConfiguration({
+      ci: { pipeline: { testBranches: ['dev'], productionBranches: ['dev'] } },
+    }, CONFIG_PATH).ci.pipeline.productionBranches,
+    ['dev'],
+  );
+  for (const pipeline of [
+    null,
+    { enabled: 'yes' },
+    { verifyStage: 'build script' },
+    { verifyStage: 'deploy', deployStage: 'deploy' },
+    { verifyImage: 'node:22 latest' },
+    { deployImage: '$CI_DEPLOY_IMAGE' },
+    { testBranches: [] },
+    { testBranches: ['dev', 'dev'] },
+    { testBranches: ['future/**'] },
+    { runnerTags: ['docker runner'] },
+  ]) {
+    assert.throws(
+      () => validateCiConfiguration({ ci: { pipeline } }, CONFIG_PATH),
+      /ci\.pipeline/,
     );
   }
 });

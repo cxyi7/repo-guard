@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.8.0
+
+- 在现有 `repo-guard install-ci --provider gitlab` 受管 include 上新增可选的 `ci.pipeline` 应用交付标准；继续使用同一个安装器与 doctor 检查，不建立平行 CI 实现。
+- 统一生成分支与合并请求门禁、非交付分支验证、测试环境自动发布、生产环境手动发布和可选快速发布 Job；npm 包拥有 Job、规则、阶段、Node 环境、缓存与依赖安装，消费项目只通过固定 `ci:verify`、`ci:deploy:*` 和可选 `ci:notify` scripts 持有业务发布逻辑。
+- 支持验证/发布镜像、测试/生产分支与单个 `*` 通配、Runner 标签、旧项目 `npm ci --legacy-peer-deps`、快速发布和结果通知配置；门禁固定在 `.pre` stage，缺少脚本、阶段冲突、保留 Job 名冲突或受管内容被修改时拒绝静默生成错误流水线。
+- GitLab 受管模板使用当前 v2 标记，不保留旧模板兼容分支；默认关闭应用交付托管，未启用项目仍保持 Gate-only 流程和根流水线内容。
+- 明确 `front`、`owner` 与 `employee` 的统一接入边界：小程序继续调用各自 `mp-ci-deploy.js`，Web 项目继续拥有镜像与蓝绿部署脚本，仓库地址、端口、密钥、机器人和通知地址均留在业务脚本或 GitLab 受保护变量中。
+
 ## 1.7.0
 
 - 新增 Registry 驱动的 `ci.gatePolicy`，支持按稳定 Gate id 配置 `inherit`、`off`、`report` 和 `enforce`；`report/enforce` 只在隔离的 CI 上下文中启用 Gate，不修改消费项目配置，也不影响 pre-commit 或 pre-push。

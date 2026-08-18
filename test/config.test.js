@@ -118,6 +118,7 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
     reportPath: 'reports/custom.json',
     protectedFiles: { action: 'fail' },
     gatePolicy: { defaultMode: 'inherit', gates: {} },
+    pipeline: DEFAULT_CI_CONFIG.pipeline,
   });
   assert.throws(
     () => validateConfig(baseConfig({ ci: { profile: 'partial' } })),
