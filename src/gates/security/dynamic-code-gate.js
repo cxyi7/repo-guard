@@ -191,6 +191,7 @@ export const dynamicCodeGate = defineGate({
   id: DYNAMIC_CODE_GATE_ID,
   configVersions: [1],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
+  ciScopes: ['all-files', 'changed-files'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
   manualCommand: 'dynamic-code',

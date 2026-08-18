@@ -22,6 +22,7 @@ import {
 } from '../execution-plans.js';
 import { orchestratePlan } from '../orchestrator.js';
 import { writeCiReport } from './report.js';
+import { createCiGatePolicyController } from './gate-policy.js';
 
 function isTrustedExternalGateCi(env) {
   return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
@@ -113,8 +114,12 @@ export async function runCiGate({
   const projectFiles = collectProjectFiles(root)
     .filter((file) => !reportPaths.has(file) && !file.startsWith('reports/.npm-cache/'));
   const steps = [];
-  const recordResult = (name, result, { includeGateResult = false } = {}) => {
-    steps.push(renderCiStep(result, { name, includeGateResult }));
+  const recordResult = (
+    name,
+    result,
+    { includeGateResult = false, gatePolicy = null } = {},
+  ) => {
+    steps.push(renderCiStep(result, { name, includeGateResult, gatePolicy }));
     writeGateResultConsole(result, { label: name });
   };
   const registry = createProjectGateRegistry(config);
@@ -137,23 +142,55 @@ export async function runCiGate({
     files: projectFiles,
     artifactDirectory: path.dirname(path.join(root, reportPath)),
   });
+  let gatePolicy;
+  try {
+    gatePolicy = createCiGatePolicyController({
+      config,
+      registry,
+      plan: ciPlan,
+    });
+  } catch (error) {
+    const typedError = toRepoGuardError(error, {
+      kind: 'configuration',
+      code: 'ci-gate-policy/invalid',
+    });
+    const gateResult = writeCiLifecycleError(
+      'ci.gate-policy',
+      'configuration-error',
+      typedError,
+    );
+    writeCiReport(root, reportPath, {
+      ...configurationErrorReport(profile, typedError),
+      base: range.base,
+      head: range.head,
+      gateResult,
+    });
+    return gateStatusToExitCode('configuration-error');
+  }
   const protectedChanges = classifyChanges(changeSet.entries, config);
   const execution = await orchestratePlan({
     plan: ciPlan,
     registry,
     context,
+    prepareStepContext: gatePolicy.prepareStepContext,
+    beforeStep: gatePolicy.beforeStep,
     onResult: ({ result, step }) => recordResult(
       step.reportName ?? step.id,
       result,
-      { includeGateResult: true },
+      {
+        includeGateResult: true,
+        gatePolicy: gatePolicy.describe(step),
+      },
     ),
   });
+  const policyExecution = gatePolicy.evaluate(execution);
 
-  const status = execution.status === 'execution-error'
+  const status = policyExecution.status === 'execution-error'
     ? 'error'
-    : execution.status === 'configuration-error' || execution.status === 'range-error'
+    : policyExecution.status === 'configuration-error'
+      || policyExecution.status === 'range-error'
       ? 'error'
-    : execution.status === 'violation' ? 'failed' : 'passed';
+    : policyExecution.status === 'violation' ? 'failed' : 'passed';
   const report = {
     version: 1,
     status,
@@ -173,5 +210,5 @@ export async function runCiGate({
   writeCiReport(root, reportPath, report);
   const statusLabel = status === 'passed' ? '已通过' : '未通过';
   writeConsoleMessage(`repo-guard CI 报告：${reportPath}（${statusLabel}）。`);
-  return execution.exitCode;
+  return policyExecution.exitCode;
 }

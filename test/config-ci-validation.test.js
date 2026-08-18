@@ -44,9 +44,45 @@ test('normalizes CI configuration and copies external gate environments', () => 
     profile: 'full',
     reportPath: 'reports/custom.json',
     protectedFiles: { action: 'fail' },
+    gatePolicy: { defaultMode: 'inherit', gates: {} },
   });
   assert.deepEqual(result.externalGates, [gate]);
   assert.notEqual(result.externalGates[0].environments, gate.environments);
+});
+
+test('validates and normalizes CI-only Gate policies without enumerating Gate ids', () => {
+  const result = validateCiConfiguration({
+    ci: {
+      gatePolicy: {
+        defaultMode: 'report',
+        gates: {
+          'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+          'project.future-check': { mode: 'off' },
+        },
+      },
+    },
+  }, CONFIG_PATH);
+
+  assert.deepEqual(result.ci.gatePolicy, {
+    defaultMode: 'report',
+    gates: {
+      'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+      'project.future-check': { mode: 'off', scope: 'all-files' },
+    },
+  });
+  for (const [gatePolicy, message] of [
+    [{ defaultMode: 'warn' }, /defaultMode 必须为/],
+    [{ gates: [] }, /gates 必须是对象/],
+    [{ gates: { invalid: { mode: 'off' } } }, /点分隔的 kebab-case/],
+    [{ gates: { 'security.dynamic-code': {} } }, /mode 为必填项/],
+    [{ gates: { 'security.dynamic-code': { mode: 'warn' } } }, /mode 必须为/],
+    [{ gates: { 'security.dynamic-code': { mode: 'off', scope: 'staged' } } }, /scope 必须为/],
+  ]) {
+    assert.throws(
+      () => validateCiConfiguration({ ci: { gatePolicy } }, CONFIG_PATH),
+      message,
+    );
+  }
 });
 
 test('rejects duplicate and conflicting external report paths case-insensitively', () => {

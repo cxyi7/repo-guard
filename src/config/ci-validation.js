@@ -1,4 +1,11 @@
-import { DEFAULT_CI_CONFIG } from './defaults.js';
+import {
+  DEFAULT_CI_CONFIG,
+  DEFAULT_CI_GATE_POLICY_CONFIG,
+} from './defaults.js';
+import {
+  CI_GATE_POLICY_MODES,
+  CI_GATE_SCOPES,
+} from '../core/capability/gate-definition.js';
 import {
   assertKnownProperties,
   configValidationError,
@@ -12,7 +19,7 @@ export function validateCiConfiguration(value, configPath) {
   }
   assertKnownProperties(
     ciValue,
-    new Set(['enabled', 'profile', 'reportPath', 'protectedFiles']),
+    new Set(['enabled', 'profile', 'reportPath', 'protectedFiles', 'gatePolicy']),
     `${configPath} ci`,
   );
   if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
@@ -39,6 +46,50 @@ export function validateCiConfiguration(value, configPath) {
     ?? DEFAULT_CI_CONFIG.protectedFiles.action;
   if (!['report', 'fail'].includes(ciProtectedFilesAction)) {
     throw configValidationError(`${configPath} ci.protectedFiles.action 必须为 report 或 fail`);
+  }
+  const gatePolicyValue = ciValue.gatePolicy ?? {};
+  if (!gatePolicyValue || typeof gatePolicyValue !== 'object'
+    || Array.isArray(gatePolicyValue)) {
+    throw configValidationError(`${configPath} ci.gatePolicy 必须是对象`);
+  }
+  assertKnownProperties(
+    gatePolicyValue,
+    new Set(['defaultMode', 'gates']),
+    `${configPath} ci.gatePolicy`,
+  );
+  const defaultMode = gatePolicyValue.defaultMode
+    ?? DEFAULT_CI_GATE_POLICY_CONFIG.defaultMode;
+  if (!CI_GATE_POLICY_MODES.includes(defaultMode)) {
+    throw configValidationError(
+      `${configPath} ci.gatePolicy.defaultMode 必须为 inherit、off、report 或 enforce`,
+    );
+  }
+  const gatePoliciesValue = gatePolicyValue.gates ?? {};
+  if (!gatePoliciesValue || typeof gatePoliciesValue !== 'object'
+    || Array.isArray(gatePoliciesValue)) {
+    throw configValidationError(`${configPath} ci.gatePolicy.gates 必须是对象`);
+  }
+  const gatePolicies = {};
+  for (const [gateId, policy] of Object.entries(gatePoliciesValue)) {
+    const label = `${configPath} ci.gatePolicy.gates.${gateId}`;
+    if (!/^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(gateId)) {
+      throw configValidationError(`${label} 的门禁 id 必须使用点分隔的 kebab-case 命名`);
+    }
+    if (!policy || typeof policy !== 'object' || Array.isArray(policy)) {
+      throw configValidationError(`${label} 必须是对象`);
+    }
+    assertKnownProperties(policy, new Set(['mode', 'scope']), label);
+    if (!Object.hasOwn(policy, 'mode')) {
+      throw configValidationError(`${label}.mode 为必填项`);
+    }
+    if (!CI_GATE_POLICY_MODES.includes(policy.mode)) {
+      throw configValidationError(`${label}.mode 必须为 inherit、off、report 或 enforce`);
+    }
+    const scope = policy.scope ?? 'all-files';
+    if (!CI_GATE_SCOPES.includes(scope)) {
+      throw configValidationError(`${label}.scope 必须为 all-files 或 changed-files`);
+    }
+    gatePolicies[gateId] = { mode: policy.mode, scope };
   }
 
   const externalGatesValue = value.externalGates ?? [];
@@ -122,6 +173,7 @@ export function validateCiConfiguration(value, configPath) {
       profile: ciValue.profile ?? DEFAULT_CI_CONFIG.profile,
       reportPath: ciReportPath,
       protectedFiles: { action: ciProtectedFilesAction },
+      gatePolicy: { defaultMode, gates: gatePolicies },
     },
     externalGates,
   };

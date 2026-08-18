@@ -29,6 +29,7 @@ export function renderGateResultJson(result) {
 export function renderCiStep(result, {
   name = result.gateId,
   includeGateResult = false,
+  gatePolicy = null,
 } = {}) {
   const step = {
     name,
@@ -39,6 +40,7 @@ export function renderCiStep(result, {
     step.durationMs = result.durationMs;
   }
   if (result.error) step.error = result.error.message;
+  if (gatePolicy) step.gatePolicy = gatePolicy;
   if (includeGateResult) step.gateResult = renderGateResultJson(result);
   return step;
 }

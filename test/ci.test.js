@@ -67,6 +67,18 @@ function sparseCiConfig() {
   };
 }
 
+function configWithCiGatePolicy(reportPath, gates, defaultMode = 'inherit') {
+  return config({
+    ci: {
+      enabled: true,
+      profile: 'policy',
+      reportPath,
+      protectedFiles: { action: 'report' },
+      gatePolicy: { defaultMode, gates },
+    },
+  });
+}
+
 function repository() {
   const root = mkdtempSync(path.join(TEST_ROOT, 'ci-'));
   git(root, ['init']);
@@ -222,6 +234,81 @@ test('writes native dynamic-code findings with the unified CI exit contract', as
     approvedExceptions: 0,
     violations: 1,
   });
+});
+
+test('applies off, report, enforce, and changed-file modes only to CI', async (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  writeFileSync(
+    path.join(fixture.root, 'src', 'unsafe.js'),
+    'export const unsafe = (payload) => eval(payload);\n',
+  );
+
+  const cases = [
+    { mode: 'off', exitCode: 0, reportPath: 'reports/off.json', status: 'passed', step: 'skipped' },
+    { mode: 'report', exitCode: 0, reportPath: 'reports/report.json', status: 'passed', step: 'failed' },
+    { mode: 'enforce', exitCode: 2, reportPath: 'reports/enforce.json', status: 'failed', step: 'failed' },
+  ];
+  for (const item of cases) {
+    const policy = { 'security.dynamic-code': { mode: item.mode } };
+    assert.equal(await runCiGate({
+      root: fixture.root,
+      config: configWithCiGatePolicy(item.reportPath, policy),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
+    }), item.exitCode);
+    const report = JSON.parse(readFileSync(path.join(fixture.root, item.reportPath), 'utf8'));
+    const step = report.steps.find(({ name }) => name === 'dynamic-code');
+    assert.equal(report.status, item.status);
+    assert.equal(step.status, item.step);
+    assert.deepEqual(step.gatePolicy, {
+      mode: item.mode,
+      scope: 'all-files',
+      blocking: item.mode === 'enforce',
+    });
+  }
+
+  const changedReportPath = 'reports/changed-files.json';
+  assert.equal(await runCiGate({
+    root: fixture.root,
+    config: configWithCiGatePolicy(changedReportPath, {
+      'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+    }),
+    base: fixture.base,
+    head: fixture.head,
+    env: {},
+  }), 0);
+  const changedReport = JSON.parse(readFileSync(
+    path.join(fixture.root, changedReportPath),
+    'utf8',
+  ));
+  const changedStep = changedReport.steps.find(({ name }) => name === 'dynamic-code');
+  assert.equal(changedStep.status, 'passed');
+  assert.deepEqual(changedStep.gatePolicy, {
+    mode: 'enforce',
+    scope: 'changed-files',
+    blocking: true,
+  });
+});
+
+test('rejects CI Gate policy ids that are absent from the project Registry', async (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  const reportPath = 'reports/invalid-gate-policy.json';
+
+  assert.equal(await runCiGate({
+    root: fixture.root,
+    config: configWithCiGatePolicy(reportPath, {
+      'quality.not-installed': { mode: 'off' },
+    }),
+    base: fixture.base,
+    head: fixture.head,
+    env: {},
+  }), 1);
+  const report = JSON.parse(readFileSync(path.join(fixture.root, reportPath), 'utf8'));
+  assert.equal(report.status, 'configuration-error');
+  assert.match(report.gateResult.summary, /未知或非 CI 门禁/);
 });
 
 test('keeps dynamic-code execution errors distinct from policy violations', async (context) => {

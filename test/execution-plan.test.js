@@ -163,6 +163,30 @@ test('locks the reviewed lifecycle order independently from project configuratio
   assert.deepEqual(config.executionOrder, ['repository.protected-files']);
 });
 
+test('requires every Registry-declared CI Gate to belong to a reviewed CI plan', () => {
+  const ciPlans = ['ci-policy', 'ci-full', 'release-ready']
+    .map((planId) => executionPlans.get(planId));
+  const plannedGateIds = new Set(ciPlans.flatMap((plan) => (
+    plan.steps.map(({ gateId }) => gateId)
+  )));
+
+  assert.deepEqual(
+    gateRegistry.ci
+      .map(({ id }) => id)
+      .filter((gateId) => !plannedGateIds.has(gateId)),
+    [],
+  );
+  for (const plan of ciPlans) {
+    for (const { gateId } of plan.steps) {
+      assert.equal(
+        gateRegistry.ci.some(({ id }) => id === gateId),
+        true,
+        `${gateId} 必须由 Registry 声明为 CI Gate`,
+      );
+    }
+  }
+});
+
 test('rejects every attempt to reorder or expand the protected pre-commit plan', () => {
   const steps = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
   [steps[0], steps[1]] = [steps[1], steps[0]];

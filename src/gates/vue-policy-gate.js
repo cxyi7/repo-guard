@@ -31,6 +31,7 @@ export function defineVuePolicyGate({
     id,
     configVersions: CONFIG_VERSION,
     environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
+    ciScopes: ['all-files', 'changed-files'],
     mutation: 'read-only',
     defaultTimeoutMs: 120000,
     manualCommand,

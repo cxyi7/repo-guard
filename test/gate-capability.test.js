@@ -60,6 +60,9 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
     requiredEnvironment: [],
     requiredSecrets: [],
     artifactTypes: [],
+    ciScopes: environments.some((environment) => (
+      ['ci-policy', 'ci-full', 'release-ready'].includes(environment)
+    )) ? ['all-files'] : [],
     supportsFix: false,
     supportsCancellation: false,
     ...overrides,
@@ -73,6 +76,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 70,
     packageScript: 'guard:dynamic-code',
     rules: ['security/no-eval', 'security/no-function-constructor'],
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('security.vue-unsafe-html', POLICY_ENVIRONMENTS, {
     manualCommand: 'unsafe-html',
@@ -80,6 +84,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 80,
     packageScript: 'guard:unsafe-html',
     rules: ['vue/no-v-html'],
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('security.vue-target-blank', POLICY_ENVIRONMENTS, {
     manualCommand: 'target-blank',
@@ -87,6 +92,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 90,
     packageScript: 'guard:target-blank',
     rules: ['vue/target-blank-security'],
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('accessibility.vue-form-label', POLICY_ENVIRONMENTS, {
     manualCommand: 'form-labels',
@@ -94,6 +100,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 100,
     packageScript: 'guard:form-labels',
     rules: ['vue/form-control-label'],
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('accessibility.vue-image-alt', POLICY_ENVIRONMENTS, {
     manualCommand: 'image-alt',
@@ -101,6 +108,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 110,
     packageScript: 'guard:image-alt',
     rules: ['vue/img-alt'],
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor(
     'repository.structured-exceptions',
@@ -145,6 +153,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     featureName: 'maxFileLines',
     featureOrder: 50,
     doctorOrder: 140,
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('repository.protected-files', CI_POLICY_ENVIRONMENTS, {
     mutation: 'external-write',
@@ -177,6 +186,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     requiredTools: ['stylelint'],
     supportsFix: true,
     doctorOrder: 160,
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('quality.eslint', ['pre-commit', 'ci-full'], {
     configKey: 'preCommit.eslint',
@@ -188,6 +198,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     requiredTools: ['eslint'],
     supportsFix: true,
     doctorOrder: 130,
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('quality.prettier', ['pre-commit', 'ci-full'], {
     configKey: 'preCommit.prettier',
@@ -198,6 +209,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     requiredTools: ['prettier'],
     supportsFix: true,
     doctorOrder: 170,
+    ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('quality.typecheck', ['manual', 'pre-push', 'ci-full'], {
     configKey: 'typeCheck',
@@ -343,6 +355,8 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.equal('renderConsole' in dynamicCodeGate, false);
   assert.equal('renderConsole' in dynamicCode, false);
   assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
+  assert.equal(gateRegistry.ci.includes(dynamicCode), true);
+  assert.deepEqual(dynamicCode.ciScopes, ['all-files', 'changed-files']);
   assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 1 } }), {
     status: 'ready',
     summary: '动态代码暂存门禁（硬性要求，规则=security/no-eval+security/no-function-constructor）',
@@ -423,6 +437,22 @@ test('validates gate lifecycle, mutation, timeout, and handlers', () => {
   assert.throws(() => gate({ defaultTimeoutMs: 0 }), /正整数/);
   assert.throws(() => gate({ run: null }), /必须是函数/);
   assert.throws(() => gate({ supportsFix: 'yes' }), /必须是布尔值/);
+  assert.throws(
+    () => gate({ ciScopes: ['changed-files'] }),
+    /ciScopes 仅可用于 CI 门禁/,
+  );
+  assert.throws(
+    () => gate({ environments: ['ci-full'], ciScopes: [] }),
+    /至少要包含一个支持的范围/,
+  );
+  assert.throws(
+    () => gate({ environments: ['ci-full'], ciScopes: ['staged'] }),
+    /包含不支持的值/,
+  );
+  assert.throws(
+    () => gate({ environments: ['ci-full'], ciScopes: ['changed-files'] }),
+    /必须包含默认范围 all-files/,
+  );
   assert.throws(
     () => gate({ configKey: 'example', featureName: 'example' }),
     /设置 featureName 时必须同时设置 featureOrder/,

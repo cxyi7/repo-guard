@@ -123,6 +123,14 @@ test('renders native violation results and CI exits', () => {
     exitCode: 2,
     durationMs: result.durationMs,
   });
+  assert.deepEqual(renderCiStep(result, {
+    name: 'example',
+    gatePolicy: { mode: 'report', scope: 'all-files', blocking: false },
+  }).gatePolicy, {
+    mode: 'report',
+    scope: 'all-files',
+    blocking: false,
+  });
 });
 
 test('renders one normalized result as versioned JSON', () => {

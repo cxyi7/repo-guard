@@ -117,6 +117,14 @@ export const releaseReadyPlan = defineExecutionPlan({
   ],
 });
 
+function includeExternalGate(config, gate, environment, includeExternalGates) {
+  if (!includeExternalGates || !gate.environments.includes(environment)) return false;
+  const mode = config.ci?.gatePolicy?.gates?.[gate.id]?.mode
+    ?? config.ci?.gatePolicy?.defaultMode
+    ?? 'inherit';
+  return gate.enabled || mode !== 'inherit';
+}
+
 export function createProjectCiFullPlan(config, registry, { includeExternalGates = true } = {}) {
   return validateExecutionPlan(defineExecutionPlan({
     id: 'ci-full',
@@ -125,9 +133,12 @@ export function createProjectCiFullPlan(config, registry, { includeExternalGates
     steps: [
       ...ciFullPlan.steps,
       ...config.externalGates
-        .filter((gate) => includeExternalGates
-          && gate.enabled
-          && gate.environments.includes('ci-full'))
+        .filter((gate) => includeExternalGate(
+          config,
+          gate,
+          'ci-full',
+          includeExternalGates,
+        ))
         .map(({ id }) => id),
     ],
   }), registry);
@@ -145,9 +156,12 @@ export function createProjectReleaseReadyPlan(
     steps: [
       ...releaseReadyPlan.steps,
       ...config.externalGates
-        .filter((gate) => includeExternalGates
-          && gate.enabled
-          && gate.environments.includes('release-ready'))
+        .filter((gate) => includeExternalGate(
+          config,
+          gate,
+          'release-ready',
+          includeExternalGates,
+        ))
         .map(({ id }) => id),
     ],
   }), registry);

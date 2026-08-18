@@ -60,6 +60,44 @@
               "default": "report"
             }
           }
+        },
+        "gatePolicy": {
+          "type": "object",
+          "description": "CI-only Gate activation and blocking policy. It is never read by pre-commit or pre-push. Registry-declared CI Gates are controlled automatically; report and enforce activate configurable Gates only in an isolated CI context.",
+          "additionalProperties": false,
+          "properties": {
+            "defaultMode": {
+              "type": "string",
+              "enum": ["inherit", "off", "report", "enforce"],
+              "default": "inherit",
+              "description": "inherit preserves pre-1.7 behavior; off skips; report executes without blocking CI; enforce executes and blocks CI on failure."
+            },
+            "gates": {
+              "type": "object",
+              "default": {},
+              "description": "Per-Gate overrides keyed by the stable Registry Gate id. The generic key contract automatically accepts future Registry Gate ids without a hand-maintained schema enum.",
+              "propertyNames": {
+                "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mode"],
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": ["inherit", "off", "report", "enforce"]
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": ["all-files", "changed-files"],
+                    "default": "all-files",
+                    "description": "changed-files is accepted only when the Gate declares support for that scope in Registry metadata."
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

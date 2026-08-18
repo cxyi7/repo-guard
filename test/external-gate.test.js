@@ -120,6 +120,29 @@ test('appends enabled external gates only to the fixed end of CI full', () => {
   assert.equal(untrustedPlan.steps.some(({ id }) => id.startsWith('project.')), false);
 });
 
+test('lets explicit CI policy activate a disabled external Gate only in trusted CI', () => {
+  const config = validateConfig({
+    ...projectConfig([externalConfig({ enabled: false, environments: ['ci-full'] })]),
+    ci: {
+      gatePolicy: {
+        defaultMode: 'inherit',
+        gates: { 'project.api-contract': { mode: 'enforce' } },
+      },
+    },
+  });
+  const registry = createProjectGateRegistry(config);
+
+  assert.equal(
+    createProjectCiFullPlan(config, registry).steps.at(-1).id,
+    'project.api-contract',
+  );
+  assert.equal(
+    createProjectCiFullPlan(config, registry, { includeExternalGates: false })
+      .steps.some(({ id }) => id === 'project.api-contract'),
+    false,
+  );
+});
+
 test('runs a project npm script and returns its native structured result', async (context) => {
   const root = createFixture({ report: passedReport(), output: 'api_key=do-not-leak' });
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -181,6 +204,36 @@ test('runs enabled external gates at the end of CI full and records native JSON'
   const report = JSON.parse(readFileSync(path.join(root, 'reports', 'ci.json'), 'utf8'));
   assert.equal(report.steps.at(-1).name, 'project.api-contract');
   assert.equal(report.steps.at(-1).gateResult.status, 'passed');
+
+  const forcedConfig = validateConfig({
+    ...projectConfig([externalConfig({ enabled: false, environments: ['ci-full'] })]),
+    ci: {
+      enabled: true,
+      profile: 'full',
+      reportPath: 'reports/forced-ci.json',
+      gatePolicy: {
+        defaultMode: 'inherit',
+        gates: { 'project.api-contract': { mode: 'enforce' } },
+      },
+    },
+  });
+  assert.equal(await runCiGate({
+    root,
+    config: forcedConfig,
+    base,
+    head,
+    env: { GITLAB_CI: 'true', CI_COMMIT_REF_PROTECTED: 'true' },
+  }), 0);
+  const forcedReport = JSON.parse(readFileSync(
+    path.join(root, 'reports', 'forced-ci.json'),
+    'utf8',
+  ));
+  assert.equal(forcedReport.steps.at(-1).name, 'project.api-contract');
+  assert.deepEqual(forcedReport.steps.at(-1).gatePolicy, {
+    mode: 'enforce',
+    scope: 'all-files',
+    blocking: true,
+  });
 
   assert.equal(await runCiGate({
     root,

@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.6.3`
+- 当前版本：`1.7.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.6.3
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.7.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -297,6 +297,47 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 
 CI 始终只读，不执行 fix、不安装 Hook、不读取本地企业微信凭据。
 
+#### CI 门禁策略
+
+`ci.gatePolicy` 只控制 `repo-guard ci` 使用的 `ci-policy`、`ci-full` 和 `release-ready` 环境，不会被 pre-commit 或 pre-push 读取。同一个 Gate 可以在提交时强制执行、在 CI 中关闭，也可以在提交时关闭、仅在 CI 中报告或强制执行。
+
+```json
+{
+  "ci": {
+    "enabled": true,
+    "profile": "policy",
+    "reportPath": "reports/repo-guard.json",
+    "protectedFiles": { "action": "report" },
+    "gatePolicy": {
+      "defaultMode": "inherit",
+      "gates": {
+        "security.dynamic-code": {
+          "mode": "enforce",
+          "scope": "changed-files"
+        },
+        "accessibility.vue-image-alt": {
+          "mode": "report"
+        },
+        "repository.maximum-file-lines": {
+          "mode": "off"
+        }
+      }
+    }
+  }
+}
+```
+
+| 模式 | CI 行为 |
+|---|---|
+| `inherit` | 保持 1.7.0 之前的兼容行为：沿用 Gate 原有 `enabled` 配置，失败会阻断 CI |
+| `off` | 在 setup 和执行之前跳过该 CI Gate，不阻断 CI |
+| `report` | 仅在隔离的 CI 上下文中启用并执行，失败写入步骤报告但不阻断 CI |
+| `enforce` | 仅在隔离的 CI 上下文中启用并执行，失败阻断 CI |
+
+`scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
+
+CI Gate 由 Registry 的 CI environment 元数据自动发现，配置 Schema 使用稳定 Gate id 的通用键约束，不维护容易遗漏的手写 Gate 枚举。仓库测试还要求每个官方 CI Gate 至少属于一个受审固定执行计划；因此未来新增 CI Gate 时，如果忘记进入执行计划，发布检查会直接失败，而进入计划后会自动获得 `inherit/off/report/enforce` 策略能力。
+
 ### 外部门禁
 
 消费项目可以通过严格的 npm script 和 `repo-guard-json-v1` 报告接入项目自有检查：
@@ -323,7 +364,7 @@ CI 始终只读，不执行 fix、不安装 Hook、不读取本地企业微信�
 repo-guard external project.api-contract
 ```
 
-外部门禁不进入 pre-commit、pre-push 或 CI policy，也不能插入或重排官方计划。
+外部门禁不进入 pre-commit、pre-push 或 CI policy，也不能插入或重排官方计划。它们仍然只在可信的 GitLab 受保护分支环境中运行；`ci.gatePolicy` 不会绕过该安全限制。
 
 ## 仓库目录
 

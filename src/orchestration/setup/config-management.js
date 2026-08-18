@@ -175,6 +175,10 @@ export function createStarterConfig({
     ci: {
       ...DEFAULT_CI_CONFIG,
       protectedFiles: { ...DEFAULT_CI_CONFIG.protectedFiles },
+      gatePolicy: {
+        ...DEFAULT_CI_CONFIG.gatePolicy,
+        gates: { ...DEFAULT_CI_CONFIG.gatePolicy.gates },
+      },
     },
     externalGates: [],
     codePlacement: cloneCodePlacementConfig(),
@@ -278,6 +282,14 @@ export function migrateProjectConfig(root, {
       protectedFiles: {
         ...DEFAULT_CI_CONFIG.protectedFiles,
         ...(prepared.ci?.protectedFiles ?? {}),
+      },
+      gatePolicy: {
+        ...DEFAULT_CI_CONFIG.gatePolicy,
+        ...(prepared.ci?.gatePolicy ?? {}),
+        gates: {
+          ...DEFAULT_CI_CONFIG.gatePolicy.gates,
+          ...(prepared.ci?.gatePolicy?.gates ?? {}),
+        },
       },
     },
     externalGates: prepared.externalGates ?? [],

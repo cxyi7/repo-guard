@@ -84,6 +84,7 @@ export function createGateRegistry(gates) {
         .filter(({ featureName }) => featureName)
         .sort((left, right) => left.featureOrder - right.featureOrder),
     ),
+    ci: Object.freeze(immutableGates.filter(({ ciScopes }) => ciScopes.length > 0)),
     get(id) {
       const gate = byId.get(id);
       if (!gate) throw internalError('capability/invalid-registry', `未知门禁： ${id}`);

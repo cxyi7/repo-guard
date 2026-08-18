@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.7.0
+
+- 新增 Registry 驱动的 `ci.gatePolicy`，支持按稳定 Gate id 配置 `inherit`、`off`、`report` 和 `enforce`；`report/enforce` 只在隔离的 CI 上下文中启用 Gate，不修改消费项目配置，也不影响 pre-commit 或 pre-push。
+- 支持由 Gate 元数据声明的 `all-files` 与 `changed-files` CI 范围；运行时拒绝未知 Gate 和不支持的范围，CI JSON 的每个步骤记录实际 mode、scope 与 blocking 状态。
+- Registry 自动派生全部 CI Gate，并通过发布测试保证每个官方 CI Gate 至少进入一个受审固定执行计划；新增 Gate 进入计划后会自动纳入策略层，无需维护第二份开关清单。
+- 保持现有 GitLab managed include、固定 `policy/full/release-ready` 计划、统一 orchestrator/GateResult、只读 CI、可信外部门禁和报告路径安全机制，不另建重复 CI 流程。
 - 修正 README 和长期功能清单遗留的旧版本声明，并将 README 当前版本纳入发布就绪硬性检查，避免 npm 页面再次展示过期版本。
 
 ## 1.6.3

@@ -157,6 +157,7 @@ export const filePlacementGate = defineGate({
 export const maximumFileLinesGate = defineGate({
   id: 'repository.maximum-file-lines', configKey: 'preCommit.maxFileLines', featureName: 'maxFileLines', featureOrder: 50,
   configVersions: CONFIG_VERSION, environments: ['pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000, doctorOrder: 140,
+  ciScopes: ['all-files', 'changed-files'],
   inspectSetup: ({ config }) => ready(config.preCommit.maxFileLines.enabled ? '最大文件行数策略已启用' : '最大文件行数策略已禁用'),
   plan: ({ root, config, files, revision, changes }) => ({
     enabled: config.preCommit.maxFileLines.enabled,

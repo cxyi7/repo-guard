@@ -25,6 +25,7 @@ import {
 } from '../../policies/managed-policies.js';
 import { loadNotificationConfig } from '../../policies/wecom-notification.js';
 import { inspectGitLabCi } from '../setup/gitlab-ci.js';
+import { validateCiGatePolicy } from '../ci/gate-policy.js';
 import {
   isCurrentManagedHook,
   isManagedHook,
@@ -155,6 +156,15 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     const ciInspection = inspectGitLabCi(root, config);
     if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
     else checks.push(`GitLab CI 集成（${config.ci.profile} 配置档）`);
+    try {
+      validateCiGatePolicy(config, createProjectGateRegistry(config));
+      checks.push(
+        `CI 门禁策略（默认模式=${config.ci.gatePolicy.defaultMode}，`
+        + `${Object.keys(config.ci.gatePolicy.gates).length} 项覆盖）`,
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
   }
 
   if (config) {

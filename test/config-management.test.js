@@ -85,6 +85,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.ci.enabled, false);
   assert.equal(config.ci.profile, 'policy');
   assert.equal(config.ci.reportPath, 'reports/repo-guard.json');
+  assert.deepEqual(config.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
   assert.deepEqual(config.externalGates, []);
   assert.deepEqual(config.exceptions, {
     warningDays: 14,
@@ -174,6 +175,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.unitTest.componentInteraction.enabled, false);
   assert.equal(migrated.unitTest.mappings.length, 5);
   assert.equal(migrated.notification.enabled, true);
+  assert.deepEqual(migrated.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
   assert.deepEqual(migrated.exceptions.entries, []);
   assert.equal(migrated.dependencyPolicy.enabled, true);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);

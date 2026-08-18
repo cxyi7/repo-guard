@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.6.3`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.7.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -12,9 +12,10 @@
        └─ 1.6.1 不可变保护文件门禁
             └─ 1.6.2 Windows 托管文本换行兼容修复
                  └─ 1.6.3 pre-push 实时进程输出
+                    └─ 1.7.0 CI Gate 独立策略
 ```
 
-因此，`1.6.3` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.7.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -312,6 +313,10 @@ CI 使用明确 base/head 或 GitLab 提供的可信范围。浅克隆缺少基�
 
 CI 始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。
 
+`ci.gatePolicy` 在现有固定计划之上提供 CI 专属的 Gate 激活和阻断策略：`inherit` 保持原行为，`off` 在 setup 前跳过，`report` 执行但不影响 CI 总退出码，`enforce` 执行并阻断失败。该策略不进入 pre-commit 或 pre-push；显式 `report/enforce` 只修改单个 CI 步骤的不可变上下文副本。
+
+CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready` environment 自动派生。每个官方 CI Gate 必须至少出现在一个受审计划，否则仓库测试失败；计划内的每一步由统一策略控制器自动处理。文件型 Gate 可以通过 Registry `ciScopes` 声明是否支持 `changed-files`，未声明的 Gate 只能使用 `all-files`。
+
 ### 5.10 发布就绪
 
 `release-ready` 会验证：
@@ -440,7 +445,7 @@ notification
 ci
 ```
 
-原生动态代码与 Vue 安全/静态可访问性规则没有关闭开关。
+原生动态代码与 Vue 安全/静态可访问性规则在提交门禁中没有关闭开关；CI 可以通过独立的 `ci.gatePolicy` 配置 `off`、`report` 或 `enforce`，不会改变提交门禁行为。
 
 ## 8. 配置结构
 
@@ -451,7 +456,7 @@ ci
 | `$schema` | 引用 npm 包导出的配置 Schema |
 | `version` | 当前配置契约版本，只接受 `1` |
 | `notification` | 企业微信通知开关 |
-| `ci` | CI 开关、配置档、报告路径和保护文件行为 |
+| `ci` | CI 开关、配置档、报告路径、保护文件行为和独立 Gate 策略 |
 | `externalGates` | 项目自有外部门禁声明 |
 | `codePlacement` | 精确代码文本允许位置规则 |
 | `exceptions` | 精确、限时、可审计的结构化例外 |

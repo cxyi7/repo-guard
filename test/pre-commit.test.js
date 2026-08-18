@@ -51,6 +51,7 @@ function writeConfig(root, {
     'src/App.vue',
   ],
   dependencyPolicyEnabled = false,
+  ciGatePolicy = null,
   codePlacementEnabled = false,
   codePlacementRules = [],
   maxFileLinesEnabled = false,
@@ -77,6 +78,7 @@ function writeConfig(root, {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
+      ci: ciGatePolicy == null ? undefined : { gatePolicy: ciGatePolicy },
       codePlacement: {
         enabled: codePlacementEnabled,
         rules: codePlacementRules,
@@ -813,6 +815,27 @@ test('blocks staged Vue v-html even when optional quality gates are disabled', a
 
 test('blocks staged dynamic code execution when optional gates are disabled', async (context) => {
   const root = createRepository({
+    enabled: false,
+    filePlacementEnabled: false,
+    prettierEnabled: false,
+    stylelintEnabled: false,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const content = 'export const execute = (source) => new Function(source)();\n';
+  writeFileSync(path.join(root, 'runtime.ts'), content);
+  git(root, ['add', '.']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':runtime.ts'])), content);
+});
+
+test('keeps CI Gate policy independent from the pre-commit Gate policy', async (context) => {
+  const root = createRepository({
+    ciGatePolicy: {
+      defaultMode: 'inherit',
+      gates: { 'security.dynamic-code': { mode: 'off' } },
+    },
     enabled: false,
     filePlacementEnabled: false,
     prettierEnabled: false,

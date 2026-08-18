@@ -193,14 +193,36 @@ export async function orchestratePlan({
   },
   onResult = null,
   stopOnFailure = false,
+  prepareStepContext = null,
+  beforeStep = null,
 }) {
   const outcomes = [];
   for (const step of plan.steps) {
     const gate = registry.get(step.gateId);
+    let stepContext = context;
     let outcome;
     let result;
     try {
-      outcome = await executeWithTimeout({ context, gate, step, executeStep });
+      if (prepareStepContext) {
+        stepContext = await prepareStepContext({ context, gate, step });
+        if (!stepContext || typeof stepContext !== 'object') {
+          throw internalError(
+            'orchestration/invalid-step-context',
+            `门禁 ${gate.id} 的步骤上下文必须是对象`,
+          );
+        }
+      }
+      outcome = beforeStep
+        ? await beforeStep({ context: stepContext, gate, step })
+        : null;
+      if (outcome == null) {
+        outcome = await executeWithTimeout({
+          context: stepContext,
+          gate,
+          step,
+          executeStep,
+        });
+      }
       result = validateResult(gate, resultFromOutcome(outcome));
       outcome = withValidatedResult(outcome, result);
     } catch (error) {
@@ -208,7 +230,7 @@ export async function orchestratePlan({
       result = outcome;
     }
     outcomes.push(outcome);
-    if (onResult) await onResult({ context, gate, outcome, result, step });
+    if (onResult) await onResult({ context: stepContext, gate, outcome, result, step });
     if (shouldStop(result, stopOnFailure)) break;
   }
   return finish(plan, outcomes);

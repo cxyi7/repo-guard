@@ -6,7 +6,16 @@ const ENVIRONMENTS = [
   'ci-full',
   'release-ready',
 ];
+const CI_ENVIRONMENTS = ['ci-policy', 'ci-full', 'release-ready'];
 const MUTATIONS = ['read-only', 'working-tree-fix', 'managed-files', 'external-write'];
+
+export const CI_GATE_POLICY_MODES = Object.freeze([
+  'inherit',
+  'off',
+  'report',
+  'enforce',
+]);
+export const CI_GATE_SCOPES = Object.freeze(['all-files', 'changed-files']);
 
 function nonEmptyString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -51,6 +60,7 @@ export function defineGate({
   requiredEnvironment = [],
   requiredSecrets = [],
   artifactTypes = [],
+  ciScopes = null,
   supportsFix = false,
   supportsCancellation = false,
   inspectSetup,
@@ -110,6 +120,26 @@ export function defineGate({
     || typeof run !== 'function') {
     throw new TypeError('门禁 inspectSetup、plan 和 run 必须是函数');
   }
+  const normalizedEnvironments = stringArray(
+    environments,
+    '门禁 environments',
+    ENVIRONMENTS,
+  );
+  const supportsCi = normalizedEnvironments.some((environment) => (
+    CI_ENVIRONMENTS.includes(environment)
+  ));
+  if (!supportsCi && ciScopes != null) {
+    throw new TypeError('门禁 ciScopes 仅可用于 CI 门禁');
+  }
+  const normalizedCiScopes = supportsCi
+    ? stringArray(ciScopes ?? ['all-files'], '门禁 ciScopes', CI_GATE_SCOPES)
+    : Object.freeze([]);
+  if (supportsCi && normalizedCiScopes.length === 0) {
+    throw new TypeError('CI 门禁 ciScopes 至少要包含一个支持的范围');
+  }
+  if (supportsCi && !normalizedCiScopes.includes('all-files')) {
+    throw new TypeError('CI 门禁 ciScopes 必须包含默认范围 all-files');
+  }
   return Object.freeze({
     id,
     resultModel: 'GateResult',
@@ -117,7 +147,7 @@ export function defineGate({
     featureName,
     featureOrder,
     configVersions: Object.freeze([...configVersions]),
-    environments: stringArray(environments, '门禁 environments', ENVIRONMENTS),
+    environments: normalizedEnvironments,
     mutation,
     allowedMutations: normalizedAllowedMutations,
     defaultTimeoutMs,
@@ -136,6 +166,7 @@ export function defineGate({
     requiredEnvironment: stringArray(requiredEnvironment, '门禁 requiredEnvironment'),
     requiredSecrets: stringArray(requiredSecrets, '门禁 requiredSecrets'),
     artifactTypes: stringArray(artifactTypes, '门禁 artifactTypes'),
+    ciScopes: normalizedCiScopes,
     supportsFix,
     supportsCancellation,
     inspectSetup,

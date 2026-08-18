@@ -297,6 +297,10 @@ function readPackage(root) {
   return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 }
 
+function runtimeExternalGateConfig(projectConfig, fallback) {
+  return projectConfig.externalGates.find(({ id }) => id === fallback.id) ?? fallback;
+}
+
 export function defineExternalGate(config) {
   return defineGate({
     id: config.id,
@@ -308,8 +312,9 @@ export function defineExternalGate(config) {
     requiredScripts: [config.script],
     artifactTypes: ['repo-guard-json-v1'],
     supportsCancellation: true,
-    inspectSetup({ root, environment }) {
-      if (!config.enabled) return { status: 'ready', summary: `${config.id} 已禁用` };
+    inspectSetup({ root, config: projectConfig, environment }) {
+      const runtimeConfig = runtimeExternalGateConfig(projectConfig, config);
+      if (!runtimeConfig.enabled) return { status: 'ready', summary: `${config.id} 已禁用` };
       if (!config.environments.includes(environment)) {
         return { status: 'misconfigured', summary: `${config.id} 不支持 ${environment}` };
       }
@@ -325,8 +330,8 @@ export function defineExternalGate(config) {
       assertSafeGeneratedPath(root, config.report.path, '外部门禁报告', { mustExist: false });
       return { status: 'ready', summary: `${config.id} 使用 npm 脚本 ${config.script}` };
     },
-    plan: ({ root }) => ({
-      enabled: config.enabled,
+    plan: ({ root, config: projectConfig }) => ({
+      enabled: runtimeExternalGateConfig(projectConfig, config).enabled,
       reportPath: assertSafeGeneratedPath(root, config.report.path, '外部门禁报告', { mustExist: false }),
     }),
     async run({ root, signal, plan }) {
