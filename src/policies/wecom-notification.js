@@ -7,7 +7,9 @@ const WECOM_HOST = 'qyapi.weixin.qq.com';
 const WECOM_PATH = '/cgi-bin/webhook/send';
 const MAX_TEXT_BYTES = 2048;
 
-export function loadNotificationConfig(environment = process.env) {
+export function loadNotificationConfig(environment = process.env, {
+  requireMentionMobiles = true,
+} = {}) {
   const rawWebhook = environment.REPO_GUARD_WECOM_WEBHOOK?.trim() || '';
   const rawMobiles = environment.REPO_GUARD_MENTION_MOBILES?.trim() || '';
 
@@ -38,7 +40,7 @@ export function loadNotificationConfig(environment = process.env) {
       .filter(Boolean),
   )];
 
-  if (mentionMobiles.length === 0) {
+  if (requireMentionMobiles && mentionMobiles.length === 0) {
     throw configurationError('wecom/missing-mention-mobiles', '未配置 REPO_GUARD_MENTION_MOBILES');
   }
   if (mentionMobiles.some((mobile) => !/^1\d{10}$/.test(mobile))) {

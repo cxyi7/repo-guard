@@ -2360,6 +2360,44 @@ test('separates WeCom notification policy from network integration without a roo
   assert.doesNotMatch(integrationSource, /loadNotificationConfig|buildNotificationText/);
 });
 
+test('separates GitLab notification policy, release delivery, package facts, and CLI wiring', () => {
+  const packageFactPath = path.join(
+    SOURCE_ROOT,
+    'core',
+    'project',
+    'repo-guard-package.js',
+  );
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'gitlab-ci-notification.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'release', 'gitlab-ci-notification.js');
+  const pipelinePath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'setup',
+    'gitlab-managed-pipeline.js',
+  );
+  for (const target of [packageFactPath, policyPath, gatePath, pipelinePath]) {
+    assert.equal(existsSync(target), true, target);
+  }
+
+  const packageFactSource = readFileSync(packageFactPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const gateSource = readFileSync(gatePath, 'utf8');
+  const pipelineSource = readFileSync(pipelinePath, 'utf8');
+  const cliSource = readFileSync(CLI_RUNNER_PATH, 'utf8');
+
+  assert.match(packageFactSource, /export function repoGuardPackageVersion/);
+  assert.doesNotMatch(packageFactSource, /(?:gates|integrations|orchestration|policies)\//);
+  assert.match(policySource, /export function buildGitLabCiNotificationText/);
+  assert.doesNotMatch(policySource, /from ['"][^'"]*(?:gates|integrations|orchestration)\//);
+  assert.match(gateSource, /integrations\/wecom\/notification\.js/);
+  assert.match(gateSource, /policies\/gitlab-ci-notification\.js/);
+  assert.doesNotMatch(gateSource, /orchestration\//);
+  assert.match(pipelineSource, /core\/project\/repo-guard-package\.js/);
+  assert.doesNotMatch(pipelineSource, /integrations\/wecom|sendWecomNotification/);
+  assert.match(cliSource, /gates\/release\/gitlab-ci-notification\.js/);
+  assert.doesNotMatch(cliSource, /integrations\/wecom|sendWecomNotification/);
+});
+
 test('keeps Lighthouse ignore management in setup orchestration without a root helper', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'lighthouse-ignore.js')), false);
   assert.equal(

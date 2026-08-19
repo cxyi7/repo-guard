@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { runCheck } from './check.js';
 import { runCiCommand } from '../ci/command.js';
+import { runGitLabCiNotification } from '../../gates/release/gitlab-ci-notification.js';
 import { runDisable, runEnable, runMigrate } from './configuration.js';
 import { runDoctor } from '../doctor/runner.js';
 import { gateRegistry } from '../../gates/registry.js';
@@ -57,6 +58,7 @@ repo-guard - 仓库保护门禁
   repo-guard doctor [--fix|--ci]
   repo-guard install-ci --provider gitlab [--profile policy|full|release-ready] [--stage <name>] [--dry-run]
   repo-guard ci [--profile policy|full|release-ready] [--base <sha>] [--head <sha>] [--report-json <path>]
+  repo-guard ci-notify [--status success|failed|canceled]
 ${EARLY_MANUAL_HELP}
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
@@ -127,6 +129,16 @@ export async function runCli(argumentsList) {
           base: options.values['--base'] || null,
           head: options.values['--head'] || null,
           reportPath: options.values['--report-json'],
+        });
+      }
+      case 'ci-notify': {
+        const options = parseValuedOptions(rest, {
+          flags: new Set(),
+          values: new Set(['--status']),
+        });
+        return await runGitLabCiNotification({
+          status: options.values['--status'] || null,
+          write: writeConsoleMessage,
         });
       }
       case 'pre-commit':

@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.8.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.8.2`。
 
 当前最新功能分支具有递进关系：
 
@@ -14,9 +14,11 @@
                  └─ 1.6.3 pre-push 实时进程输出
                     └─ 1.7.0 CI Gate 独立策略
                        └─ 1.8.0 GitLab 应用交付托管标准
+                          └─ 1.8.1 GitLab CI 内置结果通知
+                               └─ 1.8.2 通知取消态、标题截断与隔离包执行
 ```
 
-因此，`1.8.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.8.2` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -59,7 +61,7 @@ repo/
 │  ├─ gates/                         门禁决策、finding 和结果适配
 │  │  ├─ accessibility/              Vue 可访问性门禁
 │  │  ├─ quality/                    lint、格式化、类型、架构、构建、Lighthouse
-│  │  ├─ release/                    发布就绪检查
+│  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
 │  │  ├─ repository/                 依赖、文件、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、axe 和外部门禁
@@ -83,7 +85,7 @@ repo/
 │  │  ├─ pre-commit/                 暂存隔离、质量段和最终策略段
 │  │  ├─ pre-push/                   精确推送范围与独立重型门禁
 │  │  └─ setup/                      配置、Hook、CI 和受管理文件安装
-│  └─ policies/                      不依赖运行入口的纯策略判定
+│  └─ policies/                      不依赖运行入口的纯策略判定，包含 CI 通知内容策略
 ├─ test/                             配置、行为、端到端和架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ external-report.schema.json       外部门禁报告 Schema
@@ -107,6 +109,10 @@ repo/
 - 循环依赖和无法解析的本地导入均为错误。
 
 这一结构将“事实获取、策略判断、结果表达、生命周期编排”分开，避免 CLI、Hook 和 CI 各自维护一套业务规则。
+
+GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只判断受控的最终状态并生成经过清理和长度限制的中文内容；`gates/release/gitlab-ci-notification.js` 校验配置与受信 CI 环境，并通过企业微信 integration 完成唯一的外部写入；CLI 只调用该 release 能力，不直接依赖第三方发送适配。
+
+`core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
 ## 4. 核心运行模型
 
@@ -313,15 +319,15 @@ Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 
 
 CI 使用明确 base/head 或 GitLab 提供的可信范围。浅克隆缺少基准提交时返回范围错误，不会把未知范围当成空变更。
 
-CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，只调用消费项目显式提供的固定 npm scripts。
+CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，调用消费项目显式提供的固定验证/部署 npm scripts；开启通知时再由包内命令读取 GitLab CI 受保护变量并发送结果。
 
 `ci.gatePolicy` 在现有固定计划之上提供 CI 专属的 Gate 激活和阻断策略：`inherit` 保持原行为，`off` 在 setup 前跳过，`report` 执行但不影响 CI 总退出码，`enforce` 执行并阻断失败。该策略不进入 pre-commit 或 pre-push；显式 `report/enforce` 只修改单个 CI 步骤的不可变上下文副本。
 
 CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready` environment 自动派生。每个官方 CI Gate 必须至少出现在一个受审计划，否则仓库测试失败；计划内的每一步由统一策略控制器自动处理。文件型 Gate 可以通过 Registry `ciScopes` 声明是否支持 `changed-files`，未声明的 Gate 只能使用 `all-files`。
 
-`ci.pipeline` 是独立于 Gate 策略的可选 GitLab 应用交付层。它复用原有受管 include 与 `install-ci`/`doctor --ci`，固定生成门禁、验证、测试发布、生产发布和可选快速发布 Job；消费项目不能通过配置注入 shell 命令，只能提供固定名称的 `ci:*` npm scripts。模板只识别并生成当前 v2 marker，不保留旧模板兼容分支。
+`ci.pipeline` 是独立于 Gate 策略的可选 GitLab 应用交付层。它复用原有受管 include 与 `install-ci`/`doctor --ci`，固定生成门禁、验证、测试发布、生产发布和可选快速发布 Job；消费项目不能通过配置注入 shell 命令，只能提供固定名称的验证/部署 npm scripts。模板只识别并生成当前 v2 marker，不保留旧模板兼容分支。
 
-交付配置仅包含阶段、验证/发布镜像、测试/生产分支、Runner 标签、旧 peer dependency 兼容、快速发布与通知开关。`repo_guard` 固定在 `.pre` stage，受管验证与发布 Job 只会在门禁通过后继续。实际微信小程序上传、Web 镜像构建、蓝绿切换、密钥、端口和外部服务地址均由消费项目脚本或 GitLab 受保护变量拥有。`ci.pipeline` 不改变 pre-commit、pre-push 或 `ci.gatePolicy` 的语义。
+交付配置仅包含阶段、验证/发布镜像、测试/生产分支、Runner 标签、旧 peer dependency 兼容、快速发布与通知开关。`repo_guard` 固定在 `.pre` stage，受管验证与发布 Job 只会在门禁通过后继续。开启通知后，生成器在保留的 `.post` 阶段增加 `when: on_success` 与 `when: on_failure` 两个互斥 Job，任意阻断性 Job 失败会发送一次失败通知，全部成功则发送一次成功通知。运行中的受管 Job 被手动或自动取消时，`after_script` 发送“已取消（canceled）”通知；前置门禁和验证 Job 可自动中断，部署 Job 不改为可自动中断。取消 pending Job 或强制取消时 GitLab 不执行 `after_script`，因此无 Runner 内通知入口。提交标题最多显示前 10 个字符并追加省略号。通知包从 npm 官方 tarball URL 安装到 Job 唯一隔离目录，禁用 lifecycle scripts，并通过绝对路径执行，不使用消费项目的本地可执行文件。通知 Job 使用 `allow_failure: true` 保持原流水线结果。Webhook 来自 `REPO_GUARD_WECOM_WEBHOOK`，可选手机号来自 `REPO_GUARD_MENTION_MOBILES`，二者只从 GitLab CI 变量读取。实际微信小程序上传、Web 镜像构建、蓝绿切换、其他密钥、端口和外部服务地址均由消费项目脚本或 GitLab 受保护变量拥有。`ci.pipeline` 不改变 pre-commit、pre-push 或 `ci.gatePolicy` 的语义。
 
 ### 5.10 发布就绪
 

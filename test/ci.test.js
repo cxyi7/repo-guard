@@ -21,6 +21,7 @@ import {
   inspectGitLabCi,
   installGitLabCi,
 } from '../src/orchestration/setup/gitlab-ci.js';
+import { renderManagedPipelineRoot } from '../src/orchestration/setup/gitlab-managed-pipeline.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -29,6 +30,15 @@ function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+
+function yamlJob(content, name) {
+  const match = new RegExp(
+    `^${name}:\\n[\\s\\S]*?(?=^[A-Za-z0-9_]+:\\n|^# repo-guard-gitlab:end)`,
+    'm',
+  ).exec(content);
+  assert.ok(match, `缺少 GitLab CI 受管 Job：${name}`);
+  return match[0];
 }
 
 function config(extra = {}) {
@@ -395,7 +405,6 @@ test('installs the managed application-delivery contract from project configurat
       'ci:deploy:test': 'node deploy.js test',
       'ci:deploy:production': 'node deploy.js production',
       'ci:deploy:quick': 'node deploy.js quick',
-      'ci:notify': 'node notify.js',
     },
   };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -439,7 +448,43 @@ test('installs the managed application-delivery contract from project configurat
   assert.match(root, /\$CI_COMMIT_BRANCH =~ \/\^future\\\/\.\*\$\//);
   assert.match(root, /repo_guard_deploy_production:[\s\S]*npm run ci:deploy:production/);
   assert.match(root, /repo_guard_deploy_quick:[\s\S]*allow_failure: true/);
-  assert.match(root, /after_script:\n[ ]{4}- npm run ci:notify/);
+  assert.doesNotMatch(root, /npm run ci:notify|npx --yes|--package=@cxyi7\/repo-guard/);
+  const managedJobNames = [
+    'repo_guard',
+    'repo_guard_verify',
+    'repo_guard_deploy_test',
+    'repo_guard_deploy_production',
+    'repo_guard_deploy_quick',
+    'repo_guard_notify_success',
+    'repo_guard_notify_failure',
+  ];
+  for (const jobName of managedJobNames) {
+    const job = yamlJob(root, jobName);
+    assert.match(job, /after_script:/);
+    assert.match(job, /CI_JOB_STATUS" = "canceled"/);
+    assert.match(job, /--status canceled/);
+  }
+  assert.match(yamlJob(root, 'repo_guard'), /interruptible: true/);
+  assert.match(yamlJob(root, 'repo_guard_verify'), /interruptible: true/);
+  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_test'), /interruptible: true/);
+  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_production'), /interruptible: true/);
+  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
+  assert.match(
+    root,
+    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.8\.2\.tgz/,
+  );
+  assert.match(
+    root,
+    /REPO_GUARD_PIPELINE_NOTIFICATION=true node "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID\/node_modules\/@cxyi7\/repo-guard\/bin\/repo-guard\.js" ci-notify --status canceled/,
+  );
+  assert.match(
+    root,
+    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.8\.2\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+  );
+  assert.match(
+    root,
+    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.8\.2\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+  );
   assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
   const installedConfig = validateConfig(JSON.parse(readFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
@@ -447,20 +492,22 @@ test('installs the managed application-delivery contract from project configurat
   )));
   assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
 
-  const scriptsWithoutNotification = Object.fromEntries(
-    Object.entries(manifest.scripts).filter(([name]) => name !== 'ci:notify'),
-  );
-  writeFileSync(
-    manifestPath,
-    `${JSON.stringify({ ...manifest, scripts: scriptsWithoutNotification }, null, 2)}\n`,
-  );
-  assert.ok(inspectGitLabCi(fixture.root, installedConfig).problems.some(
-    (problem) => problem.includes('ci:notify'),
-  ));
+  assert.equal(Object.hasOwn(manifest.scripts, 'ci:notify'), false);
   assert.throws(
     () => installGitLabCi(fixture.root, { profile: 'full', stage: 'build' }),
     /固定使用 \.pre stage/,
   );
+});
+
+test('does not add cancellation behavior when managed notifications are disabled', () => {
+  const pipeline = validateConfig({
+    ...sparseCiConfig(),
+    ci: { pipeline: { enabled: true, notifications: false } },
+  }).ci.pipeline;
+  const rendered = renderManagedPipelineRoot(pipeline);
+  const content = `${rendered.gateOverrides}${rendered.jobs}`;
+
+  assert.doesNotMatch(content, /after_script:|interruptible: true|repo_guard_notify_/);
 });
 
 test('refuses to install managed delivery until required project scripts exist', (context) => {
@@ -478,7 +525,7 @@ test('refuses to install managed delivery until required project scripts exist',
 
   assert.throws(
     () => installGitLabCi(fixture.root),
-    /ci:verify.*ci:deploy:test.*ci:deploy:production.*ci:deploy:quick.*ci:notify/,
+    /ci:verify.*ci:deploy:test.*ci:deploy:production.*ci:deploy:quick/,
   );
   assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
   assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), false);

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.8.2
+
+- GitLab CI 通知中的提交标题最多显示前 10 个字符，超出部分使用省略号表示，避免超长标题挤掉提交人、状态、链接和通知时间。
+- 托管 Job 被手动取消或被 GitLab 自动取消时，在 `after_script` 可执行的运行中取消场景发送“已取消（canceled）”企业微信通知；前置门禁和验证 Job 标记为可自动中断，部署 Job 保持不可自动中断。
+- 通知 Job 不再通过 `npx` 解析可能来自消费项目的同版本可执行文件；改为在 Job 唯一的隔离目录中从 npm 官方 tarball URL 精确安装当前版本，禁用 lifecycle scripts，并通过绝对路径执行包内 CLI。
+
+## 1.8.1
+
+- 将托管 GitLab CI 的结果通知内置到 npm 包；`notifications: true` 会在 `.post` 阶段生成 `when: on_success` 与 `when: on_failure` 两个互斥通知 Job，由 GitLab 根据完整流水线结果只执行其中一个，因此每条流水线只发送一次最终通知，业务项目不再维护 `ci:notify` script。
+- 内置通知只允许在 GitLab CI 中执行，并只接受通知 Job 传入的 `success` 或 `failed` 状态；Webhook 使用受保护变量 `REPO_GUARD_WECOM_WEBHOOK`，`REPO_GUARD_MENTION_MOBILES` 在 CI 场景可选，同时保持本地保护文件通知原有的必填约束。
+- 通知包含项目、流水线编号、分支、提交、提交人和流水线链接，并继续校验企业微信官方 HTTPS 地址；通知 Job 允许失败，不会改变原流水线结果。
+- 通知 Job 清空项目 `before_script`，从官方 npm 精确安装生成流水线时对应版本的 repo-guard，并通过专用 CI 标记调用不重新加载项目配置的通知命令，避免配置或项目 `npm ci` 失败时同时丢失失败通知。
+
 ## 1.8.0
 
 - 在现有 `repo-guard install-ci --provider gitlab` 受管 include 上新增可选的 `ci.pipeline` 应用交付标准；继续使用同一个安装器与 doctor 检查，不建立平行 CI 实现。

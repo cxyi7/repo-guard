@@ -101,7 +101,7 @@
         },
         "pipeline": {
           "type": "object",
-          "description": "Optional managed GitLab application-delivery workflow. repo-guard owns jobs, branch rules, dependency installation, cache, and gate ordering; the consuming project owns only the fixed ci:* npm script implementations.",
+          "description": "Optional managed GitLab application-delivery workflow. repo-guard owns jobs, branch rules, dependency installation, cache, gate ordering, and optional WeCom result notifications; the consuming project owns only the fixed verification and deployment npm script implementations.",
           "additionalProperties": false,
           "properties": {
             "enabled": {
@@ -172,7 +172,7 @@
             "notifications": {
               "type": "boolean",
               "default": false,
-              "description": "Run the project-owned ci:notify script after managed deployment jobs."
+              "description": "启用内置企业微信流水线结果通知。成功与失败由 .post 阶段互斥 Job 发送，运行中的受管 Job 被取消时由 after_script 发送已取消通知。需要将 REPO_GUARD_WECOM_WEBHOOK 和可选的 REPO_GUARD_MENTION_MOBILES 配置为受保护的 GitLab CI 变量。"
             }
           }
         }

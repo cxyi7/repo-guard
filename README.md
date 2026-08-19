@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.8.0`
+- 当前版本：`1.8.2`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.8.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.8.2
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -296,7 +296,7 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
 | `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse 和发布包一致性检查 |
 
-CI 始终只读，不执行 fix、不安装 Hook、不读取本地企业微信凭据。
+CI 门禁始终只读，不执行 fix、不安装 Hook、不读取本地企业微信凭据。只有显式启用的托管流水线通知会读取 GitLab CI 受保护变量并发送结果。
 
 #### CI 门禁策略
 
@@ -351,7 +351,6 @@ CI Gate 由 Registry 的 CI environment 元数据自动发现，配置 Schema �
 | `ci:deploy:test` | 始终 | 发布测试环境；可读取 `CI_COMMIT_BRANCH` 区分 `dev`、`test` 或 `future/*` |
 | `ci:deploy:production` | 配置了生产分支时 | 执行人工确认后的生产发布 |
 | `ci:deploy:quick` | `quickDeploy: true` | 执行任意分支的人工快速发布 |
-| `ci:notify` | `notifications: true` | 根据 GitLab 的 `CI_JOB_STATUS` 发送项目自有通知 |
 
 示例配置：
 
@@ -385,9 +384,24 @@ repo-guard install-ci --provider gitlab --profile policy
 repo-guard doctor --ci
 ```
 
+当 `notifications: true` 时，生成器会在 GitLab 保留的 `.post` 末尾阶段增加两个互斥的通知 Job：`repo_guard_notify_success` 使用 `when: on_success`，`repo_guard_notify_failure` 使用 `when: on_failure`。GitLab 根据此前所有阶段的最终结果只执行其中一个，因此整条流水线只发送一条成功或失败通知；任何会阻断流水线的 Job 失败都会进入失败通知。受管 Job 在运行中被手动取消，或前置门禁/验证 Job 被 GitLab 自动取消时，`after_script` 会发送“已取消（canceled）”通知。业务项目不再需要提供 `ci:notify` script。
+
+通知内容包含项目、流水线编号、分支、提交、提交人和流水线链接。提交标题最多显示前 10 个字符，更长时追加省略号。两个末尾通知 Job 都设置 `allow_failure: true`，因此企业微信暂时不可用不会篡改原流水线结果；GitLab 原本标记为 `allow_failure: true` 的非阻断 Job 也继续按成功处理。
+
+在 GitLab 的 CI/CD Variables 中配置：
+
+| 变量 | 要求 | 用途 |
+|---|---|---|
+| `REPO_GUARD_WECOM_WEBHOOK` | 必需，建议设为 Masked 与 Protected | 企业微信群机器人 Webhook；只接受官方 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...` 地址 |
+| `REPO_GUARD_MENTION_MOBILES` | 可选，建议设为 Masked 与 Protected | 逗号分隔的 11 位手机号；未配置时只发消息、不 @ 成员 |
+
+通知命令只允许在 `GITLAB_CI=true` 且带有受管通知标记的生成 Job 中执行。成功、失败和取消入口分别向包内命令传入受控的 `success`、`failed` 或 `canceled` 状态，不会重新加载可能已经导致流水线失败的项目配置。通知包会在 `$CI_BUILDS_DIR` 下按项目、流水线和 Job 组成的唯一目录中，从 npm 官方 tarball URL 精确安装生成流水线时对应版本的 `@cxyi7/repo-guard`；安装时禁用 lifecycle scripts，执行时使用隔离目录中的绝对 CLI 路径，不会解析消费项目的本地可执行文件。因此配置错误或前序 Job 的项目 `npm ci` 失败不会连带阻止末尾通知。
+
+GitLab 只会在运行中的 Job 被取消时执行 `after_script`。因此，取消通知覆盖手动或自动取消时正在运行的 repo-guard 受管 Job；如果 Job 尚未开始就在 pending 状态被取消，或使用 GitLab 强制取消跳过 `after_script`，则 Runner 没有可执行的通知入口。
+
 启用后，`repo_guard` 固定在 GitLab 的 `.pre` stage 覆盖分支和合并请求流水线，确保受管验证与发布 Job 在门禁通过后才执行；测试发布自动执行，生产与快速发布保持手动，其中快速发布允许失败。验证作业会跳过已由测试或生产发布脚本负责构建的分支，避免重复构建。`verifyImage` 和 `deployImage` 分别控制验证与发布容器，二者都必须包含 Node.js 与 npm；Web 容器发布可以把 `deployImage` 指向项目内部维护的 Node.js + Docker CLI 镜像。`install-ci` 与 `doctor --ci` 会拒绝缺少固定 scripts、阶段未声明、保留 Job 名冲突、模板被改写或模板版本不匹配等状态。
 
-三个现有项目建议采用同一个外壳：`owner` 与 `employee` 的 `ci:deploy:*` 继续调用各自的 `mp-ci-deploy.js`；`front` 的 `ci:deploy:test` 根据分支调用其 Web 构建、镜像和蓝绿部署脚本。镜像仓库、端口、微信小程序机器人、密钥和通知地址仍由项目脚本或 GitLab 受保护变量持有，不进入 repo-guard 配置。
+三个现有项目建议采用同一个外壳：`owner` 与 `employee` 的 `ci:deploy:*` 继续调用各自的 `mp-ci-deploy.js`；`front` 的 `ci:deploy:test` 根据分支调用其 Web 构建、镜像和蓝绿部署脚本。镜像仓库、端口、微信小程序机器人和密钥仍由项目脚本持有；通知 Webhook 只放在 GitLab 受保护变量中，不进入 repo-guard 配置。
 
 逐项目配置与迁移顺序见 [三个现有项目的 GitLab CI 接入映射](docs/managed-gitlab-ci-adoption.md)。
 
