@@ -29,6 +29,7 @@ export const ciPolicyPlan = defineExecutionPlan({
   steps: [
     'repository.structured-exceptions',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
+    { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },
     'security.vue-unsafe-html',
     'security.vue-target-blank',
@@ -59,6 +60,7 @@ export const ciFullPlan = defineExecutionPlan({
   steps: [
     'repository.structured-exceptions',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
+    { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },
     'security.vue-unsafe-html',
     'security.vue-target-blank',

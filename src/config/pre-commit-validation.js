@@ -4,6 +4,7 @@ import { validateFileHeaderConfiguration } from './file-header-validation.js';
 import { validateFilePlacementConfiguration } from './file-placement-validation.js';
 import { validateFunctionDocConfiguration } from './function-doc-validation.js';
 import { validateMaxFileLinesConfiguration } from './max-file-lines-validation.js';
+import { validatePathNamingConfiguration } from './path-naming-validation.js';
 import { validatePrettierConfiguration } from './prettier-validation.js';
 import { validateStylelintConfiguration } from './stylelint-validation.js';
 import {
@@ -27,6 +28,7 @@ export function validatePreCommitConfiguration(value, configPath) {
       'fileHeader',
       'functionDocs',
       'asyncResourceCleanup',
+      'pathNaming',
     ]),
     `${configPath} preCommit`,
   );
@@ -38,6 +40,7 @@ export function validatePreCommitConfiguration(value, configPath) {
   const fileHeader = validateFileHeaderConfiguration(preCommitValue, configPath);
   const functionDocs = validateFunctionDocConfiguration(preCommitValue, configPath);
   const filePlacement = validateFilePlacementConfiguration(preCommitValue, configPath);
+  const pathNaming = validatePathNamingConfiguration(preCommitValue, configPath);
   const maxFileLines = validateMaxFileLinesConfiguration(preCommitValue, configPath);
   const stylelint = validateStylelintConfiguration(preCommitValue, configPath);
   const prettier = validatePrettierConfiguration(preCommitValue, configPath);
@@ -49,6 +52,7 @@ export function validatePreCommitConfiguration(value, configPath) {
     functionDocs,
     filePlacement,
     maxFileLines,
+    pathNaming,
     stylelint,
     prettier,
     eslint,

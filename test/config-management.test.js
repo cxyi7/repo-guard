@@ -58,6 +58,8 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.stylelint.complexity.enabled, false);
   assert.equal(config.preCommit.stylelint.governance.enabled, false);
   assert.equal(config.preCommit.asyncResourceCleanup.enabled, false);
+  assert.equal(config.preCommit.pathNaming.enabled, false);
+  assert.equal(config.preCommit.pathNaming.convention, 'camelCase');
   assert.equal(config.preCommit.fileHeader.enabled, false);
   assert.equal(config.preCommit.functionDocs.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
@@ -177,6 +179,8 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.stylelint.enabled, false);
   assert.equal(migrated.preCommit.stylelint.governance.enabled, false);
   assert.equal(migrated.preCommit.asyncResourceCleanup.enabled, false);
+  assert.equal(migrated.preCommit.pathNaming.enabled, false);
+  assert.equal(migrated.preCommit.pathNaming.convention, 'camelCase');
   assert.equal(migrated.preCommit.fileHeader.enabled, false);
   assert.equal(migrated.preCommit.functionDocs.enabled, false);
   assert.equal(migrated.preCommit.filePlacement.enabled, true);
@@ -435,6 +439,19 @@ test('启用和禁用异步资源清理门禁', (context) => {
   const disabled = setFeaturesEnabled(root, ['asyncResourceCleanup'], false);
   assert.deepEqual(disabled.changed, ['asyncResourceCleanup']);
   assert.equal(readConfig(root).preCommit.asyncResourceCleanup.enabled, false);
+});
+
+test('启用和禁用统一路径命名门禁', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['pathNaming'], true);
+  assert.deepEqual(enabled.changed, ['pathNaming']);
+  assert.equal(readConfig(root).preCommit.pathNaming.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['pathNaming'], false);
+  assert.deepEqual(disabled.changed, ['pathNaming']);
+  assert.equal(readConfig(root).preCommit.pathNaming.enabled, false);
 });
 
 test('enables and disables a configured code placement gate', (context) => {

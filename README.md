@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.11.0`
+- 当前版本：`1.12.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.11.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.12.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -53,6 +53,7 @@ npx repo-guard doctor
 
 ### 仓库治理
 
+- 统一路径命名：消费项目在 `camelCase` 和 `kebab-case` 中选择一种，同时约束指定范围内的文件名和文件夹名。
 - 文件归位规则：按文件类型限制允许目录，并提供建议目标目录。
 - 单文件行数规则：支持严格模式、存量不恶化和接近上限警告。
 - 依赖治理：精确版本、允许协议、禁用包、依赖分组和 lockfile 同步。
@@ -102,6 +103,7 @@ Stylelint fix
   → Stylelint read-only verify
   → ESLint read-only verify
   → Vue async-resource-cleanup（启用时阻断）
+  → path-naming（启用时检查全部已跟踪路径）
   → dynamic-code
   → Vue v-html
   → Vue target=_blank
@@ -157,7 +159,7 @@ repo-guard enable dependencies architecture
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable fileHeader functionDocs asyncResourceCleanup filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -173,6 +175,7 @@ prettier
 fileHeader
 functionDocs
 asyncResourceCleanup
+pathNaming
 styleComplexity
 styleGovernance
 maxFileLines
@@ -274,6 +277,30 @@ ci
 - 短于阈值的定时器和 `new Promise(resolve => setTimeout(resolve, ...))` 延时写法不检查；同一句柄存在多个静态创建点时会额外报告覆盖风险。
 - 可使用结构化例外临时批准精确规则、文件和位置；普通注释、disable 指令或项目 lint 配置不能关闭这项门禁。
 
+### 配置统一路径命名
+
+路径命名默认关闭，可通过 `repo-guard enable pathNaming` 启用。npm 包同时支持 `camelCase` 和 `kebab-case`，但一个消费项目只能配置一个字符串值，所有指定目录共用同一规范：
+
+```json
+{
+  "preCommit": {
+    "pathNaming": {
+      "enabled": true,
+      "convention": "camelCase",
+      "include": ["src/**", "utils/**"],
+      "exclude": ["**/.*", "**/.*/**", "**/generated/**"]
+    }
+  }
+}
+```
+
+- `convention` 只能是 `camelCase` 或 `kebab-case`，不能填写数组，也不能为不同目录分别覆盖；业务项目启用后只有一种统一标准。
+- 文件名和文件夹名使用同一规范。`camelCase` 接受 `committeeInfo`，`kebab-case` 接受 `committee-info`；全小写单词（如 `utils`）在两种规范下都合法。
+- 文件扩展名不参与检查；多段文件名会逐段检查除最终扩展名外的名称，例如 `committeeInfo.service.ts` 和 `committee-info.service.ts` 分别符合对应规范。
+- pre-commit、CI policy/full 和 release-ready 每次检查 Git 索引中的全部已跟踪路径，不只检查本次变更，因此启用前应先完成存量路径治理；新暂存路径也会立即进入检查，已删除路径不再阻断。
+- `include`、`exclude` 使用仓库相对 glob，且 `exclude` 优先。默认排除隐藏路径和 `generated` 目录；`[id]`、`(auth)` 等框架特殊目录若需要保留，应明确加入排除范围。
+- Git 不跟踪空目录，因此空目录只有在包含已跟踪文件后才会进入检查。门禁不会自动重命名，避免破坏 import、路由、脚本和大小写敏感文件系统中的引用关系。
+
 ### 手动运行专项门禁
 
 ```bash
@@ -281,6 +308,7 @@ repo-guard exceptions
 repo-guard dependencies
 repo-guard dynamic-code
 repo-guard async-resource-cleanup
+repo-guard path-naming
 repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels

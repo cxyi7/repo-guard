@@ -7,6 +7,7 @@ import {
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_FUNCTION_DOC_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
+  DEFAULT_PATH_NAMING_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
 } from '../src/config/defaults.js';
@@ -21,6 +22,7 @@ test('applies staged quality defaults when pre-commit configuration is omitted',
     filePlacement: DEFAULT_FILE_PLACEMENT_CONFIG,
     functionDocs: DEFAULT_FUNCTION_DOC_CONFIG,
     maxFileLines: DEFAULT_MAX_FILE_LINES_CONFIG,
+    pathNaming: DEFAULT_PATH_NAMING_CONFIG,
     stylelint: DEFAULT_STYLELINT_CONFIG,
     prettier: DEFAULT_PRETTIER_CONFIG,
     eslint: DEFAULT_ESLINT_CONFIG,
@@ -38,6 +40,7 @@ test('delegates staged quality settings to their domain validators', () => {
       stylelint: { enabled: true },
       maxFileLines: { enabled: false },
       filePlacement: { enabled: false },
+      pathNaming: { enabled: true, convention: 'kebab-case' },
     },
   }, CONFIG_PATH);
 
@@ -49,6 +52,8 @@ test('delegates staged quality settings to their domain validators', () => {
   assert.equal(preCommit.stylelint.enabled, true);
   assert.equal(preCommit.maxFileLines.enabled, false);
   assert.equal(preCommit.filePlacement.enabled, false);
+  assert.equal(preCommit.pathNaming.enabled, true);
+  assert.equal(preCommit.pathNaming.convention, 'kebab-case');
 });
 
 test('requires a pre-commit object with only staged quality properties', () => {

@@ -161,6 +161,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
     { name: 'repository.structured-exceptions', status: 'passed' },
     { name: 'async-resource-cleanup', status: 'skipped' },
+    { name: 'path-naming', status: 'skipped' },
     { name: 'dynamic-code', status: 'passed' },
     { name: 'security.vue-unsafe-html', status: 'passed' },
     { name: 'security.vue-target-blank', status: 'passed' },
@@ -262,6 +263,38 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
     report.steps.find(({ name }) => name === 'async-resource-cleanup').status,
     'failed',
   );
+});
+
+test('CI enforce 模式启用并阻断全项目路径命名错误', async (context) => {
+  const fixture = repository();
+  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+  writeFileSync(
+    path.join(fixture.root, 'src', 'committee-info.js'),
+    'export const committeeInfo = true;\n',
+  );
+  git(fixture.root, ['add', '.']);
+  git(fixture.root, ['commit', '-m', 'add invalid path']);
+  const head = git(fixture.root, ['rev-parse', 'HEAD']);
+  const enforceConfig = configWithCiGatePolicy('reports/path-naming-enforce.json', {
+    'repository.path-naming': { mode: 'enforce' },
+  });
+
+  assert.equal(await runCiGate({
+    root: fixture.root,
+    config: enforceConfig,
+    base: fixture.base,
+    head,
+    env: {},
+  }), 2);
+  const report = JSON.parse(readFileSync(
+    path.join(fixture.root, 'reports', 'path-naming-enforce.json'),
+    'utf8',
+  ));
+  const step = report.steps.find(({ name }) => name === 'path-naming');
+  assert.equal(step.status, 'failed');
+  assert.equal(step.gateResult.status, 'violation');
+  assert.equal(step.gateResult.findings[0].ruleId, 'repository/path-naming');
+  assert.equal(step.gateResult.findings[0].severity, 'error');
 });
 
 test('writes native dynamic-code findings with the unified CI exit contract', async (context) => {
@@ -522,7 +555,7 @@ test('installs the managed application-delivery contract from project configurat
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
   assert.match(
     root,
-    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.11\.0\.tgz/,
+    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.12\.0\.tgz/,
   );
   assert.match(
     root,
@@ -530,11 +563,11 @@ test('installs the managed application-delivery contract from project configurat
   );
   assert.match(
     root,
-    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.11\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.12\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
   );
   assert.match(
     root,
-    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.11\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.12\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
   );
   assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
   const installedConfig = validateConfig(JSON.parse(readFileSync(

@@ -41,6 +41,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.stylelint-verify',
       'quality.eslint-verify',
       'quality.vue-async-resource-cleanup',
+      'repository.path-naming',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -69,6 +70,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     [
       'repository.structured-exceptions',
       'quality.vue-async-resource-cleanup',
+      'repository.path-naming',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -87,6 +89,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     [
       'repository.structured-exceptions',
       'quality.vue-async-resource-cleanup',
+      'repository.path-naming',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -113,6 +116,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     [
       'repository.structured-exceptions',
       'quality.vue-async-resource-cleanup',
+      'repository.path-naming',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -138,6 +142,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     [
       'repository.structured-exceptions',
       'async-resource-cleanup',
+      'path-naming',
       'dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',

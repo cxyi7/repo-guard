@@ -81,6 +81,17 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     rules: ['vue/require-async-resource-cleanup'],
     ciScopes: ['all-files', 'changed-files'],
   }),
+  reviewedGateDescriptor('repository.path-naming', POLICY_ENVIRONMENTS, {
+    configKey: 'preCommit.pathNaming',
+    featureName: 'pathNaming',
+    featureOrder: 38,
+    manualCommand: 'path-naming',
+    manualOrder: 145,
+    doctorOrder: 145,
+    packageScript: 'guard:path-naming',
+    rules: ['repository/path-naming'],
+    ciScopes: ['all-files'],
+  }),
   reviewedGateDescriptor('security.dynamic-code', POLICY_ENVIRONMENTS, {
     manualCommand: 'dynamic-code',
     manualOrder: 70,

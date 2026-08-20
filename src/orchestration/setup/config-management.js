@@ -26,6 +26,7 @@ import {
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
+  DEFAULT_PATH_NAMING_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
   DEFAULT_STYLE_COMPLEXITY_CONFIG,
@@ -160,6 +161,15 @@ function cloneAsyncResourceCleanupConfig(value = {}) {
   };
 }
 
+function clonePathNamingConfig(value = {}) {
+  return {
+    ...DEFAULT_PATH_NAMING_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_PATH_NAMING_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_PATH_NAMING_CONFIG.exclude)],
+  };
+}
+
 function cloneUnitTestConfig(value = {}) {
   const mappings = value.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
   const coverage = value.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
@@ -254,6 +264,7 @@ export function createStarterConfig({
     unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
     preCommit: {
       asyncResourceCleanup: cloneAsyncResourceCleanupConfig(),
+      pathNaming: clonePathNamingConfig(),
       fileHeader: cloneFileHeaderConfig(),
       functionDocs: cloneFunctionDocConfig(),
       filePlacement: cloneFilePlacementConfig(),
@@ -377,6 +388,7 @@ export function migrateProjectConfig(root, {
     preCommit: {
       ...preCommit,
       asyncResourceCleanup: cloneAsyncResourceCleanupConfig(preCommit.asyncResourceCleanup),
+      pathNaming: clonePathNamingConfig(preCommit.pathNaming),
       fileHeader: cloneFileHeaderConfig(preCommit.fileHeader),
       functionDocs: cloneFunctionDocConfig(preCommit.functionDocs),
       filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),

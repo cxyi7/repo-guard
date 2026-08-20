@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.11.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.12.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -19,9 +19,10 @@
                                     └─ 1.9.0 Git 记录驱动的暂存文件头同步
                                          └─ 1.10.0 AST 驱动的暂存函数文档同步
                                               └─ 1.11.0 Vue 异步资源清理阻断门禁
+                                                   └─ 1.12.0 项目统一路径命名门禁
 ```
 
-因此，`1.11.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.12.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -31,6 +32,7 @@
 - [x] 按 include、exclude 和扩展名白名单选择暂存文件，并按 Git 记录维护标准文件头。
 - [x] 按 include、exclude 和扩展名白名单选择函数源文件，用 AST 同步暂存函数 JSDoc。
 - [x] 按 AST 绑定和 Vue 生命周期匹配异步资源创建与释放，启用后以错误阻断无法证明安全的资源泄漏。
+- [x] 在 `camelCase` 与 `kebab-case` 中选择项目唯一规范，统一检查指定范围内的全部已跟踪文件名和文件夹名。
 - [x] 动态代码执行安全检查，包括 `eval` 和 `Function` 构造器。
 - [x] Vue `v-html`、`target="_blank"`、表单 label 和图片 alt 硬门禁。
 - [x] 文件归位、单文件行数、依赖声明、依赖锁文件和依赖架构治理。
@@ -68,10 +70,10 @@ repo/
 │  │  ├─ accessibility/              Vue 可访问性门禁
 │  │  ├─ quality/                    lint、格式化、异步资源、类型、架构、构建、Lighthouse
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
-│  │  ├─ repository/                 依赖、文件、代码位置和保护文件策略
+│  │  ├─ repository/                 依赖、路径命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、axe 和外部门禁
-│  ├─ git/                           Git 命令、变更范围、索引内容和仓库状态
+│  ├─ git/                           Git 命令、变更范围、索引内容、已跟踪路径和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ axe/                        axe 集成发现
 │  │  ├─ dependency-cruiser/         依赖架构执行
@@ -124,6 +126,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 异步资源清理功能同样保持事实、决策和结果分离：`integrations/vue/async-resource-facts.js` 只解析脚本并提取资源创建、释放、绑定与生命周期事实；`policies/async-resource-cleanup.js` 负责范围选择、配对和违规判定；`gates/quality/vue-async-resource-cleanup-gate.js` 只适配统一 GateResult。该门禁只读，不自动改写业务代码。
 
+路径命名功能由 `config/path-naming-validation.js` 验证项目唯一规范与作用范围，`git/tracked-paths.js` 只读取最终 Git 索引中的完整已跟踪路径事实，`policies/path-naming.js` 纯粹判断文件名和祖先文件夹名，`gates/repository/path-naming-gate.js` 负责环境适配和统一 GateResult。该门禁不自动重命名，也不按目录派生第二套规范。
+
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
 ## 4. 核心运行模型
@@ -140,13 +144,13 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 26 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 27 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
-| 仓库治理 | `repository.structured-exceptions`、`dependencies.policy`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
+| 仓库治理 | `repository.structured-exceptions`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
 | 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.typecheck`、`quality.unit-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
@@ -154,7 +158,7 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 ### 4.2 GateContext 与 ChangeSet
 
-CLI、pre-commit、pre-push 和 CI 统一使用不可变 `GateContext`。Git 变更由 `ChangeSet` 提供，包含来源、变更条目和可选 revision 范围。Gate 不得自行重新收集一套 Git 范围。
+CLI、pre-commit、pre-push 和 CI 统一使用不可变 `GateContext`。Git 变更由 `ChangeSet` 提供，包含来源、变更条目和可选 revision 范围。Gate 不得自行重新收集一套变更范围；路径命名门禁读取完整 Git 索引是独立的仓库状态事实，不把它冒充本次变更范围。
 
 ### 4.3 GateResult
 
@@ -206,6 +210,7 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | 文件头同步 | `preCommit.fileHeader` | 默认关闭；按仓库相对 include、exclude 和扩展名白名单选择暂存文件，保留人工 Description，并用 Git 记录重建作者与编辑信息 |
 | 函数文档同步 | `preCommit.functionDocs` | 默认关闭；按 AST 签名同步暂存 JavaScript、TypeScript 和 Vue script 中的 `@param`/`@returns`，保留人工说明，并提示缺失的 `@throws`；Vue 顶层 script 边界由 `integrations/vue` 共享扫描器提供，不会把注释或 template 文本当成源码 |
 | Vue 异步资源清理 | `preCommit.asyncResourceCleanup` | 默认关闭；按 include、exclude 和扩展名选择 Vue 页面与 composable，匹配定时器、动画帧、监听器、Observer、连接、Worker、订阅、定位监听和请求取消；启用后全部按错误阻断且不自动修复 |
+| 统一路径命名 | `preCommit.pathNaming` | 默认关闭；项目在 camelCase 与 kebab-case 中选择唯一规范，按 include、exclude 检查完整 Git 索引中的文件名和文件夹名；全部按错误阻断且不自动重命名 |
 
 pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照，完成后把修复写回索引，并恢复同一文件中的未暂存内容；任一步失败都会恢复执行前状态。文件头与函数文档同步均发生在同一暂存快照中。文件头使用匹配源文件的注释形式，并以 Git 记录重建受管字段；函数文档仅处理配置范围内的具名实现，不猜测 Description、参数说明或异常语义，解构参数与 Generator 使用非阻断人工维护提示。
 
@@ -227,6 +232,7 @@ pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照
 | 能力 | 配置位置 | 主要行为 |
 |---|---|---|
 | 文件归位 | `preCommit.filePlacement` | 通过 glob 限制文件允许目录；支持只检查新位置或检查所有变更文件，并给出建议目录 |
+| 统一路径命名 | `preCommit.pathNaming` | 一个项目只能配置 `camelCase` 或 `kebab-case` 中的一种；全部 include 范围共用该规范，pre-commit 与 CI 检查完整已跟踪路径，排除范围优先，Git 空目录不在检查范围内 |
 | 单文件行数 | `preCommit.maxFileLines` | 检查最终暂存文件完整行数；支持严格模式、存量不恶化模式、接近上限警告和 Vue 分区统计 |
 | 代码位置 | `codePlacement` | 一段精确代码文本只能出现在一个或多个允许文件；pre-commit 读取最终 Git 索引，CI 扫描完整提交 |
 | 保护文件审计 | 顶层 `rules`、`exclusions` | 第一条匹配规则生效，排除项优先；记录 Git 状态、原路径和目标路径 |
@@ -374,6 +380,7 @@ Stylelint fix
   → Stylelint read-only verify
   → ESLint read-only verify
   → Vue async-resource-cleanup（启用时阻断）
+  → path-naming（启用时检查全部已跟踪路径）
   → dynamic-code
   → Vue v-html
   → Vue target=_blank
@@ -438,6 +445,7 @@ architecture
 typecheck
 unit-test
 async-resource-cleanup
+path-naming
 dynamic-code
 unsafe-html
 target-blank
@@ -462,6 +470,7 @@ prettier
 fileHeader
 functionDocs
 asyncResourceCleanup
+pathNaming
 styleComplexity
 styleGovernance
 maxFileLines
@@ -502,7 +511,7 @@ ci
 | `typeCheck` | TypeScript 脚本门禁 |
 | `accessibilityTest` | axe 测试策略和脚本 |
 | `unitTest` | 单元测试、组件交互和覆盖率 |
-| `preCommit` | 文件头同步、函数文档同步、异步资源清理、Stylelint、ESLint、Prettier、行数和文件归位 |
+| `preCommit` | 文件头同步、函数文档同步、异步资源清理、统一路径命名、Stylelint、ESLint、Prettier、行数和文件归位 |
 | `rules` | 保护文件规则 |
 | `exclusions` | 保护文件排除项 |
 
