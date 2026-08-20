@@ -19,6 +19,7 @@ import {
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
+  DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -44,6 +45,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   ...GATE_FEATURES,
   'componentInteraction',
   'coverage',
+  'fileHeader',
   'notification',
   'ci',
 ]);
@@ -119,6 +121,16 @@ function cloneFilePlacementConfig(value = {}) {
       allowedPatterns: [...rule.allowedPatterns],
       exceptions: [...(rule.exceptions ?? [])],
     })),
+  };
+}
+
+function cloneFileHeaderConfig(value = {}) {
+  return {
+    ...DEFAULT_FILE_HEADER_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_FILE_HEADER_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_FILE_HEADER_CONFIG.exclude)],
+    extensions: [...(value.extensions ?? DEFAULT_FILE_HEADER_CONFIG.extensions)],
   };
 }
 
@@ -215,6 +227,7 @@ export function createStarterConfig({
     },
     unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
     preCommit: {
+      fileHeader: cloneFileHeaderConfig(),
       filePlacement: cloneFilePlacementConfig(),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -335,6 +348,7 @@ export function migrateProjectConfig(root, {
     unitTest: cloneUnitTestConfig(prepared.unitTest),
     preCommit: {
       ...preCommit,
+      fileHeader: cloneFileHeaderConfig(preCommit.fileHeader),
       filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -367,6 +381,9 @@ function featureConfig(config, feature) {
   }
   if (feature === 'componentInteraction') {
     return config.unitTest.componentInteraction;
+  }
+  if (feature === 'fileHeader') {
+    return config.preCommit.fileHeader;
   }
   const gate = gateRegistry.configurable.find(({ featureName }) => featureName === feature);
   if (gate) {

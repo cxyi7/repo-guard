@@ -874,6 +874,76 @@
       "description": "Staged quality gates run through an internal orchestration/pre-commit runner and a protected, non-reorderable pre-commit plan. Only staged-file Stylelint/ESLint/Prettier fixes are allowed; project-wide fixes, type checking, tests, builds, and network gates are forbidden. Hard Vue v-html and target=_blank rel-security checks run independently without disable switches. Missing configurable defaults can be materialized with repo-guard migrate.",
       "additionalProperties": false,
       "properties": {
+        "fileHeader": {
+          "type": "object",
+          "description": "按 Git 记录维护暂存源文件顶部的标准文件头；默认关闭，启用后只处理命中范围和扩展名白名单的文件。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否在 pre-commit 的 lint-staged 隔离环境中同步暂存文件头。"
+            },
+            "include": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                "**/*"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；文件至少命中一项才进入文件头同步范围。"
+            },
+            "exclude": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；排除优先级高于 include，适合忽略生成目录、第三方代码或特殊文件。"
+            },
+            "extensions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                ".vue",
+                ".html",
+                ".js",
+                ".jsx",
+                ".ts",
+                ".tsx",
+                ".mjs",
+                ".cjs",
+                ".css",
+                ".less",
+                ".scss",
+                ".sass"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  ".vue",
+                  ".html",
+                  ".js",
+                  ".jsx",
+                  ".ts",
+                  ".tsx",
+                  ".mjs",
+                  ".cjs",
+                  ".css",
+                  ".less",
+                  ".scss",
+                  ".sass"
+                ]
+              },
+              "description": "允许同步文件头的扩展名白名单；当前仅支持 Vue、HTML、JavaScript、TypeScript 和样式源文件。"
+            }
+          }
+        },
         "filePlacement": {
           "type": "object",
           "description": "Configurable staged and full-project file location policy.",

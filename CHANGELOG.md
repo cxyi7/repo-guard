@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.9.0
+
+- 新增默认关闭的 `preCommit.fileHeader` 暂存文件头同步功能；支持通过仓库相对 `include`、`exclude` glob 和扩展名白名单精确选择文件，仅处理 `.vue`、`.html`、JavaScript、TypeScript 与样式源文件。
+- `.vue`、`.html` 统一生成 HTML 注释文件头，其余受支持文件生成块注释文件头；保留人工维护的 `@Description`，将旧 `@LastEditors` 归一化为 `@LastEditor`，并兼容 BOM、脚本 shebang、样式 `@charset`、LF 与 CRLF。
+- `@Author`、`@Date` 以文件首次新增到 Git 历史的记录为准，`@LastEditor`、`@LastEditTime` 以当前 Git 提交身份与时间为准；手动修改受管 Git 字段会在下一次暂存同步时被覆盖，历史不足时拒绝猜测。
+- 顶部注释即使被删除 `@Description` 或乱写受管字段值，只要仍具有 LastEditor/LastEditTime，或同时具有 Author/Date，也会被整体重建；普通许可证和只有单个 Author 的 JSDoc 保持不变。
+- 文件头同步复用现有 `lint-staged` 隔离与文件快照恢复机制，只修改本次暂存内容并保留未暂存改动；受保护 pre-commit Execution Plan 的步骤和顺序保持不变。
+
 ## 1.8.2
 
 - GitLab CI 通知中的提交标题最多显示前 10 个字符，超出部分使用省略号表示，避免超长标题挤掉提交人、状态、链接和通知时间。

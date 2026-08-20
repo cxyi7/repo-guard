@@ -1,4 +1,5 @@
 import { validateEslintConfiguration } from './eslint-validation.js';
+import { validateFileHeaderConfiguration } from './file-header-validation.js';
 import { validateFilePlacementConfiguration } from './file-placement-validation.js';
 import { validateMaxFileLinesConfiguration } from './max-file-lines-validation.js';
 import { validatePrettierConfiguration } from './prettier-validation.js';
@@ -15,10 +16,11 @@ export function validatePreCommitConfiguration(value, configPath) {
   }
   assertKnownProperties(
     preCommitValue,
-    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines', 'filePlacement']),
+    new Set(['eslint', 'prettier', 'stylelint', 'maxFileLines', 'filePlacement', 'fileHeader']),
     `${configPath} preCommit`,
   );
 
+  const fileHeader = validateFileHeaderConfiguration(preCommitValue, configPath);
   const filePlacement = validateFilePlacementConfiguration(preCommitValue, configPath);
   const maxFileLines = validateMaxFileLinesConfiguration(preCommitValue, configPath);
   const stylelint = validateStylelintConfiguration(preCommitValue, configPath);
@@ -26,6 +28,7 @@ export function validatePreCommitConfiguration(value, configPath) {
   const eslint = validateEslintConfiguration(preCommitValue, configPath);
 
   return {
+    fileHeader,
     filePlacement,
     maxFileLines,
     stylelint,

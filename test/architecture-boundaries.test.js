@@ -2807,3 +2807,40 @@ test('enforces Chinese user-facing text as a non-growing repository contract', (
   assert.equal(baseline.schemaVersion, 1);
   assert.equal(baseline.debtCount, 0);
 });
+
+test('separates Git file-header facts, pure policy, and pre-commit mutation ownership', () => {
+  const validationPath = path.join(SOURCE_ROOT, 'config', 'file-header-validation.js');
+  const gitHistoryPath = path.join(SOURCE_ROOT, 'git', 'file-history.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'file-header.js');
+  const normalizerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'file-header-normalizer.js',
+  );
+  const qualityRunnerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'quality-runner.js',
+  );
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
+  const gitHistorySource = readFileSync(gitHistoryPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const normalizerSource = readFileSync(normalizerPath, 'utf8');
+  const qualityRunnerSource = readFileSync(qualityRunnerPath, 'utf8');
+
+  for (const file of [validationPath, gitHistoryPath, policyPath, normalizerPath]) {
+    assert.equal(existsSync(file), true);
+  }
+  assert.match(preCommitValidationSource, /validateFileHeaderConfiguration/);
+  assert.doesNotMatch(gitHistorySource, /policies|orchestration/);
+  assert.doesNotMatch(policySource, /node:fs|git\//);
+  assert.match(normalizerSource, /from ['"]\.\.\/\.\.\/git\/file-history\.js['"]/);
+  assert.match(normalizerSource, /from ['"]\.\.\/\.\.\/policies\/file-header\.js['"]/);
+  assert.match(qualityRunnerSource, /synchronizeStagedFileHeaders/);
+  assert.match(qualityRunnerSource, /plan: preCommitQualityPlan/);
+});

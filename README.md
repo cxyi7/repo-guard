@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.8.2`
+- 当前版本：`1.9.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.8.2
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.9.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -35,6 +35,7 @@ npx repo-guard doctor
 - Stylelint 暂存文件检查、自动修复和最终只读复检。
 - ESLint 暂存文件检查、自动修复和最终只读复检。
 - Prettier 暂存文件格式化或只读检查。
+- 可选的暂存文件头同步：按 Git 记录维护作者、创建时间、更新人和更新时间，并保留人工填写的 Description。
 - Stylelint 选择器复杂度、嵌套深度、specificity、ID、`!important` 和样式作用域治理。
 - 同一 Vue 文件的 style 块语言一致性检查。
 - `lint-staged` 隔离部分暂存内容，失败时恢复执行前状态。
@@ -90,6 +91,8 @@ npx repo-guard doctor
 ### pre-commit
 
 顺序由锁定 Execution Plan 固定，消费项目不能重排：
+
+启用 `preCommit.fileHeader` 后，文件头会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它不新增、不删除也不重排计划步骤。
 
 ```text
 Stylelint fix
@@ -152,7 +155,7 @@ repo-guard enable dependencies architecture
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -165,6 +168,7 @@ repo-guard disable notification
 stylelint
 eslint
 prettier
+fileHeader
 styleComplexity
 styleGovernance
 maxFileLines
@@ -184,6 +188,35 @@ ci
 ```
 
 动态代码、Vue `v-html`、新窗口链接、表单 label 和图片 alt 是原生硬门禁，没有关闭开关。
+
+### 配置暂存文件头
+
+文件头默认关闭，可通过 `repo-guard enable fileHeader` 启用，再在 `repo-guard.config.json` 中调整作用范围：
+
+```json
+{
+  "preCommit": {
+    "fileHeader": {
+      "enabled": true,
+      "include": ["src/**", "scripts/**"],
+      "exclude": ["src/generated/**", "src/vendor/**"],
+      "extensions": [".vue", ".html", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".less", ".scss", ".sass"]
+    }
+  }
+}
+```
+
+- `include` 和 `exclude` 都使用仓库相对 glob；`exclude` 优先，适合排除生成代码、第三方代码和无需托管的目录。
+- `extensions` 是白名单，不能填写当前支持范围以外的扩展名。
+- `.vue`、`.html` 使用 `<!-- ... -->`；脚本和样式文件使用 `/* ... */`。
+- 脚本 shebang 和样式 `@charset` 等必须位于首行的声明会保留在文件头之前。
+- `@Author`、`@Date` 取文件第一次新增到 Git 历史时的作者和提交时间；新文件在首次提交前使用当前 Git 提交身份和时间。
+- `@LastEditor`、`@LastEditTime` 每次从当前 Git 提交身份和时间重建；手动修改这四个字段不会保留。
+- `@Description` 由开发者维护。已有受管文件头会保留该字段；新文件先生成空值，不根据文件名主观猜测描述。
+- 即使用户删除 `@Description` 或乱写 Git 字段，只要顶部注释仍包含 LastEditor/LastEditTime，或同时包含 Author/Date，也会识别为受管文件头并整体重建；普通许可证和只有单个 Author 的 JSDoc 不会被覆盖。
+- 历史字段输出统一使用 `@LastEditor`，旧的 `@LastEditors` 会在下一次同步时归一化。
+- 已跟踪文件若因浅克隆而无法追溯首次新增记录，会停止同步并提示先补全 Git 历史，避免写入错误作者和时间。
+- 文件头同步只处理本次暂存文件，并继续由 `lint-staged` 隔离和恢复未暂存改动。
 
 ### 手动运行专项门禁
 

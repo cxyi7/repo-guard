@@ -9,6 +9,7 @@ import {
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
+  DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -60,6 +61,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
   assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
   assert.deepEqual(config.preCommit.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
+  assert.deepEqual(config.preCommit.fileHeader, DEFAULT_FILE_HEADER_CONFIG);
   assert.deepEqual(config.preCommit.maxFileLines, DEFAULT_MAX_FILE_LINES_CONFIG);
   assert.deepEqual(config.preCommit.prettier, {
     enabled: true,

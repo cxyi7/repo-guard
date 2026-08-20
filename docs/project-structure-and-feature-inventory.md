@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.8.2`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.9.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -16,15 +16,17 @@
                        └─ 1.8.0 GitLab 应用交付托管标准
                           └─ 1.8.1 GitLab CI 内置结果通知
                                └─ 1.8.2 通知取消态、标题截断与隔离包执行
+                                    └─ 1.9.0 Git 记录驱动的暂存文件头同步
 ```
 
-因此，`1.8.2` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.9.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
 - [x] 项目初始化、配置迁移、托管 Git Hook 安装和环境诊断。
 - [x] 使用消费项目自身的 Stylelint、ESLint 和 Prettier，对暂存文件执行修复与只读复检。
 - [x] 保留部分暂存文件中的未暂存内容，失败时恢复执行前状态。
+- [x] 按 include、exclude 和扩展名白名单选择暂存文件，并按 Git 记录维护标准文件头。
 - [x] 动态代码执行安全检查，包括 `eval` 和 `Function` 构造器。
 - [x] Vue `v-html`、`target="_blank"`、表单 label 和图片 alt 硬门禁。
 - [x] 文件归位、单文件行数、依赖声明、依赖锁文件和依赖架构治理。
@@ -112,6 +114,8 @@ repo/
 
 GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只判断受控的最终状态并生成经过清理和长度限制的中文内容；`gates/release/gitlab-ci-notification.js` 校验配置与受信 CI 环境，并通过企业微信 integration 完成唯一的外部写入；CLI 只调用该 release 能力，不直接依赖第三方发送适配。
 
+文件头功能也遵守同一职责方向：`git/file-history.js` 只读取当前 Git 提交身份和文件首次新增记录；`policies/file-header.js` 只负责范围筛选、注释格式和内容重建；`orchestration/pre-commit/file-header-normalizer.js` 负责读取及写回暂存隔离环境中的文件，并由 `quality-runner.js` 在受保护质量计划之前调用。
+
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
 ## 4. 核心运行模型
@@ -191,8 +195,9 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | Vue 样式语言 | Stylelint 门禁内置 | 同一 Vue 文件可以有多个同语言 style 块，但不能混用不同语言 |
 | ESLint | `preCommit.eslint` | 使用项目本地 ESLint；可注入 AI 可维护性基线，项目配置仍拥有最终覆盖权 |
 | Prettier | `preCommit.prettier` | 使用项目本地 Prettier、配置和 ignore；可以修复或只读检查暂存文件 |
+| 文件头同步 | `preCommit.fileHeader` | 默认关闭；按仓库相对 include、exclude 和扩展名白名单选择暂存文件，保留人工 Description，并用 Git 记录重建作者与编辑信息 |
 
-pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照，完成后把修复写回索引，并恢复同一文件中的未暂存内容；任一步失败都会恢复执行前状态。
+pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照，完成后把修复写回索引，并恢复同一文件中的未暂存内容；任一步失败都会恢复执行前状态。文件头同步发生在同一暂存快照中：`.vue`、`.html` 使用 HTML 注释，JavaScript、TypeScript 和样式文件使用块注释；已跟踪文件的 Author/Date 来自首次新增提交，LastEditor/LastEditTime 来自当前 Git 提交身份与时间，浅克隆无法追溯时拒绝猜测。顶部注释缺少 Description 或包含乱写值时仍按稳定字段组合识别并整体重建，同时避免覆盖普通许可证和单个 Author JSDoc。
 
 ### 5.3 安全与 Vue 静态规则
 
@@ -349,6 +354,8 @@ CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready
 
 顺序由锁定 Execution Plan 固定，项目配置不能重排：
 
+启用 `preCommit.fileHeader` 时，文件头同步先作为 `lint-staged` 快照预处理执行，不属于下列受保护计划，也不改变计划步骤或顺序。
+
 ```text
 Stylelint fix
   → ESLint fix
@@ -439,6 +446,7 @@ manual 专项命令使用同一个 Gate Registry 和 GateResult，不维护独�
 stylelint
 eslint
 prettier
+fileHeader
 styleComplexity
 styleGovernance
 maxFileLines
@@ -479,7 +487,7 @@ ci
 | `typeCheck` | TypeScript 脚本门禁 |
 | `accessibilityTest` | axe 测试策略和脚本 |
 | `unitTest` | 单元测试、组件交互和覆盖率 |
-| `preCommit` | Stylelint、ESLint、Prettier、行数和文件归位 |
+| `preCommit` | 文件头同步、Stylelint、ESLint、Prettier、行数和文件归位 |
 | `rules` | 保护文件规则 |
 | `exclusions` | 保护文件排除项 |
 

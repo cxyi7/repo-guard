@@ -64,6 +64,10 @@ function writeConfig(root, {
     exceptions: [],
     suggestedDirectory: 'src/assets',
   }],
+  fileHeaderEnabled = false,
+  fileHeaderInclude = ['**/*'],
+  fileHeaderExclude = [],
+  fileHeaderExtensions = ['.js'],
   maxFileLineRules = [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
@@ -91,6 +95,12 @@ function writeConfig(root, {
         bannedPackages: [],
       },
       preCommit: {
+        fileHeader: {
+          enabled: fileHeaderEnabled,
+          include: fileHeaderInclude,
+          exclude: fileHeaderExclude,
+          extensions: fileHeaderExtensions,
+        },
         filePlacement: {
           enabled: filePlacementEnabled,
           mode: filePlacementMode,
@@ -212,6 +222,38 @@ test('auto-fixes only staged content and restores unstaged edits', async (contex
   assert.match(worktree, /^const value = 2;/);
   assert.match(worktree, /const localOnly = 3/);
   assert.doesNotMatch(git(root, ['show', ':sample.js']), /localOnly/);
+});
+
+test('根据 Git 记录同步暂存文件头并保留未暂存内容', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    fileHeaderEnabled: true,
+    fileHeaderInclude: ['src/**'],
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src'), { recursive: true });
+  const filePath = path.join(root, 'src', 'sample.js');
+  writeFileSync(filePath, 'export const value = 1;\n');
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'test: baseline']);
+
+  git(root, ['config', 'user.name', 'second editor']);
+  writeFileSync(filePath, 'export const value = 2;\n');
+  git(root, ['add', 'src/sample.js']);
+  writeFileSync(filePath, 'export const value = 2;\nconst localOnly = true;\n');
+
+  assert.equal(await runPreCommit(root), 0);
+  const staged = normalizeEol(git(root, ['show', ':src/sample.js']));
+  assert.match(staged, /@Description:\n/);
+  assert.match(staged, /@Author: repo-guard test\n/);
+  assert.match(staged, /@Date: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\n/);
+  assert.match(staged, /@LastEditor: second editor\n/);
+  assert.match(staged, /@LastEditTime: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\n/);
+  assert.doesNotMatch(staged, /localOnly/);
+
+  const worktree = normalizeEol(readFileSync(filePath, 'utf8'));
+  assert.match(worktree, /@LastEditor: second editor/);
+  assert.match(worktree, /const localOnly = true;/);
 });
 
 test('blocks unfixable syntax errors without committing partial fixes', async (context) => {

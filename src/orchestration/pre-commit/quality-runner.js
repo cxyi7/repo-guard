@@ -9,6 +9,7 @@ import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
+import { selectFileHeaderFiles } from '../../policies/file-header.js';
 import { collectStagedChanges } from '../../git/change-collection.js';
 import {
   createChangeSet,
@@ -18,6 +19,7 @@ import { createGateResult } from '../../core/result/gate-result.js';
 import { internalError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { orchestratePlan } from '../orchestrator.js';
 import { preCommitQualityPlan } from './protected-plan.js';
+import { synchronizeStagedFileHeaders } from './file-header-normalizer.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -73,6 +75,7 @@ export async function runQualityExecution({ root, files, config }) {
   const stylelintConfig = config.preCommit.stylelint;
   const maxFileLinesConfig = config.preCommit.maxFileLines;
   const filePlacementConfig = config.preCommit.filePlacement;
+  const fileHeaderConfig = config.preCommit.fileHeader;
   const dynamicCodeFiles = normalizedFiles
     .filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue)$/i.test(relative))
     .map(({ absolute }) => absolute);
@@ -91,7 +94,9 @@ export async function runQualityExecution({ root, files, config }) {
   const maxFileLineFiles = maxFileLinesConfig.enabled
     ? selectMaxFileLineFiles(normalizedFiles, maxFileLinesConfig)
     : [];
+  const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
   const relevantFiles = uniqueFiles(
+    fileHeaderFiles,
     stylelintFiles,
     eslintFiles,
     prettierFiles,
@@ -113,6 +118,12 @@ export async function runQualityExecution({ root, files, config }) {
 
   const originalContents = captureFileContents(relevantFiles);
   try {
+    const stagedChanges = collectStagedChanges(root);
+    synchronizeStagedFileHeaders({
+      root,
+      files: fileHeaderFiles,
+      changes: stagedChanges,
+    });
     const context = createGateContext({
       root,
       environment: preCommitQualityPlan.environment,
@@ -125,7 +136,7 @@ export async function runQualityExecution({ root, files, config }) {
       }),
       changes: createChangeSet({
         source: 'pre-commit-staged-files',
-        changes: collectStagedChanges(root),
+        changes: stagedChanges,
       }),
       files: normalizedFiles,
     });

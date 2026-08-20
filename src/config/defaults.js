@@ -1,6 +1,26 @@
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
 export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
 export const DEFAULT_STYLELINT_PATTERN = '**/*.{css,scss,sass,less,vue}';
+export const SUPPORTED_FILE_HEADER_EXTENSIONS = Object.freeze([
+  '.vue',
+  '.html',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.less',
+  '.scss',
+  '.sass',
+]);
+export const DEFAULT_FILE_HEADER_CONFIG = Object.freeze({
+  enabled: false,
+  include: Object.freeze(['**/*']),
+  exclude: Object.freeze([]),
+  extensions: SUPPORTED_FILE_HEADER_EXTENSIONS,
+});
 export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   enabled: false,
   maxCompoundSelectors: 3,

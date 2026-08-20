@@ -57,6 +57,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.stylelint.enabled, false);
   assert.equal(config.preCommit.stylelint.complexity.enabled, false);
   assert.equal(config.preCommit.stylelint.governance.enabled, false);
+  assert.equal(config.preCommit.fileHeader.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.preCommit.filePlacement.mode, 'newFiles');
   assert.equal(config.preCommit.filePlacement.rules.length, 2);
@@ -173,6 +174,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.prettier.enabled, true);
   assert.equal(migrated.preCommit.stylelint.enabled, false);
   assert.equal(migrated.preCommit.stylelint.governance.enabled, false);
+  assert.equal(migrated.preCommit.fileHeader.enabled, false);
   assert.equal(migrated.preCommit.filePlacement.enabled, true);
   assert.equal(migrated.preCommit.filePlacement.rules.length, 2);
   assert.equal(migrated.preCommit.maxFileLines.enabled, true);
@@ -390,6 +392,19 @@ test('disables and re-enables the default file placement gate', (context) => {
   const enabled = setFeaturesEnabled(root, ['filePlacement'], true);
   assert.deepEqual(enabled.changed, ['filePlacement']);
   assert.equal(readConfig(root).preCommit.filePlacement.enabled, true);
+});
+
+test('启用和禁用文件头同步功能', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['fileHeader'], true);
+  assert.deepEqual(enabled.changed, ['fileHeader']);
+  assert.equal(readConfig(root).preCommit.fileHeader.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['fileHeader'], false);
+  assert.deepEqual(disabled.changed, ['fileHeader']);
+  assert.equal(readConfig(root).preCommit.fileHeader.enabled, false);
 });
 
 test('enables and disables a configured code placement gate', (context) => {
