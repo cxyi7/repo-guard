@@ -53,6 +53,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
       'stylelint',
       'styleComplexity',
       'styleGovernance',
+      'functionDocs',
       'maxFileLines',
       'architecture',
       'build',
@@ -70,6 +71,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.match(enableResult.stdout, /stylelint: 已启用/);
   assert.match(enableResult.stdout, /styleComplexity: 已启用/);
   assert.match(enableResult.stdout, /styleGovernance: 已启用/);
+  assert.match(enableResult.stdout, /functionDocs: 已启用/);
   assert.match(enableResult.stdout, /lighthouse: 已启用/);
   assert.match(enableResult.stdout, /maxFileLines: 已启用/);
   assert.match(enableResult.stdout, /architecture: 已启用/);
@@ -88,6 +90,7 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.preCommit.stylelint.complexity.enabled, true);
   assert.equal(config.preCommit.stylelint.governance.enabled, true);
+  assert.equal(config.preCommit.functionDocs.enabled, true);
   assert.equal(config.lighthouse.enabled, true);
   assert.equal(config.preCommit.maxFileLines.enabled, true);
   assert.equal(config.architecture.enabled, true);

@@ -2844,3 +2844,39 @@ test('separates Git file-header facts, pure policy, and pre-commit mutation owne
   assert.match(qualityRunnerSource, /synchronizeStagedFileHeaders/);
   assert.match(qualityRunnerSource, /plan: preCommitQualityPlan/);
 });
+
+test('separates function-documentation validation, policy, and staged mutation ownership', () => {
+  const validationPath = path.join(SOURCE_ROOT, 'config', 'function-doc-validation.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'function-documentation.js');
+  const normalizerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'function-documentation-normalizer.js',
+  );
+  const qualityRunnerPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'quality-runner.js',
+  );
+  const preCommitValidationSource = readFileSync(
+    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    'utf8',
+  );
+  const policySource = readFileSync(policyPath, 'utf8');
+  const normalizerSource = readFileSync(normalizerPath, 'utf8');
+  const qualityRunnerSource = readFileSync(qualityRunnerPath, 'utf8');
+
+  for (const file of [validationPath, policyPath, normalizerPath]) {
+    assert.equal(existsSync(file), true);
+  }
+  assert.match(preCommitValidationSource, /validateFunctionDocConfiguration/);
+  assert.doesNotMatch(policySource, /node:fs|git\/|orchestration\//);
+  assert.match(
+    normalizerSource,
+    /from ['"]\.\.\/\.\.\/policies\/function-documentation\.js['"]/,
+  );
+  assert.match(qualityRunnerSource, /synchronizeStagedFunctionDocumentation/);
+  assert.match(qualityRunnerSource, /selectFunctionDocumentationFiles/);
+});

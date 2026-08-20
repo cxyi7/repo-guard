@@ -21,6 +21,7 @@ import {
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
+  DEFAULT_FUNCTION_DOC_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
@@ -46,6 +47,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'componentInteraction',
   'coverage',
   'fileHeader',
+  'functionDocs',
   'notification',
   'ci',
 ]);
@@ -131,6 +133,16 @@ function cloneFileHeaderConfig(value = {}) {
     include: [...(value.include ?? DEFAULT_FILE_HEADER_CONFIG.include)],
     exclude: [...(value.exclude ?? DEFAULT_FILE_HEADER_CONFIG.exclude)],
     extensions: [...(value.extensions ?? DEFAULT_FILE_HEADER_CONFIG.extensions)],
+  };
+}
+
+function cloneFunctionDocConfig(value = {}) {
+  return {
+    ...DEFAULT_FUNCTION_DOC_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_FUNCTION_DOC_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_FUNCTION_DOC_CONFIG.exclude)],
+    extensions: [...(value.extensions ?? DEFAULT_FUNCTION_DOC_CONFIG.extensions)],
   };
 }
 
@@ -228,6 +240,7 @@ export function createStarterConfig({
     unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
     preCommit: {
       fileHeader: cloneFileHeaderConfig(),
+      functionDocs: cloneFunctionDocConfig(),
       filePlacement: cloneFilePlacementConfig(),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -349,6 +362,7 @@ export function migrateProjectConfig(root, {
     preCommit: {
       ...preCommit,
       fileHeader: cloneFileHeaderConfig(preCommit.fileHeader),
+      functionDocs: cloneFunctionDocConfig(preCommit.functionDocs),
       filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),
       maxFileLines: {
         ...DEFAULT_MAX_FILE_LINES_CONFIG,
@@ -384,6 +398,9 @@ function featureConfig(config, feature) {
   }
   if (feature === 'fileHeader') {
     return config.preCommit.fileHeader;
+  }
+  if (feature === 'functionDocs') {
+    return config.preCommit.functionDocs;
   }
   const gate = gateRegistry.configurable.find(({ featureName }) => featureName === feature);
   if (gate) {

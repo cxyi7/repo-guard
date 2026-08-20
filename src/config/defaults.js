@@ -21,6 +21,27 @@ export const DEFAULT_FILE_HEADER_CONFIG = Object.freeze({
   exclude: Object.freeze([]),
   extensions: SUPPORTED_FILE_HEADER_EXTENSIONS,
 });
+export const SUPPORTED_FUNCTION_DOC_EXTENSIONS = Object.freeze([
+  '.vue',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.cjs',
+]);
+export const DEFAULT_FUNCTION_DOC_CONFIG = Object.freeze({
+  enabled: false,
+  include: Object.freeze(['**/*']),
+  exclude: Object.freeze([
+    '**/*.d.ts',
+    '**/*.min.js',
+    '**/generated/**',
+    '**/*.spec.*',
+    '**/*.test.*',
+  ]),
+  extensions: SUPPORTED_FUNCTION_DOC_EXTENSIONS,
+});
 export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   enabled: false,
   maxCompoundSelectors: 3,

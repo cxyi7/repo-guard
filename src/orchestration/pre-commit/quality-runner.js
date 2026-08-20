@@ -5,11 +5,15 @@ import {
 } from '../../core/execution/file-snapshot.js';
 import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 import { gateRegistry } from '../../gates/registry.js';
-import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import {
+  writeConsoleMessage,
+  writeGateResultConsole,
+} from '../../core/report/console-renderer.js';
 import {
   selectMaxFileLineFiles,
 } from '../../policies/max-file-lines.js';
 import { selectFileHeaderFiles } from '../../policies/file-header.js';
+import { selectFunctionDocumentationFiles } from '../../policies/function-documentation.js';
 import { collectStagedChanges } from '../../git/change-collection.js';
 import {
   createChangeSet,
@@ -20,6 +24,7 @@ import { internalError, toRepoGuardError } from '../../core/error/repo-guard-err
 import { orchestratePlan } from '../orchestrator.js';
 import { preCommitQualityPlan } from './protected-plan.js';
 import { synchronizeStagedFileHeaders } from './file-header-normalizer.js';
+import { synchronizeStagedFunctionDocumentation } from './function-documentation-normalizer.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -76,6 +81,7 @@ export async function runQualityExecution({ root, files, config }) {
   const maxFileLinesConfig = config.preCommit.maxFileLines;
   const filePlacementConfig = config.preCommit.filePlacement;
   const fileHeaderConfig = config.preCommit.fileHeader;
+  const functionDocsConfig = config.preCommit.functionDocs;
   const dynamicCodeFiles = normalizedFiles
     .filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue)$/i.test(relative))
     .map(({ absolute }) => absolute);
@@ -95,8 +101,10 @@ export async function runQualityExecution({ root, files, config }) {
     ? selectMaxFileLineFiles(normalizedFiles, maxFileLinesConfig)
     : [];
   const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
+  const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
   const relevantFiles = uniqueFiles(
     fileHeaderFiles,
+    functionDocFiles,
     stylelintFiles,
     eslintFiles,
     prettierFiles,
@@ -124,6 +132,20 @@ export async function runQualityExecution({ root, files, config }) {
       files: fileHeaderFiles,
       changes: stagedChanges,
     });
+    const functionDocResult = synchronizeStagedFunctionDocumentation({
+      root,
+      files: functionDocFiles,
+    });
+    for (const warning of functionDocResult.warnings) {
+      const { location } = warning;
+      const position = [location.line, location.column]
+        .filter((value) => value != null)
+        .join(':');
+      writeConsoleMessage(
+        `警告  functionDocs [${warning.code}] ${location.path}${position ? `:${position}` : ''}：${warning.message}`,
+        'stderr',
+      );
+    }
     const context = createGateContext({
       root,
       environment: preCommitQualityPlan.environment,

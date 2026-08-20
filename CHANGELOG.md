@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.10.0
+
+- 新增默认关闭的 `preCommit.functionDocs` 暂存函数文档同步，支持仓库相对 `include`、`exclude` 和 `.vue`/JavaScript/TypeScript 扩展名白名单；复用 `lint-staged` 隔离，只修改暂存快照并保留未暂存内容。
+- 使用 Babel AST 识别具名函数、类/对象方法、单变量绑定实现和默认导出实现；Vue 仅处理内联 `script`/`script setup`，匿名回调不在自动同步范围。
+- 按函数签名新增、删除和排序 `@param`，按返回值状态补齐或删除 `@returns`；保留人工 `@Description`、说明与未托管标签，兼容常用别名，并移除 TypeScript JSDoc 中重复的参数/返回类型。
+- 直接逃逸的 `throw` 或返回的 `Promise.reject` 缺少 `@throws` 时输出非阻断中文提示；解构参数和 Generator 使用明确的人工维护提示，不猜测业务说明或异常内容。
+
 ## 1.9.0
 
 - 新增默认关闭的 `preCommit.fileHeader` 暂存文件头同步功能；支持通过仓库相对 `include`、`exclude` glob 和扩展名白名单精确选择文件，仅处理 `.vue`、`.html`、JavaScript、TypeScript 与样式源文件。

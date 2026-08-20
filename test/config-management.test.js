@@ -58,6 +58,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.preCommit.stylelint.complexity.enabled, false);
   assert.equal(config.preCommit.stylelint.governance.enabled, false);
   assert.equal(config.preCommit.fileHeader.enabled, false);
+  assert.equal(config.preCommit.functionDocs.enabled, false);
   assert.equal(config.preCommit.filePlacement.enabled, true);
   assert.equal(config.preCommit.filePlacement.mode, 'newFiles');
   assert.equal(config.preCommit.filePlacement.rules.length, 2);
@@ -175,6 +176,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.equal(migrated.preCommit.stylelint.enabled, false);
   assert.equal(migrated.preCommit.stylelint.governance.enabled, false);
   assert.equal(migrated.preCommit.fileHeader.enabled, false);
+  assert.equal(migrated.preCommit.functionDocs.enabled, false);
   assert.equal(migrated.preCommit.filePlacement.enabled, true);
   assert.equal(migrated.preCommit.filePlacement.rules.length, 2);
   assert.equal(migrated.preCommit.maxFileLines.enabled, true);
@@ -405,6 +407,19 @@ test('启用和禁用文件头同步功能', (context) => {
   const disabled = setFeaturesEnabled(root, ['fileHeader'], false);
   assert.deepEqual(disabled.changed, ['fileHeader']);
   assert.equal(readConfig(root).preCommit.fileHeader.enabled, false);
+});
+
+test('启用和禁用函数文档同步功能', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['functionDocs'], true);
+  assert.deepEqual(enabled.changed, ['functionDocs']);
+  assert.equal(readConfig(root).preCommit.functionDocs.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['functionDocs'], false);
+  assert.deepEqual(disabled.changed, ['functionDocs']);
+  assert.equal(readConfig(root).preCommit.functionDocs.enabled, false);
 });
 
 test('enables and disables a configured code placement gate', (context) => {

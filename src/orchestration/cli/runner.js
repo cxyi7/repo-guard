@@ -42,6 +42,8 @@ const CONFIGURABLE_FEATURE_HELP = [
   ...gateRegistry.configurable.map(({ featureName }) => featureName),
   'componentInteraction',
   'coverage',
+  'fileHeader',
+  'functionDocs',
   'notification',
   'ci',
 ].join('|');

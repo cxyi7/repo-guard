@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.9.0`
+- 当前版本：`1.10.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.9.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.10.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -36,6 +36,7 @@ npx repo-guard doctor
 - ESLint 暂存文件检查、自动修复和最终只读复检。
 - Prettier 暂存文件格式化或只读检查。
 - 可选的暂存文件头同步：按 Git 记录维护作者、创建时间、更新人和更新时间，并保留人工填写的 Description。
+- 可选的暂存函数文档同步：根据 AST 签名维护 `@param` 和 `@returns`，并对缺失的 `@throws` 给出非阻断提示。
 - Stylelint 选择器复杂度、嵌套深度、specificity、ID、`!important` 和样式作用域治理。
 - 同一 Vue 文件的 style 块语言一致性检查。
 - `lint-staged` 隔离部分暂存内容，失败时恢复执行前状态。
@@ -92,7 +93,7 @@ npx repo-guard doctor
 
 顺序由锁定 Execution Plan 固定，消费项目不能重排：
 
-启用 `preCommit.fileHeader` 后，文件头会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它不新增、不删除也不重排计划步骤。
+启用 `preCommit.fileHeader` 或 `preCommit.functionDocs` 后，对应内容会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它们不新增、不删除也不重排计划步骤。
 
 ```text
 Stylelint fix
@@ -155,7 +156,7 @@ repo-guard enable dependencies architecture
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable fileHeader filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader functionDocs filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -169,6 +170,7 @@ stylelint
 eslint
 prettier
 fileHeader
+functionDocs
 styleComplexity
 styleGovernance
 maxFileLines
@@ -217,6 +219,31 @@ ci
 - 历史字段输出统一使用 `@LastEditor`，旧的 `@LastEditors` 会在下一次同步时归一化。
 - 已跟踪文件若因浅克隆而无法追溯首次新增记录，会停止同步并提示先补全 Git 历史，避免写入错误作者和时间。
 - 文件头同步只处理本次暂存文件，并继续由 `lint-staged` 隔离和恢复未暂存改动。
+
+### 配置暂存函数文档
+
+函数文档同步默认关闭，可通过 `repo-guard enable functionDocs` 启用：
+
+```json
+{
+  "preCommit": {
+    "functionDocs": {
+      "enabled": true,
+      "include": ["src/**"],
+      "exclude": ["**/*.d.ts", "**/*.min.js", "**/generated/**", "**/*.spec.*", "**/*.test.*"],
+      "extensions": [".vue", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]
+    }
+  }
+}
+```
+
+- 仅处理本次暂存且同时命中 `include`、未命中 `exclude`、扩展名已启用的文件；默认排除声明文件、压缩产物、生成目录和测试文件。
+- 使用 Babel AST 识别具名函数、类/对象方法、单变量绑定的箭头或函数实现，以及默认导出实现；匿名回调不会被自动补文档。
+- 参数新增、删除或调序时同步 `@param`；有返回值时补齐 `@returns`，无返回值时删除陈旧返回标签。新标签只写参数名或标签名，不猜测“用户 ID”等业务说明。
+- 保留人工维护的 `@Description`、标签说明和未托管标签；兼容 `@arg`/`@argument`、`@return` 和 `@exception` 别名。TypeScript 函数会移除 `@param`/`@returns` 中与签名重复的类型，但不改写说明。
+- 函数存在直接逃逸的 `throw` 或返回的 `Promise.reject` 且缺少 `@throws`/`@exception` 时，只输出可定位的中文警告，不自动猜测异常说明，不阻断提交。
+- 匿名解构参数不自动改写整个函数文档，而是给出提示；Generator 只同步参数，保留已有返回标签并提示人工维护 `@yields`。
+- Vue 文件只解析顶层内联 `<script>` 和 `<script setup>`，跳过注释、template、style 和带 `src` 的外部 script。同步结果幂等，并继续由 `lint-staged` 保护部分暂存内容。
 
 ### 手动运行专项门禁
 
