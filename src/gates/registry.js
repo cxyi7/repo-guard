@@ -15,6 +15,7 @@ import {
 } from './quality/staged-quality-gates.js';
 import { dynamicCodeGate } from './security/dynamic-code-gate.js';
 import { vueAsyncResourceCleanupGate } from './quality/vue-async-resource-cleanup-gate.js';
+import { pathNamingGate } from './repository/path-naming-gate.js';
 import { repositoryPolicyGates } from './repository/repository-policy-gates.js';
 import { releaseReadinessGates } from './release/release-readiness-gates.js';
 import { defineExternalGate } from './testing/external-gate.js';
@@ -43,6 +44,7 @@ const platformGates = Object.freeze([
 
 export const officialGates = Object.freeze([
   vueAsyncResourceCleanupGate,
+  pathNamingGate,
   dynamicCodeGate,
   ...nativePolicyGates,
   ...releaseReadinessGates,

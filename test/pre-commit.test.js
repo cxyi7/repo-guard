@@ -76,6 +76,10 @@ function writeConfig(root, {
   asyncResourceCleanupInclude = ['src/**'],
   asyncResourceCleanupExclude = [],
   asyncResourceCleanupExtensions = ['.vue', '.js', '.ts'],
+  pathNamingEnabled = false,
+  pathNamingConvention = 'camelCase',
+  pathNamingInclude = ['src/**'],
+  pathNamingExclude = [],
   maxFileLineRules = [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
@@ -110,6 +114,12 @@ function writeConfig(root, {
           extensions: asyncResourceCleanupExtensions,
           timeoutThresholdMs: 1000,
           requestFunctions: ['fetch'],
+        },
+        pathNaming: {
+          enabled: pathNamingEnabled,
+          convention: pathNamingConvention,
+          include: pathNamingInclude,
+          exclude: pathNamingExclude,
         },
         fileHeader: {
           enabled: fileHeaderEnabled,
@@ -405,6 +415,22 @@ test('启用异步资源清理后以 error 阻断未释放资源', async (contex
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':src/App.vue'])), source);
+});
+
+test('启用路径命名后检查全部已跟踪范围而不只检查本次暂存文件', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    pathNamingEnabled: true,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src'), { recursive: true });
+  writeFileSync(path.join(root, 'src', 'legacy-name.ts'), 'export {};\n');
+  commitBaseline(root);
+
+  writeFileSync(path.join(root, 'sample.js'), 'export const changed = true;\n');
+  git(root, ['add', 'sample.js']);
+
+  assert.equal(await runPreCommit(root), 1);
 });
 
 test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {

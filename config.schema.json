@@ -1096,6 +1096,53 @@
             }
           }
         },
+        "pathNaming": {
+          "type": "object",
+          "description": "统一检查指定仓库范围内的文件名和文件夹名；一个项目只能选择 camelCase 或 kebab-case 中的一种规范。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否在 pre-commit 和启用的 CI 门禁中检查全部已跟踪路径。"
+            },
+            "convention": {
+              "type": "string",
+              "enum": [
+                "camelCase",
+                "kebab-case"
+              ],
+              "default": "camelCase",
+              "description": "消费项目唯一采用的路径命名规范；不能配置数组，也不能按目录覆盖。"
+            },
+            "include": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                "src/**",
+                "utils/**"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；所有命中的文件和文件夹共用同一个 convention。"
+            },
+            "exclude": {
+              "type": "array",
+              "default": [
+                "**/.*",
+                "**/.*/**",
+                "**/generated/**"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；排除优先级高于 include，适合隐藏路径、生成目录和框架特殊路径。"
+            }
+          }
+        },
         "filePlacement": {
           "type": "object",
           "description": "Configurable staged and full-project file location policy.",

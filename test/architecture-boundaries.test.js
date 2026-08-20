@@ -2145,6 +2145,33 @@ test('keeps file placement rules and project scope in policies without a root he
   );
 });
 
+test('separates path naming configuration, Git facts, policy decisions, and GateResult adaptation', () => {
+  const configPath = path.join(SOURCE_ROOT, 'config', 'path-naming-validation.js');
+  const gitFactsPath = path.join(SOURCE_ROOT, 'git', 'tracked-paths.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'path-naming.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'repository', 'path-naming-gate.js');
+
+  for (const expectedPath of [configPath, gitFactsPath, policyPath, gatePath]) {
+    assert.equal(existsSync(expectedPath), true);
+  }
+
+  const configSource = readFileSync(configPath, 'utf8');
+  const gitFactsSource = readFileSync(gitFactsPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const gateSource = readFileSync(gatePath, 'utf8');
+
+  assert.match(configSource, /export function validatePathNamingConfiguration/);
+  assert.doesNotMatch(configSource, /from ['"][^'"]*(?:git|policies|gates|orchestration)\//);
+  assert.match(gitFactsSource, /export function collectTrackedProjectPaths/);
+  assert.match(gitFactsSource, /\['ls-files', '--cached', '-z'\]/);
+  assert.doesNotMatch(gitFactsSource, /micromatch|GateResult|finding|policy/i);
+  assert.match(policySource, /export function inspectPathNaming/);
+  assert.doesNotMatch(policySource, /from ['"][^'"]*(?:git|gates|orchestration)\//);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/git\/tracked-paths\.js['"]/);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/policies\/path-naming\.js['"]/);
+  assert.doesNotMatch(gateSource, /from ['"][^'"]*orchestration\//);
+});
+
 test('separates code placement content facts, policy decisions, and GateResult adaptation', () => {
   const configPath = path.join(SOURCE_ROOT, 'config', 'code-placement-validation.js');
   const indexFactsPath = path.join(SOURCE_ROOT, 'git', 'index-content.js');

@@ -84,6 +84,7 @@ export async function runQualityExecution({ root, files, config }) {
   const fileHeaderConfig = config.preCommit.fileHeader;
   const functionDocsConfig = config.preCommit.functionDocs;
   const asyncResourceCleanupConfig = config.preCommit.asyncResourceCleanup;
+  const pathNamingConfig = config.preCommit.pathNaming;
   const asyncResourceFiles = selectAsyncResourceCleanupFiles(
     normalizedFiles,
     asyncResourceCleanupConfig,
@@ -120,7 +121,9 @@ export async function runQualityExecution({ root, files, config }) {
     vueSecurityFiles,
   );
 
-  if (relevantFiles.length === 0 && !filePlacementConfig.enabled) {
+  if (relevantFiles.length === 0
+    && !filePlacementConfig.enabled
+    && !pathNamingConfig.enabled) {
     return Object.freeze({
       planId: preCommitQualityPlan.id,
       status: 'passed',
@@ -212,6 +215,12 @@ export async function runQualityExecution({ root, files, config }) {
               ...stepContext,
               files: asyncResourceFiles,
             }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
+          break;
+        case 'repository.path-naming':
+          if (pathNamingConfig.enabled) {
+            const gatePlan = await gate.plan(stepContext);
             return await gate.run({ ...stepContext, plan: gatePlan });
           }
           break;

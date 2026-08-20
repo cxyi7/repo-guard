@@ -68,6 +68,23 @@ export const DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG = Object.freeze({
   timeoutThresholdMs: 1000,
   requestFunctions: Object.freeze(['fetch']),
 });
+export const SUPPORTED_PATH_NAMING_CONVENTIONS = Object.freeze([
+  'camelCase',
+  'kebab-case',
+]);
+export const DEFAULT_PATH_NAMING_CONFIG = Object.freeze({
+  enabled: false,
+  convention: 'camelCase',
+  include: Object.freeze([
+    'src/**',
+    'utils/**',
+  ]),
+  exclude: Object.freeze([
+    '**/.*',
+    '**/.*/**',
+    '**/generated/**',
+  ]),
+});
 export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   enabled: false,
   maxCompoundSelectors: 3,

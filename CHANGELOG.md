@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.12.0
+
+- 新增默认关闭的 `preCommit.pathNaming` 统一路径命名门禁；npm 包支持 `camelCase` 和 `kebab-case`，消费项目必须选择其中一个字符串值，所有 include 范围内的文件名和文件夹名共用同一规范。
+- pre-commit、CI policy/full 和 release-ready 检查完整 Git 索引中的已跟踪路径，不只检查当前变更；支持仓库相对 `include`、`exclude`，对新增暂存路径立即生效，并避免已删除路径继续阻断。
+- 文件扩展名不参与检查，多段文件名逐段校验；默认排除隐藏路径和生成目录，框架特殊路径可显式排除，Git 不跟踪的空目录不在检查范围内。
+- 所有违规均以 `error` 阻断且不自动重命名，避免破坏 import、路由和大小写敏感引用；同时接入 doctor、手动专项命令、统一 GateResult、配置迁移、Schema、README 和长期功能清单。
+
 ## 1.11.0
 
 - 新增默认关闭的 `preCommit.asyncResourceCleanup` Vue 异步资源清理门禁，支持仓库相对 `include`、`exclude`、扩展名白名单、长定时器阈值和自定义请求函数；启用后所有发现均以 `error` 阻断，且不自动修改业务代码。
