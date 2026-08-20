@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.11.0
+
+- 新增默认关闭的 `preCommit.asyncResourceCleanup` Vue 异步资源清理门禁，支持仓库相对 `include`、`exclude`、扩展名白名单、长定时器阈值和自定义请求函数；启用后所有发现均以 `error` 阻断，且不自动修改业务代码。
+- 使用 Babel AST 按绑定身份和 Vue 生命周期匹配定时器、递归或已保存动画帧、事件监听器、Observer、WebSocket/EventSource/BroadcastChannel、Worker、订阅、定位监听与 AbortController；清理可通过本地 helper 间接调用。
+- 事件监听器要求目标、静态事件名、稳定回调和 `capture` 完全匹配；支持 `once: true` 与 signal/abort，`onActivated` 创建的资源要求在 `onDeactivated` 释放，`await` 后才注册或执行的清理不视为可靠。
+- 将门禁接入受保护 pre-commit 只读阶段、CI policy/full/release-ready、doctor、手动专项命令、统一 GateResult 和结构化例外；补齐配置 Schema、迁移默认值、README、长期功能清单及真实 pre-commit 阻断测试。
+
 ## 1.10.0
 
 - 新增默认关闭的 `preCommit.functionDocs` 暂存函数文档同步，支持仓库相对 `include`、`exclude` 和 `.vue`/JavaScript/TypeScript 扩展名白名单；复用 `lint-staged` 隔离，只修改暂存快照并保留未暂存内容。

@@ -40,6 +40,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.prettier',
       'quality.stylelint-verify',
       'quality.eslint-verify',
+      'quality.vue-async-resource-cleanup',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -67,6 +68,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-policy').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'quality.vue-async-resource-cleanup',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -84,6 +86,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'quality.vue-async-resource-cleanup',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -109,6 +112,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('release-ready').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'quality.vue-async-resource-cleanup',
       'security.dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',
@@ -133,6 +137,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map((step) => step.reportName ?? step.id),
     [
       'repository.structured-exceptions',
+      'async-resource-cleanup',
       'dynamic-code',
       'security.vue-unsafe-html',
       'security.vue-target-blank',

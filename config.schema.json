@@ -1010,6 +1010,92 @@
             }
           }
         },
+        "asyncResourceCleanup": {
+          "type": "object",
+          "description": "使用 AST 检查 Vue 页面和组合式函数中的异步资源是否在对应生命周期可靠释放；启用后所有发现均作为阻断错误。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否在 pre-commit 和启用的 CI 门禁中强制检查异步资源清理。"
+            },
+            "include": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                "src/**/*.vue",
+                "src/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}",
+                "src/**/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；默认检查 Vue 页面以及任意层级 composables 目录。"
+            },
+            "exclude": {
+              "type": "array",
+              "default": [
+                "**/*.d.ts",
+                "**/*.spec.*",
+                "**/*.test.*",
+                "**/generated/**"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；排除优先级高于 include。"
+            },
+            "extensions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                ".vue",
+                ".js",
+                ".jsx",
+                ".ts",
+                ".tsx",
+                ".mjs",
+                ".cjs"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  ".vue",
+                  ".js",
+                  ".jsx",
+                  ".ts",
+                  ".tsx",
+                  ".mjs",
+                  ".cjs"
+                ]
+              },
+              "description": "允许进入异步资源清理检查的扩展名白名单。"
+            },
+            "timeoutThresholdMs": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 1000,
+              "description": "达到此延迟的 setTimeout 必须保存句柄并在生命周期结束时清理；动态延迟按需要清理处理。"
+            },
+            "requestFunctions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                "fetch"
+              ],
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*$"
+              },
+              "description": "需要传入 AbortController.signal 并在卸载时 abort 的请求函数或静态成员路径。"
+            }
+          }
+        },
         "filePlacement": {
           "type": "object",
           "description": "Configurable staged and full-project file location policy.",

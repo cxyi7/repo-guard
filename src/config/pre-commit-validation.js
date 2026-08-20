@@ -1,3 +1,4 @@
+import { validateAsyncResourceCleanupConfiguration } from './async-resource-cleanup-validation.js';
 import { validateEslintConfiguration } from './eslint-validation.js';
 import { validateFileHeaderConfiguration } from './file-header-validation.js';
 import { validateFilePlacementConfiguration } from './file-placement-validation.js';
@@ -25,10 +26,15 @@ export function validatePreCommitConfiguration(value, configPath) {
       'filePlacement',
       'fileHeader',
       'functionDocs',
+      'asyncResourceCleanup',
     ]),
     `${configPath} preCommit`,
   );
 
+  const asyncResourceCleanup = validateAsyncResourceCleanupConfiguration(
+    preCommitValue,
+    configPath,
+  );
   const fileHeader = validateFileHeaderConfiguration(preCommitValue, configPath);
   const functionDocs = validateFunctionDocConfiguration(preCommitValue, configPath);
   const filePlacement = validateFilePlacementConfiguration(preCommitValue, configPath);
@@ -38,6 +44,7 @@ export function validatePreCommitConfiguration(value, configPath) {
   const eslint = validateEslintConfiguration(preCommitValue, configPath);
 
   return {
+    asyncResourceCleanup,
     fileHeader,
     functionDocs,
     filePlacement,

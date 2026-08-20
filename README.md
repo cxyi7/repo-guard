@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.10.0`
+- 当前版本：`1.11.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.10.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.11.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -101,6 +101,7 @@ Stylelint fix
   → Prettier
   → Stylelint read-only verify
   → ESLint read-only verify
+  → Vue async-resource-cleanup（启用时阻断）
   → dynamic-code
   → Vue v-html
   → Vue target=_blank
@@ -156,7 +157,7 @@ repo-guard enable dependencies architecture
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable fileHeader functionDocs filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader functionDocs asyncResourceCleanup filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -171,6 +172,7 @@ eslint
 prettier
 fileHeader
 functionDocs
+asyncResourceCleanup
 styleComplexity
 styleGovernance
 maxFileLines
@@ -245,12 +247,40 @@ ci
 - 匿名解构参数不自动改写整个函数文档，而是给出提示；Generator 只同步参数，保留已有返回标签并提示人工维护 `@yields`。
 - Vue 文件只解析顶层内联 `<script>` 和 `<script setup>`，跳过注释、template、style 和带 `src` 的外部 script。同步结果幂等，并继续由 `lint-staged` 保护部分暂存内容。
 
+### 配置 Vue 异步资源清理
+
+异步资源清理默认关闭，可通过 `repo-guard enable asyncResourceCleanup` 启用。启用后发现的问题全部按 `error` 阻断，不提供自动修复：
+
+```json
+{
+  "preCommit": {
+    "asyncResourceCleanup": {
+      "enabled": true,
+      "include": ["src/**/*.vue", "src/**/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}"],
+      "exclude": ["**/*.d.ts", "**/*.spec.*", "**/*.test.*", "**/generated/**"],
+      "extensions": [".vue", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
+      "timeoutThresholdMs": 1000,
+      "requestFunctions": ["fetch", "api.request"]
+    }
+  }
+}
+```
+
+- 使用 Babel AST 按绑定身份匹配创建与释放，不用文本正则猜测；Vue 文件复用共享 script 扫描器，跳过 template、style、注释和外部 `src` script。
+- 检查 `setInterval`、达到阈值或动态延迟的 `setTimeout`、已保存或递归的 `requestAnimationFrame`、事件监听器、Observer、WebSocket/EventSource/BroadcastChannel、Worker、订阅和定位监听。
+- `addEventListener` 必须用相同目标、静态事件名、稳定回调和相同 `capture` 移除；`once: true` 可直接通过，`signal` 方式要求对应控制器在生命周期结束时 `abort()`。
+- `requestFunctions` 中的请求必须传入可静态追踪的 `AbortController.signal`，并在卸载时 `abort()`；动态拼装且无法证明 signal 归属的写法会阻断。
+- 支持 `onBeforeUnmount`、`onUnmounted`、`onScopeDispose`、Options API 卸载钩子和 Vue 2 销毁钩子；`onActivated` 中创建的资源必须在 `onDeactivated` 释放。清理可通过本地 helper 间接调用，但在 `await` 后才注册或执行的清理不算可靠。
+- 短于阈值的定时器和 `new Promise(resolve => setTimeout(resolve, ...))` 延时写法不检查；同一句柄存在多个静态创建点时会额外报告覆盖风险。
+- 可使用结构化例外临时批准精确规则、文件和位置；普通注释、disable 指令或项目 lint 配置不能关闭这项门禁。
+
 ### 手动运行专项门禁
 
 ```bash
 repo-guard exceptions
 repo-guard dependencies
 repo-guard dynamic-code
+repo-guard async-resource-cleanup
 repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels

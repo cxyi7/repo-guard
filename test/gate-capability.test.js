@@ -70,6 +70,17 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
 }
 
 const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
+  reviewedGateDescriptor('quality.vue-async-resource-cleanup', POLICY_ENVIRONMENTS, {
+    configKey: 'preCommit.asyncResourceCleanup',
+    featureName: 'asyncResourceCleanup',
+    featureOrder: 35,
+    manualCommand: 'async-resource-cleanup',
+    manualOrder: 75,
+    doctorOrder: 75,
+    packageScript: 'guard:async-resource-cleanup',
+    rules: ['vue/require-async-resource-cleanup'],
+    ciScopes: ['all-files', 'changed-files'],
+  }),
   reviewedGateDescriptor('security.dynamic-code', POLICY_ENVIRONMENTS, {
     manualCommand: 'dynamic-code',
     manualOrder: 70,

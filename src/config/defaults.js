@@ -42,6 +42,32 @@ export const DEFAULT_FUNCTION_DOC_CONFIG = Object.freeze({
   ]),
   extensions: SUPPORTED_FUNCTION_DOC_EXTENSIONS,
 });
+export const SUPPORTED_ASYNC_RESOURCE_CLEANUP_EXTENSIONS = Object.freeze([
+  '.vue',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.cjs',
+]);
+export const DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG = Object.freeze({
+  enabled: false,
+  include: Object.freeze([
+    'src/**/*.vue',
+    'src/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}',
+    'src/**/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}',
+  ]),
+  exclude: Object.freeze([
+    '**/*.d.ts',
+    '**/*.spec.*',
+    '**/*.test.*',
+    '**/generated/**',
+  ]),
+  extensions: SUPPORTED_ASYNC_RESOURCE_CLEANUP_EXTENSIONS,
+  timeoutThresholdMs: 1000,
+  requestFunctions: Object.freeze(['fetch']),
+});
 export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   enabled: false,
   maxCompoundSelectors: 3,
