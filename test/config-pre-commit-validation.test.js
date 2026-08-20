@@ -4,6 +4,7 @@ import {
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
+  DEFAULT_FUNCTION_DOC_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
   DEFAULT_STYLELINT_CONFIG,
@@ -16,6 +17,7 @@ test('applies staged quality defaults when pre-commit configuration is omitted',
   assert.deepEqual(validatePreCommitConfiguration({}, CONFIG_PATH), {
     fileHeader: DEFAULT_FILE_HEADER_CONFIG,
     filePlacement: DEFAULT_FILE_PLACEMENT_CONFIG,
+    functionDocs: DEFAULT_FUNCTION_DOC_CONFIG,
     maxFileLines: DEFAULT_MAX_FILE_LINES_CONFIG,
     stylelint: DEFAULT_STYLELINT_CONFIG,
     prettier: DEFAULT_PRETTIER_CONFIG,
@@ -28,6 +30,7 @@ test('delegates staged quality settings to their domain validators', () => {
     preCommit: {
       eslint: { enabled: false },
       fileHeader: { enabled: true },
+      functionDocs: { enabled: true },
       prettier: { enabled: false },
       stylelint: { enabled: true },
       maxFileLines: { enabled: false },
@@ -37,6 +40,7 @@ test('delegates staged quality settings to their domain validators', () => {
 
   assert.equal(preCommit.eslint.enabled, false);
   assert.equal(preCommit.fileHeader.enabled, true);
+  assert.equal(preCommit.functionDocs.enabled, true);
   assert.equal(preCommit.prettier.enabled, false);
   assert.equal(preCommit.stylelint.enabled, true);
   assert.equal(preCommit.maxFileLines.enabled, false);

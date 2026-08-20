@@ -68,6 +68,10 @@ function writeConfig(root, {
   fileHeaderInclude = ['**/*'],
   fileHeaderExclude = [],
   fileHeaderExtensions = ['.js'],
+  functionDocsEnabled = false,
+  functionDocsInclude = ['**/*'],
+  functionDocsExclude = [],
+  functionDocsExtensions = ['.js'],
   maxFileLineRules = [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
@@ -100,6 +104,12 @@ function writeConfig(root, {
           include: fileHeaderInclude,
           exclude: fileHeaderExclude,
           extensions: fileHeaderExtensions,
+        },
+        functionDocs: {
+          enabled: functionDocsEnabled,
+          include: functionDocsInclude,
+          exclude: functionDocsExclude,
+          extensions: functionDocsExtensions,
         },
         filePlacement: {
           enabled: filePlacementEnabled,
@@ -253,6 +263,54 @@ test('根据 Git 记录同步暂存文件头并保留未暂存内容', async (co
 
   const worktree = normalizeEol(readFileSync(filePath, 'utf8'));
   assert.match(worktree, /@LastEditor: second editor/);
+  assert.match(worktree, /const localOnly = true;/);
+});
+
+test('仅同步暂存函数文档并保留未暂存内容', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    functionDocsEnabled: true,
+    functionDocsInclude: ['src/**'],
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, 'src'), { recursive: true });
+  const filePath = path.join(root, 'src', 'query.js');
+  writeFileSync(filePath, 'export function query(userId) {\n  return userId;\n}\n');
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'test: baseline']);
+
+  writeFileSync(
+    filePath,
+    [
+      'export function query(userId, options) {',
+      "  if (!userId) throw Error('缺少用户 ID');",
+      '  return { userId, options };',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  git(root, ['add', 'src/query.js']);
+  writeFileSync(
+    filePath,
+    [
+      'export function query(userId, options) {',
+      "  if (!userId) throw Error('缺少用户 ID');",
+      '  return { userId, options };',
+      '}',
+      'const localOnly = true;',
+      '',
+    ].join('\n'),
+  );
+
+  assert.equal(await runPreCommit(root), 0);
+  const staged = normalizeEol(git(root, ['show', ':src/query.js']));
+  assert.match(staged, /@param userId\n/);
+  assert.match(staged, /@param options\n/);
+  assert.match(staged, /@returns\n/);
+  assert.doesNotMatch(staged, /localOnly/);
+
+  const worktree = normalizeEol(readFileSync(filePath, 'utf8'));
+  assert.match(worktree, /@param options/);
   assert.match(worktree, /const localOnly = true;/);
 });
 

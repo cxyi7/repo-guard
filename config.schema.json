@@ -944,6 +944,72 @@
             }
           }
         },
+        "functionDocs": {
+          "type": "object",
+          "description": "按函数签名同步暂存 JavaScript、TypeScript 和 Vue script 中的 JSDoc 参数与返回标签；默认关闭，不生成业务说明。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否在 pre-commit 的 lint-staged 隔离环境中同步函数文档。"
+            },
+            "include": {
+              "type": "array",
+              "minItems": 1,
+              "default": [
+                "**/*"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；文件至少命中一项才进入函数文档同步范围。"
+            },
+            "exclude": {
+              "type": "array",
+              "default": [
+                "**/*.d.ts",
+                "**/*.min.js",
+                "**/generated/**",
+                "**/*.spec.*",
+                "**/*.test.*"
+              ],
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "仓库相对 glob；排除优先级高于 include，默认跳过声明文件、压缩产物、生成目录和测试文件。"
+            },
+            "extensions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                ".vue",
+                ".js",
+                ".jsx",
+                ".ts",
+                ".tsx",
+                ".mjs",
+                ".cjs"
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  ".vue",
+                  ".js",
+                  ".jsx",
+                  ".ts",
+                  ".tsx",
+                  ".mjs",
+                  ".cjs"
+                ]
+              },
+              "description": "允许同步函数文档的扩展名白名单；Vue 文件只处理内联 script 和 script setup。"
+            }
+          }
+        },
         "filePlacement": {
           "type": "object",
           "description": "Configurable staged and full-project file location policy.",

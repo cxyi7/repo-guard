@@ -181,6 +181,66 @@ const VOID_ELEMENTS = new Set([
 ]);
 const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'textarea', 'title']);
 
+function findTemplateClosingTag(source, openingTag) {
+  let depth = 1;
+  let cursor = openingTag.end;
+  while (cursor < source.length) {
+    const tagStart = source.indexOf('<', cursor);
+    const mustacheStart = source.indexOf('{{', cursor);
+    if (mustacheStart !== -1 && (tagStart === -1 || mustacheStart < tagStart)) {
+      cursor = skipMustache(source, mustacheStart);
+      continue;
+    }
+    if (tagStart === -1) return null;
+    const tag = readTag(source, tagStart);
+    if (!tag) {
+      cursor = tagStart + 1;
+      continue;
+    }
+    cursor = tag.end;
+    if (tag.type === 'comment') continue;
+    if (tag.name === 'template') {
+      if (tag.closing) depth -= 1;
+      else if (!tag.selfClosing) depth += 1;
+      if (depth === 0) return { end: tag.end, start: tag.start };
+      continue;
+    }
+    if (!tag.closing && !tag.selfClosing && RAW_TEXT_ELEMENTS.has(tag.name)) {
+      const closing = findRawClosingTagMatch(source, tag.name, tag.end);
+      cursor = closing?.end ?? source.length;
+    }
+  }
+  return null;
+}
+
+export function findVueScriptBlocks(source) {
+  const blocks = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const tagStart = source.indexOf('<', cursor);
+    if (tagStart === -1) break;
+    const tag = readTag(source, tagStart);
+    if (!tag) {
+      cursor = tagStart + 1;
+      continue;
+    }
+    cursor = tag.end;
+    if (tag.type === 'comment' || tag.closing || tag.selfClosing) continue;
+    const closing = tag.name === 'template'
+      ? findTemplateClosingTag(source, tag)
+      : findRawClosingTagMatch(source, tag.name, tag.end);
+    if (tag.name === 'script') {
+      blocks.push({
+        attributes: tagAttributes(source, tag),
+        contentEnd: closing?.start ?? source.length,
+        contentStart: tag.end,
+      });
+    }
+    cursor = closing?.end ?? source.length;
+  }
+  return blocks;
+}
+
 function findRootTemplateOpening(source) {
   let cursor = 0;
   while (cursor < source.length) {
