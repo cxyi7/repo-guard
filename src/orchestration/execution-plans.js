@@ -28,6 +28,7 @@ export const ciPolicyPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },
     'security.vue-unsafe-html',
     'security.vue-target-blank',
@@ -57,6 +58,7 @@ export const ciFullPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },
     'security.vue-unsafe-html',
     'security.vue-target-blank',

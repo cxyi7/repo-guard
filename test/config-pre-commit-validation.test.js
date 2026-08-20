@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -15,6 +16,7 @@ const CONFIG_PATH = 'repo-guard.config.json';
 
 test('applies staged quality defaults when pre-commit configuration is omitted', () => {
   assert.deepEqual(validatePreCommitConfiguration({}, CONFIG_PATH), {
+    asyncResourceCleanup: DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG,
     fileHeader: DEFAULT_FILE_HEADER_CONFIG,
     filePlacement: DEFAULT_FILE_PLACEMENT_CONFIG,
     functionDocs: DEFAULT_FUNCTION_DOC_CONFIG,
@@ -29,6 +31,7 @@ test('delegates staged quality settings to their domain validators', () => {
   const preCommit = validatePreCommitConfiguration({
     preCommit: {
       eslint: { enabled: false },
+      asyncResourceCleanup: { enabled: true },
       fileHeader: { enabled: true },
       functionDocs: { enabled: true },
       prettier: { enabled: false },
@@ -39,6 +42,7 @@ test('delegates staged quality settings to their domain validators', () => {
   }, CONFIG_PATH);
 
   assert.equal(preCommit.eslint.enabled, false);
+  assert.equal(preCommit.asyncResourceCleanup.enabled, true);
   assert.equal(preCommit.fileHeader.enabled, true);
   assert.equal(preCommit.functionDocs.enabled, true);
   assert.equal(preCommit.prettier.enabled, false);

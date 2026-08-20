@@ -13,6 +13,7 @@ import {
   DEFAULT_CI_PIPELINE_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
+  DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_COMPONENT_INTERACTION_CONFIG,
@@ -146,6 +147,19 @@ function cloneFunctionDocConfig(value = {}) {
   };
 }
 
+function cloneAsyncResourceCleanupConfig(value = {}) {
+  return {
+    ...DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG.exclude)],
+    extensions: [...(value.extensions ?? DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG.extensions)],
+    requestFunctions: [
+      ...(value.requestFunctions ?? DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG.requestFunctions),
+    ],
+  };
+}
+
 function cloneUnitTestConfig(value = {}) {
   const mappings = value.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
   const coverage = value.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
@@ -239,6 +253,7 @@ export function createStarterConfig({
     },
     unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
     preCommit: {
+      asyncResourceCleanup: cloneAsyncResourceCleanupConfig(),
       fileHeader: cloneFileHeaderConfig(),
       functionDocs: cloneFunctionDocConfig(),
       filePlacement: cloneFilePlacementConfig(),
@@ -361,6 +376,7 @@ export function migrateProjectConfig(root, {
     unitTest: cloneUnitTestConfig(prepared.unitTest),
     preCommit: {
       ...preCommit,
+      asyncResourceCleanup: cloneAsyncResourceCleanupConfig(preCommit.asyncResourceCleanup),
       fileHeader: cloneFileHeaderConfig(preCommit.fileHeader),
       functionDocs: cloneFunctionDocConfig(preCommit.functionDocs),
       filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),

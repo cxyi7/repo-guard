@@ -14,6 +14,7 @@ import {
 } from '../../policies/max-file-lines.js';
 import { selectFileHeaderFiles } from '../../policies/file-header.js';
 import { selectFunctionDocumentationFiles } from '../../policies/function-documentation.js';
+import { selectAsyncResourceCleanupFiles } from '../../policies/async-resource-cleanup.js';
 import { collectStagedChanges } from '../../git/change-collection.js';
 import {
   createChangeSet,
@@ -82,6 +83,11 @@ export async function runQualityExecution({ root, files, config }) {
   const filePlacementConfig = config.preCommit.filePlacement;
   const fileHeaderConfig = config.preCommit.fileHeader;
   const functionDocsConfig = config.preCommit.functionDocs;
+  const asyncResourceCleanupConfig = config.preCommit.asyncResourceCleanup;
+  const asyncResourceFiles = selectAsyncResourceCleanupFiles(
+    normalizedFiles,
+    asyncResourceCleanupConfig,
+  ).map(({ absolute }) => absolute);
   const dynamicCodeFiles = normalizedFiles
     .filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue)$/i.test(relative))
     .map(({ absolute }) => absolute);
@@ -109,6 +115,7 @@ export async function runQualityExecution({ root, files, config }) {
     eslintFiles,
     prettierFiles,
     maxFileLineFiles,
+    asyncResourceFiles,
     dynamicCodeFiles,
     vueSecurityFiles,
   );
@@ -199,6 +206,15 @@ export async function runQualityExecution({ root, files, config }) {
             const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: eslintFiles }));
             return await gate.run({ ...stepContext, plan: gatePlan });
           }
+        case 'quality.vue-async-resource-cleanup':
+          if (asyncResourceFiles.length > 0) {
+            const gatePlan = await gate.plan(Object.freeze({
+              ...stepContext,
+              files: asyncResourceFiles,
+            }));
+            return await gate.run({ ...stepContext, plan: gatePlan });
+          }
+          break;
         case 'security.dynamic-code':
           if (dynamicCodeFiles.length > 0) {
             const gatePlan = await gate.plan(stepContext);

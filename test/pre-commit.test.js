@@ -72,6 +72,10 @@ function writeConfig(root, {
   functionDocsInclude = ['**/*'],
   functionDocsExclude = [],
   functionDocsExtensions = ['.js'],
+  asyncResourceCleanupEnabled = false,
+  asyncResourceCleanupInclude = ['src/**'],
+  asyncResourceCleanupExclude = [],
+  asyncResourceCleanupExtensions = ['.vue', '.js', '.ts'],
   maxFileLineRules = [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.js', maxLines: 1000 },
@@ -99,6 +103,14 @@ function writeConfig(root, {
         bannedPackages: [],
       },
       preCommit: {
+        asyncResourceCleanup: {
+          enabled: asyncResourceCleanupEnabled,
+          include: asyncResourceCleanupInclude,
+          exclude: asyncResourceCleanupExclude,
+          extensions: asyncResourceCleanupExtensions,
+          timeoutThresholdMs: 1000,
+          requestFunctions: ['fetch'],
+        },
         fileHeader: {
           enabled: fileHeaderEnabled,
           include: fileHeaderInclude,
@@ -376,6 +388,23 @@ test('still blocks parseable eval when the project disables ESLint', async (cont
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':runtime.js'])), unsafe);
+});
+
+test('启用异步资源清理后以 error 阻断未释放资源', async (context) => {
+  const root = createRepository({
+    enabled: false,
+    asyncResourceCleanupEnabled: true,
+  });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+
+  mkdirSync(path.join(root, 'src'), { recursive: true });
+  const source = '<script setup>\nconst timer = setInterval(refresh, 1000);\n</script>\n';
+  writeFileSync(path.join(root, 'src', 'App.vue'), source);
+  git(root, ['add', 'src/App.vue']);
+
+  assert.equal(await runPreCommit(root), 1);
+  assert.equal(normalizeEol(git(root, ['show', ':src/App.vue'])), source);
 });
 
 test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {
