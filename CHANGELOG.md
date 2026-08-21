@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.15.0
+
+- 新增本机 k6 手动接口压测外部门禁 runner，支持受控 `ramping-vus` 与 `constant-arrival-rate` 负载配置，并按 p95、p99、请求错误率、检查成功率和丢弃迭代形成 `repo-guard-json-v1` 阈值决策。
+- 强制 `externalGates` 只能使用 `environments: ["manual"]`，拒绝常见自动化环境标记；该能力不注册官方 Gate、不进入固定 Execution Plan，也不进入 pre-commit、pre-push、CI、发布、受保护构建或打包流程。
+- 新增 HTTPS 精确主机白名单与“主机、配置档、执行器、负载、时长、读写模式”逐次确认，使用受控入口覆盖 k6 `options` 和 `handleSummary`，按场景子指标隔离正式负载与 setup/teardown 流量，过滤子进程环境并关闭使用情况上报、云端运行和自动扩展解析。
+- 默认禁止写请求；显式授权写压测时强制 `runId` 数据隔离和 `teardown`。新增脚本 AST 校验、报告路径保护、k6 机器摘要校验、中文 HTML、独立配置 Schema，以及通过、阈值违规和执行错误的伪 k6 回归测试。
+
 ## 1.14.0
 
 - 新增 Axios 手动接口性能外部门禁 runner，复用消费项目提供的请求客户端工厂和真实拦截链路，按场景统计平均耗时、p50、p90、p95、p99、最大耗时与错误率，并生成 `repo-guard-json-v1` 和中文 HTML 报告。

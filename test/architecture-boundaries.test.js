@@ -146,6 +146,7 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'config.schema.json',
   'external-report.schema.json',
   'api-performance-config.schema.json',
+  'k6-load-config.schema.json',
   'gate-result.schema.json',
   'CHANGELOG.md',
   'README.md',
@@ -160,6 +161,7 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
   'docs',
   'external-report.schema.json',
   'gate-result.schema.json',
+  'k6-load-config.schema.json',
   'package.json',
   'scripts',
   'src',
@@ -2498,6 +2500,7 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     './config.schema.json': './config.schema.json',
     './external-report.schema.json': './external-report.schema.json',
     './api-performance-config.schema.json': './api-performance-config.schema.json',
+    './k6-load-config.schema.json': './k6-load-config.schema.json',
     './gate-result.schema.json': './gate-result.schema.json',
   });
 
@@ -2943,4 +2946,34 @@ test('keeps Axios performance execution behind a manual-only external runner', (
   assert.match(commandSource, /AUTOMATION_ENVIRONMENT_MARKERS/);
   assert.doesNotMatch(registrySource, /api-performance/);
   assert.doesNotMatch(plansSource, /api-performance/);
+});
+
+test('keeps k6 load execution behind a manual-only external runner', () => {
+  const integrationRoot = path.join(SOURCE_ROOT, 'integrations', 'k6');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'testing', 'k6-external-runner.js');
+  const commandPath = path.join(SOURCE_ROOT, 'orchestration', 'cli', 'k6-runner.js');
+  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates', 'registry.js'), 'utf8');
+  const plansSource = readFileSync(
+    path.join(SOURCE_ROOT, 'orchestration', 'execution-plans.js'),
+    'utf8',
+  );
+  const gateSource = readFileSync(gatePath, 'utf8');
+  const commandSource = readFileSync(commandPath, 'utf8');
+
+  for (const file of [
+    'configuration.js',
+    'execution.js',
+    'project.js',
+    'report.js',
+    'script-validation.js',
+  ]) {
+    assert.equal(existsSync(path.join(integrationRoot, file)), true);
+  }
+  assert.match(gateSource, /integrations\/k6/);
+  assert.match(commandSource, /gates\/testing\/k6-external-runner\.js/);
+  assert.doesNotMatch(commandSource, /integrations\/k6/);
+  assert.match(commandSource, /gate\.environments\.length !== 1/);
+  assert.match(commandSource, /AUTOMATION_ENVIRONMENT_MARKERS/);
+  assert.doesNotMatch(registrySource, /k6-load/);
+  assert.doesNotMatch(plansSource, /k6-load/);
 });
