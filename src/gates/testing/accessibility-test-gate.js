@@ -20,7 +20,7 @@ export async function runAccessibilityTestGate({
     return createGateResult({
       gateId: ACCESSIBILITY_TEST_GATE_ID,
       status: 'configuration-error',
-      summary: `Accessibility test setup 有 ${inspection.problems.length} problem(s)`,
+      summary: `无障碍测试设置存在 ${inspection.problems.length} 个问题`,
       error: configurationError(
         'accessibility-test/invalid-setup',
         '无障碍测试设置无效',
@@ -65,10 +65,10 @@ export async function runAccessibilityTestGate({
       return createGateResult({
         gateId: ACCESSIBILITY_TEST_GATE_ID,
         status: 'execution-error',
-        summary: `Accessibility tests 超过 ${config.timeoutMs}ms`,
+        summary: `无障碍测试超过 ${config.timeoutMs}ms`,
         error: executionError(
           'accessibility-test/timeout',
-          `Accessibility tests 超过 ${config.timeoutMs}ms`,
+          `无障碍测试超过 ${config.timeoutMs}ms`,
           { cause: result.error },
         ),
         diagnostics,
@@ -76,7 +76,7 @@ export async function runAccessibilityTestGate({
     }
     const error = executionError(
       'accessibility-test/process-start-failed',
-      `无法运行 accessibility tests: ${result.error.message}`,
+      `无法运行无障碍测试：${result.error.message}`,
       { cause: result.error },
     );
     return createGateResult({

@@ -61,10 +61,10 @@ export async function runUnitTestGate({
       return createGateResult({
         gateId: 'quality.unit-test',
         status: 'execution-error',
-        summary: `Unit tests 超过 ${config.timeoutMs}ms`,
+        summary: `单元测试超过 ${config.timeoutMs}ms`,
         error: executionError(
           'unit-test/timeout',
-          `Unit tests 超过 ${config.timeoutMs}ms`,
+          `单元测试超过 ${config.timeoutMs}ms`,
           { cause: result.error },
         ),
         diagnostics,
@@ -72,7 +72,7 @@ export async function runUnitTestGate({
     }
     const error = executionError(
       'unit-test/process-start-failed',
-      `无法运行 unit tests: ${result.error.message}`,
+      `无法运行单元测试：${result.error.message}`,
       { cause: result.error },
     );
     return createGateResult({

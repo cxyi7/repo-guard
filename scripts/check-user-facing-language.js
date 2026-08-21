@@ -14,11 +14,11 @@ const baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
 const result = compareLanguageDebt(candidates, baseline);
 
 if (result.additions.length > 0) {
-  console.error('发现新增的纯英文用户文案。警告、错误、状态和修复说明必须使用中文：');
+  console.error('发现新增的英文或中英混合用户文案。警告、错误、状态和修复说明必须使用中文：');
   for (const addition of result.additions) {
     console.error(`- ${addition.file}:${addition.line} [${addition.context}] ${addition.text}`);
   }
-  console.error('请将文案改为中文；不要扩大或重新生成历史迁移基线。');
+  console.error('请翻译说明性英文；稳定机器标识、命令、路径、包名和第三方规则 ID 保持原值。不要扩大或重新生成历史迁移基线。');
   process.exit(1);
 }
 

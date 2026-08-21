@@ -35,8 +35,8 @@ export async function runTypeCheckGate({
     const error = executionError(
       execution.timedOut ? 'typecheck/timeout' : 'typecheck/process-start-failed',
       execution.timedOut
-        ? `TypeScript type check 超过 ${config.timeoutMs}ms`
-        : `无法运行 TypeScript type check: ${execution.error.message}`,
+        ? `TypeScript 类型检查超过 ${config.timeoutMs}ms`
+        : `无法运行 TypeScript 类型检查：${execution.error.message}`,
       { cause: execution.error },
     );
     return createGateResult({

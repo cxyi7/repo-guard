@@ -139,7 +139,7 @@ const packageGate = defineGate({
     };
     return result.findings.length === 0
       ? passedResult('release.package', `包 ${result.packageEntry.name}@${result.packageEntry.version} 已满足发布条件`, { metrics, durationMs })
-      : violationResult('release.package', `Package release metadata 有 ${result.findings.length} 项违规`, { findings: result.findings, metrics, durationMs });
+      : violationResult('release.package', `包发布元数据有 ${result.findings.length} 项违规`, { findings: result.findings, metrics, durationMs });
   },
 });
 

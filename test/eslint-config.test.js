@@ -128,7 +128,7 @@ test('rejects invalid consuming integrations', () => {
         parser: {},
       },
     }),
-    /typescript-eslint plugin/,
+    /typescript-eslint 插件/,
   );
 });
 

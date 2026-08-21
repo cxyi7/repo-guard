@@ -2,17 +2,17 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.12.0`
+- 当前版本：`1.12.1`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
-- 用户可见状态、警告、错误和修复说明：简体中文
+- 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
 
 详细结构和完整能力说明见 [项目结构与功能清单](docs/project-structure-and-feature-inventory.md)。
 
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.12.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.12.1
 npx repo-guard init
 npx repo-guard doctor
 ```
