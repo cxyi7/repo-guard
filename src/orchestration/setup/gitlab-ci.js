@@ -343,7 +343,7 @@ export function installGitLabCi(root, {
   if (pipeline.enabled && stage && stage !== '.pre') {
     throw configurationError(
       'gitlab-ci/managed-pipeline-gate-stage',
-      '启用托管应用交付后，repo_guard 门禁固定使用 .pre stage',
+      '启用托管应用交付后，repo_guard 门禁固定使用 .pre 阶段',
     );
   }
   const missingScripts = missingPipelineScripts(root, pipeline);

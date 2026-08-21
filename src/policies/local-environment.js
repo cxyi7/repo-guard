@@ -104,7 +104,7 @@ function parseValue(rawValue, lineNumber) {
   if (value.at(-1) !== quote) {
     throw localEnvironmentError(
       'local-env/unterminated-quoted-value',
-      `${LOCAL_ENV_FILE} line ${lineNumber} 有 an unterminated quoted value`,
+      `${LOCAL_ENV_FILE} 第 ${lineNumber} 行的引号值未闭合`,
       lineNumber,
     );
   }

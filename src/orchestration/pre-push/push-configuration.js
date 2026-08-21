@@ -51,8 +51,8 @@ function assertExactPushSnapshot(root, revision) {
   if (!head || !pushedCommit || head !== pushedCommit) {
     throw rangeError('pre-push/snapshot-mismatch', [
       '预推送质量门禁只能验证当前检出的 HEAD。',
-      `Pushed commit: ${(pushedCommit || revision).slice(0, 12)}; `
-      + `checked-out HEAD: ${head.slice(0, 12) || 'unknown'}.`,
+      `待推送提交：${(pushedCommit || revision).slice(0, 12)}；`
+      + `当前检出的 HEAD：${head.slice(0, 12) || 'unknown'}。`,
       '请检出待推送分支，并单独推送该分支。',
     ].join('\n'));
   }

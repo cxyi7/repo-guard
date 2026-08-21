@@ -93,7 +93,7 @@ function vuePolicy(vue, typescript) {
     ? { parserOptions: { parser: typescript.parser } }
     : undefined;
   if (typescript && !typescript.parser) {
-    throw configurationError('eslint/typescript-parser-missing', 'repo-guard ESLint 预设要求安装 typescript-eslint parser');
+    throw configurationError('eslint/typescript-parser-missing', 'repo-guard ESLint 预设要求安装 typescript-eslint 解析器');
   }
 
   return [{
@@ -116,7 +116,7 @@ function typescriptPolicy(typescript) {
     return [];
   }
   if (!typescript.plugin) {
-    throw configurationError('eslint/typescript-plugin-missing', 'repo-guard ESLint 预设要求安装 typescript-eslint plugin');
+    throw configurationError('eslint/typescript-plugin-missing', 'repo-guard ESLint 预设要求安装 typescript-eslint 插件');
   }
 
   return [{

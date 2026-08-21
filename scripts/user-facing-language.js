@@ -9,6 +9,100 @@ const HAN_TEXT = /\p{Script=Han}/u;
 const LATIN_TEXT = /[A-Za-z]/u;
 const MACHINE_TEXT = /^(?=[A-Za-z0-9_./:<>{}@-]*[./:_<>{}@-])[A-Za-z0-9_./:<>{}@-]+$/u;
 const MACHINE_VALUES = new Set(['build', 'eslint', 'prettier', 'stylelint']);
+const MACHINE_COMMAND = /\b(?:npm\s+run\s+[A-Za-z0-9:_-]+|npm\s+pkg\s+(?:delete|get|set)\s+[A-Za-z0-9._:-]+|npm\s+(?:audit|login|pack|publish|test|whoami)|npx\s+[A-Za-z0-9@/._-]+|node\s+[A-Za-z0-9./_:-]+|git\s+[A-Za-z-]+|repo-guard\s+[A-Za-z-]+)(?:\s+--?[A-Za-z0-9][A-Za-z0-9=./:_-]*)*/giu;
+const MACHINE_FRAGMENT = /(?:\$\{…\}|https?:\/\/\S+|`[^`]*`|\b[A-Za-z_][\w-]*=(?:"[^"]*"|'[^']*'|[A-Za-z_][\w-]*)|(?:\.?[A-Za-z0-9_{}<>@]+)(?:[./:_@][A-Za-z0-9_{}<>@-]+)+)/gu;
+const ALLOWED_LATIN_WORDS = new Set([
+  'api',
+  'artifact',
+  'ast',
+  'authorization',
+  'babel',
+  'canceled',
+  'ci',
+  'cookie',
+  'css',
+  'decision',
+  'dependency-cruiser',
+  'diagnostic',
+  'doctor',
+  'dom',
+  'error',
+  'evidence',
+  'eslint',
+  'failed',
+  'finding',
+  'gate',
+  'gateresult',
+  'git',
+  'github',
+  'gitlab',
+  'head',
+  'hook',
+  'html',
+  'id',
+  'issue',
+  'javascript',
+  'job',
+  'json',
+  'kind',
+  'lcov',
+  'level',
+  'lighthouse',
+  'location',
+  'message',
+  'node',
+  'npm',
+  'npx',
+  'null',
+  'prettier',
+  'promise',
+  'remediation',
+  'runner',
+  'schema',
+  'script',
+  'scripts',
+  'severity',
+  'stderr',
+  'stdout',
+  'stream',
+  'stylelint',
+  'success',
+  'token',
+  'test',
+  'typescript',
+  'undefined',
+  'unknown',
+  'url',
+  'utils',
+  'vue',
+  'webhook',
+  'yaml',
+]);
+const UNTRANSLATED_PROSE_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'are',
+  'cannot',
+  'configuration',
+  'has',
+  'have',
+  'invalid',
+  'is',
+  'line',
+  'missing',
+  'must',
+  'not',
+  'or',
+  'required',
+  'should',
+  'the',
+  'unterminated',
+  'value',
+  'values',
+  'was',
+  'were',
+]);
 const USER_TEXT_PROPERTIES = new Set([
   'summary',
   'message',
@@ -37,12 +131,12 @@ const SECOND_ARGUMENT_MESSAGE_CALLS = new Set([
   'skippedResult',
   'violationResult',
 ]);
-  const FIRST_ARGUMENT_MESSAGE_CALLS = new Set([
-    'configValidationError',
-    'ready',
-    'readyGateSetup',
-    'writeConsoleMessage',
-  ]);
+const FIRST_ARGUMENT_MESSAGE_CALLS = new Set([
+  'configValidationError',
+  'ready',
+  'readyGateSetup',
+  'writeConsoleMessage',
+]);
 const MESSAGE_COLLECTIONS = new Set([
   'checks',
   'errors',
@@ -121,13 +215,34 @@ function staticFragments(node) {
   return [];
 }
 
-function isEnglishOnlyUserText(text) {
+function isMachineIdentifier(word) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(word)
+    && (/[A-Z]/u.test(word.slice(1)) || /[_$]/u.test(word));
+}
+
+function hasUntranslatedEnglishUserText(text) {
   const normalized = text.replace(/\s+/gu, ' ').trim();
-  return normalized !== ''
-    && LATIN_TEXT.test(normalized)
-    && !HAN_TEXT.test(normalized)
-    && !MACHINE_TEXT.test(normalized)
-    && !MACHINE_VALUES.has(normalized);
+  if (normalized === '' || !LATIN_TEXT.test(normalized)
+    || MACHINE_TEXT.test(normalized) || MACHINE_VALUES.has(normalized)) {
+    return false;
+  }
+  if (!HAN_TEXT.test(normalized)) return true;
+
+  const prose = normalized
+    .replace(MACHINE_COMMAND, ' ')
+    .replace(MACHINE_FRAGMENT, ' ');
+  const phrases = prose.match(
+    /[A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*)*/gu,
+  ) ?? [];
+  return phrases.some((phrase) => {
+    const words = phrase.split(/\s+/u);
+    if (words.some((word) => UNTRANSLATED_PROSE_WORDS.has(word.toLowerCase()))) {
+      return true;
+    }
+    return words.filter((word) => (
+      !ALLOWED_LATIN_WORDS.has(word.toLowerCase()) && !isMachineIdentifier(word)
+    )).length >= 2;
+  });
 }
 
 function candidateFingerprint({ file, context, text }) {
@@ -139,7 +254,7 @@ function candidateFingerprint({ file, context, text }) {
 function addCandidates(candidates, { file, node, context }) {
   for (const text of staticFragments(node)) {
     const normalized = text.replace(/\s+/gu, ' ').trim();
-    if (!isEnglishOnlyUserText(normalized)) continue;
+    if (!hasUntranslatedEnglishUserText(normalized)) continue;
     candidates.push(Object.freeze({
       file,
       line: node?.loc?.start?.line ?? 1,

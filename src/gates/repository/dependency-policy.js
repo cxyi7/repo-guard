@@ -251,7 +251,7 @@ function compareLockfile(packageJson, lockfile, lockSource) {
       findings.push({
         ...declarationLocation(lockSource, section, name),
         dependency: name,
-        message: `package-lock root ${section}.${name} 与 package.json 不匹配 `
+        message: `package-lock 根节点 ${section}.${name} 与 package.json 不匹配 `
           + `（预期=${expected[name] ?? '<absent>'}，实际=${actual[name] ?? '<absent>'})`,
         path: 'package-lock.json',
         rule: 'dependencies/lockfile-mismatch',

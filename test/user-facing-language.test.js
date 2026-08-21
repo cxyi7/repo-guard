@@ -20,7 +20,7 @@ function candidate(fingerprint, text = 'English error') {
   });
 }
 
-test('finds English primary output while allowing Chinese text and machine identifiers', (context) => {
+test('finds English and mixed-language primary output while allowing machine identifiers', (context) => {
   const root = mkdtempSync(path.join(tmpdir(), 'repo-guard-language-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src'));
@@ -28,6 +28,11 @@ test('finds English primary output while allowing Chinese text and machine ident
     const machineRuleId = 'eslint/no-unused-vars';
     const chinese = { message: '变量未被使用。', ruleId: machineRuleId };
     const machineSteps = { steps: ['quality.build', 'read-only'] };
+    const machineTerms = { message: '请运行 npm run check，并检查 GitLab CI、GateResult、configPath、KEY=VALUE 和 target="_blank"。' };
+    const mixedLine = { message: '.env.config line 3 有 an unterminated quoted value' };
+    const mixedPhrase = { expected: '配置 has an unterminated quoted value' };
+    const mixedWord = { remediation: '配置 invalid，请修正。' };
+    const proseAfterCommand = { message: '请运行 npm run check after fixing the error' };
     const localizedChoice = { summary: ready ? '配置有效' : 'Conditional failure' };
     const english = { summary: 'Validation failed' };
     const fallback = toRepoGuardError(error?.message ?? 'Fallback failure', {});
@@ -39,6 +44,10 @@ test('finds English primary output while allowing Chinese text and machine ident
   assert.deepEqual(
     collectEnglishUserFacingText(root).map(({ context: source, text }) => ({ source, text })),
     [
+      { source: 'property:message', text: '.env.config line 3 有 an unterminated quoted value' },
+      { source: 'property:expected', text: '配置 has an unterminated quoted value' },
+      { source: 'property:remediation', text: '配置 invalid，请修正。' },
+      { source: 'property:message', text: '请运行 npm run check after fixing the error' },
       { source: 'property:summary', text: 'Conditional failure' },
       { source: 'property:summary', text: 'Validation failed' },
       { source: 'call:toRepoGuardError:fallback', text: 'Fallback failure' },
