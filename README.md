@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.13.0`
+- 当前版本：`1.14.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.13.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.14.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -73,6 +73,7 @@ npx repo-guard doctor
 - Vue 组件 mount、真实交互和交互后断言检查。
 - 全局行、语句、函数、分支覆盖率和 Git 变更行覆盖率。
 - Stryker 10.x 变异测试、中文报告和构建前硬门禁。
+- 复用项目 Axios 客户端的手动接口性能外部门禁，按 p95、p99 和错误率生成中文报告。
 - axe 组件与 E2E 可访问性测试门禁。
 - dependency-cruiser 依赖架构门禁。
 - 独立项目构建门禁。
@@ -601,6 +602,108 @@ repo-guard external project.api-contract
 
 外部门禁不进入 pre-commit、pre-push 或 CI policy，也不能插入或重排官方计划。它们仍然只在可信的 GitLab 受保护分支环境中运行；`ci.gatePolicy` 不会绕过该安全限制。
 
+### Axios 手动接口性能外部门禁
+
+`1.14.0` 提供外部门禁专用的 Axios 性能 runner。它不是官方 Gate，不进入 Registry 固定计划；只有消费项目显式执行 `repo-guard external project.api-performance` 时，现有外部门禁才会调用项目精确 npm script。runner 同时要求 `environments` 只能是 `["manual"]`，并拒绝在带有常见 CI、GitLab CI、GitHub Actions、Azure Pipelines 或 Jenkins 环境标记的进程中运行。
+
+消费项目配置：
+
+```json
+{
+  "externalGates": [
+    {
+      "id": "project.api-performance",
+      "enabled": true,
+      "environments": ["manual"],
+      "script": "test:api-performance:runner",
+      "timeoutMs": 300000,
+      "report": {
+        "format": "repo-guard-json-v1",
+        "path": "reports/api-performance/axios-gate.json"
+      }
+    }
+  ]
+}
+```
+
+```json
+{
+  "scripts": {
+    "test:api-performance:runner": "repo-guard api-performance-runner --gate-id project.api-performance --config test/performance/api-performance.config.json",
+    "guard:api-performance": "repo-guard external project.api-performance"
+  }
+}
+```
+
+`test/performance/api-performance.config.json`：
+
+```json
+{
+  "$schema": "../../node_modules/@cxyi7/repo-guard/api-performance-config.schema.json",
+  "target": {
+    "baseUrlEnv": "REPO_GUARD_PERF_BASE_URL",
+    "allowedHosts": ["api-test.example.com"],
+    "confirmationEnv": "REPO_GUARD_PERF_CONFIRM_HOST"
+  },
+  "client": {
+    "module": "test/performance/axios-client.mjs"
+  },
+  "scenarios": [
+    "test/performance/scenarios/current-user.perf.mjs"
+  ],
+  "execution": {
+    "warmupIterations": 2,
+    "iterations": 20,
+    "concurrency": 1
+  },
+  "thresholds": {
+    "p95Ms": 500,
+    "p99Ms": 1000,
+    "errorRate": 0
+  },
+  "safety": {
+    "allowWrites": false
+  }
+}
+```
+
+项目提供 Node.js 可加载的客户端工厂，以复用业务 Axios 工厂、拦截器、Token 注入和错误处理；repo-guard 不安装第二份 Axios，也不修改生产实例：
+
+```js
+import { createRequestClient } from '../../src/api/request-factory.js';
+
+export function createPerformanceClient({ baseURL }) {
+  return createRequestClient({
+    baseURL,
+    getToken: () => process.env.REPO_GUARD_PERF_TOKEN,
+  });
+}
+```
+
+场景模块只提供稳定标签和真实调用，标签不得包含查询参数或凭据：
+
+```js
+export default {
+  name: '查询当前用户',
+  method: 'GET',
+  pathLabel: '/user/current',
+  async run({ client }) {
+    await client.get('/user/current');
+  },
+};
+```
+
+执行前必须显式确认目标：
+
+```powershell
+$env:REPO_GUARD_PERF_BASE_URL = 'https://api-test.example.com/'
+$env:REPO_GUARD_PERF_CONFIRM_HOST = 'api-test.example.com'
+$env:REPO_GUARD_PERF_TOKEN = '<仅用于测试环境的临时凭据>'
+npm run guard:api-performance
+```
+
+runner 只接受 HTTPS、精确主机白名单和本次确认值。默认只允许 `GET`、`HEAD`、`OPTIONS`；`POST`、`PUT`、`PATCH`、`DELETE` 必须同时启用全局 `safety.allowWrites`、场景 `allowWrites: true` 并提供 `cleanup`。清理失败、预热失败、配置错误或报告错误使用退出码 `1` 且不生成主报告；阈值不满足生成 `violation` 报告并使用退出码 `2`；通过使用退出码 `0`。报告目录必须被 `.gitignore` 忽略，最终生成协议 JSON 和 `axios-report.html` 中文报告，二者仍由通用外部门禁执行新鲜度、路径、Git 跟踪状态和敏感信息复检。
+
 ## 仓库目录
 
 ```text
@@ -631,6 +734,7 @@ repo/
 │  └─ policies/                      纯策略判定
 ├─ test/                             单元、端到端和架构边界测试
 ├─ config.schema.json                项目配置 Schema
+├─ api-performance-config.schema.json Axios 接口性能配置 Schema
 ├─ external-report.schema.json       外部门禁报告 Schema
 ├─ gate-result.schema.json           GateResult Schema
 ├─ CHANGELOG.md                      版本变化
@@ -696,6 +800,7 @@ exclusions
 
 - [gate-result.schema.json](gate-result.schema.json)
 - [external-report.schema.json](external-report.schema.json)
+- [api-performance-config.schema.json](api-performance-config.schema.json)
 
 退出码：
 

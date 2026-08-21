@@ -31,7 +31,7 @@ function gitLabEnvironment(overrides = {}) {
 }
 
 test('reads the restored repo-guard package version used by managed notification jobs', () => {
-  assert.equal(repoGuardPackageVersion(), '1.13.0');
+  assert.equal(repoGuardPackageVersion(), '1.14.0');
 });
 
 test('recognizes final GitLab success, failure, and cancellation statuses', () => {
