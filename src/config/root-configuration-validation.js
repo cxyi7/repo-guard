@@ -21,6 +21,7 @@ export function validateRootConfigurationContract(value, configPath) {
       'architecture',
       'accessibilityTest',
       'build',
+      'mutationTest',
       'lighthouse',
       'typeCheck',
       'unitTest',

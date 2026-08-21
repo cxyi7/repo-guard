@@ -101,6 +101,19 @@ function ensurePackageScripts(root) {
       packageJson.scripts[gate.packageScript] ||= `repo-guard ${gate.manualCommand}`;
     }
   }
+  const config = loadConfig(root);
+  for (const guardedBuild of config.mutationTest.guardedBuilds) {
+    const expected = `repo-guard guarded-build ${guardedBuild.script}`;
+    const current = packageJson.scripts[guardedBuild.packageScript];
+    if (!current) packageJson.scripts[guardedBuild.packageScript] = expected;
+    else if (current !== expected) {
+      writeConsoleMessage(
+        `repo-guard 警告：package.json 已存在非托管脚本 "${guardedBuild.packageScript}"；`
+        + `请将它改为 "${expected}"。`,
+        'stderr',
+      );
+    }
+  }
   packageJson.scripts['guard:enable-accessibility-test'] ||= 'repo-guard enable accessibilityTest';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
@@ -183,15 +196,24 @@ export function installHooks({
   const gitAttributes = ensureGitAttributes(root);
   const localEnvironment = ensureLocalEnvironment(root);
   let coverageDirectory = DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory;
+  let mutationReportsDirectory = null;
   try {
-    const coverage = loadConfig(root).unitTest.coverage;
+    const config = loadConfig(root);
+    const coverage = config.unitTest.coverage;
     if (coverage && typeof coverage === 'object') {
       coverageDirectory = coverage.reportsDirectory;
+    }
+    if (config.mutationTest.enabled) {
+      mutationReportsDirectory = config.mutationTest.reportsDirectory;
     }
   } catch {
     // Hook installation also supports repositories before repo-guard config exists.
   }
-  const lighthouseIgnore = ensureLighthouseIgnore(root, coverageDirectory);
+  const lighthouseIgnore = ensureLighthouseIgnore(
+    root,
+    coverageDirectory,
+    mutationReportsDirectory,
+  );
   if (updatePackageScripts) {
     ensurePackageScripts(root);
   }

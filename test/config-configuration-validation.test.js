@@ -30,6 +30,7 @@ test('assembles every normalized configuration domain in contract order', () => 
     'typeCheck',
     'accessibilityTest',
     'unitTest',
+    'mutationTest',
     'preCommit',
     'rules',
     'exclusions',

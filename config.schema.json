@@ -524,6 +524,76 @@
         }
       }
     },
+    "mutationTest": {
+      "type": "object",
+      "description": "使用消费项目安装的 Stryker 执行变异测试，生成本地中文报告，并可在指定 npm 构建脚本之前形成硬门禁。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用变异测试命令以及受保护构建编排。"
+        },
+        "configFile": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:cjs|mjs|js|json)$",
+          "default": "stryker.config.json",
+          "description": "消费项目中的 Stryker JS 或 JSON 配置文件。"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1800000,
+          "description": "单次变异测试允许执行的最长时间。"
+        },
+        "reportsDirectory": {
+          "type": "string",
+          "minLength": 9,
+          "pattern": "^reports/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$",
+          "default": "reports/mutation",
+          "description": "存放 mutation.json、中文 HTML 和可选 Stryker 原始 HTML 的专用目录。"
+        },
+        "originalHtml": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否同时生成 Stryker 原始交互 HTML 报告。"
+        },
+        "guardedBuilds": {
+          "type": "array",
+          "default": [],
+          "description": "先执行变异测试、通过后再执行指定构建脚本的通用 npm 包装入口。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["script", "packageScript"],
+            "properties": {
+              "script": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9:_-]+$",
+                "description": "测试通过后执行的原始 npm 构建脚本。"
+              },
+              "packageScript": {
+                "type": "string",
+                "pattern": "^guard:build:[A-Za-z0-9:_-]+$",
+                "description": "由 repo-guard 生成并供开发者或 CI 调用的新 npm 脚本。"
+              },
+              "timeoutMs": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 300000,
+                "description": "原始构建脚本允许执行的最长时间。"
+              },
+              "notifyOnFailure": {
+                "type": "boolean",
+                "default": true,
+                "description": "变异测试未通过时是否复用已启用的企业微信通知。"
+              }
+            }
+          }
+        }
+      }
+    },
     "lighthouse": {
       "type": "object",
       "description": "Vue Lighthouse CI runner. The consuming project owns @lhci/cli, Chrome, routes, assertions, and lighthouserc configuration.",

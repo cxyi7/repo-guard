@@ -7,6 +7,7 @@ import { validateDependencyPolicyConfiguration } from './dependency-policy-valid
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
 import { validateNotificationConfiguration } from './notification-validation.js';
+import { validateMutationTestConfiguration } from './mutation-test-validation.js';
 import { validatePreCommitConfiguration } from './pre-commit-validation.js';
 import {
   normalizeProtectedFileConfiguration,
@@ -41,6 +42,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const unitTest = validateUnitTestConfiguration(value, configPath);
 
+  const mutationTest = validateMutationTestConfiguration(value, configPath);
+
   const preCommit = validatePreCommitConfiguration(value, configPath);
 
   const { rules, exclusions } = normalizeProtectedFileConfiguration(value, configPath);
@@ -59,6 +62,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     typeCheck,
     accessibilityTest,
     unitTest,
+    mutationTest,
     preCommit,
     rules,
     exclusions,

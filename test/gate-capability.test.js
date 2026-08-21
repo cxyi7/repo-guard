@@ -262,6 +262,23 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       supportsCancellation: true,
     },
   ),
+  reviewedGateDescriptor('quality.mutation-test', ['manual'], {
+    configKey: 'mutationTest',
+    featureName: 'mutationTest',
+    featureOrder: 145,
+    defaultTimeoutMs: 1800000,
+    manualCommand: 'mutation-test',
+    manualOrder: 65,
+    doctorOrder: 55,
+    packageScript: 'guard:mutation-test',
+    requiredTools: ['@stryker-mutator/core'],
+    artifactTypes: [
+      'mutation-report-json',
+      'mutation-report-html',
+      'mutation-report-original-html',
+    ],
+    supportsCancellation: true,
+  }),
   reviewedGateDescriptor(
     'quality.accessibility-test',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],

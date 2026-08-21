@@ -20,6 +20,7 @@ import { repositoryPolicyGates } from './repository/repository-policy-gates.js';
 import { releaseReadinessGates } from './release/release-readiness-gates.js';
 import { defineExternalGate } from './testing/external-gate.js';
 import { accessibilityTestGate, unitTestGate } from './testing/platform-test-gates.js';
+import { mutationTestGate } from './testing/mutation-test-platform-gate.js';
 import { vueSecurityGates } from './security/vue-policy-gates.js';
 
 const nativePolicyGates = Object.freeze([
@@ -34,6 +35,7 @@ const platformGates = Object.freeze([
   prettierGate,
   typecheckGate,
   unitTestGate,
+  mutationTestGate,
   accessibilityTestGate,
   architectureGate,
   buildGate,

@@ -25,6 +25,7 @@ import {
   DEFAULT_FUNCTION_DOC_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
+  DEFAULT_MUTATION_TEST_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_PATH_NAMING_CONFIG,
   DEFAULT_PRETTIER_CONFIG,
@@ -202,6 +203,15 @@ function cloneUnitTestConfig(value = {}) {
   };
 }
 
+function cloneMutationTestConfig(value = {}) {
+  return {
+    ...DEFAULT_MUTATION_TEST_CONFIG,
+    ...value,
+    guardedBuilds: (value.guardedBuilds ?? DEFAULT_MUTATION_TEST_CONFIG.guardedBuilds)
+      .map((entry) => ({ ...entry })),
+  };
+}
+
 function cloneStylelintConfig(value = {}) {
   return {
     ...DEFAULT_STYLELINT_CONFIG,
@@ -262,6 +272,7 @@ export function createStarterConfig({
       enabled: typeCheckEnabled,
     },
     unitTest: cloneUnitTestConfig({ enabled: unitTestEnabled }),
+    mutationTest: cloneMutationTestConfig(),
     preCommit: {
       asyncResourceCleanup: cloneAsyncResourceCleanupConfig(),
       pathNaming: clonePathNamingConfig(),
@@ -385,6 +396,7 @@ export function migrateProjectConfig(root, {
       ...(prepared.typeCheck ?? {}),
     },
     unitTest: cloneUnitTestConfig(prepared.unitTest),
+    mutationTest: cloneMutationTestConfig(prepared.mutationTest),
     preCommit: {
       ...preCommit,
       asyncResourceCleanup: cloneAsyncResourceCleanupConfig(preCommit.asyncResourceCleanup),

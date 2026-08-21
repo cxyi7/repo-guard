@@ -24,6 +24,7 @@ import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../pre-push/runner.js';
 import { runQualityFileCommand } from '../pre-commit/quality-command.js';
 import { runPreCommit } from '../pre-commit/runner.js';
+import { runGuardedBuild } from './guarded-build.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -68,6 +69,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard pre-commit
   repo-guard pre-push
   repo-guard external <project.gate-id>
+  repo-guard guarded-build <npm-script>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
@@ -178,6 +180,15 @@ export async function runCli(argumentsList) {
         }
         const result = await runExternalManualGate(rest[0]);
         return gateResultToExitCode(result);
+      }
+      case 'guarded-build': {
+        if (rest.length !== 1 || rest[0].startsWith('-')) {
+          throw configurationError(
+            'cli/invalid-guarded-build-arguments',
+            'guarded-build 命令需要一个已在 mutationTest.guardedBuilds 中声明的 npm 脚本名称',
+          );
+        }
+        return await runGuardedBuild(rest[0]);
       }
       default:
         if (gateRegistry.findByManualCommand(command)) {

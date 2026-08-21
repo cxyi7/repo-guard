@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.12.1`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.13.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -21,9 +21,10 @@
                                               └─ 1.11.0 Vue 异步资源清理阻断门禁
                                                    └─ 1.12.0 项目统一路径命名门禁
                                                         └─ 1.12.1 中英文混合用户文案检查修复
+                                                             └─ 1.13.0 变异测试与受保护构建门禁
 ```
 
-因此，`1.12.1` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.13.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -40,6 +41,7 @@
 - [x] 指定代码只能出现在一个或多个允许文件中的代码位置门禁。
 - [x] 保护文件 `audit`、`notify` 和不可变 `block` 三级策略。
 - [x] Vitest 单元测试映射、空测试、跳过测试、聚焦测试和覆盖率门禁。
+- [x] Stryker 10.x 变异测试、中文报告、构建前硬门槛与失败通知。
 - [x] Vue 组件真实交互测试语义检查。
 - [x] axe 组件与 E2E 可访问性测试门禁。
 - [x] TypeScript、项目构建、dependency-cruiser 架构和 Lighthouse 独立门禁。
@@ -73,7 +75,7 @@ repo/
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
 │  │  ├─ repository/                 依赖、路径命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
-│  │  └─ testing/                    单元测试、覆盖率、axe 和外部门禁
+│  │  └─ testing/                    单元测试、覆盖率、变异测试、axe 和外部门禁
 │  ├─ git/                           Git 命令、变更范围、索引内容、已跟踪路径和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ axe/                        axe 集成发现
@@ -83,6 +85,7 @@ repo/
 │  │  ├─ npm/                        npm script、包元数据和发布环境
 │  │  ├─ prettier/                   Prettier 项目事实和执行
 │  │  ├─ stylelint/                  Stylelint 项目事实和执行
+│  │  ├─ stryker/                    Stryker 项目解析、执行、报告校验与中文报告
 │  │  ├─ vitest/                     Vitest、覆盖率和测试源码事实
 │  │  ├─ vue/                        Vue 模板、script、异步资源与交互事实
 │  │  └─ wecom/                      企业微信发送适配
@@ -129,6 +132,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 路径命名功能由 `config/path-naming-validation.js` 验证项目唯一规范与作用范围，`git/tracked-paths.js` 只读取最终 Git 索引中的完整已跟踪路径事实，`policies/path-naming.js` 纯粹判断文件名和祖先文件夹名，`gates/repository/path-naming-gate.js` 负责环境适配和统一 GateResult。该门禁不自动重命名，也不按目录派生第二套规范。
 
+变异测试继续遵循配置、第三方适配、门禁决策、通知策略和 CLI 编排分层：`config/mutation-test-validation.js` 规范化 Stryker 与受保护构建设置；`integrations/stryker/` 只解析消费项目的 `@stryker-mutator/core`、执行 Stryker、校验报告并生成中文 HTML；`gates/testing/mutation-test-gate.js` 依据报告和进程事实产生统一 GateResult；`policies/mutation-test-notification.js` 只生成不含源码片段的企业微信内容；`gates/release/mutation-test-notification.js` 持有唯一的企业微信发送适配；`orchestration/cli/guarded-build.js` 负责先测后构建和通知时机。原始构建仍由既有 npm build integration 执行。
+
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
 ## 4. 核心运行模型
@@ -145,14 +150,14 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 27 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 28 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
 | 仓库治理 | `repository.structured-exceptions`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
-| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.typecheck`、`quality.unit-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
+| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
 `coverage` 和 `componentInteraction` 是 `quality.unit-test` 的子能力；Stylelint 复杂度和样式治理在提交门禁中由 `quality.stylelint` 执行，同时提供独立的全项目审计 Gate。
@@ -303,9 +308,14 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 | Vitest 执行 | `unitTest.script` | 运行项目精确 npm script，并保留结构化 diagnostics |
 | 组件交互 | `unitTest.componentInteraction` | 对交互型 Vue 组件要求 mount、真实 trigger/setValue 等交互及交互后断言 |
 | 覆盖率 | `unitTest.coverage` | 强制生成新 `json-summary` 和 LCOV，检查全局行/语句/函数/分支及 Git 变更行覆盖率 |
+| 变异测试 | `mutationTest` | 使用消费项目的 Stryker 10.x 和配置，强制本地报告、非原地变异，并按 `thresholds.break` 阻断 |
 | axe 测试 | `accessibilityTest` | 支持 vitest-axe、jest-axe、Playwright、Cypress 和 axe-core；要求真实扫描与零违规断言 |
 
 覆盖率只统计 LCOV 中可执行的变更行；缺少目标源码记录会失败，避免未导入文件逃逸。repo-guard 不复用旧报告，不允许通过降低阈值或扩大排除项修复违规。
+
+变异测试仅在手动命令和受保护构建中运行，不进入 pre-commit、pre-push 或固定 CI 计划。执行时强制覆盖 Stryker 的 `reporters`、`jsonReporter`、`htmlReporter` 和 `inPlace`，因此不会继承 `dashboard` 上传，也不会原地修改业务源码；消费项目仍拥有 mutate 范围、测试运行器、插件和硬门槛配置，其中 `thresholds.break` 必须是 0 到 100 之间的数值，缺失时也会阻断。报告目录必须位于 `reports/` 且被 Git 忽略；每次执行前删除旧文件，并拒绝未知 schema、状态、阈值、绝对/穿越路径、符号链接和已跟踪报告覆盖。中文 HTML 转义所有第三方动态文本，Stryker 原文只在明确标记的原始诊断中展示。
+
+`mutationTest.guardedBuilds` 可声明多个任意原始 npm 构建脚本及各自的 `guard:build:*` 别名、构建超时和失败通知开关。别名执行固定闭环：变异测试通过后才运行原始脚本；得分不足、没有可评分变异、执行失败、报告缺失或无效时立即阻断。`repo-guard init` 只补充缺失别名，不覆盖同名自定义脚本；doctor 同时验证原始脚本、精确别名、Stryker 依赖、配置文件和报告忽略规则。企业微信通知复用现有本地凭据；受管 GitLab 流水线通知已启用时抑制重复消息。
 
 ### 5.7 类型、构建与 Lighthouse
 
@@ -394,7 +404,7 @@ Stylelint fix
   → protected-files（最后执行）
 ```
 
-禁止加入 pre-commit 的能力：TypeScript 类型检查、单元测试、axe、dependency-cruiser 项目架构、构建和 Lighthouse。
+禁止加入 pre-commit 的能力：TypeScript 类型检查、单元测试、变异测试、axe、dependency-cruiser 项目架构、构建和 Lighthouse。
 
 ### 6.2 pre-push
 
@@ -435,6 +445,7 @@ CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入�
 | `repo-guard gate [--dry-run|--force-notify]` | 执行保护文件 Gate |
 | `repo-guard dry-run` | 预览保护文件通知，不发送网络请求 |
 | `repo-guard external <project.id>` | 手动执行一个项目外部门禁 |
+| `repo-guard guarded-build <npm-script>` | 先执行变异测试，通过后运行已配置的原始构建脚本 |
 
 ### 7.2 官方专项命令
 
@@ -445,6 +456,7 @@ build
 architecture
 typecheck
 unit-test
+mutation-test
 async-resource-cleanup
 path-naming
 dynamic-code
@@ -483,6 +495,7 @@ build
 lighthouse
 typeCheck
 unitTest
+mutationTest
 accessibilityTest
 componentInteraction
 coverage
@@ -512,6 +525,7 @@ ci
 | `typeCheck` | TypeScript 脚本门禁 |
 | `accessibilityTest` | axe 测试策略和脚本 |
 | `unitTest` | 单元测试、组件交互和覆盖率 |
+| `mutationTest` | Stryker 配置、报告目录、运行超时和多个受保护构建别名 |
 | `preCommit` | 文件头同步、函数文档同步、异步资源清理、统一路径命名、Stylelint、ESLint、Prettier、行数和文件归位 |
 | `rules` | 保护文件规则 |
 | `exclusions` | 保护文件排除项 |

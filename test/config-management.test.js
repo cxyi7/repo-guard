@@ -86,6 +86,9 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.unitTest.requireTests, 'newFiles');
   assert.equal(config.unitTest.componentInteraction.enabled, false);
   assert.equal(config.unitTest.mappings.length, 5);
+  assert.equal(config.mutationTest.enabled, false);
+  assert.equal(config.mutationTest.reportsDirectory, 'reports/mutation');
+  assert.deepEqual(config.mutationTest.guardedBuilds, []);
   assert.equal(config.notification.enabled, true);
   assert.equal(config.ci.enabled, false);
   assert.equal(config.ci.profile, 'policy');

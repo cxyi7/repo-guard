@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "Structured Git and GitLab CI policy gates with managed application delivery for Vue projects",
   "keywords": [
     "git-hooks",
@@ -24,6 +24,8 @@
     "unit-testing",
     "coverage",
     "changed-line-coverage",
+    "mutation-testing",
+    "stryker",
     "lighthouse",
     "stylelint",
     "style-complexity",
@@ -72,6 +74,7 @@
     "@axe-core/playwright": ">=4 <5",
     "@eslint/js": ">=8.57",
     "@lhci/cli": ">=0.13 <0.16",
+    "@stryker-mutator/core": ">=10 <11",
     "@vue/test-utils": ">=2 <3",
     "axe-core": ">=4 <5",
     "cypress-axe": ">=1 <2",
@@ -93,6 +96,9 @@
       "optional": true
     },
     "@lhci/cli": {
+      "optional": true
+    },
+    "@stryker-mutator/core": {
       "optional": true
     },
     "@vue/test-utils": {

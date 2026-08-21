@@ -190,3 +190,31 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(await runDoctor(root), 0);
   assert.equal(readFileSync(agentsPath, 'utf8'), windowsAgents);
 });
+
+test('禁用变异测试时不要求为受保护构建配置企业微信凭据', async (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.equal(await runDoctor(root, { fix: true }), 0);
+
+  const packagePath = path.join(root, 'package.json');
+  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+  packageJson.scripts['build:mp-weixin'] = 'node build.mjs';
+  packageJson.scripts['guard:build:mp-weixin'] = 'repo-guard guarded-build build:mp-weixin';
+  writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
+  const configPath = path.join(root, 'repo-guard.config.json');
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  config.notification.enabled = true;
+  config.rules = [{ pattern: 'src/**', category: 'Source', level: 'audit' }];
+  config.mutationTest = {
+    enabled: false,
+    guardedBuilds: [{
+      script: 'build:mp-weixin',
+      packageScript: 'guard:build:mp-weixin',
+      notifyOnFailure: true,
+    }],
+  };
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+  assert.equal(await runDoctor(root), 0);
+});

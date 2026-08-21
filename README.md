@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.12.1`
+- 当前版本：`1.13.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.12.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.13.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -72,6 +72,7 @@ npx repo-guard doctor
 - 空测试、`.skip`、`.skipIf`、`.todo`、`.only` 绕过检查。
 - Vue 组件 mount、真实交互和交互后断言检查。
 - 全局行、语句、函数、分支覆盖率和 Git 变更行覆盖率。
+- Stryker 10.x 变异测试、中文报告和构建前硬门禁。
 - axe 组件与 E2E 可访问性测试门禁。
 - dependency-cruiser 依赖架构门禁。
 - 独立项目构建门禁。
@@ -319,12 +320,61 @@ repo-guard style-complexity
 repo-guard style-governance
 repo-guard typecheck
 repo-guard unit-test
+repo-guard mutation-test
 repo-guard accessibility-test
 repo-guard architecture
 repo-guard build
 repo-guard lighthouse
 repo-guard lighthouse --skip-build
 ```
+
+### 配置变异测试与受保护构建
+
+变异测试默认关闭，并且不会进入 pre-commit、pre-push 或固定 CI 计划。消费项目先按 [StrykerJS 官方初始化流程](https://stryker-mutator.io/docs/stryker-js/getting-started/)安装自身需要的 `@stryker-mutator/core` 10.x、测试运行器和 `stryker.config.*`；repo-guard 只调用消费项目的安装与配置，不内置测试运行器。
+
+Stryker 的 `thresholds.break` 是必需的构建硬门槛，必须配置为 0 到 100 之间的数值；缺失时也会阻断构建。repo-guard 强制使用本地 `json`、`html`、`clear-text` 和 `progress` reporter，强制关闭 `inPlace`，不会启用 `dashboard` 或隐式上传报告。每次运行前都会删除旧报告，仅接受本次新生成且符合 Stryker `schemaVersion: "1.0"` 的报告。
+
+```json
+{
+  "mutationTest": {
+    "enabled": true,
+    "configFile": "stryker.config.mjs",
+    "timeoutMs": 1800000,
+    "reportsDirectory": "reports/mutation",
+    "originalHtml": true,
+    "guardedBuilds": [
+      {
+        "script": "build:mp-weixin",
+        "packageScript": "guard:build:mp-weixin",
+        "timeoutMs": 300000,
+        "notifyOnFailure": true
+      },
+      {
+        "script": "build:h5",
+        "packageScript": "guard:build:h5",
+        "timeoutMs": 300000,
+        "notifyOnFailure": true
+      }
+    ]
+  }
+}
+```
+
+运行 `repo-guard init` 后，repo-guard 会在别名不存在时加入以下脚本，并把报告目录加入受管 `.gitignore`：
+
+```json
+{
+  "scripts": {
+    "guard:mutation-test": "repo-guard mutation-test",
+    "guard:build:mp-weixin": "repo-guard guarded-build build:mp-weixin",
+    "guard:build:h5": "repo-guard guarded-build build:h5"
+  }
+}
+```
+
+`guardedBuilds` 可声明任意多个原始 npm 构建脚本，不限于小程序。受保护别名先执行完整变异测试；得分低于 `thresholds.break`、没有可评分变异、Stryker 执行失败、报告缺失或报告无效时都不会运行原始构建。通过后才执行对应的 `script`。原始 `build:*` 脚本保持不变并仍可直接调用，因此团队和 CI 必须改用 `guard:build:*` 才能获得强制保护；`repo-guard doctor` 会检查原始脚本和别名是否完整且未被替换。
+
+报告默认写入 `reports/mutation/mutation.json`、中文 `mutation.html` 和可选的 Stryker 原始 `mutation-original.html`。路径必须位于 `reports/`、被 Git 忽略、不得穿过符号链接，也不得覆盖已跟踪文件。`notifyOnFailure` 与全局 `notification.enabled` 同时开启时，失败会复用现有企业微信配置发送项目、分支、构建脚本、得分、门槛和报告位置；GitLab 受管流水线通知已开启时不会重复发送。
 
 保护文件检查：
 
@@ -636,6 +686,7 @@ lighthouse
 typeCheck
 accessibilityTest
 unitTest
+mutationTest
 preCommit
 rules
 exclusions
