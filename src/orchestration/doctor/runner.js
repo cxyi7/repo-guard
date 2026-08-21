@@ -117,7 +117,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   }
 
   const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
-  const notificationRequired = config?.notification.enabled && hasNotifyRules;
+  const hasMutationFailureNotification = config?.mutationTest.enabled
+    && config.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure);
+  const notificationRequired = config?.notification.enabled
+    && (hasNotifyRules || hasMutationFailureNotification);
   if (!ci) {
     const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
     if (!existsSync(localEnvironmentPath)) {
@@ -149,7 +152,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
         errors.push(error.message);
       }
     } else if (config) {
-      checks.push('未配置 notify 规则，因此不需要企业微信通知');
+      checks.push('未配置 notify 规则或变异测试失败通知，因此不需要企业微信通知');
     }
   } else if (config) {
     checks.push('CI 模式不需要本地 Git Hook 或企业微信凭据');
@@ -168,6 +171,25 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
   }
 
   if (config) {
+    try {
+      const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+      for (const guardedBuild of config.mutationTest.guardedBuilds) {
+        const expected = `repo-guard guarded-build ${guardedBuild.script}`;
+        if (typeof packageJson.scripts?.[guardedBuild.script] !== 'string') {
+          errors.push(`受保护构建找不到原始 npm 脚本：${guardedBuild.script}`);
+        }
+        if (packageJson.scripts?.[guardedBuild.packageScript] !== expected) {
+          errors.push(
+            `受保护构建脚本 ${guardedBuild.packageScript} 必须为 "${expected}"；`
+            + '请运行 repo-guard init',
+          );
+        } else {
+          checks.push(`受保护构建：${guardedBuild.packageScript} → ${guardedBuild.script}`);
+        }
+      }
+    } catch (error) {
+      errors.push(`无法检查受保护构建脚本：${error.message}`);
+    }
     const doctorGates = createProjectGateRegistry(config).all
       .filter(({ doctorOrder }) => doctorOrder != null)
       .sort((left, right) => left.doctorOrder - right.doctorOrder);

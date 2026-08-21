@@ -135,6 +135,54 @@ test('ignores the configured coverage report directory', (context) => {
   );
 });
 
+test('init adds guarded build aliases and mutation reports to the managed ignore block', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const packagePath = path.join(root, 'package.json');
+  writeFileSync(packagePath, `${JSON.stringify({
+    name: 'fixture',
+    version: '1.0.0',
+    scripts: {
+      'build:mp-weixin': 'vite build --mode mp-weixin',
+      'guard:build:h5': 'custom-command',
+    },
+  }, null, 2)}\n`);
+  const config = createStarterConfig();
+  config.mutationTest.enabled = true;
+  config.mutationTest.reportsDirectory = 'reports/mutation-custom';
+  config.mutationTest.guardedBuilds = [
+    {
+      script: 'build:mp-weixin',
+      packageScript: 'guard:build:mp-weixin',
+      timeoutMs: 300000,
+      notifyOnFailure: true,
+    },
+    {
+      script: 'build:h5',
+      packageScript: 'guard:build:h5',
+      timeoutMs: 300000,
+      notifyOnFailure: true,
+    },
+  ];
+  writeFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    `${JSON.stringify(config, null, 2)}\n`,
+  );
+
+  installHooks({ cwd: root, updatePackageScripts: true });
+
+  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+  assert.equal(
+    packageJson.scripts['guard:build:mp-weixin'],
+    'repo-guard guarded-build build:mp-weixin',
+  );
+  assert.equal(packageJson.scripts['guard:build:h5'], 'custom-command');
+  assert.match(
+    readFileSync(path.join(root, '.gitignore'), 'utf8'),
+    /reports\/mutation-custom\//,
+  );
+});
+
 test('refuses to overwrite a non-managed hook', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));

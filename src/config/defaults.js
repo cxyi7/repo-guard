@@ -133,6 +133,14 @@ export const DEFAULT_BUILD_CONFIG = Object.freeze({
   script: 'build',
   timeoutMs: 300000,
 });
+export const DEFAULT_MUTATION_TEST_CONFIG = Object.freeze({
+  enabled: false,
+  configFile: 'stryker.config.json',
+  timeoutMs: 1800000,
+  reportsDirectory: 'reports/mutation',
+  originalHtml: true,
+  guardedBuilds: Object.freeze([]),
+});
 export const DEFAULT_DEPENDENCY_POLICY_CONFIG = Object.freeze({
   enabled: true,
   requireExactVersions: true,

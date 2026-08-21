@@ -9,7 +9,11 @@ export const LIGHTHOUSE_OUTPUT_DIRECTORY = '.lighthouseci/';
 const START_MARKER = '# repo-guard-managed:lighthouse:start';
 const END_MARKER = '# repo-guard-managed:lighthouse:end';
 
-export function ensureLighthouseIgnore(root, coverageDirectory = 'coverage') {
+export function ensureLighthouseIgnore(
+  root,
+  coverageDirectory = 'coverage',
+  mutationReportsDirectory = null,
+) {
   const target = path.join(root, '.gitignore');
   const current = existsSync(target) ? readFileSync(target, 'utf8') : '';
   const next = buildManagedTextBlock({
@@ -18,6 +22,9 @@ export function ensureLighthouseIgnore(root, coverageDirectory = 'coverage') {
     managedLines: [
       LIGHTHOUSE_OUTPUT_DIRECTORY,
       `${coverageDirectory.replace(/\\/g, '/').replace(/\/+$/, '')}/`,
+      ...(mutationReportsDirectory
+        ? [`${mutationReportsDirectory.replace(/\\/g, '/').replace(/\/+$/, '')}/`]
+        : []),
     ],
     startMarker: START_MARKER,
     target: '.gitignore',

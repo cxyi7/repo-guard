@@ -13,6 +13,7 @@ import {
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
+  DEFAULT_MUTATION_TEST_CONFIG,
   DEFAULT_PATH_NAMING_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
   DEFAULT_STYLELINT_PATTERN,
@@ -61,6 +62,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
   assert.deepEqual(config.unitTest, DEFAULT_UNIT_TEST_CONFIG);
+  assert.deepEqual(config.mutationTest, DEFAULT_MUTATION_TEST_CONFIG);
   assert.deepEqual(config.preCommit.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
   assert.deepEqual(config.preCommit.fileHeader, DEFAULT_FILE_HEADER_CONFIG);
   assert.deepEqual(config.preCommit.pathNaming, DEFAULT_PATH_NAMING_CONFIG);
