@@ -26,6 +26,7 @@ import { runQualityFileCommand } from '../pre-commit/quality-command.js';
 import { runPreCommit } from '../pre-commit/runner.js';
 import { runGuardedBuild } from './guarded-build.js';
 import { runApiPerformanceRunner } from './api-performance-runner.js';
+import { runK6Runner } from './k6-runner.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -71,6 +72,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard pre-push
   repo-guard external <project.gate-id>
   repo-guard api-performance-runner --gate-id <project.gate-id> --config <path>
+  repo-guard k6-runner --gate-id <project.gate-id> --config <path>
   repo-guard guarded-build <npm-script>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
@@ -189,6 +191,16 @@ export async function runCli(argumentsList) {
           values: new Set(['--gate-id', '--config']),
         });
         return await runApiPerformanceRunner({
+          gateId: options.values['--gate-id'],
+          configFile: options.values['--config'],
+        });
+      }
+      case 'k6-runner': {
+        const options = parseValuedOptions(rest, {
+          flags: new Set(),
+          values: new Set(['--gate-id', '--config']),
+        });
+        return await runK6Runner({
           gateId: options.values['--gate-id'],
           configFile: options.values['--config'],
         });

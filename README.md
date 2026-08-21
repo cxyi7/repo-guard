@@ -2,7 +2,7 @@
 
 `@cxyi7/repo-guard` 是面向 Vue/JavaScript/TypeScript 仓库的质量与安全门禁平台。它复用消费项目已有的 ESLint、Prettier、Stylelint、Vitest、dependency-cruiser、Lighthouse CI 等工具，将提交前检查、推送前检查、GitLab CI 和发布准备统一为可审计的固定流程。
 
-- 当前版本：`1.14.0`
+- 当前版本：`1.15.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -12,7 +12,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.14.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.15.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -74,6 +74,7 @@ npx repo-guard doctor
 - 全局行、语句、函数、分支覆盖率和 Git 变更行覆盖率。
 - Stryker 10.x 变异测试、中文报告和构建前硬门禁。
 - 复用项目 Axios 客户端的手动接口性能外部门禁，按 p95、p99 和错误率生成中文报告。
+- 使用本机 k6 的手动并发压测外部门禁，支持受控 `ramping-vus`、`constant-arrival-rate`、阈值阻断和中文报告。
 - axe 组件与 E2E 可访问性测试门禁。
 - dependency-cruiser 依赖架构门禁。
 - 独立项目构建门禁。
@@ -704,6 +705,112 @@ npm run guard:api-performance
 
 runner 只接受 HTTPS、精确主机白名单和本次确认值。默认只允许 `GET`、`HEAD`、`OPTIONS`；`POST`、`PUT`、`PATCH`、`DELETE` 必须同时启用全局 `safety.allowWrites`、场景 `allowWrites: true` 并提供 `cleanup`。清理失败、预热失败、配置错误或报告错误使用退出码 `1` 且不生成主报告；阈值不满足生成 `violation` 报告并使用退出码 `2`；通过使用退出码 `0`。报告目录必须被 `.gitignore` 忽略，最终生成协议 JSON 和 `axios-report.html` 中文报告，二者仍由通用外部门禁执行新鲜度、路径、Git 跟踪状态和敏感信息复检。
 
+### k6 手动接口压测外部门禁
+
+`1.15.0` 新增使用消费项目本机 k6 二进制的并发压测 runner。它与 Axios 性能 runner 互补：Axios runner 验证业务客户端、拦截器和低并发真实调用链；k6 runner 验证服务在受控并发或恒定到达率下的延迟、错误率、检查成功率和丢弃迭代。k6 不是 Node.js 运行时，不能直接加载 Axios 客户端；本功能不修改业务 Axios 实例，也不进入提交、推送、CI、发布、受保护构建或打包流程。
+
+先按 [k6 官方安装说明](https://grafana.com/docs/k6/latest/set-up/install-k6/) 安装本机 k6。当前支持 k6 `1.5.0` 至 `2.x`，不自动安装扩展、不使用 Docker、不调用 k6 cloud，也不上传结果。
+
+消费项目声明 manual-only 外部门禁和两个显式 npm script：
+
+```json
+{
+  "externalGates": [
+    {
+      "id": "project.k6-load",
+      "enabled": true,
+      "environments": ["manual"],
+      "script": "test:k6:runner",
+      "timeoutMs": 900000,
+      "report": {
+        "format": "repo-guard-json-v1",
+        "path": "reports/k6/k6-gate.json"
+      }
+    }
+  ]
+}
+```
+
+```json
+{
+  "scripts": {
+    "test:k6:runner": "repo-guard k6-runner --gate-id project.k6-load --config test/performance/k6-load.config.json",
+    "guard:k6": "repo-guard external project.k6-load"
+  }
+}
+```
+
+`test/performance/k6-load.config.json` 的负载、阈值和目标都由纯 JSON 配置控制。下面示例的确认值必须精确包含“主机、配置档、执行器、最大 VU、总阶段时长和只读模式”：
+
+```json
+{
+  "$schema": "../../node_modules/@cxyi7/repo-guard/k6-load-config.schema.json",
+  "target": {
+    "baseUrlEnv": "REPO_GUARD_K6_BASE_URL",
+    "allowedHosts": ["api-test.example.com"],
+    "confirmationEnv": "REPO_GUARD_K6_CONFIRM",
+    "requireHttps": true
+  },
+  "script": "test/performance/scenarios/read.k6.js",
+  "profile": {
+    "name": "smoke-read",
+    "executor": "ramping-vus",
+    "startVUs": 0,
+    "stages": [
+      { "duration": "30s", "target": 5 },
+      { "duration": "1m", "target": 20 },
+      { "duration": "30s", "target": 0 }
+    ],
+    "gracefulRampDown": "30s",
+    "gracefulStop": "30s"
+  },
+  "thresholds": {
+    "p95Ms": 500,
+    "p99Ms": 1000,
+    "errorRate": 0.01,
+    "checkRate": 0.99,
+    "maxDroppedIterations": 0
+  },
+  "environment": {
+    "pass": ["REPO_GUARD_K6_TEST_TOKEN"]
+  },
+  "safety": {
+    "allowWrites": false
+  }
+}
+```
+
+场景必须默认导出函数、直接从 `__ENV` 读取受控基础地址，并至少产生一次 HTTP 请求和一次 `check`：
+
+```js
+import http from 'k6/http';
+import { check } from 'k6';
+
+const baseURL = __ENV.REPO_GUARD_K6_BASE_URL;
+
+export default function readScenario() {
+  const response = http.get(`${baseURL}/health`, {
+    headers: { Authorization: `Bearer ${__ENV.REPO_GUARD_K6_TEST_TOKEN}` },
+  });
+  check(response, { '状态码为 200': (value) => value.status === 200 });
+}
+```
+
+```powershell
+$env:REPO_GUARD_K6_BASE_URL = 'https://api-test.example.com/'
+$env:REPO_GUARD_K6_CONFIRM = 'api-test.example.com:smoke-read:ramping-vus:20vus:120s:readonly'
+$env:REPO_GUARD_K6_TEST_TOKEN = '<仅用于测试环境的临时凭据>'
+npm run guard:k6
+```
+
+受控入口会覆盖消费者脚本的 `options` 和 `handleSummary`，所以场景不得导出这两个名称。所有阈值与报告指标都绑定当前 `scenario`，只统计正式压测迭代，不让 `setup`/`teardown` 的登录、造数和清理请求污染 p95、p99、错误率、检查率或请求量。为保留这些场景子指标，runner 不启用 k6 可选的新机器摘要格式，而是校验受控 `handleSummary` 写出的聚合指标对象。入口关闭 k6 使用情况上报和自动扩展解析，先运行 `k6 inspect`，再运行本地 `k6 run`；子进程只接收操作系统启动所需变量、`environment.pass` 白名单、基础地址和本次随机 `runId`。脚本只能导入仓库内相对模块和 k6 内置模块，不得使用远程模块、`k6/x/*`、硬编码 HTTP 地址、动态请求方法或转存 `k6/http` 绑定。
+
+默认仅允许 `GET`、`HEAD` 和 `OPTIONS`。启用 `safety.allowWrites` 后，脚本必须包含可静态识别的写方法、导出 `teardown`，并在 teardown 中使用 `__ENV.REPO_GUARD_K6_RUN_ID` 发出可静态验证的直接清理请求；进程被强制终止时 teardown 仍无法保证执行，因此写压测还必须使用测试账号、幂等或可过期数据，并由服务端提供兜底清理。`externalGates.timeoutMs` 至少覆盖负载时长、`gracefulStop`、setup、teardown 和 30 秒进程余量。
+
+通过时退出码为 `0`；k6 阈值失败的原始退出码必须为 `99`，runner 生成 `violation` 后对外返回 `2`；其他退出码、超时、报告缺失或判定不一致均返回 `1`，且不生成可误用的主报告。报告目录必须位于已忽略、未跟踪且不穿过符号链接的 `reports/`，成功执行会保留 k6 机器摘要 `k6-summary.json`、中文 `k6-report.html` 和外部门禁 JSON；报告不会保存配置中的凭据。
+
+维护者可显式设置 `REPO_GUARD_REAL_K6_BIN` 为本机官方 `k6` 可执行文件路径，再运行 `node --test test/k6-load.test.js`。该可选集成测试只对 k6 官方演示站点执行 1 VU、1 秒负载；常规 `npm test` 会跳过它，不会隐式联网或产生压测流量。
+
 ## 仓库目录
 
 ```text
@@ -735,6 +842,7 @@ repo/
 ├─ test/                             单元、端到端和架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ api-performance-config.schema.json Axios 接口性能配置 Schema
+├─ k6-load-config.schema.json          k6 接口压测配置 Schema
 ├─ external-report.schema.json       外部门禁报告 Schema
 ├─ gate-result.schema.json           GateResult Schema
 ├─ CHANGELOG.md                      版本变化
@@ -801,6 +909,7 @@ exclusions
 - [gate-result.schema.json](gate-result.schema.json)
 - [external-report.schema.json](external-report.schema.json)
 - [api-performance-config.schema.json](api-performance-config.schema.json)
+- [k6-load-config.schema.json](k6-load-config.schema.json)
 
 退出码：
 

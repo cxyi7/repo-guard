@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Structured Git and GitLab CI policy gates with managed application delivery for Vue projects",
   "keywords": [
     "git-hooks",
@@ -28,6 +28,8 @@
     "stryker",
     "axios",
     "api-performance",
+    "k6",
+    "load-testing",
     "lighthouse",
     "stylelint",
     "style-complexity",
@@ -44,6 +46,7 @@
     "./config.schema.json": "./config.schema.json",
     "./external-report.schema.json": "./external-report.schema.json",
     "./api-performance-config.schema.json": "./api-performance-config.schema.json",
+    "./k6-load-config.schema.json": "./k6-load-config.schema.json",
     "./gate-result.schema.json": "./gate-result.schema.json"
   },
   "files": [
@@ -54,6 +57,7 @@
     "config.schema.json",
     "external-report.schema.json",
     "api-performance-config.schema.json",
+    "k6-load-config.schema.json",
     "gate-result.schema.json",
     "CHANGELOG.md",
     "README.md"

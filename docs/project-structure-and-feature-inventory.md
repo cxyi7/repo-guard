@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.14.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.15.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -23,9 +23,10 @@
                                                         └─ 1.12.1 中英文混合用户文案检查修复
                                                              └─ 1.13.0 变异测试与受保护构建门禁
                                                                   └─ 1.14.0 Axios 手动接口性能外部门禁
+                                                                       └─ 1.15.0 k6 手动接口压测外部门禁
 ```
 
-因此，`1.14.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.15.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -44,6 +45,7 @@
 - [x] Vitest 单元测试映射、空测试、跳过测试、聚焦测试和覆盖率门禁。
 - [x] Stryker 10.x 变异测试、中文报告、构建前硬门槛与失败通知。
 - [x] 复用消费项目 Axios 请求工厂的手动接口性能外部门禁，按延迟分位数和错误率生成中文报告。
+- [x] 使用消费项目本机 k6 的手动并发压测外部门禁，按受控负载和阈值生成机器摘要与中文报告。
 - [x] Vue 组件真实交互测试语义检查。
 - [x] axe 组件与 E2E 可访问性测试门禁。
 - [x] TypeScript、项目构建、dependency-cruiser 架构和 Lighthouse 独立门禁。
@@ -85,6 +87,7 @@ repo/
 │  │  ├─ dependency-cruiser/         依赖架构执行
 │  │  ├─ eslint/                     ESLint 项目事实和执行
 │  │  ├─ lighthouse/                 Lighthouse 项目事实和执行
+│  │  ├─ k6/                         k6 配置、脚本校验、受控执行、摘要解析与中文报告
 │  │  ├─ npm/                        npm script、包元数据和发布环境
 │  │  ├─ prettier/                   Prettier 项目事实和执行
 │  │  ├─ stylelint/                  Stylelint 项目事实和执行
@@ -104,6 +107,7 @@ repo/
 ├─ test/                             配置、行为、端到端和架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ api-performance-config.schema.json Axios 接口性能配置 Schema
+├─ k6-load-config.schema.json          k6 接口压测配置 Schema
 ├─ external-report.schema.json       外部门禁报告 Schema
 ├─ gate-result.schema.json           统一 GateResult Schema
 ├─ package.json                      npm 包入口、依赖和维护脚本
@@ -139,6 +143,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 变异测试继续遵循配置、第三方适配、门禁决策、通知策略和 CLI 编排分层：`config/mutation-test-validation.js` 规范化 Stryker 与受保护构建设置；`integrations/stryker/` 只解析消费项目的 `@stryker-mutator/core`、执行 Stryker、校验报告并生成中文 HTML；`gates/testing/mutation-test-gate.js` 依据报告和进程事实产生统一 GateResult；`policies/mutation-test-notification.js` 只生成不含源码片段的企业微信内容；`gates/release/mutation-test-notification.js` 持有唯一的企业微信发送适配；`orchestration/cli/guarded-build.js` 负责先测后构建和通知时机。原始构建仍由既有 npm build integration 执行。
 
 Axios 接口性能功能保持为项目外部门禁辅助能力：`integrations/api-performance/` 验证项目配置与精确测试目标、调用消费项目提供的客户端工厂、执行低并发场景、维护未跟踪报告并渲染中文 HTML；`gates/testing/api-performance-external-runner.js` 只根据 p95、p99 和错误率形成 `repo-guard-json-v1` 决策；`orchestration/cli/api-performance-runner.js` 只解析项目外部门禁并强制 manual-only 与非自动化环境。该能力不注册到静态 Registry，不新增官方 Gate，也不进入任何固定 Execution Plan。
+
+k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负责纯 JSON 配置、目标确认、AST 脚本限制、本机 k6 进程、机器摘要和中文 HTML；`gates/testing/k6-external-runner.js` 负责阈值 findings 与外部门禁报告；`orchestration/cli/k6-runner.js` 负责 manual-only 外部门禁解析和自动化环境拒绝。受控入口拥有 `options` 与 `handleSummary`，消费者只持有业务场景；该能力不注册静态 Registry、不新增官方 Gate，也不进入任何固定 Execution Plan。
 
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
@@ -358,7 +364,21 @@ Axios 接口性能能力通过 `project.api-performance` 外部门禁接入，�
 
 目标 URL 必须使用 HTTPS，不得包含凭据、查询参数或片段；解析后的主机必须同时匹配配置白名单和本次运行确认环境变量。报告目录必须位于 `reports/`、被 `.gitignore` 忽略、未被 Git 跟踪且不穿过符号链接。runner 最后写入 `repo-guard-json-v1` 主报告和经过 HTML 转义的中文报告；通用外部门禁随后再次检查报告新鲜度、退出码、Schema、大小、路径和敏感信息。通过、阈值违规和执行错误分别使用退出码 `0`、`2` 和 `1`。
 
-### 5.10 GitLab CI
+### 5.10 k6 手动接口压测外部门禁
+
+k6 接口压测通过 `project.k6-load` 外部门禁接入，必须配置 `environments: ["manual"]` 并由本地终端显式执行 `repo-guard external project.k6-load`。runner 拒绝常见自动化环境标记，不进入 pre-commit、pre-push、CI policy/full、release-ready、受保护构建或打包；本期只使用本机 k6 `1.5.0` 至 `2.x`，不自动安装 k6、Docker 或扩展，不调用 k6 cloud，也不上传报告。
+
+独立 Schema 约束 HTTPS 目标环境变量、精确主机白名单、本次运行确认变量、仓库内 `.js`/`.ts` 场景、阈值和负载配置。确认值同时覆盖主机、配置档、执行器、最大 VU、到达率或阶段总时长、读写模式，防止只确认主机后误用更高负载。支持 `ramping-vus` 和 `constant-arrival-rate`；VU、到达率、单次时长、阶段数量和外部门禁总超时都有硬上限或闭环校验。
+
+repo-guard 生成临时受控入口并独占 k6 `options`、thresholds 与 `handleSummary`。阈值和报告只读取当前 `scenario` 的标签子指标，使正式负载与 `setup`/`teardown` 中的登录、造数和清理流量相互隔离。消费脚本必须默认导出场景函数、从指定 `__ENV` 读取基础地址、直接调用可静态识别的 `k6/http` 方法并产生 `check`；递归本地依赖只允许仓库内相对 `.js`/`.ts` 和 k6 内置模块。远程模块、裸包、`k6/x/*`、动态 import、硬编码 HTTP 地址、动态请求方法、转存 HTTP 绑定以及消费者自定义 `options`/`handleSummary` 均被拒绝。
+
+子进程仅获得操作系统启动所需变量、项目显式 `environment.pass`、基础地址和随机 `REPO_GUARD_K6_RUN_ID`，并关闭使用情况上报和自动扩展解析。默认只允许 `GET`、`HEAD`、`OPTIONS`；写请求必须显式启用 `safety.allowWrites`，同时导出 `teardown`，并在其中使用 runId 发出可静态验证的直接清理请求。teardown 在强制终止时无法得到保证，因此写压测仍要求测试账号、幂等或可过期数据和服务端兜底清理。
+
+执行前使用 `k6 inspect --execution-requirements` 预检受控入口。正式执行不启用可选的新机器摘要，因为 k6 1.x/2.x 当前的新格式不包含阈值创建的场景子指标；受控 `handleSummary` 保留聚合指标对象，再从当前场景子指标校验必要样本、实际最大 VU 和进程退出码，同时解析器仍兼容无需场景过滤的新格式。通过时 k6 与 runner 均返回 `0`；阈值违规要求 k6 返回 `99`，runner 生成 `violation` 并对外返回 `2`；其他退出、超时、摘要缺失、敏感内容或判定不一致返回 `1` 且不写主报告。报告目录必须位于已忽略、未跟踪、无符号链接的 `reports/`，保留 k6 原始机器摘要、转义后的中文 HTML 和外部门禁 JSON。
+
+测试套件以伪 k6 覆盖稳定的通过、违规和执行错误分支，并提供由 `REPO_GUARD_REAL_K6_BIN` 显式启用的真实集成测试。真实测试固定使用 k6 官方演示站点、1 VU 和 1 秒负载；默认测试流程不联网。
+
+### 5.11 GitLab CI
 
 | 配置档 | 固定能力 |
 |---|---|
@@ -378,7 +398,7 @@ CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready
 
 交付配置仅包含阶段、验证/发布镜像、测试/生产分支、Runner 标签、旧 peer dependency 兼容、快速发布与通知开关。`repo_guard` 固定在 `.pre` stage，受管验证与发布 Job 只会在门禁通过后继续。开启通知后，生成器在保留的 `.post` 阶段增加 `when: on_success` 与 `when: on_failure` 两个互斥 Job，任意阻断性 Job 失败会发送一次失败通知，全部成功则发送一次成功通知。运行中的受管 Job 被手动或自动取消时，`after_script` 发送“已取消（canceled）”通知；前置门禁和验证 Job 可自动中断，部署 Job 不改为可自动中断。取消 pending Job 或强制取消时 GitLab 不执行 `after_script`，因此无 Runner 内通知入口。提交标题最多显示前 10 个字符并追加省略号。通知包从 npm 官方 tarball URL 安装到 Job 唯一隔离目录，禁用 lifecycle scripts，并通过绝对路径执行，不使用消费项目的本地可执行文件。通知 Job 使用 `allow_failure: true` 保持原流水线结果。Webhook 来自 `REPO_GUARD_WECOM_WEBHOOK`，可选手机号来自 `REPO_GUARD_MENTION_MOBILES`，二者只从 GitLab CI 变量读取。实际微信小程序上传、Web 镜像构建、蓝绿切换、其他密钥、端口和外部服务地址均由消费项目脚本或 GitLab 受保护变量拥有。`ci.pipeline` 不改变 pre-commit、pre-push 或 `ci.gatePolicy` 的语义。
 
-### 5.11 发布就绪
+### 5.12 发布就绪
 
 `release-ready` 会验证：
 
@@ -461,6 +481,7 @@ CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入�
 | `repo-guard gate [--dry-run|--force-notify]` | 执行保护文件 Gate |
 | `repo-guard dry-run` | 预览保护文件通知，不发送网络请求 |
 | `repo-guard external <project.id>` | 手动执行一个项目外部门禁 |
+| `repo-guard k6-runner --gate-id <project.id> --config <path>` | 受控执行 manual-only k6 外部门禁的项目脚本入口 |
 | `repo-guard guarded-build <npm-script>` | 先执行变异测试，通过后运行已配置的原始构建脚本 |
 
 ### 7.2 官方专项命令
@@ -561,6 +582,7 @@ npm 包根入口只公开稳定构造和结果契约：
 
 - `@cxyi7/repo-guard/config.schema.json`；
 - `@cxyi7/repo-guard/api-performance-config.schema.json`；
+- `@cxyi7/repo-guard/k6-load-config.schema.json`；
 - `@cxyi7/repo-guard/external-report.schema.json`；
 - `@cxyi7/repo-guard/gate-result.schema.json`。
 
@@ -587,7 +609,8 @@ npm 包根入口只公开稳定构造和结果契约：
 - 不允许消费项目重排官方 pre-commit、pre-push 或 CI 计划。
 - 不在 Git Hook 中执行全项目修复。
 - 不把 TypeScript、测试、构建或 Lighthouse 放入 pre-commit。
-- 通用外部门禁不允许配置任意 shell command 或加载任意 JavaScript 插件；Axios 性能 runner 只在目标环境确认后加载配置中逐个明确列出的客户端和场景 `.mjs`。
+- 通用外部门禁不允许配置任意 shell command 或加载任意 JavaScript 插件；Axios 性能 runner 只在目标环境确认后加载配置中逐个明确列出的客户端和场景 `.mjs`；k6 runner 只加载经过 AST 校验的仓库内场景和本地依赖。
+- k6 runner 不自动安装本机工具、Docker 或扩展，不调用云端压测，不进入自动化流程，也不保证操作系统强制终止时执行消费者 teardown。
 - 不隐式上传 Lighthouse 或其他报告。
 - 不自动关闭规则、降低阈值、扩大排除项或生成绕过例外。
 - 不执行 npm 发布、部署、生产环境写入或凭据操作。

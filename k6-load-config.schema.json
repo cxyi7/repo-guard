@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cxyi7.github.io/repo-guard/k6-load-config.schema.json",
+  "title": "repo-guard k6 手动接口压测配置",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["target", "script", "profile", "thresholds"],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseUrlEnv", "allowedHosts", "confirmationEnv"],
+      "properties": {
+        "baseUrlEnv": { "$ref": "#/$defs/projectEnvironmentName" },
+        "allowedHosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^*/:@]+$"
+          }
+        },
+        "confirmationEnv": { "$ref": "#/$defs/projectEnvironmentName" },
+        "requireHttps": { "const": true }
+      }
+    },
+    "script": { "$ref": "#/$defs/scriptPath" },
+    "profile": {
+      "oneOf": [
+        { "$ref": "#/$defs/rampingVusProfile" },
+        { "$ref": "#/$defs/constantArrivalRateProfile" }
+      ]
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p95Ms", "p99Ms", "errorRate", "checkRate"],
+      "properties": {
+        "p95Ms": { "type": "number", "minimum": 1, "maximum": 300000 },
+        "p99Ms": { "type": "number", "minimum": 1, "maximum": 300000 },
+        "errorRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "checkRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maxDroppedIterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000,
+          "default": 0
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pass": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/projectEnvironmentName" }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowWrites": { "type": "boolean", "default": false }
+      }
+    }
+  },
+  "$defs": {
+    "environmentName": {
+      "type": "string",
+      "pattern": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "projectEnvironmentName": {
+      "allOf": [
+        { "$ref": "#/$defs/environmentName" },
+        { "not": { "pattern": "^K6_" } },
+        { "not": { "const": "REPO_GUARD_K6_RUN_ID" } }
+      ]
+    },
+    "scriptPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?![A-Za-z]:/)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*//)[^\\\\]+\\.(?:js|ts)$"
+    },
+    "duration": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*(?:ms|s|m|h)$"
+    },
+    "profileName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "rampingVusProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "executor", "stages"],
+      "properties": {
+        "name": { "$ref": "#/$defs/profileName" },
+        "executor": { "const": "ramping-vus" },
+        "startVUs": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["duration", "target"],
+            "properties": {
+              "duration": { "$ref": "#/$defs/duration" },
+              "target": { "type": "integer", "minimum": 0, "maximum": 1000 }
+            }
+          }
+        },
+        "gracefulRampDown": { "$ref": "#/$defs/duration" },
+        "gracefulStop": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "constantArrivalRateProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "executor",
+        "rate",
+        "duration",
+        "preAllocatedVUs",
+        "maxVUs"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/profileName" },
+        "executor": { "const": "constant-arrival-rate" },
+        "rate": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "timeUnit": { "$ref": "#/$defs/duration" },
+        "duration": { "$ref": "#/$defs/duration" },
+        "preAllocatedVUs": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "maxVUs": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "gracefulStop": { "$ref": "#/$defs/duration" }
+      }
+    }
+  }
+}
