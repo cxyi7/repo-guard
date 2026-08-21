@@ -145,6 +145,7 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'src',
   'config.schema.json',
   'external-report.schema.json',
+  'api-performance-config.schema.json',
   'gate-result.schema.json',
   'CHANGELOG.md',
   'README.md',
@@ -153,6 +154,7 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
 const REVIEWED_PACKED_ROOTS = Object.freeze([
   'CHANGELOG.md',
   'README.md',
+  'api-performance-config.schema.json',
   'bin',
   'config.schema.json',
   'docs',
@@ -2495,6 +2497,7 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     '.': './src/index.js',
     './config.schema.json': './config.schema.json',
     './external-report.schema.json': './external-report.schema.json',
+    './api-performance-config.schema.json': './api-performance-config.schema.json',
     './gate-result.schema.json': './gate-result.schema.json',
   });
 
@@ -2906,4 +2909,38 @@ test('separates function-documentation validation, policy, and staged mutation o
   );
   assert.match(qualityRunnerSource, /synchronizeStagedFunctionDocumentation/);
   assert.match(qualityRunnerSource, /selectFunctionDocumentationFiles/);
+});
+
+test('keeps Axios performance execution behind a manual-only external runner', () => {
+  const integrationRoot = path.join(SOURCE_ROOT, 'integrations', 'api-performance');
+  const gatePath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'testing',
+    'api-performance-external-runner.js',
+  );
+  const commandPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'cli',
+    'api-performance-runner.js',
+  );
+  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates', 'registry.js'), 'utf8');
+  const plansSource = readFileSync(
+    path.join(SOURCE_ROOT, 'orchestration', 'execution-plans.js'),
+    'utf8',
+  );
+  const gateSource = readFileSync(gatePath, 'utf8');
+  const commandSource = readFileSync(commandPath, 'utf8');
+
+  for (const file of ['configuration.js', 'execution.js', 'project.js', 'report.js']) {
+    assert.equal(existsSync(path.join(integrationRoot, file)), true);
+  }
+  assert.match(gateSource, /integrations\/api-performance/);
+  assert.match(commandSource, /gates\/testing\/api-performance-external-runner\.js/);
+  assert.doesNotMatch(commandSource, /integrations\/api-performance/);
+  assert.match(commandSource, /gate\.environments\.length !== 1/);
+  assert.match(commandSource, /AUTOMATION_ENVIRONMENT_MARKERS/);
+  assert.doesNotMatch(registrySource, /api-performance/);
+  assert.doesNotMatch(plansSource, /api-performance/);
 });
