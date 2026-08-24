@@ -23,6 +23,7 @@ import {
 } from '../../policies/wecom-notification.js';
 import { codePlacementGate } from './code-placement-gate.js';
 import { commitMessageGate } from './commit-message-gate.js';
+import { inspectAgentPolicies } from '../../policies/agent-policies.js';
 
 const CONFIG_VERSION = [1];
 
@@ -102,6 +103,33 @@ export const exceptionRegistryGate = defineGate({
         message: `例外 ${entry.id} 状态为${result.expired.includes(entry) ? '已过期' : '创建日期晚于当前日期'}`,
         remediation: '删除该例外，或经过人工复审后更新其日期。',
       })),
+    });
+  },
+});
+
+export const agentPolicyGate = defineGate({
+  id: 'repository.agent-policy',
+  configVersions: CONFIG_VERSION,
+  environments: ['ci-policy', 'ci-full', 'release-ready'],
+  mutation: 'read-only',
+  defaultTimeoutMs: 30000,
+  rules: ['repository/agent-policy-outdated'],
+  inspectSetup: () => ready('AGENTS.md 项目托管规范'),
+  plan: () => ({}),
+  run({ root, config }) {
+    const inspection = inspectAgentPolicies(root, config);
+    if (!inspection.changed) {
+      return passedResult('repository.agent-policy', 'AGENTS.md 项目托管规范与当前配置一致');
+    }
+    return violationResult('repository.agent-policy', 'AGENTS.md 项目托管规范与当前配置不一致', {
+      findings: [{
+        ruleId: 'repository/agent-policy-outdated',
+        severity: 'error',
+        message: 'AGENTS.md 缺失、包含旧托管区块，或当前托管内容已经过期',
+        location: { path: 'AGENTS.md' },
+        expected: 'AGENTS.md 中的 repo-guard 托管区块与 repo-guard.config.json 保持一致。',
+        remediation: '运行 repo-guard doctor --fix，同步后提交 AGENTS.md。',
+      }],
     });
   },
 });
@@ -249,6 +277,7 @@ export const protectedFilesGate = defineGate({
 
 export const repositoryPolicyGates = Object.freeze([
   exceptionRegistryGate,
+  agentPolicyGate,
   commitMessageGate,
   dependencyPolicyGate, filePlacementGate, codePlacementGate,
   maximumFileLinesGate, protectedFilesGate,

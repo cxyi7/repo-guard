@@ -2717,7 +2717,7 @@ test('keeps configuration lifecycle commands in CLI orchestration without a comm
   assert.match(cliConfigurationSource, /export function runEnable/);
   assert.match(cliConfigurationSource, /export function runDisable/);
   assert.match(cliConfigurationSource, /from ['"]\.\.\/setup\/config-management\.js['"]/);
-  assert.match(cliConfigurationSource, /from ['"]\.\.\/\.\.\/policies\/managed-policies\.js['"]/);
+  assert.match(cliConfigurationSource, /from ['"]\.\.\/\.\.\/policies\/agent-policies\.js['"]/);
   assert.doesNotMatch(cliConfigurationSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 

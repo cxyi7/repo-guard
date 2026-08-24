@@ -28,6 +28,10 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
   assert.equal(gitResult.status, 0, gitResult.stderr);
   writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
+  );
+  writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify({
       version: 1,
@@ -102,15 +106,15 @@ test('CLI migrates configuration and enables selected gates', (context) => {
   assert.equal(config.unitTest.coverage.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:unit-test-policy:start/,
+    /repo-guard:testing-policy:start/,
   );
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:architecture-policy:start/,
+    /repo-guard:dependency-health-policy:start/,
   );
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:accessibility-test-policy:start/,
+    /axe 可访问性测试使用 npm 脚本/,
   );
 
   const disableResult = run(root, ['disable', 'notification']);
@@ -147,7 +151,7 @@ test('init enables Stylelint when the project already provides it and a config',
   assert.equal(config.preCommit.stylelint.governance.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:exception-policy:start/,
+    /repo-guard:repository-governance-policy:start/,
   );
 });
 
@@ -206,7 +210,7 @@ test('init enables unit tests and writes AI policy when Vitest is ready', (conte
   assert.equal(config.unitTest.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:unit-test-policy:start/,
+    /repo-guard:testing-policy:start/,
   );
 });
 
@@ -268,6 +272,6 @@ test('init enables architecture and writes AI policy when dependency-cruiser is 
   assert.equal(config.architecture.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:architecture-policy:start/,
+    /repo-guard:dependency-health-policy:start/,
   );
 });

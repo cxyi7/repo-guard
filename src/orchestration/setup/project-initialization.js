@@ -18,15 +18,9 @@ import {
 import { detectProjectUnitTestSetup } from '../../gates/testing/unit-test-setup.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import {
-  ACCESSIBILITY_TEST_POLICY_FILE,
-  ARCHITECTURE_POLICY_FILE,
-  ensureArchitecturePolicy,
-  ensureAccessibilityTestPolicy,
-  ensureExceptionPolicy,
-  EXCEPTION_POLICY_FILE,
-  ensureUnitTestPolicy,
-  UNIT_TEST_POLICY_FILE,
-} from '../../policies/managed-policies.js';
+  AGENT_POLICY_FILE,
+  syncAgentPolicies,
+} from '../../policies/agent-policies.js';
 import { ensureProjectConfig } from './config-management.js';
 import { installHooks } from './hook-installer.js';
 
@@ -57,16 +51,7 @@ export function runInit(cwd = process.cwd()) {
     updatePackageScripts: true,
   });
   const config = loadConfig(root);
-  const exceptionPolicy = ensureExceptionPolicy(root, config.exceptions);
-  const architecturePolicy = config.architecture.enabled
-    ? ensureArchitecturePolicy(root, config.architecture)
-    : null;
-  const accessibilityTestPolicy = config.accessibilityTest.enabled
-    ? ensureAccessibilityTestPolicy(root, config.accessibilityTest)
-    : null;
-  const unitTestPolicy = config.unitTest.enabled
-    ? ensureUnitTestPolicy(root, config.unitTest)
-    : null;
+  const agentPolicy = syncAgentPolicies(root, config);
 
   writeConsoleMessage(`repo-guard 已在以下目录完成初始化：${root}`);
   writeConsoleMessage(`- Git Hook 路径：${result.hooksPath}`);
@@ -80,26 +65,8 @@ export function runInit(cwd = process.cwd()) {
   );
   writeConsoleMessage(`- 配置：${CONFIG_FILE}${configCreated ? '（已创建）' : '（已保留）'}`);
   writeConsoleMessage(
-    `- ${EXCEPTION_POLICY_FILE}：${exceptionPolicy.changed ? '已更新' : '已保留'} `
-    + '（结构化例外策略）',
+    `- ${AGENT_POLICY_FILE}：${agentPolicy.changed ? '已同步' : '已是最新状态'}（项目托管规范）`,
   );
-  if (architecturePolicy) {
-    writeConsoleMessage(
-      `- ${ARCHITECTURE_POLICY_FILE}：${architecturePolicy.changed ? '已更新' : '已保留'}`,
-    );
-  }
-  if (accessibilityTestPolicy) {
-    writeConsoleMessage(
-      `- ${ACCESSIBILITY_TEST_POLICY_FILE}：`
-      + `${accessibilityTestPolicy.changed ? '已更新' : '已保留'} `
-      + '（axe 无障碍测试策略）',
-    );
-  }
-  if (unitTestPolicy) {
-    writeConsoleMessage(
-      `- ${UNIT_TEST_POLICY_FILE}：${unitTestPolicy.changed ? '已更新' : '已保留'}`,
-    );
-  }
   if (configCreated && stylelintSetup.ready) {
     writeConsoleMessage(
       `- Stylelint ${stylelintSetup.metadata.version}：已启用，使用 ${stylelintSetup.configFile}`,

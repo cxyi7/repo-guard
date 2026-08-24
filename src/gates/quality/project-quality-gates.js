@@ -5,19 +5,13 @@ import {
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
 } from '../../config/defaults.js';
-import { configurationError } from '../../core/error/repo-guard-error.js';
 import { validateArchitectureSetup } from '../../integrations/dependency-cruiser/architecture.js';
 import { validateVueLighthouseSetup } from '../../integrations/lighthouse/project.js';
 import { validateBuildSetup } from '../../integrations/npm/build.js';
 import { validateTypeCheckSetup } from '../../integrations/npm/typecheck.js';
-import {
-  ARCHITECTURE_POLICY_FILE,
-  isArchitecturePolicyCurrent,
-} from '../../policies/managed-policies.js';
 import { skippedResult } from '../native-result.js';
 import {
   definePlatformGate,
-  policyFileIsCurrent,
   readyGateSetup,
 } from '../platform-gate.js';
 import { runArchitectureGate } from './architecture-gate.js';
@@ -45,18 +39,6 @@ function inspectBuildSetup({ root, config }) {
 function inspectArchitectureSetup({ root, config }) {
   if (!config.architecture.enabled) return readyGateSetup('架构门禁已禁用');
   const resolved = validateArchitectureSetup(root, config.architecture);
-  if (!policyFileIsCurrent(
-    root,
-    ARCHITECTURE_POLICY_FILE,
-    isArchitecturePolicyCurrent,
-    config.architecture,
-  )) {
-    throw configurationError(
-      'architecture/missing-managed-policy',
-      `${ARCHITECTURE_POLICY_FILE} 缺少当前架构策略`,
-      { details: { location: { path: ARCHITECTURE_POLICY_FILE } } },
-    );
-  }
   return readyGateSetup(`架构门禁（dependency-cruiser ${resolved.dependencyCruiser.version})`);
 }
 

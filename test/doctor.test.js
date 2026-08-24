@@ -171,7 +171,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.accessibilityTest.enabled, false);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:exception-policy:start/,
+    /repo-guard:repository-governance-policy:start/,
   );
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);
   assert.match(
@@ -216,5 +216,6 @@ test('禁用变异测试时不要求为受保护构建配置企业微信凭据',
   };
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 
+  assert.equal(await runDoctor(root, { fix: true }), 0);
   assert.equal(await runDoctor(root), 0);
 });

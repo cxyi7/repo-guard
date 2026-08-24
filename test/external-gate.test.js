@@ -11,10 +11,11 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { validateConfig } from '../src/config/configuration-validation.js';
-import { runCiGate } from '../src/orchestration/ci/runner.js';
+import { runCiGate as executeCiGate } from '../src/orchestration/ci/runner.js';
 import { createProjectGateRegistry } from '../src/gates/registry.js';
 import { createProjectCiFullPlan } from '../src/orchestration/execution-plans.js';
 import { runExternalManualGate } from '../src/orchestration/cli/manual-gates.js';
+import { syncAgentPolicies } from '../src/policies/agent-policies.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = path.join(process.cwd(), 'bin', 'repo-guard.js');
@@ -23,6 +24,11 @@ mkdirSync(TEST_ROOT, { recursive: true });
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+}
+
+async function runCiGate(options) {
+  syncAgentPolicies(options.root, options.config);
+  return executeCiGate(options);
 }
 
 function externalConfig(extra = {}) {

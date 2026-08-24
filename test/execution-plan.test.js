@@ -71,6 +71,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-policy').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
@@ -91,6 +92,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
@@ -120,6 +122,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('release-ready').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
@@ -147,6 +150,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map((step) => step.reportName ?? step.id),
     [
       'repository.structured-exceptions',
+      'repository.agent-policy',
       'repository.commit-message',
       'async-resource-cleanup',
       'path-naming',

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.18.0
+
+- 新增集中式 `AGENTS.md` 托管规范目录，将全部可配置功能、既有官方门禁以及外部门禁、无效代码基线和受保护构建等工作流合并为 7 个职责区块；启用项按当前项目配置渲染，固定硬门禁始终保留，并明确不写入 webhook、代码位置匹配内容等敏感值。
+- 初始化、功能启用与禁用、配置迁移、`doctor --fix` 和 GitLab CI 安装统一使用一次校验、一次写入的原子同步入口；同步会保留 marker 外的人工内容、清理已禁用功能的陈旧说明，并把旧 `exception-policy`、`architecture-policy`、`unit-test-policy` 和 `accessibility-test-policy` marker 迁移为当前分组。
+- 新增只读 `repository.agent-policy` CI 门禁，在 policy、full 和 release-ready 固定计划中阻断缺失、过期或被篡改的托管规范；补充目录覆盖契约，后续新增官方 Gate 或可配置功能而未登记托管规范时测试会直接失败。
+
 ## 1.17.0
 
 - 新增默认关闭的 Conventional Commit 提交信息门禁；`commit-msg`、pre-push、CI policy/full 和 release-ready 共享同一原生策略，支持类型白名单、可选或必填 scope、scope 白名单、Unicode 标题长度、merge/revert 与不兼容变更声明。

@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process';
 import {
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -19,10 +18,6 @@ import { findStructuredException } from '../src/policies/exception-registry.js';
 import {
   renderExceptionRegistrySummary,
 } from '../src/core/report/exception-registry-renderer.js';
-import {
-  ensureExceptionPolicy,
-  isExceptionPolicyCurrent,
-} from '../src/policies/managed-policies.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../bin/repo-guard.js', import.meta.url));
@@ -134,7 +129,7 @@ test('loadConfig blocks expired entries while the report CLI can explain them', 
   assert.match(result.stderr, /expired/);
 });
 
-test('reports active entries and maintains an idempotent AI policy', (context) => {
+test('reports active structured exceptions', (context) => {
   const active = entry({
     createdOn: dateText(-1),
     expiresOn: dateText(30),
@@ -150,15 +145,4 @@ test('reports active entries and maintains an idempotent AI policy', (context) =
   assert.equal(cliResult.status, 0, cliResult.stderr);
   assert.match(cliResult.stdout, /通过 {2}exceptions/);
 
-  const config = loadConfig(root).exceptions;
-  assert.equal(ensureExceptionPolicy(root, config).changed, true);
-  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  assert.equal(ensureExceptionPolicy(root, config).changed, false);
-  assert.equal(isExceptionPolicyCurrent(content, config), true);
-  assert.match(content, /AI 不得自行新增例外/);
-  assert.match(content, /Vue 模板禁止使用 `v-html`/);
-  assert.match(content, /target="_blank"/);
-  assert.match(content, /原生表单控件必须具有可静态验证/);
-  assert.match(content, /依赖必须遵守精确版本/);
-  assert.match(content, /样式复杂度门禁/);
 });

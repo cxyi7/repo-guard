@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.17.0`
+- 当前版本：`1.18.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.17.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.18.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -89,6 +89,17 @@ repo-guard doctor --ci
 `doctor --fix` 只修复 repo-guard 管理的配置、Hook、CI、忽略项、项目脚本和 AGENTS 策略块，不安装项目工具、不填写密钥、不修改业务代码。
 
 托管文本的最新状态比较会统一 LF、CRLF 和 CR 后再判断，因此 Windows 的 `core.autocrlf` 不会让内容正确的 `AGENTS.md`、`.gitignore`、`.gitattributes` 或 GitLab CI 被误报为缺失或过期；除换行符外，其他空白和正文仍严格匹配。
+
+### AGENTS.md 托管规范
+
+repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库与变更治理、暂存代码质量、源码安全与资源生命周期、目录与文件结构、依赖与仓库健康度、测试质量、构建/交付与外部门禁。每个可配置功能至少对应一条规范；同一主题的能力会合并到同一区块，避免按功能生成大量零散章节。
+
+- `init`、`enable`、`disable`、`migrate`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
+- 同步前会先校验全部当前 marker 和已知旧 marker，全部有效后才一次写入；marker 缺失、重复、倒置或嵌套时拒绝修改文件。
+- marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除，旧的四类策略 marker 会迁移为当前分组。
+- webhook、通知凭据和 `codePlacement.content` 等敏感值不会写入托管规范。
+- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `repo-guard migrate` 或 `repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。
+- 托管规范没有独立的 `enabled` 开关，不能在保留功能门禁的同时关闭对应 AI 约束。
 
 ### 启用或关闭能力
 
