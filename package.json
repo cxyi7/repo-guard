@@ -1,6 +1,6 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "description": "Structured Git and GitLab CI policy gates with managed application delivery for Vue projects",
   "keywords": [
     "git-hooks",
@@ -60,6 +60,7 @@
     "k6-load-config.schema.json",
     "gate-result.schema.json",
     "CHANGELOG.md",
+    "LICENSE",
     "README.md"
   ],
   "scripts": {
@@ -161,6 +162,6 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": false
 }
