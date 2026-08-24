@@ -160,6 +160,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   assert.equal(report.protectedFiles.length, 1);
   assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
     { name: 'repository.structured-exceptions', status: 'passed' },
+    { name: 'repository.commit-message', status: 'skipped' },
     { name: 'async-resource-cleanup', status: 'skipped' },
     { name: 'path-naming', status: 'skipped' },
     { name: 'dynamic-code', status: 'passed' },
@@ -555,7 +556,7 @@ test('installs the managed application-delivery contract from project configurat
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
   assert.match(
     root,
-    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.16\.0\.tgz/,
+    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.17\.0\.tgz/,
   );
   assert.match(
     root,
@@ -563,11 +564,11 @@ test('installs the managed application-delivery contract from project configurat
   );
   assert.match(
     root,
-    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.16\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.17\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
   );
   assert.match(
     root,
-    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.16\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.17\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
   );
   assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
   const installedConfig = validateConfig(JSON.parse(readFileSync(

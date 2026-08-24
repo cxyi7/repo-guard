@@ -172,6 +172,10 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
   installHooks({ cwd: root, updatePackageScripts: true });
 
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+  assert.equal(
+    packageJson.scripts['guard:enable-commit-message'],
+    'repo-guard enable commitMessage',
+  );
   assert.equal(packageJson.scripts['guard:dead-code'], 'repo-guard dead-code');
   assert.equal(
     packageJson.scripts['guard:dead-code-baseline-init'],

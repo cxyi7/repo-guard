@@ -77,6 +77,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   ]);
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.dependencyPolicy.enabled, true);
+  assert.equal(config.commitMessage.enabled, false);
   assert.equal(config.deadCode.enabled, false);
   assert.equal(config.deadCode.mode, 'strict');
   assert.equal(config.deadCode.baselineFile, '.repo-guard/knip-baseline.json');
@@ -210,6 +211,7 @@ test('migrates sparse configuration without changing project rules', (context) =
   assert.deepEqual(migrated.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
   assert.deepEqual(migrated.exceptions.entries, []);
   assert.equal(migrated.dependencyPolicy.enabled, true);
+  assert.equal(migrated.commitMessage.enabled, false);
   assert.match(migrated.$schema, /repo-guard\/config\.schema\.json$/);
 
   const second = migrateProjectConfig(root);
@@ -341,6 +343,19 @@ test('enables the dependency governance pre-commit feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['dependencies'], true);
   assert.deepEqual(enabled.changed, ['dependencies']);
   assert.equal(readConfig(root).dependencyPolicy.enabled, true);
+});
+
+test('enables and disables the commit message lifecycle gate', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['commitMessage'], true);
+  assert.deepEqual(enabled.changed, ['commitMessage']);
+  assert.equal(readConfig(root).commitMessage.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['commitMessage'], false);
+  assert.deepEqual(disabled.changed, ['commitMessage']);
+  assert.equal(readConfig(root).commitMessage.enabled, false);
 });
 
 test('enables Stylelint together with the style complexity gate', (context) => {

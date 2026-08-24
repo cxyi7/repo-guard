@@ -6,6 +6,7 @@ import {
   DEFAULT_BUILD_CONFIG,
   DEFAULT_CI_CONFIG,
   DEFAULT_CODE_PLACEMENT_CONFIG,
+  DEFAULT_COMMIT_MESSAGE_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
@@ -56,6 +57,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.codePlacement, DEFAULT_CODE_PLACEMENT_CONFIG);
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
+  assert.deepEqual(config.commitMessage, DEFAULT_COMMIT_MESSAGE_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.accessibilityTest, DEFAULT_ACCESSIBILITY_TEST_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
@@ -878,6 +880,51 @@ test('validates and normalizes dependency governance configuration', () => {
     })),
     /至少包含 10 个字符/,
   );
+});
+
+test('validates and normalizes commit message policy configuration', () => {
+  const config = validateConfig(baseConfig({
+    commitMessage: {
+      enabled: true,
+      types: ['feat', 'fix'],
+      requireScope: true,
+      allowedScopes: ['auth', 'api/v2'],
+      headerMaxLength: 72,
+      breakingChange: { requireMajorVersionOnRelease: false },
+      merge: { allowed: false },
+      revert: { allowed: false },
+      fixup: { allowPush: true },
+    },
+  }));
+
+  assert.deepEqual(config.commitMessage, {
+    enabled: true,
+    types: ['feat', 'fix'],
+    requireScope: true,
+    allowedScopes: ['auth', 'api/v2'],
+    headerMaxLength: 72,
+    breakingChange: {
+      allowed: true,
+      requireMarker: true,
+      requireFooter: true,
+      requireMajorVersionOnRelease: false,
+    },
+    merge: { allowed: false },
+    revert: { allowed: false },
+    fixup: { allowLocal: true, allowPush: true, allowCi: false },
+  });
+
+  for (const [commitMessage, expected] of [
+    [{ enabled: 'yes' }, /commitMessage\.enabled 必须是布尔值/],
+    [{ types: [] }, /commitMessage\.types 必须是非空规范标识符数组/],
+    [{ types: ['feat', 'feat'] }, /commitMessage\.types 不得包含重复值/],
+    [{ allowedScopes: ['Auth'] }, /commitMessage\.allowedScopes 必须是规范标识符数组/],
+    [{ headerMaxLength: 9 }, /commitMessage\.headerMaxLength 必须是大于或等于 10 的整数/],
+    [{ breakingChange: { unknown: true } }, /commitMessage\.breakingChange 包含不支持的属性： unknown/],
+    [{ fixup: { allowCi: 'yes' } }, /commitMessage\.fixup\.allowCi 必须是布尔值/],
+  ]) {
+    assert.throws(() => validateConfig(baseConfig({ commitMessage })), expected);
+  }
 });
 
 test('validates strict external project gate configuration', () => {

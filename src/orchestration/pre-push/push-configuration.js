@@ -34,6 +34,7 @@ function loadConfigAtRevision(root, revision) {
 
 function usesPrePushGate(config) {
   return config?.accessibilityTest.enabled
+    || config?.commitMessage.enabled
     || config?.deadCode.enabled
     || config?.typeCheck.enabled
     || config?.unitTest.enabled

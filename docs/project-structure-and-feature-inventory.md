@@ -2,17 +2,17 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.16.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.17.0`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.15.0 k6 手动接口压测外部门禁
-  └─ 1.15.1 MIT 开源许可与 AI 开发定位
-       └─ 1.16.0 Knip 项目级无效代码门禁
+1.15.1 MIT 开源许可与 AI 开发定位
+  └─ 1.16.0 Knip 项目级无效代码门禁
+       └─ 1.17.0 Commit 提交信息全生命周期门禁
 ```
 
-因此，`1.16.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.17.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -27,6 +27,7 @@
 - [x] Vue `v-html`、`target="_blank"`、表单 label 和图片 alt 硬门禁。
 - [x] 文件归位、单文件行数、依赖声明、依赖锁文件和依赖架构治理。
 - [x] 使用消费项目 Knip 检查未使用文件、导出、依赖、缺失依赖与无效入口，并以不可扩张基线治理历史债务。
+- [x] 使用同一 Conventional Commit 策略校验本地提交、推送区间、CI 和发布准备，并分生命周期治理临时提交与不兼容变更。
 - [x] 指定代码只能出现在一个或多个允许文件中的代码位置门禁。
 - [x] 保护文件 `audit`、`notify` 和不可变 `block` 三级策略。
 - [x] Vitest 单元测试映射、空测试、跳过测试、聚焦测试和覆盖率门禁。
@@ -67,10 +68,10 @@ repo/
 │  │  ├─ accessibility/              Vue 可访问性门禁
 │  │  ├─ quality/                    lint、格式化、异步资源、无效代码、类型、架构、构建、Lighthouse
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
-│  │  ├─ repository/                 依赖、路径命名、文件位置、代码位置和保护文件策略
+│  │  ├─ repository/                 提交信息、依赖、路径命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、变异测试、接口性能、axe 和外部门禁
-│  ├─ git/                           Git 命令、变更范围、revision 内容、索引内容、已跟踪路径和仓库状态
+│  ├─ git/                           Git 命令、提交信息、变更范围、revision 内容、索引内容、已跟踪路径和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ api-performance/            Axios 性能配置、场景执行、报告生命周期与中文报告
 │  │  ├─ axe/                        axe 集成发现
@@ -89,7 +90,7 @@ repo/
 │  ├─ orchestration/                 CLI、Hook、CI、doctor 和初始化编排
 │  │  ├─ ci/                         CI 范围、固定计划和报告持久化
 │  │  ├─ cli/                        CLI 参数与命令路由
-│  │  ├─ commit-message/             提交信息文件清单
+│  │  ├─ commit-message/             提交信息摘要准备、校验与定稿编排
 │  │  ├─ doctor/                     项目准备状态诊断
 │  │  ├─ pre-commit/                 暂存隔离、质量段和最终策略段
 │  │  ├─ pre-push/                   精确推送范围与独立重型门禁
@@ -132,6 +133,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 路径命名功能由 `config/path-naming-validation.js` 验证项目唯一规范与作用范围，`git/tracked-paths.js` 只读取最终 Git 索引中的完整已跟踪路径事实，`policies/path-naming.js` 纯粹判断文件名和祖先文件夹名，`gates/repository/path-naming-gate.js` 负责环境适配和统一 GateResult。该门禁不自动重命名，也不按目录派生第二套规范。
 
+提交信息治理由 `config/commit-message-validation.js` 规范化类型、scope 和特殊提交生命周期；`policies/commit-message.js` 只负责 Conventional Commit、merge/revert、`fixup!`/`squash!` 与不兼容变更判定；`git/commit-messages.js` 只读取精确 revision 范围内的真实提交对象；`gates/repository/commit-message-gate.js` 形成统一中文 GateResult，并只在 release-ready 比较基准与当前 package major；`orchestration/commit-message/runner.js` 在本地自动文件摘要定稿前复用同一策略。pre-push 和 CI 会重新读取提交对象，因此跳过本地 Hook 不能绕过共享历史校验。
+
 变异测试继续遵循配置、第三方适配、门禁决策、通知策略和 CLI 编排分层：`config/mutation-test-validation.js` 规范化 Stryker 与受保护构建设置；`integrations/stryker/` 只解析消费项目的 `@stryker-mutator/core`、执行 Stryker、校验报告并生成中文 HTML；`gates/testing/mutation-test-gate.js` 依据报告和进程事实产生统一 GateResult；`policies/mutation-test-notification.js` 只生成不含源码片段的企业微信内容；`gates/release/mutation-test-notification.js` 持有唯一的企业微信发送适配；`orchestration/cli/guarded-build.js` 负责先测后构建和通知时机。原始构建仍由既有 npm build integration 执行。
 
 Axios 接口性能功能保持为项目外部门禁辅助能力：`integrations/api-performance/` 验证项目配置与精确测试目标、调用消费项目提供的客户端工厂、执行低并发场景、维护未跟踪报告并渲染中文 HTML；`gates/testing/api-performance-external-runner.js` 只根据 p95、p99 和错误率形成 `repo-guard-json-v1` 决策；`orchestration/cli/api-performance-runner.js` 只解析项目外部门禁并强制 manual-only 与非自动化环境。该能力不注册到静态 Registry，不新增官方 Gate，也不进入任何固定 Execution Plan。
@@ -156,13 +159,13 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 29 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 30 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
-| 仓库治理 | `repository.structured-exceptions`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
+| 仓库治理 | `repository.structured-exceptions`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
 | 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
@@ -294,17 +297,20 @@ pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照
 
 代码位置匹配只统一 CRLF/CR 为 LF，不忽略其他空白，也不把语义相似但文本不同的代码视为相同。
 
-### 5.5 依赖与架构治理
+### 5.5 提交、依赖与架构治理
 
 | 能力 | 配置位置 | 主要行为 |
 |---|---|---|
 | 依赖声明 | `dependencyPolicy` | 检查精确版本、允许协议、禁用包、依赖分组和结构化例外 |
+| 提交信息 | `commitMessage` | 校验 Conventional Commit、类型与 scope、标题长度、merge/revert、临时提交生命周期和不兼容变更声明 |
 | 锁文件 | `dependencyPolicy.requireLockfile` | `package.json` 与 `package-lock.json` 必须同步，删除或缺失锁文件会阻断 |
 | 暂存快照 | 依赖门禁内置 | pre-commit 使用最终 Git 索引中的 package/lock 内容，不受未暂存副本影响 |
 | 依赖架构 | `architecture` | 使用消费项目的 dependency-cruiser 和配置，执行项目声明的模块方向规则 |
 | 无效代码 | `deadCode` | 使用消费项目 Knip 的完整项目图检查文件、导出、依赖与解析问题；支持严格模式和只减不增基线 |
 
 repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架构配置能够执行并把违规转换为统一结果。
+
+提交信息门禁默认关闭。启用后，普通提交必须符合 `type(scope)!: 简要说明`，项目可限制类型、scope 和 Unicode 标题长度。不兼容变更可要求标题 `!` 与 `BREAKING CHANGE:` 正文同时存在；merge 在本地通过 `MERGE_HEAD`、在已提交历史中通过父节点数量识别，不能把 revert/cherry-pick 的 Hook 来源误认为 merge；revert 必须保留 Git 生成的标题与回退 SHA。`fixup!`/`squash!` 默认只允许本地整理，pre-push 与 CI 强制阻断；release-ready 只在提交范围含不兼容变更时要求目标提交中的 package major 高于基准版本。
 
 ### 5.6 测试、覆盖率与可访问性测试
 
@@ -409,6 +415,8 @@ CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready
 
 ## 6. 固定生命周期
 
+托管 `prepare-commit-msg` 先保存 Git 来源并追加带 marker 的自动变更文件摘要；托管 `commit-msg` 先移除该摘要得到人工消息，复用 `repository.commit-message` 的本地策略，校验通过后才定稿摘要。校验失败保留可编辑消息与 marker 并返回策略违规退出码；`post-commit` 只清理临时状态。该流程不改变受保护 pre-commit Execution Plan 的顺序。
+
 ### 6.1 pre-commit
 
 顺序由锁定 Execution Plan 固定，项目配置不能重排：
@@ -440,7 +448,8 @@ Stylelint fix
 ### 6.2 pre-push
 
 ```text
-typecheck
+commit-message
+  → typecheck
   → dead-code
   → unit-test（包含可选 coverage/componentInteraction）
   → accessibility-test
@@ -451,11 +460,13 @@ typecheck
 
 每项按配置启用状态决定执行或跳过，并对本次推送使用精确变更范围。
 
+`commit-message` 是 pre-push 的第一步，直接读取待推送 revision 范围中的真实提交对象。默认本地允许的 `fixup!`/`squash!` 会在此被阻断，要求推送前完成 rebase/autosquash。
+
 pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步进程能力执行：门禁开始前立即显示中文进度，子进程 stdout/stderr 经路径和敏感信息脱敏后实时写入终端，同时保留执行结果用于失败判定。超时或计划取消会终止完整进程树。Knip 和 dependency-cruiser 的 stdout 是结构化 JSON，不直接转发，但对应门禁会在分析开始前显示进度。
 
 ### 6.3 CI 与 release-ready
 
-CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
+CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息；CI 默认拒绝残留的 `fixup!`/`squash!`。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
 
 ## 7. CLI 命令清单
 
@@ -555,6 +566,7 @@ ci
 | `codePlacement` | 精确代码文本允许位置规则 |
 | `exceptions` | 精确、限时、可审计的结构化例外 |
 | `dependencyPolicy` | 依赖声明与 lockfile 治理 |
+| `commitMessage` | Commit 提交信息与生命周期治理 |
 | `deadCode` | Knip 项目级无效代码检查与历史债务基线 |
 | `architecture` | dependency-cruiser 门禁 |
 | `build` | 独立构建门禁 |

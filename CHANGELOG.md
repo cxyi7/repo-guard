@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.17.0
+
+- 新增默认关闭的 Conventional Commit 提交信息门禁；`commit-msg`、pre-push、CI policy/full 和 release-ready 共享同一原生策略，支持类型白名单、可选或必填 scope、scope 白名单、Unicode 标题长度、merge/revert 与不兼容变更声明。
+- 将 `fixup!` 和 `squash!` 按生命周期治理：默认允许本地整理提交，但在推送与 CI 前强制完成 autosquash；项目可以分别配置本地、推送和 CI 行为，避免临时提交进入共享历史。
+- release-ready 在提交区间包含规范的不兼容变更时比较基准与当前 `package.json`，默认要求提升 major 版本；同步配置 Schema、初始化/迁移、doctor、固定执行计划、中文 GateResult、使用说明与真实 Git Hook/提交区间回归测试。
+
 ## 1.16.0
 
 - 新增默认关闭的 Knip 6.x 项目级无效代码门禁，使用消费项目自己的 Knip 安装与配置，检查未使用文件、导出、类型导出、普通依赖、开发依赖、可选 peer 依赖、缺失依赖、命令依赖和无法解析的导入；提供中文 GateResult，支持手动、pre-push 和 CI full，明确不进入 pre-commit。
