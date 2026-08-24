@@ -149,11 +149,13 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'k6-load-config.schema.json',
   'gate-result.schema.json',
   'CHANGELOG.md',
+  'LICENSE',
   'README.md',
 ]);
 
 const REVIEWED_PACKED_ROOTS = Object.freeze([
   'CHANGELOG.md',
+  'LICENSE',
   'README.md',
   'api-performance-config.schema.json',
   'bin',
