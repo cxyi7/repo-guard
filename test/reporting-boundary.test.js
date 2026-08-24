@@ -3,9 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { processOutputDiagnostics } from '../src/core/execution/process-output.js';
-import {
-  managedPolicies,
-} from '../src/policies/managed-policies.js';
+import { agentPolicies } from '../src/policies/agent-policies.js';
 import {
   processFailureGuidanceIds,
 } from '../src/core/result/process-failure-guidance.js';
@@ -177,13 +175,16 @@ test('publishes the AI-ready GateResult v2 schema', () => {
 });
 
 test('keeps managed AGENTS prompts and process repair guidance in central catalogs', () => {
-  assert.deepEqual(managedPolicies.map(({ id }) => id), [
-    'exception-policy',
-    'architecture-policy',
-    'unit-test-policy',
-    'accessibility-test-policy',
+  assert.deepEqual(agentPolicies.map(({ id }) => id), [
+    'repository-governance-policy',
+    'staged-quality-policy',
+    'source-safety-policy',
+    'repository-structure-policy',
+    'dependency-health-policy',
+    'testing-policy',
+    'delivery-policy',
   ]);
-  assert.equal(new Set(managedPolicies.map(({ startMarker }) => startMarker)).size, 4);
+  assert.equal(new Set(agentPolicies.map(({ startMarker }) => startMarker)).size, 7);
   assert.deepEqual(processFailureGuidanceIds, [
     'quality.typecheck',
     'quality.build',
@@ -195,9 +196,10 @@ test('keeps managed AGENTS prompts and process repair guidance in central catalo
     'quality.unit-test:coverage-report',
   ]);
 
-  const policyCatalog = path.join(SOURCE_ROOT, 'policies', 'managed-policies.js');
+  const policyCatalog = path.join(SOURCE_ROOT, 'policies', 'agent-policy-catalog.js');
+  const policyRenderer = path.join(SOURCE_ROOT, 'policies', 'agent-policies.js');
   for (const file of javascriptFiles(SOURCE_ROOT)) {
-    if (file === policyCatalog) continue;
+    if (file === policyCatalog || file === policyRenderer) continue;
     const source = readFileSync(file, 'utf8');
     assert.doesNotMatch(source, /function managedLines|repo-guard:[a-z-]+-policy:start/,
       path.relative(SOURCE_ROOT, file));

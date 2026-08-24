@@ -9,6 +9,7 @@ import { createChangeSet, createGateContext } from '../src/core/capability/gate-
 import { createProjectGateRegistry } from '../src/gates/registry.js';
 import { releaseEnvironment } from '../src/integrations/npm/release-environment.js';
 import { createProjectReleaseReadyPlan } from '../src/orchestration/execution-plans.js';
+import { syncAgentPolicies } from '../src/policies/agent-policies.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -261,6 +262,7 @@ test('runs release-ready as a read-only CI profile and records all proof steps',
     },
     rules: [{ pattern: 'index.js', category: 'Source', level: 'audit' }],
   });
+  syncAgentPolicies(root, projectConfig);
   assert.equal(await runCiGate({
     root,
     config: projectConfig,

@@ -17,11 +17,6 @@ import {
   resolvePrePushRevision,
 } from '../src/orchestration/pre-push/change-range.js';
 import {
-  ensureUnitTestPolicy,
-  isUnitTestPolicyCurrent,
-  isUnitTestPolicyManaged,
-} from '../src/policies/managed-policies.js';
-import {
   expectedUnitTestPath,
   expectedUnitTestPaths,
   inspectUnitTestPolicy as inspectUnitTestPolicyWithChangeSet,
@@ -566,50 +561,6 @@ test('enforces structured global and changed-line coverage after tests pass', as
     config: unitTestConfig({ coverage }),
     changes: [],
   })).status, 'execution-error');
-});
-
-test('maintains an idempotent AGENTS unit test policy without replacing project text', (context) => {
-  const root = createFixture();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(path.join(root, 'AGENTS.md'), '# Project instructions\n');
-
-  const first = ensureUnitTestPolicy(root);
-  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  const second = ensureUnitTestPolicy(root);
-
-  assert.equal(first.changed, true);
-  assert.equal(first.created, false);
-  assert.equal(second.changed, false);
-  assert.match(content, /^# Project instructions/m);
-  assert.equal(isUnitTestPolicyManaged(content), true);
-  assert.equal(isUnitTestPolicyCurrent(content, unitTestConfig()), true);
-  assert.equal(
-    isUnitTestPolicyCurrent(content, unitTestConfig({ script: 'test:changed' })),
-    false,
-  );
-});
-
-test('adds hard coverage thresholds to the managed AI policy', (context) => {
-  const root = createFixture();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  const config = unitTestConfig({
-    coverage: {
-      enabled: true,
-      reportsDirectory: 'coverage',
-      thresholds: {
-        lines: 80,
-        statements: 80,
-        functions: 80,
-        branches: 80,
-        changedLines: 90,
-      },
-    },
-  });
-
-  ensureUnitTestPolicy(root, config);
-  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  assert.match(content, /变更行覆盖率不得低于 90%/);
-  assert.equal(isUnitTestPolicyCurrent(content, config), true);
 });
 
 test('preserves matching human-authored lines when adding a managed text block', () => {

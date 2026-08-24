@@ -20,9 +20,9 @@ import {
   resolveNotificationEnvironment,
 } from '../../policies/local-environment.js';
 import {
-  EXCEPTION_POLICY_FILE,
-  isExceptionPolicyCurrent,
-} from '../../policies/managed-policies.js';
+  AGENT_POLICY_FILE,
+  inspectAgentPolicies,
+} from '../../policies/agent-policies.js';
 import { loadNotificationConfig } from '../../policies/wecom-notification.js';
 import { inspectGitLabCi } from '../setup/gitlab-ci.js';
 import { validateCiGatePolicy } from '../ci/gate-policy.js';
@@ -63,15 +63,11 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
 
   if (config) {
     const exceptionResult = inspectExceptionLifecycle(config.exceptions);
-    const policyPath = path.join(root, EXCEPTION_POLICY_FILE);
-    if (!existsSync(policyPath)
-      || !isExceptionPolicyCurrent(readFileSync(policyPath, 'utf8'), config.exceptions)) {
-      errors.push(
-        `${EXCEPTION_POLICY_FILE} 缺少 repo-guard 结构化例外策略；`
-        + '请运行 repo-guard doctor --fix',
-      );
+    const agentPolicy = inspectAgentPolicies(root, config);
+    if (agentPolicy.changed) {
+      errors.push(`${AGENT_POLICY_FILE} 托管规范与项目配置不一致；请运行 repo-guard doctor --fix`);
     } else {
-      checks.push(`${EXCEPTION_POLICY_FILE} 结构化例外策略`);
+      checks.push(`${AGENT_POLICY_FILE} 项目托管规范`);
     }
     if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
       errors.push(renderExceptionRegistrySummary(exceptionResult));

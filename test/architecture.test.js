@@ -17,10 +17,6 @@ import {
 } from '../src/integrations/dependency-cruiser/architecture.js';
 import { runArchitectureGate } from '../src/gates/quality/architecture-gate.js';
 import { detectProjectArchitectureSetup } from '../src/gates/quality/architecture-setup.js';
-import {
-  ensureArchitecturePolicy,
-  isArchitecturePolicyCurrent,
-} from '../src/policies/managed-policies.js';
 import { runPrePush } from '../src/orchestration/pre-push/runner.js';
 import { runDoctor } from '../src/orchestration/doctor/runner.js';
 
@@ -224,7 +220,6 @@ test('reports warnings without weakening the hard error gate', (context) => {
 test('exposes architecture through CLI and pre-push', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  ensureArchitecturePolicy(root, architectureConfig());
 
   const cliResult = spawnSync(process.execPath, [CLI_PATH, 'architecture'], {
     cwd: root,
@@ -239,22 +234,6 @@ test('exposes architecture through CLI and pre-push', async (context) => {
   assert.equal(await runPrePush(root), 0);
 });
 
-test('maintains an idempotent AGENTS architecture policy', (context) => {
-  const root = createFixture();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(path.join(root, 'AGENTS.md'), '# Project rules\n');
-
-  const first = ensureArchitecturePolicy(root, architectureConfig());
-  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  const second = ensureArchitecturePolicy(root, architectureConfig());
-
-  assert.equal(first.changed, true);
-  assert.equal(second.changed, false);
-  assert.match(content, /repo-guard:architecture-policy:start/);
-  assert.match(content, /no-circular/);
-  assert.equal(isArchitecturePolicyCurrent(content, architectureConfig()), true);
-});
-
 test('doctor repairs and validates the enabled architecture gate', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -262,7 +241,7 @@ test('doctor repairs and validates the enabled architecture gate', async (contex
   assert.equal(await runDoctor(root, { fix: true }), 0);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /repo-guard:architecture-policy:start/,
+    /repo-guard:dependency-health-policy:start/,
   );
   assert.equal(await runDoctor(root), 0);
 });

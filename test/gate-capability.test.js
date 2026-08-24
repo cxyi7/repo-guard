@@ -144,6 +144,11 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     },
   ),
   reviewedGateDescriptor(
+    'repository.agent-policy',
+    ['ci-policy', 'ci-full', 'release-ready'],
+    { defaultTimeoutMs: 30000, rules: ['repository/agent-policy-outdated'] },
+  ),
+  reviewedGateDescriptor(
     'repository.commit-message',
     ['pre-push', 'ci-policy', 'ci-full', 'release-ready'],
     {

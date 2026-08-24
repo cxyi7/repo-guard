@@ -2,21 +2,22 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.17.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.18.0`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.15.1 MIT 开源许可与 AI 开发定位
-  └─ 1.16.0 Knip 项目级无效代码门禁
-       └─ 1.17.0 Commit 提交信息全生命周期门禁
+1.16.0 Knip 项目级无效代码门禁
+  └─ 1.17.0 Commit 提交信息全生命周期门禁
+       └─ 1.18.0 AGENTS.md 集中托管规范目录与同步门禁
 ```
 
-因此，`1.17.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.18.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
 - [x] 项目初始化、配置迁移、托管 Git Hook 安装和环境诊断。
+- [x] 将全部可配置功能、官方门禁和关键独立工作流集中投影为 7 组 `AGENTS.md` 托管规范，并通过原子同步、旧 marker 迁移和只读 CI 门禁保持一致。
 - [x] 使用消费项目自身的 Stylelint、ESLint 和 Prettier，对暂存文件执行修复与只读复检。
 - [x] 保留部分暂存文件中的未暂存内容，失败时恢复执行前状态。
 - [x] 按 include、exclude 和扩展名白名单选择暂存文件，并按 Git 记录维护标准文件头。
@@ -60,7 +61,7 @@ repo/
 │  │  ├─ capability/                 Gate、Registry、Execution Plan、GateContext
 │  │  ├─ error/                      RepoGuardError 和错误分类
 │  │  ├─ execution/                  文件快照、暂存文件、可取消进程和实时输出安全
-│  │  ├─ policy/                     受管理文本块和策略生命周期基础能力
+│  │  ├─ policy/                     单区块与多区块受管理文本生命周期基础能力
 │  │  ├─ project/                    Node、package 和项目文本事实
 │  │  ├─ report/                     console 与 JSON renderer
 │  │  └─ result/                     GateResult、finding、artifact 和退出码
@@ -68,7 +69,7 @@ repo/
 │  │  ├─ accessibility/              Vue 可访问性门禁
 │  │  ├─ quality/                    lint、格式化、异步资源、无效代码、类型、架构、构建、Lighthouse
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
-│  │  ├─ repository/                 提交信息、依赖、路径命名、文件位置、代码位置和保护文件策略
+│  │  ├─ repository/                 AGENTS 同步、提交信息、依赖、路径命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、变异测试、接口性能、axe 和外部门禁
 │  ├─ git/                           Git 命令、提交信息、变更范围、revision 内容、索引内容、已跟踪路径和仓库状态
@@ -95,7 +96,7 @@ repo/
 │  │  ├─ pre-commit/                 暂存隔离、质量段和最终策略段
 │  │  ├─ pre-push/                   精确推送范围与独立重型门禁
 │  │  └─ setup/                      配置、Hook、CI 和受管理文件安装
-│  └─ policies/                      不依赖运行入口的纯策略判定，包含 CI 通知内容策略
+│  └─ policies/                      纯策略判定、AGENTS 规范目录与渲染、CI 通知内容策略
 ├─ test/                             配置、行为、端到端和架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ api-performance-config.schema.json Axios 接口性能配置 Schema
@@ -135,6 +136,10 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 提交信息治理由 `config/commit-message-validation.js` 规范化类型、scope 和特殊提交生命周期；`policies/commit-message.js` 只负责 Conventional Commit、merge/revert、`fixup!`/`squash!` 与不兼容变更判定；`git/commit-messages.js` 只读取精确 revision 范围内的真实提交对象；`gates/repository/commit-message-gate.js` 形成统一中文 GateResult，并只在 release-ready 比较基准与当前 package major；`orchestration/commit-message/runner.js` 在本地自动文件摘要定稿前复用同一策略。pre-push 和 CI 会重新读取提交对象，因此跳过本地 Hook 不能绕过共享历史校验。
 
+AGENTS 托管规范使用集中目录和单一写入边界：`policies/agent-policy-catalog.js` 声明 7 个分组以及功能、官方 Gate 和独立工作流的覆盖关系，并仅依据规范化配置和受控 package script 事实生成中文规则；`policies/agent-policies.js` 负责读取项目事实、识别四类旧 marker、构造当前区块和单次写入；`core/policy/managed-text-block.js` 在修改前统一校验全部 marker，并保留 marker 外的人工内容；`gates/repository/repository-policy-gates.js` 中的 `repository.agent-policy` 只读检查当前投影。初始化、功能启停、迁移、Doctor 修复和 CI 安装复用同一同步入口，Git Hook 不修改 `AGENTS.md`。
+
+后续能力扩展必须同时维护托管规范覆盖关系：新增可配置功能时在目录项的 `features` 中登记配置功能名，新增官方 Gate 时在 `gates` 中登记 Gate ID；两类清单都与现有 Registry/配置功能表做精确集合测试，遗漏或残留登记都会失败。无独立配置键、也不注册官方 Gate 的工作流使用稳定 `capabilities` 标识，并同步更新明确枚举的契约测试。新规则优先并入现有 7 个职责分组；只有职责确实独立时才新增 marker，重命名 marker 时必须把旧 marker 加入迁移清单。任何扩展都必须继续满足确定性渲染、敏感值排除、marker 外人工内容保留、一次写入和只读 CI 校验。
+
 变异测试继续遵循配置、第三方适配、门禁决策、通知策略和 CLI 编排分层：`config/mutation-test-validation.js` 规范化 Stryker 与受保护构建设置；`integrations/stryker/` 只解析消费项目的 `@stryker-mutator/core`、执行 Stryker、校验报告并生成中文 HTML；`gates/testing/mutation-test-gate.js` 依据报告和进程事实产生统一 GateResult；`policies/mutation-test-notification.js` 只生成不含源码片段的企业微信内容；`gates/release/mutation-test-notification.js` 持有唯一的企业微信发送适配；`orchestration/cli/guarded-build.js` 负责先测后构建和通知时机。原始构建仍由既有 npm build integration 执行。
 
 Axios 接口性能功能保持为项目外部门禁辅助能力：`integrations/api-performance/` 验证项目配置与精确测试目标、调用消费项目提供的客户端工厂、执行低并发场景、维护未跟踪报告并渲染中文 HTML；`gates/testing/api-performance-external-runner.js` 只根据 p95、p99 和错误率形成 `repo-guard-json-v1` 决策；`orchestration/cli/api-performance-runner.js` 只解析项目外部门禁并强制 manual-only 与非自动化环境。该能力不注册到静态 Registry，不新增官方 Gate，也不进入任何固定 Execution Plan。
@@ -159,13 +164,13 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 30 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 31 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
-| 仓库治理 | `repository.structured-exceptions`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
+| 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
 | 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
@@ -204,9 +209,9 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | `init` | 创建当前配置、安装托管 Hook、设置 `core.hooksPath`、维护忽略文件和项目脚本，并按项目工具准备情况启用能力 |
 | `install-hooks` | 安装 `pre-commit`、`pre-push`、`prepare-commit-msg`、`commit-msg`、`post-commit` 五个 Hook |
 | Hook 升级 | 接受已知旧 marker，但只生成当前 `repo-guard-managed:v4` |
-| `migrate` | 补齐当前配置契约并保留已有显式值，不保留已删除的旧字段兼容分支 |
-| `doctor` | 检查 Node、配置、Hook、工具、脚本、通知、结构化例外和外部门禁准备状态 |
-| `doctor --fix` | 只修复 repo-guard 管理的配置、Hook、CI、忽略项、AGENTS 策略块和项目脚本 |
+| `migrate` | 补齐当前配置契约、保留已有显式值并同步当前 AGENTS 托管规范，不保留已删除的旧字段兼容分支 |
+| `doctor` | 检查 Node、配置、Hook、工具、脚本、通知、结构化例外、AGENTS 托管规范和外部门禁准备状态 |
+| `doctor --fix` | 只修复 repo-guard 管理的配置、Hook、CI、忽略项、AGENTS 托管规范和项目脚本 |
 | `doctor --ci` | 检查 GitLab CI 集成，不要求本地 Hook 或企业微信凭据 |
 | 托管文本换行兼容 | 比较最新状态时统一 LF、CRLF 和 CR，避免 Windows `core.autocrlf` 造成误报或无意义重写；其他内容仍严格匹配 |
 
@@ -383,13 +388,13 @@ repo-guard 生成临时受控入口并独占 k6 `options`、thresholds 与 `hand
 
 | 配置档 | 固定能力 |
 |---|---|
-| `policy` | 结构化例外、安全与 Vue 可访问性、依赖、文件归位、代码位置、行数、测试策略和保护文件 |
+| `policy` | 结构化例外、AGENTS 托管规范、安全与 Vue 可访问性、依赖、文件归位、代码位置、行数、测试策略和保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
 | `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse 和发布包一致性检查 |
 
 CI 使用明确 base/head 或 GitLab 提供的可信范围。浅克隆缺少基准提交时返回范围错误，不会把未知范围当成空变更。
 
-CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，调用消费项目显式提供的固定验证/部署 npm scripts；开启通知时再由包内命令读取 GitLab CI 受保护变量并发送结果。
+CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。`repository.agent-policy` 在结构化例外之后、其他项目规则之前验证 `AGENTS.md` 已同步，失败时要求在受控写入阶段运行 `repo-guard doctor --fix`。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，调用消费项目显式提供的固定验证/部署 npm scripts；开启通知时再由包内命令读取 GitLab CI 受保护变量并发送结果。
 
 `ci.gatePolicy` 在现有固定计划之上提供 CI 专属的 Gate 激活和阻断策略：`inherit` 保持原行为，`off` 在 setup 前跳过，`report` 执行但不影响 CI 总退出码，`enforce` 执行并阻断失败。该策略不进入 pre-commit 或 pre-push；显式 `report/enforce` 只修改单个 CI 步骤的不可变上下文副本。
 

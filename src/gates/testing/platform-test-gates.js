@@ -2,18 +2,10 @@ import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../../config/defaults.js';
-import { configurationError } from '../../core/error/repo-guard-error.js';
 import { createGateResult } from '../../core/result/gate-result.js';
-import {
-  ACCESSIBILITY_TEST_POLICY_FILE,
-  isAccessibilityTestPolicyCurrent,
-  isUnitTestPolicyCurrent,
-  UNIT_TEST_POLICY_FILE,
-} from '../../policies/managed-policies.js';
 import { skippedResult } from '../native-result.js';
 import {
   definePlatformGate,
-  policyFileIsCurrent,
   readyGateSetup,
 } from '../platform-gate.js';
 import { runAccessibilityTestGate } from './accessibility-test-gate.js';
@@ -34,36 +26,12 @@ function processExecutionOptions({ environment, logger, signal }) {
 function inspectUnitTestSetup({ root, config }) {
   if (!config.unitTest.enabled) return readyGateSetup('单元测试门禁已禁用');
   const resolved = validateUnitTestSetup(root, config.unitTest);
-  if (!policyFileIsCurrent(
-    root,
-    UNIT_TEST_POLICY_FILE,
-    isUnitTestPolicyCurrent,
-    config.unitTest,
-  )) {
-    throw configurationError(
-      'unit-test/missing-managed-policy',
-      `${UNIT_TEST_POLICY_FILE} 缺少当前单元测试策略`,
-      { details: { location: { path: UNIT_TEST_POLICY_FILE } } },
-    );
-  }
   return readyGateSetup(`单元测试门禁（Vitest ${resolved.vitest.version})`);
 }
 
 function inspectAccessibilitySetup({ root, config }) {
   if (!config.accessibilityTest.enabled) return readyGateSetup('无障碍测试门禁已禁用');
   validateAccessibilityTestSetup(root, config.accessibilityTest);
-  if (!policyFileIsCurrent(
-    root,
-    ACCESSIBILITY_TEST_POLICY_FILE,
-    isAccessibilityTestPolicyCurrent,
-    config.accessibilityTest,
-  )) {
-    throw configurationError(
-      'accessibility-test/missing-managed-policy',
-      `${ACCESSIBILITY_TEST_POLICY_FILE} 缺少当前无障碍策略`,
-      { details: { location: { path: ACCESSIBILITY_TEST_POLICY_FILE } } },
-    );
-  }
   return readyGateSetup('无障碍测试门禁');
 }
 

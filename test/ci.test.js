@@ -11,11 +11,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { resolveCiRange } from '../src/orchestration/ci/change-range.js';
-import { runCiGate } from '../src/orchestration/ci/runner.js';
+import { runCiGate as executeCiGate } from '../src/orchestration/ci/runner.js';
 import { validateConfig } from '../src/config/configuration-validation.js';
 import { runCiCommand } from '../src/orchestration/ci/command.js';
 import { runDoctor } from '../src/orchestration/doctor/runner.js';
-import { ensureExceptionPolicy } from '../src/policies/managed-policies.js';
+import { syncAgentPolicies } from '../src/policies/agent-policies.js';
 import {
   GITLAB_TEMPLATE_FILE,
   inspectGitLabCi,
@@ -25,6 +25,11 @@ import { renderManagedPipelineRoot } from '../src/orchestration/setup/gitlab-man
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
+
+async function runCiGate(options) {
+  syncAgentPolicies(options.root, options.config);
+  return executeCiGate(options);
+}
 
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
@@ -160,6 +165,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   assert.equal(report.protectedFiles.length, 1);
   assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
     { name: 'repository.structured-exceptions', status: 'passed' },
+    { name: 'repository.agent-policy', status: 'passed' },
     { name: 'repository.commit-message', status: 'skipped' },
     { name: 'async-resource-cleanup', status: 'skipped' },
     { name: 'path-naming', status: 'skipped' },
@@ -462,7 +468,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
     fixture.root,
     installedConfig,
   ).problems, []);
-  ensureExceptionPolicy(fixture.root, installedConfig.exceptions);
+  syncAgentPolicies(fixture.root, installedConfig);
   assert.equal(await runDoctor(fixture.root, { ci: true }), 0);
 
   const rootPath = path.join(fixture.root, '.gitlab-ci.yml');
@@ -556,7 +562,7 @@ test('installs the managed application-delivery contract from project configurat
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
   assert.match(
     root,
-    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.17\.0\.tgz/,
+    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.18\.0\.tgz/,
   );
   assert.match(
     root,
@@ -564,11 +570,11 @@ test('installs the managed application-delivery contract from project configurat
   );
   assert.match(
     root,
-    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.17\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.18\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
   );
   assert.match(
     root,
-    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.17\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.18\.0\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
   );
   assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
   const installedConfig = validateConfig(JSON.parse(readFileSync(

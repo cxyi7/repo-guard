@@ -14,10 +14,6 @@ import { DEFAULT_ACCESSIBILITY_TEST_CONFIG } from '../src/config/defaults.js';
 import { createStarterConfig } from '../src/orchestration/setup/config-management.js';
 import { runPrePush } from '../src/orchestration/pre-push/runner.js';
 import {
-  ensureAccessibilityTestPolicy,
-  isAccessibilityTestPolicyCurrent,
-} from '../src/policies/managed-policies.js';
-import {
   analyzeAccessibilityTestContent,
   inspectAccessibilityTestSetup,
 } from '../src/gates/testing/accessibility-test-setup.js';
@@ -239,7 +235,6 @@ test('runs enabled accessibility tests from pre-push', async (context) => {
     path.join(root, 'repo-guard.config.json'),
     `${JSON.stringify(projectConfig, null, 2)}\n`,
   );
-  ensureAccessibilityTestPolicy(root, projectConfig.accessibilityTest);
   assert.equal(spawnSync('git', ['config', 'user.name', 'repo-guard test'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'repo-guard@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['add', '.'], { cwd: root }).status, 0);
@@ -247,17 +242,4 @@ test('runs enabled accessibility tests from pre-push', async (context) => {
 
   assert.equal(await runPrePush(root), 0);
   assert.equal(readFileSync(path.join(root, 'a11y-calls.log'), 'utf8'), 'run\n');
-});
-
-test('maintains an idempotent AI accessibility testing policy', (context) => {
-  const root = mkdtempSync(path.join(TEST_ROOT, 'accessibility-policy-'));
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(path.join(root, 'AGENTS.md'), '# Existing\n');
-
-  assert.equal(ensureAccessibilityTestPolicy(root, config()).changed, true);
-  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  assert.match(content, /axe 可访问性测试硬性要求/);
-  assert.match(content, /disableRules、exclude、withRules、withTags、runOnly、includedImpacts/);
-  assert.equal(isAccessibilityTestPolicyCurrent(content, config()), true);
-  assert.equal(ensureAccessibilityTestPolicy(root, config()).changed, false);
 });

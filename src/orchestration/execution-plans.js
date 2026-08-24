@@ -30,6 +30,7 @@ export const ciPolicyPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    'repository.agent-policy',
     'repository.commit-message',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
@@ -62,6 +63,7 @@ export const ciFullPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    'repository.agent-policy',
     'repository.commit-message',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
