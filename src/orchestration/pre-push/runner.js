@@ -11,7 +11,10 @@ import { gateRegistry } from '../../gates/registry.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { prePushPlan } from '../execution-plans.js';
 import { orchestratePlan } from '../orchestrator.js';
-import { collectPrePushChanges } from './change-range.js';
+import {
+  collectPrePushChanges,
+  resolvePrePushRevision,
+} from './change-range.js';
 import { resolvePushConfig } from './push-configuration.js';
 
 export async function runPrePush(cwd = process.cwd(), {
@@ -28,6 +31,7 @@ export async function runPrePush(cwd = process.cwd(), {
   const changeSet = createChangeSet({
     source: 'pre-push',
     changes: collectPrePushChanges({ input, remoteName, root }),
+    revision: resolvePrePushRevision({ input, remoteName, root }),
   });
   const context = createGateContext({
     root,

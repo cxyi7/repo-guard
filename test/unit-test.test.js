@@ -12,7 +12,10 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { DEFAULT_UNIT_TEST_CONFIG } from '../src/config/defaults.js';
 import { createChangeSet } from '../src/core/capability/gate-context.js';
-import { collectPrePushChanges } from '../src/orchestration/pre-push/change-range.js';
+import {
+  collectPrePushChanges,
+  resolvePrePushRevision,
+} from '../src/orchestration/pre-push/change-range.js';
 import {
   ensureUnitTestPolicy,
   isUnitTestPolicyCurrent,
@@ -648,6 +651,10 @@ test('collects the exact committed range supplied by the pre-push hook', (contex
   const input = `refs/heads/main ${head} refs/heads/main ${base}\n`;
 
   const changes = collectPrePushChanges({ input, remoteName: 'origin', root });
+  assert.deepEqual(resolvePrePushRevision({ input, remoteName: 'origin', root }), {
+    base,
+    head,
+  });
   assert.deepEqual(
     changes.map(({ path: filePath }) => filePath).sort(),
     ['src/utils/money.js'],

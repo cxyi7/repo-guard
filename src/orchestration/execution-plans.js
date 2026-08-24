@@ -14,6 +14,7 @@ export const prePushPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'quality.typecheck',
+    'quality.dead-code',
     'quality.unit-test',
     'quality.accessibility-test',
     'quality.architecture',
@@ -100,6 +101,7 @@ export const ciFullPlan = defineExecutionPlan({
       reportName: 'prettier',
     },
     { id: 'quality.typecheck', gateId: 'quality.typecheck', reportName: 'type-check' },
+    { id: 'quality.dead-code', gateId: 'quality.dead-code', reportName: 'dead-code' },
     'quality.unit-test',
     'quality.accessibility-test',
     'quality.architecture',

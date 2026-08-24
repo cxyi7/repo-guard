@@ -58,6 +58,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('pre-push').steps.map(({ id }) => id),
     [
       'quality.typecheck',
+      'quality.dead-code',
       'quality.unit-test',
       'quality.accessibility-test',
       'quality.architecture',
@@ -105,6 +106,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.eslint-project',
       'quality.prettier-project',
       'quality.typecheck',
+      'quality.dead-code',
       'quality.unit-test',
       'quality.accessibility-test',
       'quality.architecture',
@@ -158,6 +160,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'eslint',
       'prettier',
       'type-check',
+      'dead-code',
       'quality.unit-test',
       'quality.accessibility-test',
       'quality.architecture',

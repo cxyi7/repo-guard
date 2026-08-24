@@ -714,6 +714,41 @@ test('separates dependency-cruiser execution facts from architecture gate decisi
   );
 });
 
+test('separates Knip facts, debt policy, gate decisions, and baseline CLI routing', () => {
+  const integrationRoot = path.join(SOURCE_ROOT, 'integrations', 'knip');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'dead-code-baseline.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'dead-code-gate.js');
+  const managementPath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'quality',
+    'dead-code-baseline-management.js',
+  );
+  const cliPath = path.join(SOURCE_ROOT, 'orchestration', 'cli', 'dead-code-baseline.js');
+  for (const target of [
+    path.join(integrationRoot, 'project.js'),
+    path.join(integrationRoot, 'execution.js'),
+    path.join(integrationRoot, 'report.js'),
+    path.join(integrationRoot, 'configuration-hint-reporter.js'),
+    policyPath,
+    gatePath,
+    managementPath,
+    cliPath,
+  ]) {
+    assert.equal(existsSync(target), true);
+  }
+  const integrationSources = readdirSync(integrationRoot)
+    .map((fileName) => readFileSync(path.join(integrationRoot, fileName), 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(integrationSources, /(?:GateResult|dead-code-baseline\.js|console-renderer)/);
+  assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /integrations\/|gates\/|orchestration\//);
+  assert.match(readFileSync(gatePath, 'utf8'), /integrations\/knip\/execution\.js/);
+  assert.match(readFileSync(managementPath, 'utf8'), /policies\/dead-code-baseline\.js/);
+  const cliSource = readFileSync(cliPath, 'utf8');
+  assert.match(cliSource, /gates\/quality\/dead-code-baseline-management\.js/);
+  assert.doesNotMatch(cliSource, /integrations\/knip\//);
+});
+
 test('separates axe project and execution facts from accessibility test decisions', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'accessibility-test-runner.js')), false);
   const axeProjectPath = path.join(SOURCE_ROOT, 'integrations', 'axe', 'project.js');
@@ -878,6 +913,7 @@ test('keeps platform gates in cohesive quality and testing modules', () => {
   assert.match(stagedSource, /export const prettierGate/);
   assert.match(projectSource, /export const typecheckGate/);
   assert.match(projectSource, /export const architectureGate/);
+  assert.match(projectSource, /export const deadCodeGate/);
   assert.match(projectSource, /export const buildGate/);
   assert.match(projectSource, /export const lighthouseGate/);
   assert.match(testingSource, /export const unitTestGate/);

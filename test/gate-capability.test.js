@@ -305,6 +305,18 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     packageScript: 'guard:architecture',
     requiredTools: ['dependency-cruiser'],
   }),
+  reviewedGateDescriptor('quality.dead-code', ['manual', 'pre-push', 'ci-full'], {
+    configKey: 'deadCode',
+    featureName: 'deadCode',
+    featureOrder: 100,
+    defaultTimeoutMs: 180000,
+    manualCommand: 'dead-code',
+    manualOrder: 45,
+    doctorOrder: 25,
+    packageScript: 'guard:dead-code',
+    requiredTools: ['knip'],
+    supportsCancellation: true,
+  }),
   reviewedGateDescriptor(
     'quality.build',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],

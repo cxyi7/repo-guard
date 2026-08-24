@@ -4,6 +4,7 @@ import { validateArchitectureConfiguration } from './architecture-validation.js'
 import { validateCiConfiguration } from './ci-validation.js';
 import { validateCodePlacementConfiguration } from './code-placement-validation.js';
 import { validateDependencyPolicyConfiguration } from './dependency-policy-validation.js';
+import { validateDeadCodeConfiguration } from './dead-code-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
 import { validateNotificationConfiguration } from './notification-validation.js';
@@ -31,6 +32,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const dependencyPolicy = validateDependencyPolicyConfiguration(value, configPath);
 
+  const deadCode = validateDeadCodeConfiguration(value, configPath);
+
   const architecture = validateArchitectureConfiguration(value, configPath);
 
   const { build, lighthouse, typeCheck } = validateExecutionGateConfiguration(
@@ -56,6 +59,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     codePlacement,
     exceptions,
     dependencyPolicy,
+    deadCode,
     architecture,
     build,
     lighthouse,

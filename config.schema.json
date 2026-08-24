@@ -427,6 +427,62 @@
         }
       }
     },
+    "deadCode": {
+      "type": "object",
+      "description": "使用消费项目安装的 Knip 执行项目级无效代码检查，并可通过只减不增的指纹基线治理历史债务。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否在 pre-push 和 ci-full 中运行无效代码门禁；手动命令始终可以显式执行。"
+        },
+        "mode": {
+          "enum": ["strict", "noRegression"],
+          "default": "strict",
+          "description": "strict 拒绝任何问题；noRegression 仅允许已登记且与当前结果同步的历史问题。"
+        },
+        "configFile": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "default": null,
+          "description": "仓库内 Knip 配置文件；null 使用 Knip 官方配置发现顺序。"
+        },
+        "baselineFile": {
+          "type": "string",
+          "minLength": 1,
+          "default": ".repo-guard/knip-baseline.json",
+          "description": "noRegression 模式使用的仓库内、非符号链接且由 Git 跟踪的基线文件。"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 180000,
+          "description": "Knip 子进程最大运行时间。"
+        },
+        "production": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否启用 Knip production 模式，仅分析生产代码。"
+        },
+        "issueTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["files", "dependencies", "unlisted", "binaries", "unresolved", "exports", "types"]
+          },
+          "default": ["files", "dependencies", "unlisted", "binaries", "unresolved", "exports", "types"],
+          "description": "由 repo-guard 强制请求并转换为中文问题的 Knip 问题类型。"
+        },
+        "treatConfigHintsAsErrors": {
+          "type": "boolean",
+          "const": true,
+          "default": true,
+          "description": "Knip 配置提示必须作为错误处理，避免在不完整项目图上建立基线。"
+        }
+      }
+    },
     "architecture": {
       "type": "object",
       "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation, with standalone AI repair instructions for blocking violations.",

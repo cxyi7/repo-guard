@@ -77,6 +77,9 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   ]);
   assert.equal(config.lighthouse.enabled, false);
   assert.equal(config.dependencyPolicy.enabled, true);
+  assert.equal(config.deadCode.enabled, false);
+  assert.equal(config.deadCode.mode, 'strict');
+  assert.equal(config.deadCode.baselineFile, '.repo-guard/knip-baseline.json');
   assert.equal(config.architecture.enabled, false);
   assert.equal(config.accessibilityTest.enabled, false);
   assert.equal(config.architecture.rules.length, 3);
@@ -116,8 +119,11 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.dependencyPolicy.enabled, true);
   assert.equal(config.dependencyPolicy.requireExactVersions, true);
   assert.deepEqual(config.dependencyPolicy.allowedProtocols, ['npm', 'workspace']);
-  assert.equal(config.rules.length, 9);
+  assert.equal(config.rules.length, 11);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
+  assert.equal(config.rules.some(({ pattern }) => (
+    pattern === '.repo-guard/knip-baseline.json'
+  )), true);
 });
 
 test('starter configuration enables Stylelint when project setup was detected', () => {
@@ -314,6 +320,18 @@ test('enables the architecture pre-push feature', (context) => {
   const enabled = setFeaturesEnabled(root, ['architecture'], true);
   assert.deepEqual(enabled.changed, ['architecture']);
   assert.equal(readConfig(root).architecture.enabled, true);
+});
+
+test('enables and disables the dead-code project gate', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['deadCode'], true);
+  assert.deepEqual(enabled.changed, ['deadCode']);
+  assert.equal(readConfig(root).deadCode.enabled, true);
+  const disabled = setFeaturesEnabled(root, ['deadCode'], false);
+  assert.deepEqual(disabled.changed, ['deadCode']);
+  assert.equal(readConfig(root).deadCode.enabled, false);
 });
 
 test('enables the dependency governance pre-commit feature', (context) => {

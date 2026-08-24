@@ -117,6 +117,9 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:enable-accessibility-test'] ||= 'repo-guard enable accessibilityTest';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
+  packageJson.scripts['guard:enable-dead-code'] ||= 'repo-guard enable deadCode';
+  packageJson.scripts['guard:dead-code-baseline-init'] ||= 'repo-guard dead-code-baseline init';
+  packageJson.scripts['guard:dead-code-baseline-prune'] ||= 'repo-guard dead-code-baseline prune';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
   packageJson.scripts['guard:enable-style-complexity'] ||= 'repo-guard enable styleComplexity';
   packageJson.scripts['guard:enable-style-governance'] ||= 'repo-guard enable styleGovernance';
