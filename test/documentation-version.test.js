@@ -52,7 +52,7 @@ test('publishes the MIT license and documents the AI development purpose', () =>
 
   assert.equal(manifest.license, 'MIT', 'package.json 必须声明 MIT 许可证');
   assert.equal(manifest.files.includes('LICENSE'), true, 'npm 发布文件清单必须包含 LICENSE');
-  assert.match(license, /^MIT License\n/);
+  assert.match(license, /^MIT License\r?\n/);
   assert.match(license, /Copyright \(c\) 2026 cxyi7/);
   assert.match(license, /Permission is hereby granted, free of charge/);
   assert.match(readme, /核心目标是为 AI 辅助开发提供强制、可审计的工程规范/);
