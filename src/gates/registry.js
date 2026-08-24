@@ -3,6 +3,7 @@ import { vueAccessibilityGates } from './accessibility/vue-policy-gates.js';
 import {
   architectureGate,
   buildGate,
+  deadCodeGate,
   lighthouseGate,
   typecheckGate,
 } from './quality/project-quality-gates.js';
@@ -38,6 +39,7 @@ const platformGates = Object.freeze([
   mutationTestGate,
   accessibilityTestGate,
   architectureGate,
+  deadCodeGate,
   buildGate,
   lighthouseGate,
   styleComplexityGate,

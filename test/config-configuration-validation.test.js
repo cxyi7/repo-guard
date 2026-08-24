@@ -24,6 +24,7 @@ test('assembles every normalized configuration domain in contract order', () => 
     'codePlacement',
     'exceptions',
     'dependencyPolicy',
+    'deadCode',
     'architecture',
     'build',
     'lighthouse',

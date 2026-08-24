@@ -172,6 +172,15 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
   installHooks({ cwd: root, updatePackageScripts: true });
 
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+  assert.equal(packageJson.scripts['guard:dead-code'], 'repo-guard dead-code');
+  assert.equal(
+    packageJson.scripts['guard:dead-code-baseline-init'],
+    'repo-guard dead-code-baseline init',
+  );
+  assert.equal(
+    packageJson.scripts['guard:dead-code-baseline-prune'],
+    'repo-guard dead-code-baseline prune',
+  );
   assert.equal(
     packageJson.scripts['guard:build:mp-weixin'],
     'repo-guard guarded-build build:mp-weixin',

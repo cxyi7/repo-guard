@@ -1,6 +1,7 @@
 import {
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_DEAD_CODE_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
 } from '../../config/defaults.js';
@@ -21,6 +22,8 @@ import {
 } from '../platform-gate.js';
 import { runArchitectureGate } from './architecture-gate.js';
 import { runBuildGate } from './build-gate.js';
+import { runDeadCodeGate } from './dead-code-gate.js';
+import { validateDeadCodeSetup } from './dead-code-setup.js';
 import { runVueLighthouse } from './lighthouse-gate.js';
 import { runTypeCheckGate } from './typecheck-gate.js';
 
@@ -55,6 +58,12 @@ function inspectArchitectureSetup({ root, config }) {
     );
   }
   return readyGateSetup(`架构门禁（dependency-cruiser ${resolved.dependencyCruiser.version})`);
+}
+
+function inspectDeadCodeSetup({ root, config }) {
+  if (!config.deadCode.enabled) return readyGateSetup('无效代码门禁已禁用');
+  const resolved = validateDeadCodeSetup(root, config.deadCode);
+  return readyGateSetup(`无效代码门禁（Knip ${resolved.knip.version}）`);
 }
 
 function inspectLighthouseSetup({ root, config }) {
@@ -100,6 +109,21 @@ export const architectureGate = definePlatformGate({
         ...processExecutionOptions(context),
       })
     : skippedResult('quality.architecture', '架构门禁已禁用'),
+});
+
+export const deadCodeGate = definePlatformGate({
+  id: 'quality.dead-code', configKey: 'deadCode', featureName: 'deadCode',
+  featureOrder: 100, doctorOrder: 25, environments: ['manual', 'pre-push', 'ci-full'],
+  defaultTimeoutMs: DEFAULT_DEAD_CODE_CONFIG.timeoutMs,
+  manualCommand: 'dead-code', manualOrder: 45, packageScript: 'guard:dead-code',
+  requiredTools: ['knip'], supportsCancellation: true,
+  inspectSetup: inspectDeadCodeSetup,
+  plan: ({ config, environment }) => ({
+    enabled: environment === 'manual' || config.deadCode.enabled,
+  }),
+  run: (context) => context.plan.enabled
+    ? runDeadCodeGate(context)
+    : skippedResult('quality.dead-code', '无效代码门禁已禁用'),
 });
 
 export const buildGate = definePlatformGate({

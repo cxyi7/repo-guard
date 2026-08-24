@@ -27,6 +27,7 @@ import { runPreCommit } from '../pre-commit/runner.js';
 import { runGuardedBuild } from './guarded-build.js';
 import { runApiPerformanceRunner } from './api-performance-runner.js';
 import { runK6Runner } from './k6-runner.js';
+import { runDeadCodeBaseline } from './dead-code-baseline.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -74,6 +75,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard api-performance-runner --gate-id <project.gate-id> --config <path>
   repo-guard k6-runner --gate-id <project.gate-id> --config <path>
   repo-guard guarded-build <npm-script>
+  repo-guard dead-code-baseline <init|prune>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
@@ -213,6 +215,15 @@ export async function runCli(argumentsList) {
           );
         }
         return await runGuardedBuild(rest[0]);
+      }
+      case 'dead-code-baseline': {
+        if (rest.length !== 1 || !['init', 'prune'].includes(rest[0])) {
+          throw configurationError(
+            'cli/invalid-dead-code-baseline-arguments',
+            'dead-code-baseline 命令需要 init 或 prune',
+          );
+        }
+        return await runDeadCodeBaseline(rest[0]);
       }
       default:
         if (gateRegistry.findByManualCommand(command)) {

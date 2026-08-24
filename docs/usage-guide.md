@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.15.1`
+- 当前版本：`1.16.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.15.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.16.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -54,12 +54,13 @@ Stylelint fix
   → protected-files（最后执行）
 ```
 
-TypeScript、单元测试、axe、项目架构、构建和 Lighthouse 不进入 pre-commit。
+TypeScript、Knip 全项目无效代码、单元测试、axe、项目架构、构建和 Lighthouse 不进入 pre-commit。
 
 ### pre-push
 
 ```text
 typecheck
+  → dead-code
   → unit-test
   → accessibility-test
   → architecture
@@ -69,7 +70,7 @@ typecheck
 
 各步骤根据配置启用或跳过，并使用本次推送的精确变更范围。
 
-`pre-push` 会在重型门禁开始时立即输出中文阶段提示，并实时转发 TypeScript、单元测试、axe 和构建脚本的输出；架构检查会显示即时进度但保留 dependency-cruiser JSON 供机器解析。实时输出经过路径与敏感信息脱敏，失败后仍返回结构化问题和退出码，不会让 `git push` 在长时间任务中无提示等待。
+`pre-push` 会在重型门禁开始时立即输出中文阶段提示，并实时转发 TypeScript、单元测试、axe 和构建脚本的输出；Knip 与架构检查会显示即时进度，同时保留结构化 JSON 供机器解析。实时输出经过路径与敏感信息脱敏，失败后仍返回结构化问题和退出码，不会让 `git push` 在长时间任务中无提示等待。
 
 ## 常用使用方式
 
@@ -93,7 +94,7 @@ repo-guard doctor --ci
 ```bash
 repo-guard enable eslint prettier
 repo-guard enable stylelint styleComplexity styleGovernance
-repo-guard enable dependencies architecture
+repo-guard enable dependencies architecture deadCode
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
@@ -121,6 +122,7 @@ filePlacement
 codePlacement
 dependencies
 architecture
+deadCode
 build
 lighthouse
 typeCheck
@@ -133,6 +135,67 @@ ci
 ```
 
 动态代码、Vue `v-html`、新窗口链接、表单 label 和图片 alt 是原生硬门禁，没有关闭开关。
+
+### 配置项目级无效代码门禁
+
+无效代码门禁默认关闭，使用消费项目自己安装的 Knip 6.x 和 `knip.*` 配置；repo-guard 不内置业务入口、不替项目猜测工作区边界，也不会回退到自身的开发依赖。
+
+```bash
+npm install --save-dev --save-exact knip@6.31.0
+repo-guard enable deadCode
+repo-guard dead-code
+```
+
+```json
+{
+  "deadCode": {
+    "enabled": true,
+    "mode": "strict",
+    "configFile": "knip.json",
+    "baselineFile": ".repo-guard/knip-baseline.json",
+    "timeoutMs": 180000,
+    "production": false,
+    "issueTypes": [
+      "files",
+      "dependencies",
+      "unlisted",
+      "binaries",
+      "unresolved",
+      "exports",
+      "types"
+    ],
+    "treatConfigHintsAsErrors": true
+  }
+}
+```
+
+- `strict`：发现任意已启用类型的问题都直接阻断，适合新项目或已清零项目。
+- `noRegression`：允许已经审核并登记的历史问题，但拒绝新增问题、陈旧条目和分支扩大基线，适合旧项目渐进治理。
+- `issueTypes` 中的 `dependencies` 是统一策略类型，会同时启用并归一化 Knip 的 `dependencies`、`devDependencies` 和 `optionalPeerDependencies`，避免开发依赖漏检。
+- Knip 配置提示始终作为配置错误处理，避免因入口、插件或工作区配置不完整而得到虚假的“无问题”结果。
+- 检查按完整项目依赖图运行，因此只进入手动命令、可选 pre-push 和 CI full，不进入 pre-commit；局部未使用变量仍由消费项目 ESLint 负责。
+- `production: true` 只分析 Knip 定义的生产范围；启用前应确认测试、脚本和开发依赖不属于当前治理目标。
+
+旧项目第一次接入时使用基线模式：
+
+```bash
+repo-guard enable deadCode
+# 将 deadCode.mode 改为 noRegression，并先完成 Knip 配置
+npm run guard:dead-code-baseline-init
+git add .repo-guard/knip-baseline.json
+git commit -m "chore: 初始化无效代码基线"
+npm run guard:dead-code
+```
+
+基线由问题类型、仓库相对路径、名称和命名空间生成 SHA-256 指纹，并记录重复数量。运行门禁时，当前 Knip 结果必须和基线完全同步：新增问题会阻断；问题修复后保留的陈旧条目也会阻断。确认只删除已解决债务后运行：
+
+```bash
+npm run guard:dead-code-baseline-prune
+git diff -- .repo-guard/knip-baseline.json
+git add .repo-guard/knip-baseline.json
+```
+
+`init` 拒绝覆盖现有文件；`prune` 拒绝接纳任何新增问题。pre-push 和 CI full 还会把当前基线与 Git 基准提交比较，阻止通过手工修改、重新生成或增加计数扩大历史债务；纯文件重命名会按 Git 重命名关系映射，不会制造新债务。基线必须位于仓库内、不得经过符号链接、必须由 Git 跟踪，`issueTypes` 变化后需要先清理真实问题并重新评审接入方案，不能用重建基线绕过检查。
 
 ### 配置暂存文件头
 
@@ -260,6 +323,7 @@ repo-guard unit-test
 repo-guard mutation-test
 repo-guard accessibility-test
 repo-guard architecture
+repo-guard dead-code
 repo-guard build
 repo-guard lighthouse
 repo-guard lighthouse --skip-build

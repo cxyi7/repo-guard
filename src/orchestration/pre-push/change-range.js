@@ -86,3 +86,23 @@ export function collectPrePushChanges({ input, remoteName = 'origin', root }) {
   }
   return [...combined.values()];
 }
+
+export function resolvePrePushRevision({ input, remoteName = 'origin', root }) {
+  const updates = parsePrePushUpdates(input).filter(({ localSha }) => !ZERO_SHA.test(localSha));
+  if (updates.length === 0) {
+    const base = gitValue(['rev-parse', '--verify', 'HEAD^'], '', root)
+      || EMPTY_TREE_SHA;
+    return Object.freeze({ base, head: 'HEAD' });
+  }
+  const ranges = updates.map(({ localSha, remoteSha }) => ({
+    base: ZERO_SHA.test(remoteSha)
+      ? newBranchBase(root, remoteName, localSha)
+      : remoteSha,
+    head: localSha,
+  }));
+  const bases = [...new Set(ranges.map(({ base }) => base))];
+  const heads = [...new Set(ranges.map(({ head }) => head))];
+  return bases.length === 1 && heads.length === 1
+    ? Object.freeze({ base: bases[0], head: heads[0] })
+    : null;
+}

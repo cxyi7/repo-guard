@@ -18,6 +18,7 @@ import {
   DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_COMPONENT_INTERACTION_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
+  DEFAULT_DEAD_CODE_CONFIG,
   DEFAULT_ESLINT_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
@@ -85,6 +86,14 @@ function cloneDependencyPolicyConfig(value = {}) {
     bannedPackages: (
       value.bannedPackages ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages
     ).map((item) => ({ ...item })),
+  };
+}
+
+function cloneDeadCodeConfig(value = {}) {
+  return {
+    ...DEFAULT_DEAD_CODE_CONFIG,
+    ...value,
+    issueTypes: [...(value.issueTypes ?? DEFAULT_DEAD_CODE_CONFIG.issueTypes)],
   };
 }
 
@@ -256,6 +265,7 @@ export function createStarterConfig({
     codePlacement: cloneCodePlacementConfig(),
     exceptions: cloneExceptionsConfig(),
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
+    deadCode: cloneDeadCodeConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -303,6 +313,12 @@ export function createStarterConfig({
       { pattern: 'src/components/**', category: '共享组件', level: 'notify' },
       { pattern: '.githooks/**', category: '仓库守卫基础设施', level: 'notify' },
       { pattern: CONFIG_FILE, category: '仓库守卫基础设施', level: 'notify' },
+      { pattern: '.repo-guard/knip-baseline.json', category: '无效代码历史债务基线', level: 'notify' },
+      {
+        pattern: '{knip,.knip,knip.config}.{json,jsonc,js,ts,mjs,cjs}',
+        category: '无效代码分析配置',
+        level: 'notify',
+      },
     ],
     exclusions: [],
   };
@@ -374,6 +390,7 @@ export function migrateProjectConfig(root, {
     codePlacement: cloneCodePlacementConfig(prepared.codePlacement),
     exceptions: cloneExceptionsConfig(prepared.exceptions),
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
+    deadCode: cloneDeadCodeConfig(prepared.deadCode),
     architecture: cloneArchitectureConfig(prepared.architecture),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,

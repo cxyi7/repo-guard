@@ -2,17 +2,17 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.15.1`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.16.0`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.14.0 Axios 手动接口性能外部门禁
-  └─ 1.15.0 k6 手动接口压测外部门禁
-       └─ 1.15.1 MIT 开源许可与 AI 开发定位
+1.15.0 k6 手动接口压测外部门禁
+  └─ 1.15.1 MIT 开源许可与 AI 开发定位
+       └─ 1.16.0 Knip 项目级无效代码门禁
 ```
 
-因此，`1.15.1` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.16.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -26,6 +26,7 @@
 - [x] 动态代码执行安全检查，包括 `eval` 和 `Function` 构造器。
 - [x] Vue `v-html`、`target="_blank"`、表单 label 和图片 alt 硬门禁。
 - [x] 文件归位、单文件行数、依赖声明、依赖锁文件和依赖架构治理。
+- [x] 使用消费项目 Knip 检查未使用文件、导出、依赖、缺失依赖与无效入口，并以不可扩张基线治理历史债务。
 - [x] 指定代码只能出现在一个或多个允许文件中的代码位置门禁。
 - [x] 保护文件 `audit`、`notify` 和不可变 `block` 三级策略。
 - [x] Vitest 单元测试映射、空测试、跳过测试、聚焦测试和覆盖率门禁。
@@ -64,12 +65,12 @@ repo/
 │  │  └─ result/                     GateResult、finding、artifact 和退出码
 │  ├─ gates/                         门禁决策、finding 和结果适配
 │  │  ├─ accessibility/              Vue 可访问性门禁
-│  │  ├─ quality/                    lint、格式化、异步资源、类型、架构、构建、Lighthouse
+│  │  ├─ quality/                    lint、格式化、异步资源、无效代码、类型、架构、构建、Lighthouse
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
 │  │  ├─ repository/                 依赖、路径命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、变异测试、接口性能、axe 和外部门禁
-│  ├─ git/                           Git 命令、变更范围、索引内容、已跟踪路径和仓库状态
+│  ├─ git/                           Git 命令、变更范围、revision 内容、索引内容、已跟踪路径和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ api-performance/            Axios 性能配置、场景执行、报告生命周期与中文报告
 │  │  ├─ axe/                        axe 集成发现
@@ -77,6 +78,7 @@ repo/
 │  │  ├─ eslint/                     ESLint 项目事实和执行
 │  │  ├─ lighthouse/                 Lighthouse 项目事实和执行
 │  │  ├─ k6/                         k6 配置、脚本校验、受控执行、摘要解析与中文报告
+│  │  ├─ knip/                       Knip 项目解析、执行与 JSON 报告校验
 │  │  ├─ npm/                        npm script、包元数据和发布环境
 │  │  ├─ prettier/                   Prettier 项目事实和执行
 │  │  ├─ stylelint/                  Stylelint 项目事实和执行
@@ -136,6 +138,8 @@ Axios 接口性能功能保持为项目外部门禁辅助能力：`integrations/
 
 k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负责纯 JSON 配置、目标确认、AST 脚本限制、本机 k6 进程、机器摘要和中文 HTML；`gates/testing/k6-external-runner.js` 负责阈值 findings 与外部门禁报告；`orchestration/cli/k6-runner.js` 负责 manual-only 外部门禁解析和自动化环境拒绝。受控入口拥有 `options` 与 `handleSummary`，消费者只持有业务场景；该能力不注册静态 Registry、不新增官方 Gate，也不进入任何固定 Execution Plan。
 
+无效代码治理继续分离工具事实、历史债务策略、门禁决策和人工维护命令：`integrations/knip/` 只解析消费项目安装的 Knip 6.x、执行 CLI 并校验 JSON，其中 repo-guard 的统一 `dependencies` 策略类型会显式映射 Knip 的普通依赖、开发依赖和可选 peer 依赖；Knip 自定义 reporter 是共享控制台渲染边界之外唯一允许直接写 stdout 的窄适配器，只输出带固定标记的配置提示元数据供父进程解析；`git/revision-content.js` 只读取跟踪状态和指定 revision 内容；`policies/dead-code-baseline.js` 只负责稳定指纹、计数、当前债务比较和重命名映射；`gates/quality/dead-code-gate.js` 形成中文 GateResult，`dead-code-baseline-management.js` 在相同受控边界内执行显式基线写入；`orchestration/cli/dead-code-baseline.js` 只负责命令路由和中文结果输出。Knip 配置和项目入口仍由消费项目拥有。
+
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
 ## 4. 核心运行模型
@@ -152,14 +156,14 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 28 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 29 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
 | 仓库治理 | `repository.structured-exceptions`、`dependencies.policy`、`repository.path-naming`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
-| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
+| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
 `coverage` 和 `componentInteraction` 是 `quality.unit-test` 的子能力；Stylelint 复杂度和样式治理在提交门禁中由 `quality.stylelint` 执行，同时提供独立的全项目审计 Gate。
@@ -298,6 +302,7 @@ pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照
 | 锁文件 | `dependencyPolicy.requireLockfile` | `package.json` 与 `package-lock.json` 必须同步，删除或缺失锁文件会阻断 |
 | 暂存快照 | 依赖门禁内置 | pre-commit 使用最终 Git 索引中的 package/lock 内容，不受未暂存副本影响 |
 | 依赖架构 | `architecture` | 使用消费项目的 dependency-cruiser 和配置，执行项目声明的模块方向规则 |
+| 无效代码 | `deadCode` | 使用消费项目 Knip 的完整项目图检查文件、导出、依赖与解析问题；支持严格模式和只减不增基线 |
 
 repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架构配置能够执行并把违规转换为统一结果。
 
@@ -430,12 +435,13 @@ Stylelint fix
   → protected-files（最后执行）
 ```
 
-禁止加入 pre-commit 的能力：TypeScript 类型检查、单元测试、变异测试、axe、dependency-cruiser 项目架构、构建和 Lighthouse。
+禁止加入 pre-commit 的能力：TypeScript 类型检查、Knip 全项目无效代码、单元测试、变异测试、axe、dependency-cruiser 项目架构、构建和 Lighthouse。
 
 ### 6.2 pre-push
 
 ```text
 typecheck
+  → dead-code
   → unit-test（包含可选 coverage/componentInteraction）
   → accessibility-test
   → architecture
@@ -445,7 +451,7 @@ typecheck
 
 每项按配置启用状态决定执行或跳过，并对本次推送使用精确变更范围。
 
-pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步进程能力执行：门禁开始前立即显示中文进度，子进程 stdout/stderr 经路径和敏感信息脱敏后实时写入终端，同时保留执行结果用于失败判定。超时或计划取消会终止完整进程树。dependency-cruiser 的 stdout 是结构化 JSON，不直接转发，但架构门禁会在分析开始前显示进度。
+pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步进程能力执行：门禁开始前立即显示中文进度，子进程 stdout/stderr 经路径和敏感信息脱敏后实时写入终端，同时保留执行结果用于失败判定。超时或计划取消会终止完整进程树。Knip 和 dependency-cruiser 的 stdout 是结构化 JSON，不直接转发，但对应门禁会在分析开始前显示进度。
 
 ### 6.3 CI 与 release-ready
 
@@ -473,6 +479,7 @@ CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入�
 | `repo-guard external <project.id>` | 手动执行一个项目外部门禁 |
 | `repo-guard k6-runner --gate-id <project.id> --config <path>` | 受控执行 manual-only k6 外部门禁的项目脚本入口 |
 | `repo-guard guarded-build <npm-script>` | 先执行变异测试，通过后运行已配置的原始构建脚本 |
+| `repo-guard dead-code-baseline init|prune` | 初始化无效代码历史债务基线，或只删除已经解决的条目 |
 
 ### 7.2 官方专项命令
 
@@ -481,6 +488,7 @@ exceptions
 dependencies
 build
 architecture
+dead-code
 typecheck
 unit-test
 mutation-test
@@ -518,6 +526,7 @@ filePlacement
 codePlacement
 dependencies
 architecture
+deadCode
 build
 lighthouse
 typeCheck
@@ -546,6 +555,7 @@ ci
 | `codePlacement` | 精确代码文本允许位置规则 |
 | `exceptions` | 精确、限时、可审计的结构化例外 |
 | `dependencyPolicy` | 依赖声明与 lockfile 治理 |
+| `deadCode` | Knip 项目级无效代码检查与历史债务基线 |
 | `architecture` | dependency-cruiser 门禁 |
 | `build` | 独立构建门禁 |
 | `lighthouse` | Lighthouse 配置和自动执行开关 |

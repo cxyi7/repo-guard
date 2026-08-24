@@ -78,12 +78,23 @@ test('captures subprocess output instead of inheriting gate runner stdio', () =>
 
 test('keeps direct console access inside the shared console renderer', () => {
   const consoleRenderer = path.join(SOURCE_ROOT, 'core', 'report', 'console-renderer.js');
+  const knipReporter = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'knip',
+    'configuration-hint-reporter.js',
+  );
   for (const file of javascriptFiles(SOURCE_ROOT)) {
-    if (file === consoleRenderer) continue;
+    if (file === consoleRenderer || file === knipReporter) continue;
     const source = readFileSync(file, 'utf8');
     assert.doesNotMatch(source, /\bconsole\.(?:log|error|warn)|process\.(?:stdout|stderr)\.write/,
       path.relative(SOURCE_ROOT, file));
   }
+  assert.match(
+    readFileSync(knipReporter, 'utf8'),
+    /process\.stdout\.write/,
+    'Knip reporter 必须只通过 stdout 返回自定义 reporter 元数据',
+  );
 });
 
 test('does not retain gate-owned AI or console renderer compatibility helpers', () => {

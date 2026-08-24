@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.16.0
+
+- 新增默认关闭的 Knip 6.x 项目级无效代码门禁，使用消费项目自己的 Knip 安装与配置，检查未使用文件、导出、类型导出、普通依赖、开发依赖、可选 peer 依赖、缺失依赖、命令依赖和无法解析的导入；提供中文 GateResult，支持手动、pre-push 和 CI full，明确不进入 pre-commit。
+- 新增 `strict` 与 `noRegression` 两种模式。旧项目基线使用稳定 SHA-256 指纹和问题计数，必须由 Git 跟踪、与当前 Knip 结果完全同步，并在可用的 Git 基准提交上阻止分支扩大历史债务；重命名文件可以沿用原债务身份，已解决条目必须通过安全裁剪命令删除。
+- 新增 `repo-guard dead-code-baseline init|prune`、对应 `guard:*` 脚本、doctor/初始化/迁移接入、配置 Schema、Knip 6.31 兼容边界及端到端回归测试；拒绝配置提示、伪造指纹、越界路径、符号链接、未跟踪基线、未知报告结构和超时/异常进程。
+
 ## 1.15.1
 
 - 使用标准 MIT 许可证开放 `@cxyi7/repo-guard`，同步 npm 包许可证元数据并确保发布产物包含 `LICENSE`。

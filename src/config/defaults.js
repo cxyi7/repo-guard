@@ -179,6 +179,25 @@ export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
     }),
   ]),
 });
+export const SUPPORTED_DEAD_CODE_ISSUE_TYPES = Object.freeze([
+  'files',
+  'dependencies',
+  'unlisted',
+  'binaries',
+  'unresolved',
+  'exports',
+  'types',
+]);
+export const DEFAULT_DEAD_CODE_CONFIG = Object.freeze({
+  enabled: false,
+  mode: 'strict',
+  configFile: null,
+  baselineFile: '.repo-guard/knip-baseline.json',
+  timeoutMs: 180000,
+  production: false,
+  issueTypes: SUPPORTED_DEAD_CODE_ISSUE_TYPES,
+  treatConfigHintsAsErrors: true,
+});
 export const DEFAULT_MAX_FILE_LINES_CONFIG = Object.freeze({
   enabled: true,
   mode: 'strict',
