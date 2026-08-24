@@ -2,6 +2,7 @@ import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { validateAccessibilityConfiguration } from './accessibility-validation.js';
 import { validateArchitectureConfiguration } from './architecture-validation.js';
 import { validateCiConfiguration } from './ci-validation.js';
+import { validateCommitMessageConfiguration } from './commit-message-validation.js';
 import { validateCodePlacementConfiguration } from './code-placement-validation.js';
 import { validateDependencyPolicyConfiguration } from './dependency-policy-validation.js';
 import { validateDeadCodeConfiguration } from './dead-code-validation.js';
@@ -32,6 +33,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const dependencyPolicy = validateDependencyPolicyConfiguration(value, configPath);
 
+  const commitMessage = validateCommitMessageConfiguration(value, configPath);
+
   const deadCode = validateDeadCodeConfiguration(value, configPath);
 
   const architecture = validateArchitectureConfiguration(value, configPath);
@@ -59,6 +62,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     codePlacement,
     exceptions,
     dependencyPolicy,
+    commitMessage,
     deadCode,
     architecture,
     build,

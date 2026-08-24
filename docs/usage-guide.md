@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.16.0`
+- 当前版本：`1.17.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.16.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.17.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -59,7 +59,8 @@ TypeScript、Knip 全项目无效代码、单元测试、axe、项目架构、�
 ### pre-push
 
 ```text
-typecheck
+commit-message
+  → typecheck
   → dead-code
   → unit-test
   → accessibility-test
@@ -94,7 +95,7 @@ repo-guard doctor --ci
 ```bash
 repo-guard enable eslint prettier
 repo-guard enable stylelint styleComplexity styleGovernance
-repo-guard enable dependencies architecture deadCode
+repo-guard enable dependencies commitMessage architecture deadCode
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
@@ -121,6 +122,7 @@ maxFileLines
 filePlacement
 codePlacement
 dependencies
+commitMessage
 architecture
 deadCode
 build
@@ -135,6 +137,45 @@ ci
 ```
 
 动态代码、Vue `v-html`、新窗口链接、表单 label 和图片 alt 是原生硬门禁，没有关闭开关。
+
+### 配置 Commit 提交信息门禁
+
+提交信息门禁默认关闭。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
+
+```bash
+repo-guard enable commitMessage
+```
+
+```json
+{
+  "commitMessage": {
+    "enabled": true,
+    "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"],
+    "requireScope": false,
+    "allowedScopes": [],
+    "headerMaxLength": 100,
+    "breakingChange": {
+      "allowed": true,
+      "requireMarker": true,
+      "requireFooter": true,
+      "requireMajorVersionOnRelease": true
+    },
+    "merge": { "allowed": true },
+    "revert": { "allowed": true },
+    "fixup": {
+      "allowLocal": true,
+      "allowPush": false,
+      "allowCi": false
+    }
+  }
+}
+```
+
+普通提交使用 `type(scope)!: 简要说明`；`scope` 和 `!` 是否必需由配置决定。`allowedScopes` 为空表示不限制 scope，非空时只接受列出的值。标题长度按 Unicode 字符计数，不按 UTF-16 字节或代码单元计数。
+
+不兼容变更默认必须同时使用标题 `!` 和正文 `BREAKING CHANGE: 迁移说明`。release-ready 发现提交范围包含不兼容变更时，会比较 Git 基准提交与目标提交中的 `package.json`，并要求 major 提升；未提交的工作区版本修改不能绕过校验。普通提交、pre-push 和日常 CI 不根据提交类型自动改版本。
+
+Git 自动生成的 merge commit 在本地通过 `MERGE_HEAD` 还原待提交父节点、在已提交历史中通过父节点数量识别，普通标题以及 revert/cherry-pick 使用的 `MERGE_MSG` 不能伪装成 merge；revert 必须保留 Git 生成的 `Revert "..."` 标题和 `This reverts commit <sha>.` 正文。默认策略允许开发者在本地创建 `fixup!`/`squash!`，但 pre-push 和 CI 会阻断，要求先执行交互式 rebase/autosquash。只有业务仓库确认由 GitLab 在进入受保护分支前可靠 squash 时，才应评审后将 `allowPush` 调整为 `true`；最终 CI 仍建议保持 `allowCi: false`。
 
 ### 配置项目级无效代码门禁
 
@@ -819,6 +860,8 @@ externalGates
 codePlacement
 exceptions
 dependencyPolicy
+commitMessage
+deadCode
 architecture
 build
 lighthouse

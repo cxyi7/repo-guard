@@ -25,7 +25,7 @@ function resolveBase(root, source, sourceCommit) {
   return gitValue(['rev-parse', '--verify', 'HEAD'], EMPTY_TREE, root);
 }
 
-function buildState(root, config, base) {
+function buildState(root, config, base, { source = '', sourceCommit = '' } = {}) {
   const changes = collectStagedChanges(root, base);
   const classified = new Map(
     classifyChanges(changes, config).map((change) => [
@@ -35,8 +35,10 @@ function buildState(root, config, base) {
   );
 
   return {
-    version: 1,
+    version: 2,
     base,
+    source,
+    sourceCommit,
     indexTree: runGit(['write-tree'], { cwd: root }).stdout.trim(),
     changes: changes.map((change) => {
       const protectedChange = classified.get(`${change.oldPath || ''}\0${change.path}`);
@@ -104,18 +106,31 @@ function writeMessage(root, messageFile, state, marked) {
 
 export function prepareCommitMessage(root, config, messageFile, source = '', sourceCommit = '') {
   const base = resolveBase(root, source, sourceCommit);
-  const state = buildState(root, config, base);
+  const state = buildState(root, config, base, { source, sourceCommit });
   saveCommitMessageState(root, state);
   writeMessage(root, messageFile, state, true);
+}
+
+export function readPreparedCommitMessage(root, messageFile) {
+  const state = readCommitMessageState(root);
+  const target = resolveMessagePath(root, messageFile);
+  return Object.freeze({
+    message: removeAutoBlock(readFileSync(target, 'utf8')),
+    source: state?.version === 2 ? state.source : '',
+    sourceCommit: state?.version === 2 ? state.sourceCommit : '',
+  });
 }
 
 export function finalizeCommitMessage(root, config, messageFile) {
   let state = readCommitMessageState(root);
   const currentTree = runGit(['write-tree'], { cwd: root }).stdout.trim();
 
-  if (!state || state.version !== 1 || state.indexTree !== currentTree) {
+  if (!state || state.version !== 2 || state.indexTree !== currentTree) {
     const base = state?.base || gitValue(['rev-parse', '--verify', 'HEAD'], EMPTY_TREE, root);
-    state = buildState(root, config, base);
+    state = buildState(root, config, base, {
+      source: state?.source ?? '',
+      sourceCommit: state?.sourceCommit ?? '',
+    });
     saveCommitMessageState(root, state);
   }
 

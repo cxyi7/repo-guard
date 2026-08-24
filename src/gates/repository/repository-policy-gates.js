@@ -22,6 +22,7 @@ import {
   loadNotificationConfig,
 } from '../../policies/wecom-notification.js';
 import { codePlacementGate } from './code-placement-gate.js';
+import { commitMessageGate } from './commit-message-gate.js';
 
 const CONFIG_VERSION = [1];
 
@@ -248,6 +249,7 @@ export const protectedFilesGate = defineGate({
 
 export const repositoryPolicyGates = Object.freeze([
   exceptionRegistryGate,
+  commitMessageGate,
   dependencyPolicyGate, filePlacementGate, codePlacementGate,
   maximumFileLinesGate, protectedFilesGate,
 ]);

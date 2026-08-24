@@ -18,6 +18,7 @@ export function validateRootConfigurationContract(value, configPath) {
       'codePlacement',
       'exceptions',
       'dependencyPolicy',
+      'commitMessage',
       'deadCode',
       'architecture',
       'accessibilityTest',

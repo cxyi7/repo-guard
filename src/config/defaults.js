@@ -148,6 +148,37 @@ export const DEFAULT_DEPENDENCY_POLICY_CONFIG = Object.freeze({
   allowedProtocols: Object.freeze(['npm', 'workspace']),
   bannedPackages: Object.freeze([]),
 });
+export const DEFAULT_COMMIT_MESSAGE_CONFIG = Object.freeze({
+  enabled: false,
+  types: Object.freeze([
+    'feat',
+    'fix',
+    'docs',
+    'style',
+    'refactor',
+    'perf',
+    'test',
+    'build',
+    'ci',
+    'chore',
+  ]),
+  requireScope: false,
+  allowedScopes: Object.freeze([]),
+  headerMaxLength: 100,
+  breakingChange: Object.freeze({
+    allowed: true,
+    requireMarker: true,
+    requireFooter: true,
+    requireMajorVersionOnRelease: true,
+  }),
+  merge: Object.freeze({ allowed: true }),
+  revert: Object.freeze({ allowed: true }),
+  fixup: Object.freeze({
+    allowLocal: true,
+    allowPush: false,
+    allowCi: false,
+  }),
+});
 const DEFAULT_ARCHITECTURE_TEST_PATTERN = String.raw`(?:^|/)(?:__tests__|tests?)/|\.(?:spec|test)\.[cm]?[jt]sx?$`;
 export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
   enabled: false,

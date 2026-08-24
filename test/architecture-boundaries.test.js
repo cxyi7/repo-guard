@@ -1084,6 +1084,31 @@ test('keeps commit-message Hook lifecycle in orchestration without a command fac
   assert.doesNotMatch(commitMessageRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
 });
 
+test('separates commit-message configuration, Git facts, policy, result adaptation, and Hook orchestration', () => {
+  const validationPath = path.join(SOURCE_ROOT, 'config', 'commit-message-validation.js');
+  const factsPath = path.join(SOURCE_ROOT, 'git', 'commit-messages.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'commit-message.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'repository', 'commit-message-gate.js');
+  assert.equal(existsSync(validationPath), true);
+  assert.equal(existsSync(factsPath), true);
+  assert.equal(existsSync(policyPath), true);
+  assert.equal(existsSync(gatePath), true);
+
+  const validationSource = readFileSync(validationPath, 'utf8');
+  const factsSource = readFileSync(factsPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const gateSource = readFileSync(gatePath, 'utf8');
+  assert.match(validationSource, /export function validateCommitMessageConfiguration/);
+  assert.doesNotMatch(validationSource, /from ['"][^'"]*(?:git|gates|orchestration|policies)\//);
+  assert.match(factsSource, /export function collectCommitMessages/);
+  assert.doesNotMatch(factsSource, /from ['"][^'"]*(?:gates|orchestration|policies)\//);
+  assert.match(policySource, /export function inspectCommitMessage/);
+  assert.doesNotMatch(policySource, /from ['"][^'"]*(?:gates|git|orchestration)\//);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/git\/commit-messages\.js['"]/);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/policies\/commit-message\.js['"]/);
+  assert.doesNotMatch(gateSource, /from ['"][^'"]*(?:orchestration|report)\//);
+});
+
 test('separates structured exception lifecycle from policy matching', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'exception-registry.js')), false);
   const exceptionLifecyclePath = path.join(

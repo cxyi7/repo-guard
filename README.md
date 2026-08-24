@@ -4,7 +4,7 @@
 
 它的核心目标是为 AI 辅助开发提供强制、可审计的工程规范，防止 AI 随意修改受保护文件、绕过质量检查、破坏既定目录和依赖边界，或在缺少验证时直接交付代码。
 
-- 当前版本：`1.16.0`
+- 当前版本：`1.17.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 开源协议：MIT
@@ -13,6 +13,7 @@
 
 ### 提交质量与文档同步
 
+- 支持 Conventional Commit 提交信息强制规范；本地提交、pre-push、CI 和发布准备共享同一策略，并按生命周期治理 `fixup!`、`squash!`、merge、revert 与不兼容变更声明。
 - 按固定顺序执行暂存文件的 Stylelint、ESLint、Prettier 修复和只读复检，并通过 `lint-staged` 保留部分暂存内容。
 - 根据 Git 记录同步文件头作者与时间，根据 AST 同步函数 `@param`、`@returns` 并提示缺失的 `@throws`。
 - 治理样式复杂度、样式作用域和 Vue 文件 style 语言一致性，Git Hook 不执行项目级 fix。

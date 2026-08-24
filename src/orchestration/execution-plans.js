@@ -13,6 +13,7 @@ export const prePushPlan = defineExecutionPlan({
   environment: 'pre-push',
   locked: true,
   steps: [
+    'repository.commit-message',
     'quality.typecheck',
     'quality.dead-code',
     'quality.unit-test',
@@ -29,6 +30,7 @@ export const ciPolicyPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    'repository.commit-message',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },
@@ -60,6 +62,7 @@ export const ciFullPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    'repository.commit-message',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
     { id: 'repository.path-naming', gateId: 'repository.path-naming', reportName: 'path-naming' },
     { id: 'security.dynamic-code', gateId: 'security.dynamic-code', reportName: 'dynamic-code' },

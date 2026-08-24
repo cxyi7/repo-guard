@@ -57,6 +57,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
   assert.deepEqual(
     executionPlans.get('pre-push').steps.map(({ id }) => id),
     [
+      'repository.commit-message',
       'quality.typecheck',
       'quality.dead-code',
       'quality.unit-test',
@@ -70,6 +71,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-policy').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
       'security.dynamic-code',
@@ -89,6 +91,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
       'security.dynamic-code',
@@ -117,6 +120,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('release-ready').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.commit-message',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
       'security.dynamic-code',
@@ -143,6 +147,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map((step) => step.reportName ?? step.id),
     [
       'repository.structured-exceptions',
+      'repository.commit-message',
       'async-resource-cleanup',
       'path-naming',
       'dynamic-code',

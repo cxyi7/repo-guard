@@ -16,6 +16,7 @@ import {
   DEFAULT_ASYNC_RESOURCE_CLEANUP_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_CODE_PLACEMENT_CONFIG,
+  DEFAULT_COMMIT_MESSAGE_CONFIG,
   DEFAULT_COMPONENT_INTERACTION_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_DEAD_CODE_CONFIG,
@@ -86,6 +87,22 @@ function cloneDependencyPolicyConfig(value = {}) {
     bannedPackages: (
       value.bannedPackages ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages
     ).map((item) => ({ ...item })),
+  };
+}
+
+function cloneCommitMessageConfig(value = {}) {
+  return {
+    ...DEFAULT_COMMIT_MESSAGE_CONFIG,
+    ...value,
+    types: [...(value.types ?? DEFAULT_COMMIT_MESSAGE_CONFIG.types)],
+    allowedScopes: [...(value.allowedScopes ?? DEFAULT_COMMIT_MESSAGE_CONFIG.allowedScopes)],
+    breakingChange: {
+      ...DEFAULT_COMMIT_MESSAGE_CONFIG.breakingChange,
+      ...(value.breakingChange ?? {}),
+    },
+    merge: { ...DEFAULT_COMMIT_MESSAGE_CONFIG.merge, ...(value.merge ?? {}) },
+    revert: { ...DEFAULT_COMMIT_MESSAGE_CONFIG.revert, ...(value.revert ?? {}) },
+    fixup: { ...DEFAULT_COMMIT_MESSAGE_CONFIG.fixup, ...(value.fixup ?? {}) },
   };
 }
 
@@ -265,6 +282,7 @@ export function createStarterConfig({
     codePlacement: cloneCodePlacementConfig(),
     exceptions: cloneExceptionsConfig(),
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
+    commitMessage: cloneCommitMessageConfig(),
     deadCode: cloneDeadCodeConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     accessibilityTest: {
@@ -390,6 +408,7 @@ export function migrateProjectConfig(root, {
     codePlacement: cloneCodePlacementConfig(prepared.codePlacement),
     exceptions: cloneExceptionsConfig(prepared.exceptions),
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
+    commitMessage: cloneCommitMessageConfig(prepared.commitMessage),
     deadCode: cloneDeadCodeConfig(prepared.deadCode),
     architecture: cloneArchitectureConfig(prepared.architecture),
     accessibilityTest: {
