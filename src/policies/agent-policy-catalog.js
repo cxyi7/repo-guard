@@ -200,6 +200,29 @@ const entries = [
     ],
   }),
   entry({
+    id: 'image-assets', groupId: 'repository-structure-policy',
+    gates: ['repository.image-assets'], features: ['imageAssets'],
+    when: enabled('imageAssets'),
+    lines: ({ config }) => {
+      const requirements = [
+        config.imageAssets.naming.enabled
+          ? `${code(config.imageAssets.naming.convention)} 命名`
+          : null,
+        '扩展名与真实格式一致',
+        config.imageAssets.duplicates.exact !== 'off' ? '精确重复内容' : null,
+        config.imageAssets.duplicates.pixel !== 'off' ? '像素重复内容' : null,
+        config.imageAssets.compression.enabled ? '压缩收益阈值' : null,
+        config.imageAssets.compression.enabled
+          && config.imageAssets.compression.conversion.enabled
+          ? 'WebP 转换策略'
+          : null,
+      ].filter(Boolean).join('、');
+      return [
+        `- 图片资源必须遵守${requirements}；包含 ${list(config.imageAssets.include)}，排除 ${list(config.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
+      ];
+    },
+  }),
+  entry({
     id: 'file-placement', groupId: 'repository-structure-policy',
     gates: ['repository.file-placement'], features: ['filePlacement'],
     when: enabled('preCommit.filePlacement'),

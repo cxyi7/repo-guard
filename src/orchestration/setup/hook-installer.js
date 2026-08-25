@@ -121,6 +121,7 @@ function ensurePackageScripts(root) {
   packageJson.scripts['guard:enable-dead-code'] ||= 'repo-guard enable deadCode';
   packageJson.scripts['guard:dead-code-baseline-init'] ||= 'repo-guard dead-code-baseline init';
   packageJson.scripts['guard:dead-code-baseline-prune'] ||= 'repo-guard dead-code-baseline prune';
+  packageJson.scripts['guard:image-optimize'] ||= 'repo-guard image-optimize';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
   packageJson.scripts['guard:enable-style-complexity'] ||= 'repo-guard enable styleComplexity';
   packageJson.scripts['guard:enable-style-governance'] ||= 'repo-guard enable styleGovernance';

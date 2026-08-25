@@ -585,6 +585,134 @@
         }
       }
     },
+    "imageAssets": {
+      "type": "object",
+      "description": "图片资源命名、真实格式、重复内容、压缩机会和显式 WebP 转换治理；Hook 与 CI 始终只读。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "enforcement": {
+          "type": "string",
+          "enum": ["changedFiles", "allFiles"],
+          "default": "changedFiles"
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "extensions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["png", "jpg", "jpeg", "webp", "avif", "svg", "gif", "ico", "bmp", "tif", "tiff"]
+          }
+        },
+        "naming": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "convention": {
+              "type": "string",
+              "enum": ["camelCase", "kebab-case"],
+              "default": "camelCase"
+            },
+            "lowercaseExtension": { "type": "boolean", "default": true },
+            "densitySuffixes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^@[2-9]x$" },
+              "default": ["@2x", "@3x"]
+            },
+            "allowNinePatch": { "type": "boolean", "default": false }
+          }
+        },
+        "duplicates": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "exact": { "type": "string", "enum": ["off", "error"], "default": "error" },
+            "pixel": { "type": "string", "enum": ["off", "report", "error"], "default": "off" },
+            "canonicalRoots": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "default": ["src/assets", "public/assets", "docs/assets"]
+            }
+          }
+        },
+        "compression": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "action": { "type": "string", "enum": ["report", "error"], "default": "report" },
+            "minInputBytes": { "type": "integer", "minimum": 0, "maximum": 200000000, "default": 8192 },
+            "minSavingsBytes": { "type": "integer", "minimum": 1, "maximum": 200000000, "default": 2048 },
+            "minSavingsPercent": { "type": "integer", "minimum": 1, "maximum": 99, "default": 10 },
+            "raster": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "allowLossy": { "type": "boolean", "default": false },
+                "metadata": { "type": "string", "enum": ["preserve", "strip"], "default": "preserve" }
+              }
+            },
+            "svg": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean", "default": true },
+                "allowWrite": { "type": "boolean", "default": false }
+              }
+            },
+            "conversion": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "target": { "const": "webp" },
+                "sourceFormats": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "enum": ["png", "jpg", "jpeg"] },
+                  "default": ["png", "jpg", "jpeg"]
+                },
+                "action": { "type": "string", "enum": ["report", "error"], "default": "report" },
+                "minInputBytes": { "type": "integer", "minimum": 0, "maximum": 200000000, "default": 8192 },
+                "minSavingsBytes": { "type": "integer", "minimum": 1, "maximum": 200000000, "default": 4096 },
+                "minSavingsPercent": { "type": "integer", "minimum": 1, "maximum": 99, "default": 20 },
+                "pngMode": { "type": "string", "enum": ["lossless", "lossy"], "default": "lossless" },
+                "jpegQuality": { "type": "integer", "minimum": 1, "maximum": 100, "default": 82 },
+                "effort": { "type": "integer", "minimum": 0, "maximum": 6, "default": 6 },
+                "exactAlpha": { "type": "boolean", "default": true },
+                "allowFallbackOriginal": { "type": "boolean", "default": false }
+              }
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxInputBytes": { "type": "integer", "minimum": 1024, "maximum": 200000000, "default": 26214400 },
+            "maxPixels": { "type": "integer", "minimum": 1, "maximum": 100000000, "default": 40000000 },
+            "maxFrames": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 1 }
+          }
+        }
+      }
+    },
     "architecture": {
       "type": "object",
       "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation, with standalone AI repair instructions for blocking violations.",

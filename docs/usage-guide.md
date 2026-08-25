@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.18.0`
+- 当前版本：`1.19.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.18.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.19.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -50,6 +50,7 @@ Stylelint fix
   → maximum-file-lines
   → file-placement
   → dependency-policy（最终 Git 索引）
+  → image-assets（启用时读取最终 Git 索引二进制内容）
   → code-placement（最终 Git 索引）
   → protected-files（最后执行）
 ```
@@ -106,11 +107,11 @@ repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库
 ```bash
 repo-guard enable eslint prettier
 repo-guard enable stylelint styleComplexity styleGovernance
-repo-guard enable dependencies commitMessage architecture deadCode
+repo-guard enable dependencies commitMessage architecture deadCode imageAssets
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming imageAssets filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -127,6 +128,7 @@ fileHeader
 functionDocs
 asyncResourceCleanup
 pathNaming
+imageAssets
 styleComplexity
 styleGovernance
 maxFileLines
@@ -354,32 +356,101 @@ git add .repo-guard/knip-baseline.json
 - `include`、`exclude` 使用仓库相对 glob，且 `exclude` 优先。默认排除隐藏路径和 `generated` 目录；`[id]`、`(auth)` 等框架特殊目录若需要保留，应明确加入排除范围。
 - Git 不跟踪空目录，因此空目录只有在包含已跟踪文件后才会进入检查。门禁不会自动重命名，避免破坏 import、路由、脚本和大小写敏感文件系统中的引用关系。
 
-### 手动运行专项门禁
+### 配置图片资源治理与 WebP 转换
+
+图片治理默认关闭，消费项目需自行安装兼容的 Sharp 和 SVGO，再显式启用：
 
 ```bash
-repo-guard exceptions
-repo-guard dependencies
-repo-guard dynamic-code
-repo-guard async-resource-cleanup
-repo-guard path-naming
-repo-guard unsafe-html
-repo-guard target-blank
-repo-guard form-labels
-repo-guard image-alt
-repo-guard file-placement
-repo-guard code-placement
-repo-guard style-complexity
-repo-guard style-governance
-repo-guard typecheck
-repo-guard unit-test
-repo-guard mutation-test
-repo-guard accessibility-test
-repo-guard architecture
-repo-guard dead-code
-repo-guard build
-repo-guard lighthouse
-repo-guard lighthouse --skip-build
+npm install --save-dev --save-exact sharp@0.35.3 svgo@4.1.0
+repo-guard enable imageAssets
+repo-guard doctor
 ```
+
+通过 `repo-guard enable imageAssets` 启用时会同步 `AGENTS.md` 托管区块，写入当前生效的命名、真实格式、重复、压缩范围以及 Hook/CI 只读约束；关闭功能会移除对应规则。若直接编辑配置，请运行 `repo-guard migrate` 或 `repo-guard doctor --fix` 完成同步，CI 只检查一致性，不会写入文件。
+
+```json
+{
+  "imageAssets": {
+    "enabled": true,
+    "enforcement": "changedFiles",
+    "include": ["src/assets/**/*.{png,jpg,jpeg,webp,avif,svg}"],
+    "exclude": ["**/generated/**", "**/dist/**", "**/reports/**"],
+    "extensions": ["png", "jpg", "jpeg", "webp", "avif", "svg"],
+    "naming": {
+      "enabled": true,
+      "convention": "camelCase",
+      "lowercaseExtension": true,
+      "densitySuffixes": ["@2x", "@3x"],
+      "allowNinePatch": false
+    },
+    "duplicates": {
+      "exact": "error",
+      "pixel": "off",
+      "canonicalRoots": ["src/assets"]
+    },
+    "compression": {
+      "enabled": true,
+      "action": "report",
+      "minInputBytes": 8192,
+      "minSavingsBytes": 2048,
+      "minSavingsPercent": 10,
+      "raster": {
+        "enabled": true,
+        "allowLossy": false,
+        "metadata": "preserve"
+      },
+      "svg": {
+        "enabled": true,
+        "allowWrite": false
+      },
+      "conversion": {
+        "enabled": true,
+        "target": "webp",
+        "sourceFormats": ["png", "jpg", "jpeg"],
+        "action": "report",
+        "minInputBytes": 8192,
+        "minSavingsBytes": 4096,
+        "minSavingsPercent": 20,
+        "pngMode": "lossless",
+        "jpegQuality": 82,
+        "effort": 6,
+        "exactAlpha": true,
+        "allowFallbackOriginal": false
+      }
+    },
+    "limits": {
+      "maxInputBytes": 26214400,
+      "maxPixels": 40000000,
+      "maxFrames": 1
+    }
+  }
+}
+```
+
+- `changedFiles` 只阻止本次新增或修改产生的新问题，适合旧项目接入；`allFiles` 每次治理完整范围。精确重复使用 Git blob 标识或内容哈希，不依赖文件名；`canonicalRoots` 接受仓库内目录或 glob，并决定建议保留路径。增量模式优先保留未变更的存量资源，工具不会自动删除副本。
+- `duplicates.pixel` 可设为 `report` 或 `error`，通过 Sharp 旋转归一、转换 sRGB 并解码静态像素后比较，能够发现 PNG/JPEG/WebP/AVIF 间的视觉重复；为保持 pre-commit 与 CI policy 轻量，该项只在手动、CI full 和 release-ready 执行。允许原图回退时，同目录同主名的原图/WebP 组合不会被当作像素重复。
+- 压缩和 WebP 建议同时满足最小输入体积、最小节省字节数、最小节省比例才会报告。WebP 并不存在对所有 PNG 固定节省 70% 到 80% 的保证：照片、插画、透明图和已压缩素材差异很大，因此门禁只依据每个文件的真实候选结果判断。
+- `compression.enabled` 是原格式压缩和 WebP 转换的统一父开关；关闭后即使保留 `conversion.enabled: true` 也不会运行转换分析或写入。像素重复属于独立检查，不受该父开关影响。
+- PNG 默认只生成无损候选并复核像素一致性；JPEG/WebP 原格式压缩需先配置 `raster.allowLossy: true`。写入 JPEG/WebP 原格式压缩或 JPEG/有损 PNG 转 WebP 时，还必须传入 `--allow-lossy` 完成第二次确认；只读预览不会要求命令行确认。`metadata` 决定候选保留或移除元数据。
+- SVGO 使用保守插件集合，并在接受候选前复核 `viewBox`、ID、类名、ARIA/role、引用、`url(#...)`、`title` 和 `desc`。SVG 写入还必须显式设置 `svg.allowWrite: true`。
+- 图片命名与 `preCommit.pathNaming` 同时启用时必须使用同一种 `convention`；图片由 `imageAssets.naming` 检查，避免同一路径被两套规则重复报告。扩展名必须小写，倍率后缀只能使用配置白名单。
+- Hook 与 CI 只读取最终暂存区或目标 revision，不读取未暂存副本，也绝不自动改图。输入体积、解码像素和帧数超过上限时停止分析并给出结构化问题，避免压缩炸弹和动画资源造成不可控消耗。
+
+只预览真实收益：
+
+```bash
+repo-guard image-optimize -- src/assets/logo.png
+repo-guard image-optimize --to webp -- src/assets/banner.jpg
+```
+
+显式写入：
+
+```bash
+repo-guard image-optimize --write -- src/assets/logo.png
+repo-guard image-optimize --to webp --write --allow-lossy -- src/assets/banner.jpg
+```
+
+写入只接受范围内、由 Git 跟踪且没有暂存/未暂存修改的源文件，并拒绝路径任意层级的符号链接。原格式压缩使用不冲突的临时文件和备份完成安全替换，并保留原文件权限；WebP 转换只创建同目录同主名的 `.webp`，包括悬空符号链接在内的目标路径已存在就停止，原图和代码引用保持不变，必须由开发者完成视觉、浏览器/小程序兼容性和引用切换验证。
 
 ### 配置变异测试与受保护构建
 
@@ -860,6 +931,34 @@ npm run guard:k6
 
 维护者可显式设置 `REPO_GUARD_REAL_K6_BIN` 为本机官方 `k6` 可执行文件路径，再运行 `node --test test/k6-load.test.js`。该可选集成测试只对 k6 官方演示站点执行 1 VU、1 秒负载；常规 `npm test` 会跳过它，不会隐式联网或产生压测流量。
 
+### 手动运行专项门禁
+
+```bash
+repo-guard exceptions
+repo-guard dependencies
+repo-guard dynamic-code
+repo-guard async-resource-cleanup
+repo-guard path-naming
+repo-guard unsafe-html
+repo-guard target-blank
+repo-guard form-labels
+repo-guard image-alt
+repo-guard image-assets
+repo-guard file-placement
+repo-guard code-placement
+repo-guard style-complexity
+repo-guard style-governance
+repo-guard typecheck
+repo-guard unit-test
+repo-guard mutation-test
+repo-guard accessibility-test
+repo-guard architecture
+repo-guard dead-code
+repo-guard build
+repo-guard lighthouse
+repo-guard lighthouse --skip-build
+```
+
 ## 配置与结果
 
 完整配置字段以 [config.schema.json](../config.schema.json) 为准。主要顶层配置包括：
@@ -873,6 +972,7 @@ exceptions
 dependencyPolicy
 commitMessage
 deadCode
+imageAssets
 architecture
 build
 lighthouse

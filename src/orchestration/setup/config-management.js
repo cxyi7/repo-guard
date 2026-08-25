@@ -25,6 +25,7 @@ import {
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
   DEFAULT_FUNCTION_DOC_CONFIG,
+  DEFAULT_IMAGE_ASSETS_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_MUTATION_TEST_CONFIG,
@@ -197,6 +198,56 @@ function clonePathNamingConfig(value = {}) {
   };
 }
 
+function cloneImageAssetsConfig(value = {}) {
+  const naming = value.naming ?? DEFAULT_IMAGE_ASSETS_CONFIG.naming;
+  const duplicates = value.duplicates ?? DEFAULT_IMAGE_ASSETS_CONFIG.duplicates;
+  const compression = value.compression ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression;
+  const raster = compression.raster ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.raster;
+  const svg = compression.svg ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.svg;
+  const conversion = compression.conversion
+    ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.conversion;
+  return {
+    ...DEFAULT_IMAGE_ASSETS_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_IMAGE_ASSETS_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_IMAGE_ASSETS_CONFIG.exclude)],
+    extensions: [...(value.extensions ?? DEFAULT_IMAGE_ASSETS_CONFIG.extensions)],
+    naming: {
+      ...DEFAULT_IMAGE_ASSETS_CONFIG.naming,
+      ...naming,
+      densitySuffixes: [
+        ...(naming.densitySuffixes ?? DEFAULT_IMAGE_ASSETS_CONFIG.naming.densitySuffixes),
+      ],
+    },
+    duplicates: {
+      ...DEFAULT_IMAGE_ASSETS_CONFIG.duplicates,
+      ...duplicates,
+      canonicalRoots: [
+        ...(duplicates.canonicalRoots
+          ?? DEFAULT_IMAGE_ASSETS_CONFIG.duplicates.canonicalRoots),
+      ],
+    },
+    compression: {
+      ...DEFAULT_IMAGE_ASSETS_CONFIG.compression,
+      ...compression,
+      raster: { ...DEFAULT_IMAGE_ASSETS_CONFIG.compression.raster, ...raster },
+      svg: { ...DEFAULT_IMAGE_ASSETS_CONFIG.compression.svg, ...svg },
+      conversion: {
+        ...DEFAULT_IMAGE_ASSETS_CONFIG.compression.conversion,
+        ...conversion,
+        sourceFormats: [
+          ...(conversion.sourceFormats
+            ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.conversion.sourceFormats),
+        ],
+      },
+    },
+    limits: {
+      ...DEFAULT_IMAGE_ASSETS_CONFIG.limits,
+      ...(value.limits ?? {}),
+    },
+  };
+}
+
 function cloneUnitTestConfig(value = {}) {
   const mappings = value.mappings ?? DEFAULT_UNIT_TEST_CONFIG.mappings;
   const coverage = value.coverage ?? DEFAULT_UNIT_TEST_CONFIG.coverage;
@@ -284,6 +335,7 @@ export function createStarterConfig({
     dependencyPolicy: cloneDependencyPolicyConfig({ enabled: true }),
     commitMessage: cloneCommitMessageConfig(),
     deadCode: cloneDeadCodeConfig(),
+    imageAssets: cloneImageAssetsConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -410,6 +462,7 @@ export function migrateProjectConfig(root, {
     dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
     commitMessage: cloneCommitMessageConfig(prepared.commitMessage),
     deadCode: cloneDeadCodeConfig(prepared.deadCode),
+    imageAssets: cloneImageAssetsConfig(prepared.imageAssets),
     architecture: cloneArchitectureConfig(prepared.architecture),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,

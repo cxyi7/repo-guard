@@ -28,6 +28,7 @@ import { runGuardedBuild } from './guarded-build.js';
 import { runApiPerformanceRunner } from './api-performance-runner.js';
 import { runK6Runner } from './k6-runner.js';
 import { runDeadCodeBaseline } from './dead-code-baseline.js';
+import { runImageOptimize } from './image-optimize.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -76,6 +77,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard k6-runner --gate-id <project.gate-id> --config <path>
   repo-guard guarded-build <npm-script>
   repo-guard dead-code-baseline <init|prune>
+  repo-guard image-optimize [--to webp] [--write] [--allow-lossy] -- <paths...>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
 
@@ -224,6 +226,25 @@ export async function runCli(argumentsList) {
           );
         }
         return await runDeadCodeBaseline(rest[0]);
+      }
+      case 'image-optimize': {
+        const delimiter = rest.indexOf('--');
+        if (delimiter < 0) {
+          throw configurationError(
+            'cli/image-optimize-path-delimiter-required',
+            'image-optimize 必须使用 -- 分隔选项和图片路径',
+          );
+        }
+        const options = parseValuedOptions(rest.slice(0, delimiter), {
+          flags: new Set(['--write', '--allow-lossy']),
+          values: new Set(['--to']),
+        });
+        return await runImageOptimize({
+          paths: rest.slice(delimiter + 1),
+          to: options.values['--to'] ?? null,
+          write: options.flags.has('--write'),
+          allowLossy: options.flags.has('--allow-lossy'),
+        });
       }
       default:
         if (gateRegistry.findByManualCommand(command)) {

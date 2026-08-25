@@ -10,6 +10,7 @@ import {
   skippedResult,
   violationResult,
 } from '../native-result.js';
+import { selectImageAssetPaths } from '../../policies/image-assets.js';
 
 export const PATH_NAMING_GATE_ID = 'repository.path-naming';
 
@@ -46,11 +47,16 @@ export const pathNamingGate = defineGate({
   },
   plan({ root, config, environment, files }) {
     const enabled = environment === 'manual' || config.preCommit.pathNaming.enabled;
+    const selectedFiles = enabled
+      ? [...(environment === 'manual' ? files : collectTrackedProjectPaths(root))]
+      : [];
+    const imageFiles = config.imageAssets?.enabled && config.imageAssets.naming.enabled
+      ? selectImageAssetPaths(selectedFiles, config.imageAssets)
+      : [];
     return Object.freeze({
       enabled,
-      files: Object.freeze(enabled
-        ? [...(environment === 'manual' ? files : collectTrackedProjectPaths(root))]
-        : []),
+      files: Object.freeze(selectedFiles),
+      imageFiles: Object.freeze(imageFiles),
     });
   },
   run({ config, plan }) {
@@ -60,6 +66,7 @@ export const pathNamingGate = defineGate({
     const result = inspectPathNaming({
       files: plan.files,
       config: config.preCommit.pathNaming,
+      skipFiles: plan.imageFiles,
     });
     const metrics = {
       checkedFiles: result.checkedFiles,

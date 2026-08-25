@@ -2239,6 +2239,46 @@ test('separates path naming configuration, Git facts, policy decisions, and Gate
   assert.doesNotMatch(gateSource, /from ['"][^'"]*orchestration\//);
 });
 
+test('separates image configuration, binary facts, tool integration, policy, gate, and CLI routing', () => {
+  const configPath = path.join(SOURCE_ROOT, 'config', 'image-assets-validation.js');
+  const gitFactsPath = path.join(SOURCE_ROOT, 'git', 'binary-content.js');
+  const integrationPath = path.join(SOURCE_ROOT, 'integrations', 'images', 'optimization.js');
+  const policyPath = path.join(SOURCE_ROOT, 'policies', 'image-assets.js');
+  const gatePath = path.join(SOURCE_ROOT, 'gates', 'repository', 'image-assets-gate.js');
+  const cliPath = path.join(SOURCE_ROOT, 'orchestration', 'cli', 'image-optimize.js');
+
+  for (const expectedPath of [
+    configPath,
+    gitFactsPath,
+    integrationPath,
+    policyPath,
+    gatePath,
+    cliPath,
+  ]) {
+    assert.equal(existsSync(expectedPath), true);
+  }
+
+  const configSource = readFileSync(configPath, 'utf8');
+  const gitFactsSource = readFileSync(gitFactsPath, 'utf8');
+  const integrationSource = readFileSync(integrationPath, 'utf8');
+  const policySource = readFileSync(policyPath, 'utf8');
+  const gateSource = readFileSync(gatePath, 'utf8');
+  const cliSource = readFileSync(cliPath, 'utf8');
+
+  assert.match(configSource, /export function validateImageAssetsConfiguration/);
+  assert.doesNotMatch(configSource, /from ['"][^'"]*(?:git|policies|gates|integrations|orchestration)\//);
+  assert.match(gitFactsSource, /export function readGitBlob/);
+  assert.doesNotMatch(gitFactsSource, /micromatch|GateResult|finding|policy/i);
+  assert.match(integrationSource, /export async function createWebpCandidate/);
+  assert.doesNotMatch(integrationSource, /from ['"][^'"]*(?:policies|gates|orchestration)\//);
+  assert.match(policySource, /export function inspectDuplicateGroups/);
+  assert.doesNotMatch(policySource, /from ['"][^'"]*(?:git|gates|integrations|orchestration)\//);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/git\/binary-content\.js['"]/);
+  assert.match(gateSource, /from ['"]\.\.\/\.\.\/integrations\/images\/optimization\.js['"]/);
+  assert.match(cliSource, /from ['"]\.\.\/\.\.\/gates\/repository\/image-assets-optimizer\.js['"]/);
+  assert.doesNotMatch(cliSource, /from ['"][^'"]*integrations\//);
+});
+
 test('separates code placement content facts, policy decisions, and GateResult adaptation', () => {
   const configPath = path.join(SOURCE_ROOT, 'config', 'code-placement-validation.js');
   const indexFactsPath = path.join(SOURCE_ROOT, 'git', 'index-content.js');
