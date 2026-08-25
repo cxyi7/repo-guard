@@ -16,6 +16,7 @@ export const prePushPlan = defineExecutionPlan({
     'repository.commit-message',
     'quality.typecheck',
     'quality.dead-code',
+    'repository.unused-image-assets',
     'quality.unit-test',
     'quality.accessibility-test',
     'quality.architecture',
@@ -109,6 +110,7 @@ export const ciFullPlan = defineExecutionPlan({
     },
     { id: 'quality.typecheck', gateId: 'quality.typecheck', reportName: 'type-check' },
     { id: 'quality.dead-code', gateId: 'quality.dead-code', reportName: 'dead-code' },
+    { id: 'repository.unused-image-assets', gateId: 'repository.unused-image-assets', reportName: 'unused-image-assets' },
     'quality.unit-test',
     'quality.accessibility-test',
     'quality.architecture',
@@ -122,6 +124,7 @@ export const releaseReadyPlan = defineExecutionPlan({
   locked: true,
   steps: [
     ...ciPolicyPlan.steps,
+    'repository.unused-image-assets',
     'release.check',
     'release.test',
     { id: 'quality.build', gateId: 'quality.build', reportName: 'build' },

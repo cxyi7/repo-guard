@@ -178,6 +178,10 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
   );
   assert.equal(packageJson.scripts['guard:dead-code'], 'repo-guard dead-code');
   assert.equal(packageJson.scripts['guard:image-assets'], 'repo-guard image-assets');
+  assert.equal(
+    packageJson.scripts['guard:unused-image-assets'],
+    'repo-guard unused-image-assets',
+  );
   assert.equal(packageJson.scripts['guard:image-optimize'], 'repo-guard image-optimize');
   assert.equal(
     packageJson.scripts['guard:dead-code-baseline-init'],

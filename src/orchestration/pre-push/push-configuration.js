@@ -36,6 +36,7 @@ function usesPrePushGate(config) {
   return config?.accessibilityTest.enabled
     || config?.commitMessage.enabled
     || config?.deadCode.enabled
+    || config?.imageAssets.unused.enabled
     || config?.typeCheck.enabled
     || config?.unitTest.enabled
     || config?.architecture.enabled

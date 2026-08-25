@@ -113,6 +113,21 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     requiredTools: ['sharp', 'svgo'],
     ciScopes: ['all-files', 'changed-files'],
   }),
+  reviewedGateDescriptor(
+    'repository.unused-image-assets',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'imageAssets.unused',
+      featureName: 'unusedImageAssets',
+      featureOrder: 43,
+      manualCommand: 'unused-image-assets',
+      manualOrder: 153,
+      doctorOrder: 153,
+      packageScript: 'guard:unused-image-assets',
+      rules: ['assets/unused'],
+      ciScopes: ['all-files'],
+    },
+  ),
   reviewedGateDescriptor('security.dynamic-code', POLICY_ENVIRONMENTS, {
     manualCommand: 'dynamic-code',
     manualOrder: 70,

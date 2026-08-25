@@ -1,6 +1,7 @@
 import {
   DEFAULT_IMAGE_ASSETS_CONFIG,
   SUPPORTED_IMAGE_ASSET_EXTENSIONS,
+  SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS,
   SUPPORTED_PATH_NAMING_CONVENTIONS,
 } from './defaults.js';
 import {
@@ -56,6 +57,92 @@ function uniqueStrings(value, fallback, label, allowed = null) {
     throw configValidationError(`${label} 包含不支持的值`);
   }
   return result;
+}
+
+function rejectUniversalPattern(pattern, label) {
+  if (['**', '**/*', '**/**'].includes(pattern.replace(/^\.\//, ''))) {
+    throw configValidationError(`${label} 不得使用覆盖整个仓库的通配模式`);
+  }
+  return pattern;
+}
+
+function validateUnused(value, label) {
+  const unused = objectValue(value ?? {}, label);
+  const defaults = DEFAULT_IMAGE_ASSETS_CONFIG.unused;
+  assertKnownProperties(unused, new Set([
+    'enabled', 'action', 'sourceInclude', 'sourceExclude', 'sourceExtensions',
+    'aliases', 'publicRoots', 'dynamicReferences', 'limits',
+  ]), label);
+  const aliases = unused.aliases ?? defaults.aliases;
+  if (!Array.isArray(aliases)) throw configValidationError(`${label}.aliases 必须是数组`);
+  const normalizedAliases = aliases.map((item, index) => {
+    const itemLabel = `${label}.aliases 第 ${index + 1} 项`;
+    const alias = objectValue(item, itemLabel);
+    assertKnownProperties(alias, new Set(['prefix', 'directory']), itemLabel);
+    if (typeof alias.prefix !== 'string' || !alias.prefix.trim()) {
+      throw configValidationError(`${itemLabel}.prefix 必须是非空字符串`);
+    }
+    return {
+      prefix: alias.prefix.trim().replaceAll('\\', '/'),
+      directory: normalizeRelativePattern(alias.directory, `${itemLabel}.directory`).replace(/\/$/, ''),
+    };
+  });
+  if (new Set(normalizedAliases.map(({ prefix }) => prefix)).size !== normalizedAliases.length) {
+    throw configValidationError(`${label}.aliases 的 prefix 不得重复`);
+  }
+  const publicRoots = unused.publicRoots ?? defaults.publicRoots;
+  if (!Array.isArray(publicRoots)) throw configValidationError(`${label}.publicRoots 必须是数组`);
+  const normalizedPublicRoots = publicRoots.map((item, index) => {
+    const itemLabel = `${label}.publicRoots 第 ${index + 1} 项`;
+    const root = objectValue(item, itemLabel);
+    assertKnownProperties(root, new Set(['directory', 'urlPrefix']), itemLabel);
+    if (typeof root.urlPrefix !== 'string' || !root.urlPrefix.startsWith('/')) {
+      throw configValidationError(`${itemLabel}.urlPrefix 必须以 / 开头`);
+    }
+    return {
+      directory: normalizeRelativePattern(root.directory, `${itemLabel}.directory`).replace(/\/$/, ''),
+      urlPrefix: root.urlPrefix.replaceAll('\\', '/').replace(/\/$/, '') || '/',
+    };
+  });
+  if (new Set(normalizedPublicRoots.map(({ urlPrefix }) => urlPrefix)).size !== normalizedPublicRoots.length) {
+    throw configValidationError(`${label}.publicRoots 的 urlPrefix 不得重复`);
+  }
+  const dynamicReferences = unused.dynamicReferences ?? defaults.dynamicReferences;
+  if (!Array.isArray(dynamicReferences)) {
+    throw configValidationError(`${label}.dynamicReferences 必须是数组`);
+  }
+  const normalizedDynamicReferences = dynamicReferences.map((item, index) => {
+    const itemLabel = `${label}.dynamicReferences 第 ${index + 1} 项`;
+    const declaration = objectValue(item, itemLabel);
+    assertKnownProperties(declaration, new Set(['sourcePatterns', 'assetPatterns', 'reason']), itemLabel);
+    if (typeof declaration.reason !== 'string' || !declaration.reason.trim()) {
+      throw configValidationError(`${itemLabel}.reason 必须说明动态引用原因`);
+    }
+    return {
+      sourcePatterns: normalizePatternList(declaration.sourcePatterns, `${itemLabel}.sourcePatterns`)
+        .map((pattern) => rejectUniversalPattern(pattern, `${itemLabel}.sourcePatterns`)),
+      assetPatterns: normalizePatternList(declaration.assetPatterns, `${itemLabel}.assetPatterns`)
+        .map((pattern) => rejectUniversalPattern(pattern, `${itemLabel}.assetPatterns`)),
+      reason: declaration.reason.trim(),
+    };
+  });
+  const limits = objectValue(unused.limits ?? {}, `${label}.limits`);
+  assertKnownProperties(limits, new Set(['maxSourceFiles', 'maxSourceBytes', 'maxTotalSourceBytes']), `${label}.limits`);
+  return {
+    enabled: booleanValue(unused.enabled, defaults.enabled, `${label}.enabled`),
+    action: enumValue(unused.action, defaults.action, ['report', 'error'], `${label}.action`),
+    sourceInclude: normalizePatternList(unused.sourceInclude ?? defaults.sourceInclude, `${label}.sourceInclude`),
+    sourceExclude: normalizePatternList(unused.sourceExclude ?? defaults.sourceExclude, `${label}.sourceExclude`, { allowEmpty: true }),
+    sourceExtensions: uniqueStrings(unused.sourceExtensions, defaults.sourceExtensions, `${label}.sourceExtensions`, SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS),
+    aliases: normalizedAliases,
+    publicRoots: normalizedPublicRoots,
+    dynamicReferences: normalizedDynamicReferences,
+    limits: {
+      maxSourceFiles: integerValue(limits.maxSourceFiles, defaults.limits.maxSourceFiles, `${label}.limits.maxSourceFiles`, { min: 1, max: 100000 }),
+      maxSourceBytes: integerValue(limits.maxSourceBytes, defaults.limits.maxSourceBytes, `${label}.limits.maxSourceBytes`, { min: 1024, max: 200000000 }),
+      maxTotalSourceBytes: integerValue(limits.maxTotalSourceBytes, defaults.limits.maxTotalSourceBytes, `${label}.limits.maxTotalSourceBytes`, { min: 1024, max: 1000000000 }),
+    },
+  };
 }
 
 function validateNaming(value, label) {
@@ -249,6 +336,7 @@ export function validateImageAssetsConfiguration(value, configPath) {
       'naming',
       'duplicates',
       'compression',
+      'unused',
       'limits',
     ]),
     label,
@@ -263,6 +351,7 @@ export function validateImageAssetsConfiguration(value, configPath) {
     naming: validateNaming(imageAssets.naming, `${label}.naming`),
     duplicates: validateDuplicates(imageAssets.duplicates, `${label}.duplicates`),
     compression: validateCompression(imageAssets.compression, `${label}.compression`),
+    unused: validateUnused(imageAssets.unused, `${label}.unused`),
     limits: validateLimits(imageAssets.limits, `${label}.limits`),
   };
 }

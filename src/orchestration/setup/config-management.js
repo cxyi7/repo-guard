@@ -206,6 +206,7 @@ function cloneImageAssetsConfig(value = {}) {
   const svg = compression.svg ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.svg;
   const conversion = compression.conversion
     ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.conversion;
+  const unused = value.unused ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused;
   return {
     ...DEFAULT_IMAGE_ASSETS_CONFIG,
     ...value,
@@ -239,6 +240,24 @@ function cloneImageAssetsConfig(value = {}) {
           ...(conversion.sourceFormats
             ?? DEFAULT_IMAGE_ASSETS_CONFIG.compression.conversion.sourceFormats),
         ],
+      },
+    },
+    unused: {
+      ...DEFAULT_IMAGE_ASSETS_CONFIG.unused,
+      ...unused,
+      sourceInclude: [...(unused.sourceInclude ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.sourceInclude)],
+      sourceExclude: [...(unused.sourceExclude ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.sourceExclude)],
+      sourceExtensions: [...(unused.sourceExtensions ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.sourceExtensions)],
+      aliases: (unused.aliases ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.aliases).map((entry) => ({ ...entry })),
+      publicRoots: (unused.publicRoots ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.publicRoots).map((entry) => ({ ...entry })),
+      dynamicReferences: (unused.dynamicReferences ?? DEFAULT_IMAGE_ASSETS_CONFIG.unused.dynamicReferences).map((entry) => ({
+        ...entry,
+        sourcePatterns: [...entry.sourcePatterns],
+        assetPatterns: [...entry.assetPatterns],
+      })),
+      limits: {
+        ...DEFAULT_IMAGE_ASSETS_CONFIG.unused.limits,
+        ...(unused.limits ?? {}),
       },
     },
     limits: {
@@ -563,6 +582,8 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
   if (!enabled && uniqueFeatures.includes('stylelint')) {
     requiredFeatures.push('styleComplexity', 'styleGovernance');
   }
+  if (enabled && uniqueFeatures.includes('unusedImageAssets')) requiredFeatures.push('imageAssets');
+  if (!enabled && uniqueFeatures.includes('imageAssets')) requiredFeatures.push('unusedImageAssets');
   const effectiveFeatures = [...new Set([...requiredFeatures, ...uniqueFeatures])];
 
   const migration = migrateProjectConfig(root);

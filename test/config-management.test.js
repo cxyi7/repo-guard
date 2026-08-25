@@ -150,6 +150,21 @@ test('can enable and disable image asset governance independently', (context) =>
   assert.equal(readConfig(root).imageAssets.enabled, false);
 });
 
+test('enabling unused image assets also enables its parent and disabling the parent closes both', (context) => {
+  const root = createFixture(createStarterConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['unusedImageAssets'], true);
+  assert.deepEqual(enabled.changed, ['imageAssets', 'unusedImageAssets']);
+  assert.equal(readConfig(root).imageAssets.enabled, true);
+  assert.equal(readConfig(root).imageAssets.unused.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['imageAssets'], false);
+  assert.deepEqual(disabled.changed, ['unusedImageAssets', 'imageAssets']);
+  assert.equal(readConfig(root).imageAssets.enabled, false);
+  assert.equal(readConfig(root).imageAssets.unused.enabled, false);
+});
+
 test('starter configuration enables build when its project script was detected', () => {
   const config = createStarterConfig({ buildEnabled: true });
 

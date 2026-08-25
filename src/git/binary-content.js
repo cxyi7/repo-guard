@@ -1,4 +1,5 @@
 import { runGit, runGitBinary } from './execution.js';
+import { executionError } from '../core/error/repo-guard-error.js';
 
 function attachBlobSizes(root, entries) {
   if (entries.length === 0) return entries;
@@ -36,6 +37,8 @@ export function listIndexBinaryEntries(root) {
   return attachBlobSizes(root, entries);
 }
 
+export const listIndexBlobEntries = listIndexBinaryEntries;
+
 export function listRevisionBinaryEntries(root, revision) {
   const entries = runGit(['ls-tree', '-r', '-z', revision], { cwd: root }).stdout
     .split('\0')
@@ -54,6 +57,47 @@ export function listRevisionBinaryEntries(root, revision) {
   return attachBlobSizes(root, entries);
 }
 
+export const listRevisionBlobEntries = listRevisionBinaryEntries;
+
 export function readGitBlob(root, oid, { maxBuffer } = {}) {
   return runGitBinary(['cat-file', 'blob', oid], { cwd: root, maxBuffer }).stdout;
+}
+
+export function readGitBlobs(root, entries, { maxTotalBytes = 210000000 } = {}) {
+  const uniqueOids = [...new Set(entries.map(({ oid }) => oid))];
+  if (uniqueOids.length === 0) return new Map();
+  const declaredBytes = entries.reduce((total, entry) => total + (entry.size ?? 0), 0);
+  if (declaredBytes > maxTotalBytes) {
+    throw executionError(
+      'git/blob-batch-too-large',
+      `Git 快照待读取内容共 ${declaredBytes} 字节，超过安全上限 ${maxTotalBytes} 字节`,
+    );
+  }
+  const input = Buffer.from(`${uniqueOids.join('\n')}\n`, 'ascii');
+  const result = runGitBinary(['cat-file', '--batch'], {
+    cwd: root,
+    input,
+    maxBuffer: maxTotalBytes + (uniqueOids.length * 160) + 1024,
+  });
+  const buffersByOid = new Map();
+  let cursor = 0;
+  for (const expectedOid of uniqueOids) {
+    const headerEnd = result.stdout.indexOf(10, cursor);
+    if (headerEnd === -1) {
+      throw executionError('git/blob-batch-invalid', 'Git 批量对象输出缺少对象头');
+    }
+    const [oid, type, rawSize] = result.stdout.subarray(cursor, headerEnd).toString('ascii').split(' ');
+    const size = Number(rawSize);
+    if (type !== 'blob' || !Number.isInteger(size) || size < 0 || oid !== expectedOid) {
+      throw executionError('git/blob-batch-invalid', `Git 批量对象输出无效：${oid} ${type} ${rawSize}`);
+    }
+    const contentStart = headerEnd + 1;
+    const contentEnd = contentStart + size;
+    if (contentEnd >= result.stdout.length || result.stdout[contentEnd] !== 10) {
+      throw executionError('git/blob-batch-invalid', `Git 对象 ${oid} 的内容长度与声明不一致`);
+    }
+    buffersByOid.set(oid, result.stdout.subarray(contentStart, contentEnd));
+    cursor = contentEnd + 1;
+  }
+  return new Map(entries.map((entry) => [entry.path, buffersByOid.get(entry.oid)]));
 }
