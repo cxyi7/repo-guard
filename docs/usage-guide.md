@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.19.0`
+- 当前版本：`1.20.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.19.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.20.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -63,6 +63,7 @@ TypeScript、Knip 全项目无效代码、单元测试、axe、项目架构、�
 commit-message
   → typecheck
   → dead-code
+  → unused-image-assets
   → unit-test
   → accessibility-test
   → architecture
@@ -451,6 +452,52 @@ repo-guard image-optimize --to webp --write --allow-lossy -- src/assets/banner.j
 ```
 
 写入只接受范围内、由 Git 跟踪且没有暂存/未暂存修改的源文件，并拒绝路径任意层级的符号链接。原格式压缩使用不冲突的临时文件和备份完成安全替换，并保留原文件权限；WebP 转换只创建同目录同主名的 `.webp`，包括悬空符号链接在内的目标路径已存在就停止，原图和代码引用保持不变，必须由开发者完成视觉、浏览器/小程序兼容性和引用切换验证。
+
+### 配置无效图片资源门禁
+
+无效图片是指位于 `imageAssets.include` 范围内，但没有被配置范围源码静态引用、也没有被有效动态声明覆盖的图片。该能力默认关闭，不会进入 pre-commit；启用时同步打开父级图片治理：
+
+```bash
+repo-guard enable unusedImageAssets
+repo-guard unused-image-assets
+```
+
+```json
+{
+  "imageAssets": {
+    "enabled": true,
+    "enforcement": "changedFiles",
+    "unused": {
+      "enabled": true,
+      "action": "error",
+      "sourceInclude": ["*.{html,md}", "src/**/*.{vue,nvue,html,wxml,js,jsx,ts,tsx,mjs,cjs,css,less,scss,sass,wxss,json}", "public/**/*.html", "docs/**/*.md"],
+      "sourceExclude": ["**/*.spec.*", "**/*.test.*", "**/generated/**", "**/dist/**"],
+      "sourceExtensions": [".vue", ".nvue", ".html", ".wxml", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".less", ".scss", ".sass", ".wxss", ".md", ".json"],
+      "aliases": [{ "prefix": "@/", "directory": "src" }],
+      "publicRoots": [{ "directory": "public", "urlPrefix": "/" }],
+      "dynamicReferences": [
+        {
+          "sourcePatterns": ["src/pages/gallery.ts"],
+          "assetPatterns": ["src/assets/runtime/*.png"],
+          "reason": "接口只返回文件名，页面在受控目录内拼接图片路径"
+        }
+      ],
+      "limits": {
+        "maxSourceFiles": 10000,
+        "maxSourceBytes": 2097152,
+        "maxTotalSourceBytes": 104857600
+      }
+    }
+  }
+}
+```
+
+- 解析 JS/TS 的静态字符串、`new URL` 和 `import.meta.glob`，Vue/HTML/WXML 的 `src`、静态绑定、`srcset`、`poster`，CSS/Less/SCSS/Sass/WXSS 的 `url()`，以及明确纳入范围的 Markdown 和 JSON；远程 URL、`data:`、`blob:`、注释和动态模板不会被误计为使用。
+- 相对路径以引用源码目录解析，别名与公开 URL 分别由 `aliases` 和 `publicRoots` 映射；查询参数和 hash 不参与文件匹配。路径必须留在仓库内，Git revision 源码通过单次批量对象读取并受文件数、单文件和总字节上限保护。
+- 默认 `/assets/logo.png` 按 Vite 的 `public/assets/logo.png` 解析；uni-app 若把 `/static/logo.png` 实际存放在 `src/static/logo.png`，应将映射改为 `{ "directory": "src", "urlPrefix": "/" }`，并同步把 `src/static` 加入 `imageAssets.include`，避免把平台根路径误认为 `public` 路径。
+- 运行时拼接无法静态证明时，必须配置 `dynamicReferences`。每项声明都要有原因，并同时匹配真实源码和图片；整个仓库通配、空匹配和已经失效的声明会作为配置错误处理。
+- 手动命令始终审计当前工作区全量。`changedFiles` 在 pre-push、CI full 和 release-ready 中比较基线与当前 revision 的“未使用集合”，只阻止新增未引用图片或删除最后一处引用造成的新债务；`allFiles` 阻止全部存量。
+- `action: "report"` 只报告警告，`error` 产生阻断错误。结构化例外仍需精确匹配 `assets/unused` 与图片路径。工具只提供证据，不自动删除图片或改写引用；删除前必须人工确认运行时、后端下发和平台约定路径。
 
 ### 配置变异测试与受保护构建
 
@@ -944,6 +991,7 @@ repo-guard target-blank
 repo-guard form-labels
 repo-guard image-alt
 repo-guard image-assets
+repo-guard unused-image-assets
 repo-guard file-placement
 repo-guard code-placement
 repo-guard style-complexity

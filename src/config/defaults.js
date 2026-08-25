@@ -98,6 +98,25 @@ export const SUPPORTED_IMAGE_ASSET_EXTENSIONS = Object.freeze([
   'tif',
   'tiff',
 ]);
+export const SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS = Object.freeze([
+  '.vue',
+  '.nvue',
+  '.html',
+  '.wxml',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.less',
+  '.scss',
+  '.sass',
+  '.wxss',
+  '.md',
+  '.json',
+]);
 export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
   enabled: false,
   enforcement: 'changedFiles',
@@ -153,6 +172,39 @@ export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
       effort: 6,
       exactAlpha: true,
       allowFallbackOriginal: false,
+    }),
+  }),
+  unused: Object.freeze({
+    enabled: false,
+    action: 'error',
+    sourceInclude: Object.freeze([
+      '*.{html,md}',
+      'src/**/*.{vue,nvue,html,wxml,js,jsx,ts,tsx,mjs,cjs,css,less,scss,sass,wxss,json}',
+      'public/**/*.html',
+      'docs/**/*.md',
+    ]),
+    sourceExclude: Object.freeze([
+      '**/*.d.ts',
+      '**/*.min.*',
+      '**/*.spec.*',
+      '**/*.test.*',
+      '**/generated/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/reports/**',
+    ]),
+    sourceExtensions: SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS,
+    aliases: Object.freeze([
+      Object.freeze({ prefix: '@/', directory: 'src' }),
+    ]),
+    publicRoots: Object.freeze([
+      Object.freeze({ directory: 'public', urlPrefix: '/' }),
+    ]),
+    dynamicReferences: Object.freeze([]),
+    limits: Object.freeze({
+      maxSourceFiles: 10000,
+      maxSourceBytes: 2097152,
+      maxTotalSourceBytes: 104857600,
     }),
   }),
   limits: Object.freeze({

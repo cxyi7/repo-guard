@@ -241,6 +241,34 @@ export function findVueScriptBlocks(source) {
   return blocks;
 }
 
+export function findVueStyleBlocks(source) {
+  const blocks = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const tagStart = source.indexOf('<', cursor);
+    if (tagStart === -1) break;
+    const tag = readTag(source, tagStart);
+    if (!tag) {
+      cursor = tagStart + 1;
+      continue;
+    }
+    cursor = tag.end;
+    if (tag.type === 'comment' || tag.closing || tag.selfClosing) continue;
+    const closing = tag.name === 'template'
+      ? findTemplateClosingTag(source, tag)
+      : findRawClosingTagMatch(source, tag.name, tag.end);
+    if (tag.name === 'style') {
+      blocks.push({
+        attributes: tagAttributes(source, tag),
+        contentEnd: closing?.start ?? source.length,
+        contentStart: tag.end,
+      });
+    }
+    cursor = closing?.end ?? source.length;
+  }
+  return blocks;
+}
+
 function findRootTemplateOpening(source) {
   let cursor = 0;
   while (cursor < source.length) {

@@ -221,3 +221,24 @@ test('启用和禁用图片治理会同步 AGENTS.md 托管规则', (context) =>
   assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
   assert.match(disabledContent, /repo-guard:repository-governance-policy:start/);
 });
+
+test('启用无效图片资源会把静态引用和动态声明边界写入 AGENTS.md', (context) => {
+  const root = fixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  runGit(['init'], { cwd: root });
+  writeFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    `${JSON.stringify(createStarterConfig(), null, 2)}\n`,
+    'utf8',
+  );
+
+  assert.equal(runEnable(['unusedImageAssets'], root), 0);
+  const enabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(enabledContent, /无效图片资源按 `changedFiles` 模式治理/);
+  assert.match(enabledContent, /imageAssets\.unused\.dynamicReferences/);
+  assert.match(enabledContent, /不得使用整个仓库通配或未经确认自动删除图片/);
+
+  assert.equal(runDisable(['unusedImageAssets'], root), 0);
+  const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(disabledContent, /无效图片资源按/);
+});

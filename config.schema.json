@@ -587,7 +587,7 @@
     },
     "imageAssets": {
       "type": "object",
-      "description": "图片资源命名、真实格式、重复内容、压缩机会和显式 WebP 转换治理；Hook 与 CI 始终只读。",
+      "description": "图片资源命名、真实格式、重复内容、压缩机会、无效资源和显式 WebP 转换治理；Hook 与 CI 始终只读。",
       "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean", "default": false },
@@ -698,6 +698,87 @@
                 "effort": { "type": "integer", "minimum": 0, "maximum": 6, "default": 6 },
                 "exactAlpha": { "type": "boolean", "default": true },
                 "allowFallbackOriginal": { "type": "boolean", "default": false }
+              }
+            }
+          }
+        },
+        "unused": {
+          "type": "object",
+          "description": "项目级静态引用分析；手动命令做全量审计，pre-push、CI full 和发布就绪阶段按 enforcement 阻止无效图片。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "action": { "type": "string", "enum": ["report", "error"], "default": "error" },
+            "sourceInclude": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "参与图片引用分析的仓库相对源码 glob。"
+            },
+            "sourceExclude": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "description": "不参与引用分析的源码 glob，优先级高于 sourceInclude。"
+            },
+            "sourceExtensions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [".vue", ".nvue", ".html", ".wxml", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".less", ".scss", ".sass", ".wxss", ".md", ".json"]
+              }
+            },
+            "aliases": {
+              "type": "array",
+              "default": [{ "prefix": "@/", "directory": "src" }],
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["prefix", "directory"],
+                "properties": {
+                  "prefix": { "type": "string", "minLength": 1 },
+                  "directory": { "type": "string", "minLength": 1 }
+                }
+              },
+              "description": "将源码别名前缀映射到仓库目录；最长前缀优先。"
+            },
+            "publicRoots": {
+              "type": "array",
+              "default": [{ "directory": "public", "urlPrefix": "/" }],
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["directory", "urlPrefix"],
+                "properties": {
+                  "directory": { "type": "string", "minLength": 1 },
+                  "urlPrefix": { "type": "string", "pattern": "^/" }
+                }
+              },
+              "description": "将以 / 开头的公开 URL 映射到仓库内静态资源目录。"
+            },
+            "dynamicReferences": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["sourcePatterns", "assetPatterns", "reason"],
+                "properties": {
+                  "sourcePatterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                  "assetPatterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                  "reason": { "type": "string", "minLength": 1 }
+                }
+              },
+              "description": "无法静态解析的运行时图片映射；声明必须同时匹配真实源码和图片，且禁止整个仓库通配。"
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxSourceFiles": { "type": "integer", "minimum": 1, "maximum": 100000, "default": 10000 },
+                "maxSourceBytes": { "type": "integer", "minimum": 1024, "maximum": 200000000, "default": 2097152 },
+                "maxTotalSourceBytes": { "type": "integer", "minimum": 1024, "maximum": 1000000000, "default": 104857600 }
               }
             }
           }

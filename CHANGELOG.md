@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.20.0
+
+- 新增默认关闭的 `repository.unused-image-assets` 项目级只读门禁，静态解析 Vue/NVue、HTML/WXML、JavaScript/TypeScript、样式、Markdown 和 JSON 中的图片引用，并解析别名、public URL、查询参数、hash、`srcset`、`new URL` 与 `import.meta.glob`。
+- 新增带原因且必须同时匹配真实源码和图片的 `dynamicReferences`，拒绝整个仓库通配和失效声明；注释、远程 URL、`data:`、`blob:` 与无法证明的动态模板不会被误当作有效静态引用，工具绝不自动删除资源或改写引用。
+- 手动命令执行工作区全量审计；pre-push、CI full 和 release-ready 支持 `changedFiles` Git 基线集合差异或 `allFiles` 全量治理，能够阻断新增未引用图片和删除最后引用造成的新债务。同步 Registry、配置 Schema、初始化/迁移、AGENTS 托管规范、批量 Git blob 读取、安全上限和端到端回归测试。
+
 ## 1.19.0
 
 - 新增默认关闭的 `imageAssets` 图片资源门禁，按项目级 include、exclude、扩展名和唯一命名规范检查图片；校验扩展名与真实二进制格式，使用 Git 对象标识发现精确重复，并可在非提交轻量阶段使用 Sharp 解码像素发现跨格式重复。

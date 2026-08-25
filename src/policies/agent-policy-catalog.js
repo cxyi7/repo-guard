@@ -201,8 +201,9 @@ const entries = [
   }),
   entry({
     id: 'image-assets', groupId: 'repository-structure-policy',
-    gates: ['repository.image-assets'], features: ['imageAssets'],
-    when: enabled('imageAssets'),
+    gates: ['repository.image-assets', 'repository.unused-image-assets'],
+    features: ['imageAssets', 'unusedImageAssets'],
+    when: ({ config }) => config.imageAssets.enabled || config.imageAssets.unused.enabled,
     lines: ({ config }) => {
       const requirements = [
         config.imageAssets.naming.enabled
@@ -218,7 +219,12 @@ const entries = [
           : null,
       ].filter(Boolean).join('、');
       return [
-        `- 图片资源必须遵守${requirements}；包含 ${list(config.imageAssets.include)}，排除 ${list(config.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
+        ...(config.imageAssets.enabled ? [
+          `- 图片资源必须遵守${requirements}；包含 ${list(config.imageAssets.include)}，排除 ${list(config.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
+        ] : []),
+        ...(config.imageAssets.unused.enabled ? [
+          `- 无效图片资源按 ${code(config.imageAssets.enforcement)} 模式治理；静态引用源码包含 ${list(config.imageAssets.unused.sourceInclude)}，排除 ${list(config.imageAssets.unused.sourceExclude)}。动态路径必须使用带原因且同时匹配真实源码和图片的 ${code('imageAssets.unused.dynamicReferences')} 声明；不得使用整个仓库通配或未经确认自动删除图片。`,
+        ] : []),
       ];
     },
   }),

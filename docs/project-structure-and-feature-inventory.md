@@ -2,17 +2,17 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.19.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.20.0`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.17.0 Commit 提交信息全生命周期门禁
-  └─ 1.18.0 AGENTS.md 集中托管规范目录与同步门禁
-       └─ 1.19.0 图片资源命名、重复、压缩与 WebP 转换治理
+1.18.0 AGENTS.md 集中托管规范目录与同步门禁
+  └─ 1.19.0 图片资源命名、重复、压缩与 WebP 转换治理
+       └─ 1.20.0 无效图片资源静态引用与 Git 基线治理
 ```
 
-因此，`1.19.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.20.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -25,6 +25,7 @@
 - [x] 按 AST 绑定和 Vue 生命周期匹配异步资源创建与释放，启用后以错误阻断无法证明安全的资源泄漏。
 - [x] 在 `camelCase` 与 `kebab-case` 中选择项目唯一规范，统一检查指定范围内的全部已跟踪文件名和文件夹名。
 - [x] 按项目范围治理图片命名、真实格式、精确/像素重复和压缩机会，并提供显式、安全且保留原图的 WebP 转换。
+- [x] 静态分析多种源码中的图片引用，以可验证动态声明覆盖运行时路径，并用 Git 基线只阻止新增无效图片债务。
 - [x] 动态代码执行安全检查，包括 `eval` 和 `Function` 构造器。
 - [x] Vue `v-html`、`target="_blank"`、表单 label 和图片 alt 硬门禁。
 - [x] 文件归位、单文件行数、依赖声明、依赖锁文件和依赖架构治理。
@@ -82,7 +83,7 @@ repo/
 │  │  ├─ lighthouse/                 Lighthouse 项目事实和执行
 │  │  ├─ k6/                         k6 配置、脚本校验、受控执行、摘要解析与中文报告
 │  │  ├─ knip/                       Knip 项目解析、执行与 JSON 报告校验
-│  │  ├─ images/                     消费项目 Sharp/SVGO 解析、压缩候选和像素事实
+│  │  ├─ images/                     图片引用事实、消费项目 Sharp/SVGO 解析、压缩候选和像素事实
 │  │  ├─ npm/                        npm script、包元数据和发布环境
 │  │  ├─ prettier/                   Prettier 项目事实和执行
 │  │  ├─ stylelint/                  Stylelint 项目事实和执行
@@ -138,6 +139,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 图片资源治理继续分离 Git 二进制事实、第三方工具事实、纯策略和写入边界：`git/binary-content.js` 批量读取索引或 revision 中的 blob 标识与大小，`integrations/images/` 只解析消费项目的 Sharp/SVGO 并生成候选及像素事实，多帧资源同时保留和比较帧数、帧高、播放延迟及循环次数；`policies/image-assets.js` 负责范围、命名、真实格式、重复分组和收益阈值，增量重复分组优先保留未变更的存量资源，`canonicalRoots` 支持仓库内目录或 glob；`gates/repository/image-assets-gate.js` 形成只读 GateResult。显式优化由同领域 `image-assets-optimizer.js` 持有唯一文件写入边界，原格式安全替换保留权限并拒绝临时路径、备份路径和悬空链接碰撞；默认只预览，Hook 与 CI 永不写图片、删除资源或修改引用。
 
+无效图片资源延续相同依赖方向：`integrations/images/references.js` 只从 Vue/NVue、HTML/WXML、JavaScript/TypeScript、样式、Markdown 和 JSON 提取静态引用与 `import.meta.glob` 事实；`policies/unused-image-assets.js` 负责源码范围、别名/public 映射、动态声明有效性和“图片集合减引用集合”的纯判定；`gates/repository/unused-image-assets-gate.js` 负责工作区或 Git revision 快照、安全上限、基线差异、结构化例外与 GateResult。`git/binary-content.js` 通过单次 `cat-file --batch` 读取所需源码 blob，避免逐文件启动 Git。手动命令固定全量审计，pre-push、CI full 和 release-ready 只读执行；不进入 pre-commit，也不自动删除图片或改写引用。
+
 提交信息治理由 `config/commit-message-validation.js` 规范化类型、scope 和特殊提交生命周期；`policies/commit-message.js` 只负责 Conventional Commit、merge/revert、`fixup!`/`squash!` 与不兼容变更判定；`git/commit-messages.js` 只读取精确 revision 范围内的真实提交对象；`gates/repository/commit-message-gate.js` 形成统一中文 GateResult，并只在 release-ready 比较基准与当前 package major；`orchestration/commit-message/runner.js` 在本地自动文件摘要定稿前复用同一策略。pre-push 和 CI 会重新读取提交对象，因此跳过本地 Hook 不能绕过共享历史校验。
 
 AGENTS 托管规范使用集中目录和单一写入边界：`policies/agent-policy-catalog.js` 声明 7 个分组以及功能、官方 Gate 和独立工作流的覆盖关系，并仅依据规范化配置和受控 package script 事实生成中文规则；`policies/agent-policies.js` 负责读取项目事实、识别四类旧 marker、构造当前区块和单次写入；`core/policy/managed-text-block.js` 在修改前统一校验全部 marker，并保留 marker 外的人工内容；`gates/repository/repository-policy-gates.js` 中的 `repository.agent-policy` 只读检查当前投影。初始化、功能启停、迁移、Doctor 修复和 CI 安装复用同一同步入口，Git Hook 不修改 `AGENTS.md`。
@@ -168,13 +171,13 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 32 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 33 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
-| 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.image-assets`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
+| 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.image-assets`、`repository.unused-image-assets`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
 | 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
@@ -258,6 +261,7 @@ pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照
 | 文件归位 | `preCommit.filePlacement` | 通过 glob 限制文件允许目录；支持只检查新位置或检查所有变更文件，并给出建议目录 |
 | 统一路径命名 | `preCommit.pathNaming` | 一个项目只能配置 `camelCase` 或 `kebab-case` 中的一种；全部 include 范围共用该规范，pre-commit 与 CI 检查完整已跟踪路径，排除范围优先，Git 空目录不在检查范围内 |
 | 图片资源治理 | `imageAssets` | 默认关闭；检查作用范围内的图片命名、大小写碰撞、扩展名与真实格式、精确重复和压缩机会；`compression.enabled` 统一控制原格式压缩与 WebP 转换，非轻量阶段可独立配置解码像素重复，所有 Hook 与 CI 路径保持只读 |
+| 无效图片资源 | `imageAssets.unused` | 默认关闭；静态解析配置范围源码，支持别名、public URL、`import.meta.glob` 与可验证动态声明；手动全量审计，pre-push、CI full 和 release-ready 按 `changedFiles` 基线或 `allFiles` 模式只读治理 |
 | 单文件行数 | `preCommit.maxFileLines` | 检查最终暂存文件完整行数；支持严格模式、存量不恶化模式、接近上限警告和 Vue 分区统计 |
 | 代码位置 | `codePlacement` | 一段精确代码文本只能出现在一个或多个允许文件；pre-commit 读取最终 Git 索引，CI 扫描完整提交 |
 | 保护文件审计 | 顶层 `rules`、`exclusions` | 第一条匹配规则生效，排除项优先；记录 Git 状态、原路径和目标路径 |
@@ -462,6 +466,7 @@ Stylelint fix
 commit-message
   → typecheck
   → dead-code
+  → unused-image-assets
   → unit-test（包含可选 coverage/componentInteraction）
   → accessibility-test
   → architecture
@@ -477,7 +482,7 @@ pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步�
 
 ### 6.3 CI 与 release-ready
 
-CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息；CI 默认拒绝残留的 `fixup!`/`squash!`。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
+CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息；CI 默认拒绝残留的 `fixup!`/`squash!`。无效图片资源只进入 CI full 与 release-ready，不进入轻量 policy。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
 
 ## 7. CLI 命令清单
 
@@ -523,6 +528,7 @@ target-blank
 form-labels
 image-alt
 image-assets
+unused-image-assets
 accessibility-test
 style-complexity
 style-governance
@@ -544,6 +550,7 @@ functionDocs
 asyncResourceCleanup
 pathNaming
 imageAssets
+unusedImageAssets
 styleComplexity
 styleGovernance
 maxFileLines
@@ -582,7 +589,7 @@ ci
 | `dependencyPolicy` | 依赖声明与 lockfile 治理 |
 | `commitMessage` | Commit 提交信息与生命周期治理 |
 | `deadCode` | Knip 项目级无效代码检查与历史债务基线 |
-| `imageAssets` | 图片范围、命名、重复、压缩、WebP 转换、收益阈值和安全上限 |
+| `imageAssets` | 图片范围、命名、重复、压缩、WebP 转换、无效资源父级执行模式、收益阈值和安全上限；`unused` 子配置包含引用源码范围与扩展名、别名、公开目录、动态声明、报告级别和源码读取安全上限 |
 | `architecture` | dependency-cruiser 门禁 |
 | `build` | 独立构建门禁 |
 | `lighthouse` | Lighthouse 配置和自动执行开关 |
