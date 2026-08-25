@@ -20,6 +20,7 @@ export function validateRootConfigurationContract(value, configPath) {
       'dependencyPolicy',
       'commitMessage',
       'deadCode',
+      'imageAssets',
       'architecture',
       'accessibilityTest',
       'build',

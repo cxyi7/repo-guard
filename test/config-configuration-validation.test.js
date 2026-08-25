@@ -26,6 +26,7 @@ test('assembles every normalized configuration domain in contract order', () => 
     'dependencyPolicy',
     'commitMessage',
     'deadCode',
+    'imageAssets',
     'architecture',
     'build',
     'lighthouse',

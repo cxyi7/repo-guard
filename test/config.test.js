@@ -12,6 +12,7 @@ import {
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
+  DEFAULT_IMAGE_ASSETS_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
   DEFAULT_MAX_FILE_LINES_CONFIG,
   DEFAULT_MUTATION_TEST_CONFIG,
@@ -58,6 +59,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.exceptions, DEFAULT_EXCEPTIONS_CONFIG);
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.commitMessage, DEFAULT_COMMIT_MESSAGE_CONFIG);
+  assert.deepEqual(config.imageAssets, DEFAULT_IMAGE_ASSETS_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.accessibilityTest, DEFAULT_ACCESSIBILITY_TEST_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);

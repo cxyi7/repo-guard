@@ -85,6 +85,82 @@ export const DEFAULT_PATH_NAMING_CONFIG = Object.freeze({
     '**/generated/**',
   ]),
 });
+export const SUPPORTED_IMAGE_ASSET_EXTENSIONS = Object.freeze([
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'avif',
+  'svg',
+  'gif',
+  'ico',
+  'bmp',
+  'tif',
+  'tiff',
+]);
+export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
+  enabled: false,
+  enforcement: 'changedFiles',
+  include: Object.freeze([
+    'src/assets/**/*.{png,jpg,jpeg,webp,avif,svg,gif,ico,bmp,tif,tiff}',
+    'public/assets/**/*.{png,jpg,jpeg,webp,avif,svg,gif,ico,bmp,tif,tiff}',
+    'docs/assets/**/*.{png,jpg,jpeg,webp,avif,svg,gif,ico,bmp,tif,tiff}',
+  ]),
+  exclude: Object.freeze([
+    '**/generated/**',
+    '**/dist/**',
+    '**/coverage/**',
+    '**/reports/**',
+  ]),
+  extensions: SUPPORTED_IMAGE_ASSET_EXTENSIONS,
+  naming: Object.freeze({
+    enabled: true,
+    convention: 'camelCase',
+    lowercaseExtension: true,
+    densitySuffixes: Object.freeze(['@2x', '@3x']),
+    allowNinePatch: false,
+  }),
+  duplicates: Object.freeze({
+    exact: 'error',
+    pixel: 'off',
+    canonicalRoots: Object.freeze(['src/assets', 'public/assets', 'docs/assets']),
+  }),
+  compression: Object.freeze({
+    enabled: true,
+    action: 'report',
+    minInputBytes: 8192,
+    minSavingsBytes: 2048,
+    minSavingsPercent: 10,
+    raster: Object.freeze({
+      enabled: true,
+      allowLossy: false,
+      metadata: 'preserve',
+    }),
+    svg: Object.freeze({
+      enabled: true,
+      allowWrite: false,
+    }),
+    conversion: Object.freeze({
+      enabled: false,
+      target: 'webp',
+      sourceFormats: Object.freeze(['png', 'jpg', 'jpeg']),
+      action: 'report',
+      minInputBytes: 8192,
+      minSavingsBytes: 4096,
+      minSavingsPercent: 20,
+      pngMode: 'lossless',
+      jpegQuality: 82,
+      effort: 6,
+      exactAlpha: true,
+      allowFallbackOriginal: false,
+    }),
+  }),
+  limits: Object.freeze({
+    maxInputBytes: 26214400,
+    maxPixels: 40000000,
+    maxFrames: 1,
+  }),
+});
 export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
   enabled: false,
   maxCompoundSelectors: 3,

@@ -91,6 +91,8 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(packageJson.scripts['guard:target-blank'], 'repo-guard target-blank');
   assert.equal(packageJson.scripts['guard:form-labels'], 'repo-guard form-labels');
   assert.equal(packageJson.scripts['guard:image-alt'], 'repo-guard image-alt');
+  assert.equal(packageJson.scripts['guard:image-assets'], 'repo-guard image-assets');
+  assert.equal(packageJson.scripts['guard:image-optimize'], 'repo-guard image-optimize');
   assert.equal(
     packageJson.scripts['guard:accessibility-test'],
     'repo-guard accessibility-test',

@@ -11,6 +11,8 @@ import test from 'node:test';
 import { createStarterConfig, CONFIGURABLE_FEATURES } from '../src/orchestration/setup/config-management.js';
 import { officialGates } from '../src/gates/registry.js';
 import { agentPolicyGate } from '../src/gates/repository/repository-policy-gates.js';
+import { runEnable, runDisable } from '../src/orchestration/cli/configuration.js';
+import { runGit } from '../src/git/execution.js';
 import {
   agentPolicyCatalog,
   agentPolicyGroups,
@@ -103,6 +105,7 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   config.commitMessage.fixup.allowPush = true;
   config.commitMessage.fixup.allowCi = false;
   config.preCommit.fileHeader.enabled = true;
+  config.imageAssets.enabled = true;
   config.architecture.enabled = true;
   config.codePlacement.enabled = true;
   config.codePlacement.rules = [{
@@ -145,10 +148,19 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   assert.match(enabledContent, /文件头由 repo-guard 依据 Git 记录维护/);
   assert.match(enabledContent, /fixup!\/squash! 在本地允许、pre-push 阶段允许、CI 阶段禁止/);
   assert.match(enabledContent, /k6 并发压测/);
+  assert.match(enabledContent, /图片资源必须遵守/);
+  assert.match(enabledContent, /Hook 与 CI 只能检查/);
   assert.doesNotMatch(enabledContent, /\bundefined\b/);
   assert.doesNotMatch(enabledContent, /绝不能写入托管规范的敏感匹配内容/);
 
+  config.imageAssets.naming.enabled = false;
+  assert.equal(syncAgentPolicies(root, config).changed, true);
+  const namingDisabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(namingDisabledContent, /`camelCase` 命名/);
+  assert.match(namingDisabledContent, /扩展名与真实格式一致/);
+
   config.preCommit.fileHeader.enabled = false;
+  config.imageAssets.enabled = false;
   config.architecture.enabled = false;
   config.codePlacement.enabled = false;
   config.externalGates = [];
@@ -156,6 +168,7 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.doesNotMatch(disabledContent, /文件头由 repo-guard 依据 Git 记录维护/);
   assert.doesNotMatch(disabledContent, /k6 并发压测/);
+  assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
   assert.doesNotMatch(disabledContent, /修改模块依赖后必须运行/);
 });
 
@@ -186,4 +199,25 @@ test('中央 CI 门禁只读识别过期内容，并在同步后通过', (contex
   assert.equal(agentPolicyGate.run(gateContext).status, 'violation');
   syncAgentPolicies(root, config);
   assert.equal(agentPolicyGate.run(gateContext).status, 'passed');
+});
+
+test('启用和禁用图片治理会同步 AGENTS.md 托管规则', (context) => {
+  const root = fixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  runGit(['init'], { cwd: root });
+  writeFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    `${JSON.stringify(createStarterConfig(), null, 2)}\n`,
+    'utf8',
+  );
+
+  assert.equal(runEnable(['imageAssets'], root), 0);
+  const enabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(enabledContent, /图片资源必须遵守/);
+  assert.match(enabledContent, /Hook 与 CI 只能检查/);
+
+  assert.equal(runDisable(['imageAssets'], root), 0);
+  const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
+  assert.match(disabledContent, /repo-guard:repository-governance-policy:start/);
 });

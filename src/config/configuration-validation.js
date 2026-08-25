@@ -8,6 +8,7 @@ import { validateDependencyPolicyConfiguration } from './dependency-policy-valid
 import { validateDeadCodeConfiguration } from './dead-code-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
+import { validateImageAssetsConfiguration } from './image-assets-validation.js';
 import { validateNotificationConfiguration } from './notification-validation.js';
 import { validateMutationTestConfiguration } from './mutation-test-validation.js';
 import { validatePreCommitConfiguration } from './pre-commit-validation.js';
@@ -17,7 +18,7 @@ import {
 } from './protected-file-validation.js';
 import { validateRootConfigurationContract } from './root-configuration-validation.js';
 import { validateUnitTestConfiguration } from './unit-test-validation.js';
-import { CONFIG_FILE } from './validation-primitives.js';
+import { CONFIG_FILE, configValidationError } from './validation-primitives.js';
 
 export function validateConfigValue(value, configPath = CONFIG_FILE) {
   validateRootConfigurationContract(value, configPath);
@@ -37,6 +38,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const deadCode = validateDeadCodeConfiguration(value, configPath);
 
+  const imageAssets = validateImageAssetsConfiguration(value, configPath);
+
   const architecture = validateArchitectureConfiguration(value, configPath);
 
   const { build, lighthouse, typeCheck } = validateExecutionGateConfiguration(
@@ -52,6 +55,17 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
 
   const preCommit = validatePreCommitConfiguration(value, configPath);
 
+  if (
+    imageAssets.enabled
+    && imageAssets.naming.enabled
+    && preCommit.pathNaming.enabled
+    && imageAssets.naming.convention !== preCommit.pathNaming.convention
+  ) {
+    throw configValidationError(
+      `${configPath} imageAssets.naming.convention 必须与 preCommit.pathNaming.convention 保持一致`,
+    );
+  }
+
   const { rules, exclusions } = normalizeProtectedFileConfiguration(value, configPath);
 
   return {
@@ -64,6 +78,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     dependencyPolicy,
     commitMessage,
     deadCode,
+    imageAssets,
     architecture,
     build,
     lighthouse,

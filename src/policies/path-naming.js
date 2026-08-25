@@ -56,9 +56,12 @@ function namingViolation(pathname, name, kind, convention) {
   };
 }
 
-export function inspectPathNaming({ files, config }) {
-  const selectedFiles = selectPathNamingFiles(files, config);
-  const selectedDirectories = [...new Set(selectedFiles.flatMap(directoryPaths))]
+export function inspectPathNaming({ files, config, skipFiles = [] }) {
+  const skipped = new Set(skipFiles.map(relativePath));
+  const allSelectedFiles = selectPathNamingFiles(files, config);
+  const selectedFiles = allSelectedFiles
+    .filter((filePath) => !skipped.has(filePath));
+  const selectedDirectories = [...new Set(allSelectedFiles.flatMap(directoryPaths))]
     .filter((directory) => isSelected(directory, config));
   const pattern = CONVENTION_PATTERNS[config.convention];
   const violations = [];

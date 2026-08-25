@@ -81,6 +81,8 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.deadCode.enabled, false);
   assert.equal(config.deadCode.mode, 'strict');
   assert.equal(config.deadCode.baselineFile, '.repo-guard/knip-baseline.json');
+  assert.equal(config.imageAssets.enabled, false);
+  assert.equal(config.imageAssets.naming.convention, 'camelCase');
   assert.equal(config.architecture.enabled, false);
   assert.equal(config.accessibilityTest.enabled, false);
   assert.equal(config.architecture.rules.length, 3);
@@ -133,6 +135,19 @@ test('starter configuration enables Stylelint when project setup was detected', 
   assert.equal(config.preCommit.stylelint.enabled, true);
   assert.equal(config.preCommit.stylelint.complexity.enabled, true);
   assert.equal(config.preCommit.stylelint.governance.enabled, true);
+});
+
+test('can enable and disable image asset governance independently', (context) => {
+  const root = createFixture(createStarterConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['imageAssets'], true);
+  assert.deepEqual(enabled.changed, ['imageAssets']);
+  assert.equal(readConfig(root).imageAssets.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['imageAssets'], false);
+  assert.deepEqual(disabled.changed, ['imageAssets']);
+  assert.equal(readConfig(root).imageAssets.enabled, false);
 });
 
 test('starter configuration enables build when its project script was detected', () => {
