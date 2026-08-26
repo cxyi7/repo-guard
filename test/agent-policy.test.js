@@ -66,6 +66,7 @@ test('每个可配置功能和既有官方门禁都归入托管规范目录', ()
   assert.deepEqual(managedAgentPolicyCapabilities, [
     'dead-code-baseline',
     'guarded-build',
+    'build-artifact-baseline',
     'external-gates',
     'api-performance',
     'k6',
@@ -241,4 +242,37 @@ test('启用无效图片资源会把静态引用和动态声明边界写入 AGEN
   assert.equal(runDisable(['unusedImageAssets'], root), 0);
   const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.doesNotMatch(disabledContent, /无效图片资源按/);
+});
+
+test('构建产物预算按项目唯一平台写入 AGENTS.md 托管规范', (context) => {
+  const root = fixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = createStarterConfig({ buildEnabled: true });
+  config.build.artifactBudget = {
+    ...config.build.artifactBudget,
+    enabled: true,
+    platform: 'miniProgram',
+    outputDirectory: 'unpackage/dist/build/mp-weixin',
+    pc: null,
+    miniProgram: {
+      provider: 'weixin',
+      appConfig: 'app.json',
+      limits: {
+        mainPackageBytes: 2097152,
+        defaultSubPackageBytes: 2097152,
+        totalPackageBytes: 20971520,
+        maxSingleFileBytes: null,
+        maxPreloadBytes: null,
+      },
+      subPackages: [],
+      expectedSubPackages: [],
+      exclusions: [],
+    },
+  };
+
+  syncAgentPolicies(root, config);
+  const content = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.match(content, /当前项目构建平台固定为 `miniProgram`/);
+  assert.match(content, /主包、每个分包、总包、单文件和 preloadRule/);
+  assert.match(content, /禁止使用 report 或基线模式降级/);
 });

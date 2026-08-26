@@ -23,7 +23,30 @@ export function validateBuildSetup(root, config) {
       `构建门禁要求 package.json 提供脚本“${config.script}”`,
     );
   }
-  return { command: command.trim() };
+  let cleanCommand = null;
+  if (config.artifactBudget?.enabled && config.artifactBudget.cleanScript) {
+    cleanCommand = packageJson.scripts?.[config.artifactBudget.cleanScript];
+    if (typeof cleanCommand !== 'string' || !cleanCommand.trim()) {
+      throw configurationError(
+        'build/missing-clean-script',
+        `产物预算要求 package.json 提供清理脚本“${config.artifactBudget.cleanScript}”`,
+      );
+    }
+    cleanCommand = cleanCommand.trim();
+  }
+  return { command: command.trim(), cleanCommand };
+}
+
+export async function executeProjectBuildClean({ root, config, signal = null, output = null }) {
+  if (!config.artifactBudget?.enabled || !config.artifactBudget.cleanScript) return null;
+  validateBuildSetup(root, config);
+  return runProjectScript({
+    root,
+    script: config.artifactBudget.cleanScript,
+    timeoutMs: config.timeoutMs,
+    signal,
+    output,
+  });
 }
 
 export async function executeProjectBuild({ root, config, signal = null, output = null }) {

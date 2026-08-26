@@ -636,21 +636,66 @@ test('separates Lighthouse execution facts from gate decisions without a root ru
 test('separates build execution facts from gate decisions without a root runner', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'build-runner.js')), false);
   const integrationPath = path.join(SOURCE_ROOT, 'integrations', 'npm', 'build.js');
+  const artifactIntegrationPath = path.join(
+    SOURCE_ROOT,
+    'integrations',
+    'build-artifacts',
+    'project.js',
+  );
+  const artifactPolicyPath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'quality',
+    'build-artifact-budget.js',
+  );
+  const artifactBaselinePath = path.join(
+    SOURCE_ROOT,
+    'gates',
+    'quality',
+    'build-artifact-baseline-management.js',
+  );
+  const artifactCliPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'cli',
+    'build-artifact-baseline.js',
+  );
   const gatePath = path.join(SOURCE_ROOT, 'gates', 'quality', 'build-gate.js');
   const setupPath = path.join(SOURCE_ROOT, 'gates', 'quality', 'build-setup.js');
   assert.equal(existsSync(integrationPath), true);
+  assert.equal(existsSync(artifactIntegrationPath), true);
+  assert.equal(existsSync(artifactPolicyPath), true);
+  assert.equal(existsSync(artifactBaselinePath), true);
+  assert.equal(existsSync(artifactCliPath), true);
   assert.equal(existsSync(gatePath), true);
   assert.equal(existsSync(setupPath), true);
 
   const integrationSource = readFileSync(integrationPath, 'utf8');
+  const artifactIntegrationSource = readFileSync(artifactIntegrationPath, 'utf8');
   assert.doesNotMatch(
     integrationSource,
     /\b(?:createGateResult|processFailureFinding|executionError)\b/,
+  );
+  assert.doesNotMatch(
+    artifactIntegrationSource,
+    /\b(?:createGateResult|processFailureFinding|evaluateBuildArtifactBudget)\b/,
   );
   assert.match(integrationSource, /export async function executeProjectBuild/);
   assert.match(
     readFileSync(gatePath, 'utf8'),
     /integrations\/npm\/build\.js/,
+  );
+  assert.match(
+    readFileSync(artifactPolicyPath, 'utf8'),
+    /integrations\/build-artifacts\/project\.js/,
+  );
+  assert.match(
+    readFileSync(artifactBaselinePath, 'utf8'),
+    /build-artifact-budget\.js/,
+  );
+  assert.match(
+    readFileSync(artifactCliPath, 'utf8'),
+    /build-artifact-baseline-management\.js/,
   );
   assert.match(
     readFileSync(setupPath, 'utf8'),

@@ -256,10 +256,27 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   complexity: DEFAULT_STYLE_COMPLEXITY_CONFIG,
   governance: DEFAULT_STYLE_GOVERNANCE_CONFIG,
 });
+export const DEFAULT_BUILD_ARTIFACT_BUDGET_CONFIG = Object.freeze({
+  enabled: false,
+  platform: null,
+  outputDirectory: 'dist',
+  cleanScript: null,
+  action: 'error',
+  mode: 'strict',
+  baselineFile: '.repo-guard/build-artifact-baseline.json',
+  scanLimits: Object.freeze({
+    maxFiles: 20000,
+    maxTotalBytes: 1073741824,
+    maxCompressionInputBytes: 104857600,
+  }),
+  pc: null,
+  miniProgram: null,
+});
 export const DEFAULT_BUILD_CONFIG = Object.freeze({
   enabled: false,
   script: 'build',
   timeoutMs: 300000,
+  artifactBudget: DEFAULT_BUILD_ARTIFACT_BUDGET_CONFIG,
 });
 export const DEFAULT_MUTATION_TEST_CONFIG = Object.freeze({
   enabled: false,

@@ -28,6 +28,7 @@ import { runGuardedBuild } from './guarded-build.js';
 import { runApiPerformanceRunner } from './api-performance-runner.js';
 import { runK6Runner } from './k6-runner.js';
 import { runDeadCodeBaseline } from './dead-code-baseline.js';
+import { runBuildArtifactBaseline } from './build-artifact-baseline.js';
 import { runImageOptimize } from './image-optimize.js';
 
 const registeredManualGates = gateRegistry.all
@@ -77,6 +78,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard k6-runner --gate-id <project.gate-id> --config <path>
   repo-guard guarded-build <npm-script>
   repo-guard dead-code-baseline <init|prune>
+  repo-guard build-artifact-baseline <init|prune>
   repo-guard image-optimize [--to webp] [--write] [--allow-lossy] -- <paths...>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
@@ -226,6 +228,15 @@ export async function runCli(argumentsList) {
           );
         }
         return await runDeadCodeBaseline(rest[0]);
+      }
+      case 'build-artifact-baseline': {
+        if (rest.length !== 1 || !['init', 'prune'].includes(rest[0])) {
+          throw configurationError(
+            'cli/invalid-build-artifact-baseline-arguments',
+            'build-artifact-baseline 命令需要 init 或 prune',
+          );
+        }
+        return runBuildArtifactBaseline(rest[0]);
       }
       case 'image-optimize': {
         const delimiter = rest.indexOf('--');

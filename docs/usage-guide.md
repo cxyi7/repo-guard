@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.20.0`
+- 当前版本：`1.21.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.20.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.21.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -977,6 +977,100 @@ npm run guard:k6
 通过时退出码为 `0`；k6 阈值失败的原始退出码必须为 `99`，runner 生成 `violation` 后对外返回 `2`；其他退出码、超时、报告缺失或判定不一致均返回 `1`，且不生成可误用的主报告。报告目录必须位于已忽略、未跟踪且不穿过符号链接的 `reports/`，成功执行会保留 k6 机器摘要 `k6-summary.json`、中文 `k6-report.html` 和外部门禁 JSON；报告不会保存配置中的凭据。
 
 维护者可显式设置 `REPO_GUARD_REAL_K6_BIN` 为本机官方 `k6` 可执行文件路径，再运行 `node --test test/k6-load.test.js`。该可选集成测试只对 k6 官方演示站点执行 1 VU、1 秒负载；常规 `npm test` 会跳过它，不会隐式联网或产生压测流量。
+
+### 配置构建产物预算
+
+产物预算是现有 `build` 门禁的可选后置阶段。一个业务项目只能选择一种平台：PC 项目配置 `pc`，小程序项目配置 `miniProgram`，不能同时存在。未启用 `artifactBudget` 时，原有构建行为不变。
+
+PC/Vite 项目示例：
+
+```json
+{
+  "build": {
+    "enabled": true,
+    "script": "build",
+    "timeoutMs": 300000,
+    "artifactBudget": {
+      "enabled": true,
+      "platform": "pc",
+      "outputDirectory": "dist",
+      "cleanScript": "clean:dist",
+      "action": "error",
+      "mode": "strict",
+      "pc": {
+        "analyzer": "viteManifest",
+        "manifest": ".vite/manifest.json",
+        "sourceMaps": "forbid",
+        "compression": ["raw", "gzip", "brotli"],
+        "limits": {
+          "totalRawBytes": 8388608,
+          "initialJsBrotliBytes": 358400,
+          "initialCssBrotliBytes": 153600,
+          "maxChunkRawBytes": 614400,
+          "maxChunkCount": 80,
+          "maxAssetRawBytes": 2097152
+        }
+      }
+    }
+  }
+}
+```
+
+`viteManifest` 从生产产物中的 manifest 查找 `isEntry=true` 入口，并递归统计静态 `imports` 及关联 CSS/资源；动态导入不计入首屏。`directory` 适用于非 Vite 构建，只能使用全目录、分块和资源指标，配置首屏指标会直接报配置错误。只有 `compression` 中启用的算法才能对应配置压缩体积限制。
+
+微信小程序示例：
+
+```json
+{
+  "build": {
+    "enabled": true,
+    "script": "build:mp-weixin",
+    "timeoutMs": 300000,
+    "artifactBudget": {
+      "enabled": true,
+      "platform": "miniProgram",
+      "outputDirectory": "unpackage/dist/build/mp-weixin",
+      "action": "error",
+      "mode": "strict",
+      "miniProgram": {
+        "provider": "weixin",
+        "appConfig": "app.json",
+        "limits": {
+          "mainPackageBytes": 2097152,
+          "defaultSubPackageBytes": 2097152,
+          "totalPackageBytes": 20971520,
+          "maxSingleFileBytes": 524288,
+          "maxPreloadBytes": 4194304
+        },
+        "subPackages": [
+          { "root": "pagesA", "maxBytes": 1572864 },
+          { "root": "pagesB", "maxBytes": 1835008 }
+        ],
+        "expectedSubPackages": ["pagesA", "pagesB"],
+        "exclusions": [
+          {
+            "patterns": ["project.private.config.json"],
+            "reason": "微信开发者工具本机配置"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+小程序分析读取构建后的 `app.json`，兼容 `subPackages`/`subpackages`，每个文件按 root 前缀唯一归入一个分包，其他文件归入主包；重复、嵌套或越界 root 会阻断。独立分包仍单独计量。`preloadRule` 引用不存在的分包或 `packages` 结构错误会阻断，`maxPreloadBytes` 按单条规则可能加载的主包/分包体积计算。`exclusions` 只允许微信开发者工具确定不上传的 `.DS_Store`、`project.config.json` 和 `project.private.config.json`，不能用 glob 排除业务产物。平台体积值可能变化，因此 repo-guard 不在运行代码中永久写死数值，项目需要依据当前发布平台规则显式配置；小程序固定为 `action=error`、`mode=strict`，不能降级。
+
+产物目录必须在仓库内部，不得为根目录或 `src`，不得包含符号链接或 Git 已跟踪文件。`scanLimits.maxFiles`、`scanLimits.maxTotalBytes` 与 `scanLimits.maxCompressionInputBytes` 防止异常产物耗尽扫描和压缩资源。若配置 `cleanScript`，repo-guard 会先运行该精确 npm 脚本并验证其清除旧产物；未配置时，实际构建必须清除旧产物探针。repo-guard 只删除本次运行创建的探针，不会递归删除业务目录；若产物中已存在同名探针文件，门禁会拒绝运行并保留原文件。
+
+PC 旧项目可以使用 `mode: "baseline"` 接受当前超限债务：先按相同配置完成一次生产构建，再执行：
+
+```bash
+repo-guard build-artifact-baseline init
+git add .repo-guard/build-artifact-baseline.json
+```
+
+基线必须被 Git 跟踪并与当前平台、产物目录和 PC 预算配置指纹一致。新增问题或指标增长仍会阻断；债务下降后执行 `repo-guard build-artifact-baseline prune`，命令只能降低数值或删除已解决项，拒绝新增和扩大允许值。`action: "report"` 可用于 PC 试运行并以 warning 报告，但不能用于小程序平台硬限制。
 
 ### 手动运行专项门禁
 
