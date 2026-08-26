@@ -324,9 +324,19 @@ const entries = [
     ],
   }),
   entry({
-    id: 'build', groupId: 'delivery-policy', gates: ['quality.build'], features: ['build'],
+    id: 'build', groupId: 'delivery-policy', gates: ['quality.build'], features: ['build'], capabilities: ['build-artifact-baseline'],
     when: enabled('build'),
-    lines: ({ config }) => [`- 构建门禁使用 npm 脚本 ${code(config.build.script)}，失败或超时必须阻断当前交付流程。`],
+    lines: ({ config }) => [
+      `- 构建门禁使用 npm 脚本 ${code(config.build.script)}，失败或超时必须阻断当前交付流程。`,
+      ...(config.build.artifactBudget.enabled ? [
+        `- 当前项目构建平台固定为 ${code(config.build.artifactBudget.platform)}，产物目录为 ${code(config.build.artifactBudget.outputDirectory)}；不得同时引入另一平台配置，不得保留旧产物或通过符号链接、跟踪产物、扩大预算绕过检查。`,
+        ...(config.build.artifactBudget.platform === 'pc' ? [
+          `- PC 产物按 ${code(config.build.artifactBudget.pc.analyzer)} 分析入口链、分块、压缩体积、source map 和异常文件；${config.build.artifactBudget.mode === 'baseline' ? '历史基线只允许通过专用 prune 命令收缩。' : '所有已配置工程预算按当前模式执行。'}`,
+        ] : [
+          '- 微信小程序产物必须按 app.json 计算主包、每个分包、总包、单文件和 preloadRule；平台硬限制始终 error，禁止使用 report 或基线模式降级。',
+        ]),
+      ] : []),
+    ],
   }),
   entry({
     id: 'lighthouse', groupId: 'delivery-policy', gates: ['quality.lighthouse'], features: ['lighthouse'],

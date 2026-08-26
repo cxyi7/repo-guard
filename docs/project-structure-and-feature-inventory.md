@@ -2,17 +2,17 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.20.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.21.0`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.18.0 AGENTS.md 集中托管规范目录与同步门禁
-  └─ 1.19.0 图片资源命名、重复、压缩与 WebP 转换治理
-       └─ 1.20.0 无效图片资源静态引用与 Git 基线治理
+1.19.0 图片资源命名、重复、压缩与 WebP 转换治理
+  └─ 1.20.0 无效图片资源静态引用与 Git 基线治理
+       └─ 1.21.0 PC/微信小程序单平台构建产物预算
 ```
 
-因此，`1.20.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.21.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -40,6 +40,7 @@
 - [x] Vue 组件真实交互测试语义检查。
 - [x] axe 组件与 E2E 可访问性测试门禁。
 - [x] TypeScript、项目构建、dependency-cruiser 架构和 Lighthouse 独立门禁。
+- [x] 在项目唯一选择的 PC 或微信小程序平台标准下分析构建产物，检查入口链压缩体积、分块、主包、分包、预下载、旧产物和安全边界。
 - [x] GitLab CI `policy`、`full` 和 `release-ready` 三种固定配置档。
 - [x] 可选的 GitLab 应用交付托管标准，统一 Job、分支规则、依赖安装、缓存和发布触发语义，由消费项目通过固定 `ci:*` npm scripts 持有业务发布实现。
 - [x] 受控外部门禁，可通过精确 npm script 接入项目自有测试。
@@ -77,6 +78,7 @@ repo/
 │  ├─ git/                           Git 命令、提交信息、变更范围、二进制对象、revision/索引内容、已跟踪路径和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ api-performance/            Axios 性能配置、场景执行、报告生命周期与中文报告
+│  │  ├─ build-artifacts/             PC 与微信小程序构建产物事实、安全扫描和压缩体积
 │  │  ├─ axe/                        axe 集成发现
 │  │  ├─ dependency-cruiser/         依赖架构执行
 │  │  ├─ eslint/                     ESLint 项目事实和执行
@@ -154,6 +156,8 @@ Axios 接口性能功能保持为项目外部门禁辅助能力：`integrations/
 k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负责纯 JSON 配置、目标确认、AST 脚本限制、本机 k6 进程、机器摘要和中文 HTML；`gates/testing/k6-external-runner.js` 负责阈值 findings 与外部门禁报告；`orchestration/cli/k6-runner.js` 负责 manual-only 外部门禁解析和自动化环境拒绝。受控入口拥有 `options` 与 `handleSummary`，消费者只持有业务场景；该能力不注册静态 Registry、不新增官方 Gate，也不进入任何固定 Execution Plan。
 
 无效代码治理继续分离工具事实、历史债务策略、门禁决策和人工维护命令：`integrations/knip/` 只解析消费项目安装的 Knip 6.x、执行 CLI 并校验 JSON，其中 repo-guard 的统一 `dependencies` 策略类型会显式映射 Knip 的普通依赖、开发依赖和可选 peer 依赖；Knip 自定义 reporter 是共享控制台渲染边界之外唯一允许直接写 stdout 的窄适配器，只输出带固定标记的配置提示元数据供父进程解析；`git/revision-content.js` 只读取跟踪状态和指定 revision 内容；`policies/dead-code-baseline.js` 只负责稳定指纹、计数、当前债务比较和重命名映射；`gates/quality/dead-code-gate.js` 形成中文 GateResult，`dead-code-baseline-management.js` 在相同受控边界内执行显式基线写入；`orchestration/cli/dead-code-baseline.js` 只负责命令路由和中文结果输出。Knip 配置和项目入口仍由消费项目拥有。
+
+构建产物预算复用既有 `quality.build` Gate，不注册重复门禁，也不重复执行生产构建。`config/build-artifact-budget-validation.js` 固定 PC/小程序二选一和平台专属约束；`integrations/build-artifacts/project.js` 只负责安全解析未跟踪产物目录、压缩体积、Vite manifest、微信小程序 `app.json`、分包归属和预下载事实；`gates/quality/build-artifact-budget.js` 持有预算、source map、异常文件、预期分包和历史债务决策；`build-artifact-baseline-management.js` 与 `orchestration/cli/build-artifact-baseline.js` 形成显式且只减不增的 PC 基线写入边界。小程序硬限制不支持基线或报告降级。构建前旧产物探针和可选项目 `cleanScript` 由 build Gate 与 npm integration 协作验证，repo-guard 只清理本次运行创建的探针，同名文件冲突时保留原文件并拒绝运行，且不递归删除业务产物；变异测试的 `guarded-build` 复用同一规范化产物预算。
 
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
@@ -349,7 +353,7 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 | 能力 | 配置位置 | 执行位置 | 主要行为 |
 |---|---|---|---|
 | TypeScript | `typeCheck` | manual、pre-push、CI full | 运行项目精确 typecheck npm script；pre-push 实时显示脱敏输出，不进入 pre-commit |
-| 构建 | `build` | manual、pre-push、CI full、release-ready | 运行项目构建脚本，检查脚本存在性、超时和进程失败；pre-push 实时显示脱敏输出 |
+| 构建 | `build` | manual、pre-push、CI full、release-ready | 运行项目构建脚本，检查脚本存在性、超时和进程失败；可按项目唯一 PC/小程序平台分析生产产物预算，pre-push 实时显示脱敏输出 |
 | Lighthouse | `lighthouse` | manual、pre-push、release-ready | 使用项目的 `@lhci/cli`、Chrome、路由和断言，只执行 collect/assert |
 
 Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 路由，不隐式执行 LHCI upload。
@@ -507,6 +511,7 @@ CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入�
 | `repo-guard k6-runner --gate-id <project.id> --config <path>` | 受控执行 manual-only k6 外部门禁的项目脚本入口 |
 | `repo-guard guarded-build <npm-script>` | 先执行变异测试，通过后运行已配置的原始构建脚本 |
 | `repo-guard dead-code-baseline init|prune` | 初始化无效代码历史债务基线，或只删除已经解决的条目 |
+| `repo-guard build-artifact-baseline init|prune` | 基于已有 PC 生产产物初始化工程预算债务，或只降低和删除已改善项 |
 | `repo-guard image-optimize [--to webp] [--write] [--allow-lossy] -- <paths...>` | 预览或显式写入图片压缩/WebP 候选；不删除原图或改写引用 |
 
 ### 7.2 官方专项命令

@@ -87,6 +87,11 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.accessibilityTest.enabled, false);
   assert.equal(config.architecture.rules.length, 3);
   assert.equal(config.build.enabled, false);
+  assert.equal(config.build.artifactBudget.enabled, false);
+  assert.equal(
+    config.rules.some(({ pattern }) => pattern === '.repo-guard/build-artifact-baseline.json'),
+    true,
+  );
   assert.equal(config.typeCheck.enabled, false);
   assert.equal(config.unitTest.enabled, false);
   assert.equal(config.unitTest.requireTests, 'newFiles');
@@ -122,7 +127,7 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.dependencyPolicy.enabled, true);
   assert.equal(config.dependencyPolicy.requireExactVersions, true);
   assert.deepEqual(config.dependencyPolicy.allowedProtocols, ['npm', 'workspace']);
-  assert.equal(config.rules.length, 11);
+  assert.equal(config.rules.length, 12);
   assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
   assert.equal(config.rules.some(({ pattern }) => (
     pattern === '.repo-guard/knip-baseline.json'
@@ -246,6 +251,36 @@ test('migrates sparse configuration without changing project rules', (context) =
 
   const second = migrateProjectConfig(root);
   assert.equal(second.changed, false);
+});
+
+test('migration protects a configured build artifact baseline', (context) => {
+  const root = createFixture(sparseConfig({
+    build: {
+      enabled: true,
+      script: 'build',
+      timeoutMs: 300000,
+      artifactBudget: {
+        enabled: true,
+        platform: 'pc',
+        outputDirectory: 'dist',
+        mode: 'baseline',
+        baselineFile: '.repo-guard/custom-build-budget.json',
+        pc: { analyzer: 'directory', limits: { totalRawBytes: 1000 } },
+      },
+    },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  migrateProjectConfig(root);
+  const migrated = readConfig(root);
+  assert.equal(
+    migrated.rules.some(({ pattern, category, level }) => (
+      pattern === '.repo-guard/custom-build-budget.json'
+      && category === '构建产物历史债务基线'
+      && level === 'notify'
+    )),
+    true,
+  );
 });
 
 test('rejects legacy boolean coverage during migration', (context) => {

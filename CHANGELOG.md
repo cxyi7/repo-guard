@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.21.0
+
+- 在既有 `quality.build` 中新增默认关闭的跨平台构建产物预算。消费项目必须且只能选择 `platform: "pc"` 或 `platform: "miniProgram"`；原有未配置 `artifactBudget` 的构建行为保持不变，产物预算仍只在手动、pre-push、CI full 和 release-ready 的构建阶段执行，不进入 pre-commit。
+- PC 模式支持 Vite manifest 入口依赖链或通用目录分析，检查总体积、首屏 JavaScript/CSS 原始及 gzip/brotli 体积、最大分块、分块数量、最大静态资源、source map 和测试/临时/报告文件。旧项目可使用受 Git 跟踪且配置指纹一致的只减不增基线，`build-artifact-baseline init|prune` 拒绝覆盖、增长或伪造历史债务。
+- 微信小程序模式从构建后的 `app.json` 自动识别 `subPackages`，按唯一归属计算主包、每个分包、总包、最大单文件及 `preloadRule` 负载，并校验预期分包和按 root 覆盖的预算。平台限制固定使用 `action=error` 与 `mode=strict`，不能被报告模式或基线绕过；实际限制由项目显式配置，不把平台当前值永久写死在运行代码中。
+- 产物目录必须位于仓库内部、避开根目录和 `src`、不穿过符号链接且不包含 Git 已跟踪文件；安全扫描具有文件数和总体积上限。可配置精确 npm `cleanScript`，否则构建必须清除 repo-guard 的陈旧产物探针；工具只删除本次运行创建的探针，同名文件冲突时保留原文件并拒绝运行，不递归删除业务产物。同步配置 Schema、AGENTS 托管规范、受保护基线、初始化/迁移、受保护构建接入及 PC/小程序/基线回归测试。
+
 ## 1.20.0
 
 - 新增默认关闭的 `repository.unused-image-assets` 项目级只读门禁，静态解析 Vue/NVue、HTML/WXML、JavaScript/TypeScript、样式、Markdown 和 JSON 中的图片引用，并解析别名、public URL、查询参数、hash、`srcset`、`new URL` 与 `import.meta.glob`。

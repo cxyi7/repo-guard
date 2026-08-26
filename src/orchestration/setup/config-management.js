@@ -115,6 +115,56 @@ function cloneDeadCodeConfig(value = {}) {
   };
 }
 
+function cloneBuildConfig(value = {}) {
+  const artifactBudget = value.artifactBudget ?? DEFAULT_BUILD_CONFIG.artifactBudget;
+  return {
+    ...DEFAULT_BUILD_CONFIG,
+    ...value,
+    artifactBudget: {
+      ...DEFAULT_BUILD_CONFIG.artifactBudget,
+      ...artifactBudget,
+      scanLimits: {
+        ...DEFAULT_BUILD_CONFIG.artifactBudget.scanLimits,
+        ...(artifactBudget.scanLimits ?? {}),
+      },
+      pc: artifactBudget.pc == null ? null : {
+        ...artifactBudget.pc,
+        ...(artifactBudget.pc.compression == null
+          ? {}
+          : { compression: [...artifactBudget.pc.compression] }),
+        limits: { ...(artifactBudget.pc.limits ?? {}) },
+      },
+      miniProgram: artifactBudget.miniProgram == null ? null : {
+        ...artifactBudget.miniProgram,
+        limits: { ...(artifactBudget.miniProgram.limits ?? {}) },
+        subPackages: (artifactBudget.miniProgram.subPackages ?? []).map((entry) => ({ ...entry })),
+        expectedSubPackages: [...(artifactBudget.miniProgram.expectedSubPackages ?? [])],
+        exclusions: (artifactBudget.miniProgram.exclusions ?? []).map((entry) => ({
+          ...entry,
+          patterns: [...entry.patterns],
+        })),
+      },
+    },
+  };
+}
+
+function ensureBuildArtifactBaselineRule(rules, build) {
+  const next = rules.map((rule) => ({ ...rule }));
+  const baseline = build.artifactBudget;
+  if (
+    baseline?.enabled
+    && baseline.mode === 'baseline'
+    && !next.some(({ pattern }) => pattern === baseline.baselineFile)
+  ) {
+    next.push({
+      pattern: baseline.baselineFile,
+      category: '构建产物历史债务基线',
+      level: 'notify',
+    });
+  }
+  return next;
+}
+
 function cloneArchitectureConfig(value = {}) {
   const rules = value.rules ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
   return {
@@ -361,10 +411,7 @@ export function createStarterConfig({
       enabled: accessibilityTestEnabled,
       testPatterns: [...DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns],
     },
-    build: {
-      ...DEFAULT_BUILD_CONFIG,
-      enabled: buildEnabled,
-    },
+    build: cloneBuildConfig({ enabled: buildEnabled }),
     lighthouse: { ...DEFAULT_LIGHTHOUSE_CONFIG },
     typeCheck: {
       ...DEFAULT_TYPE_CHECK_CONFIG,
@@ -403,6 +450,7 @@ export function createStarterConfig({
       { pattern: '.githooks/**', category: '仓库守卫基础设施', level: 'notify' },
       { pattern: CONFIG_FILE, category: '仓库守卫基础设施', level: 'notify' },
       { pattern: '.repo-guard/knip-baseline.json', category: '无效代码历史债务基线', level: 'notify' },
+      { pattern: '.repo-guard/build-artifact-baseline.json', category: '构建产物历史债务基线', level: 'notify' },
       {
         pattern: '{knip,.knip,knip.config}.{json,jsonc,js,ts,mjs,cjs}',
         category: '无效代码分析配置',
@@ -451,6 +499,7 @@ export function migrateProjectConfig(root, {
   }
 
   const preCommit = prepared.preCommit ?? {};
+  const migratedBuild = cloneBuildConfig(prepared.build);
   const next = {
     $schema: prepared.$schema ?? CONFIG_SCHEMA_PATH,
     ...prepared,
@@ -491,10 +540,7 @@ export function migrateProjectConfig(root, {
           ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns),
       ],
     },
-    build: {
-      ...DEFAULT_BUILD_CONFIG,
-      ...(prepared.build ?? {}),
-    },
+    build: migratedBuild,
     lighthouse: {
       ...DEFAULT_LIGHTHOUSE_CONFIG,
       ...(prepared.lighthouse ?? {}),
@@ -526,6 +572,7 @@ export function migrateProjectConfig(root, {
         ...(preCommit.eslint ?? {}),
       },
     },
+    rules: ensureBuildArtifactBaselineRule(prepared.rules, migratedBuild),
     exclusions: prepared.exclusions ?? [],
   };
 

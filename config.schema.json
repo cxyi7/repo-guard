@@ -2,8 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard project configuration",
   "x-repo-guard-managed-agents": "启用的功能和固定硬门禁会投影为 AGENTS.md 托管规范；该投影没有独立关闭开关，并由初始化、迁移、功能启停、Doctor 修复、CI 安装和中央只读门禁保持同步。",
-  "description": "Project-level dependency governance, code-placement, protected-file, structured-exception, hard Vue security and accessibility, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard on Node.js 22.23.2 or newer. Configuration remains version 1 and may enable supported capabilities, while immutable reviewed execution plans retain lifecycle order and Registry-declared side-effect bounds. Every Gate explicitly declares the internal GateResult model, and the complete official capability descriptor set is frozen by maintainer tests; consuming configuration cannot add or rewrite official descriptors. Invalid values are reported as actionable typed configuration issues with stable codes through the GateResult JSON v2 contract and cannot redefine reporting or execution order. Consumer package discovery is an internal core/project responsibility that always resolves the consuming project's own dependencies. Package/lock JSON and staged Git-index metadata are internal integrations/npm and integrations/git facts; dependency declaration, source, version, grouping, lockfile, and exception decisions belong to gates/repository. ESLint package/plugin loading, ignored-file inspection, and lint/fix execution are internal integrations/eslint facts; preset, warning-threshold, finding, rollback, and GateResult decisions belong to gates/quality. Prettier package loading, ignore/config/parser inspection, formatting, and file-write execution are internal integrations/prettier facts; required-config, parser, finding, rollback, and GateResult decisions belong to gates/quality. Stylelint package/config loading and lint execution are internal integrations/stylelint facts; owned complexity/governance rules, project-rule deduplication, exception, warning-threshold, finding, rollback, and GateResult decisions belong to gates/quality. Staged quality file selection, execution configuration, GateContext creation, fixed-plan orchestration, result rendering, and rollback are internal orchestration/pre-commit responsibilities; consuming configuration cannot reorder gates or move project-wide gates into pre-commit. Build and typecheck script validation and execution, plus accessibility-test script execution, are internal integrations/npm facts; their structured decisions and optional setup readiness belong to gates. Supported axe integration detection and package resolution are internal integrations/axe facts; accessibility test policy checks belong to gates/testing. Vitest project/tool discovery, test-source call facts, npm test execution, coverage arguments, report preparation, summary/LCOV parsing, and changed-line facts are internal integrations/vitest responsibilities; unit-test readiness, source/test policy, threshold decisions, findings, and GateResult decisions belong to gates/testing. Dependency-cruiser resolution, execution, temporary configuration, and JSON protocol parsing are internal integration facts; architecture policy findings and readiness belong to gates/quality. CI profile execution and report persistence are internal orchestration/ci responsibilities; consuming configuration cannot reorder gates or weaken report path safety. Lighthouse project inspection, @lhci/cli resolution, and process execution are internal integrations/lighthouse facts that preserve the consuming project's Lighthouse CI and Chrome ownership; structured Lighthouse decisions belong to gates/quality, while managed install-time ignore state belongs to orchestration/setup. Shared Vue template source parsing is an internal integrations/vue fact provider; security and accessibility policy decisions remain gate-owned. Process failure guidance belongs to the internal structured result model, while core/report is limited to renderers. The package's reviewed publish roots, top-level platform directories, entry files, and passive installation lifecycle are frozen by repository tests; these maintainer-only constraints do not restrict consuming project layouts. The reviewed npm bin launcher is the sole runCli activation point, and importing the CLI module may load installed dependencies but cannot inspect the consuming project or trigger execution side effects. The package-root public entry is dynamically verified to import without project checks, filesystem mutation, subprocesses, network access, output, or process-exit side effects. The package's own core, gate, orchestration, integration, and public-export boundaries are maintainer checks and are not configurable by consuming projects.",
+  "description": "Project-level dependency governance, code-placement, protected-file, structured-exception, hard Vue security and accessibility, staged quality, architecture, TypeScript, build, unit-test, notification, and Vue Lighthouse rules consumed by @cxyi7/repo-guard on Node.js 22.23.2 or newer. Configuration remains version 1 and may enable supported capabilities, while immutable reviewed execution plans retain lifecycle order and Registry-declared side-effect bounds. Every Gate explicitly declares the internal GateResult model, and the complete official capability descriptor set is frozen by maintainer tests; consuming configuration cannot add or rewrite official descriptors. Invalid values are reported as actionable typed configuration issues with stable codes through the GateResult JSON v2 contract and cannot redefine reporting or execution order. Consumer package discovery is an internal core/project responsibility that always resolves the consuming project's own dependencies. Package/lock JSON and staged Git-index metadata are internal integrations/npm and integrations/git facts; dependency declaration, source, version, grouping, lockfile, and exception decisions belong to gates/repository. ESLint package/plugin loading, ignored-file inspection, and lint/fix execution are internal integrations/eslint facts; preset, warning-threshold, finding, rollback, and GateResult decisions belong to gates/quality. Prettier package loading, ignore/config/parser inspection, formatting, and file-write execution are internal integrations/prettier facts; required-config, parser, finding, rollback, and GateResult decisions belong to gates/quality. Stylelint package/config loading and lint execution are internal integrations/stylelint facts; owned complexity/governance rules, project-rule deduplication, exception, warning-threshold, finding, rollback, and GateResult decisions belong to gates/quality. Staged quality file selection, execution configuration, GateContext creation, fixed-plan orchestration, result rendering, and rollback are internal orchestration/pre-commit responsibilities; consuming configuration cannot reorder gates or move project-wide gates into pre-commit. Build, clean, and typecheck script validation and execution, plus accessibility-test script execution, are internal integrations/npm facts. PC and mini-program artifact directory, manifest, package, preload, compression, and safety facts are internal integrations/build-artifacts responsibilities; platform budget, baseline, and structured result decisions belong to gates/quality. Supported axe integration detection and package resolution are internal integrations/axe facts; accessibility test policy checks belong to gates/testing. Vitest project/tool discovery, test-source call facts, npm test execution, coverage arguments, report preparation, summary/LCOV parsing, and changed-line facts are internal integrations/vitest responsibilities; unit-test readiness, source/test policy, threshold decisions, findings, and GateResult decisions belong to gates/testing. Dependency-cruiser resolution, execution, temporary configuration, and JSON protocol parsing are internal integration facts; architecture policy findings and readiness belong to gates/quality. CI profile execution and report persistence are internal orchestration/ci responsibilities; consuming configuration cannot reorder gates or weaken report path safety. Lighthouse project inspection, @lhci/cli resolution, and process execution are internal integrations/lighthouse facts that preserve the consuming project's Lighthouse CI and Chrome ownership; structured Lighthouse decisions belong to gates/quality, while managed install-time ignore state belongs to orchestration/setup. Shared Vue template source parsing is an internal integrations/vue fact provider; security and accessibility policy decisions remain gate-owned. Process failure guidance belongs to the internal structured result model, while core/report is limited to renderers. The package's reviewed publish roots, top-level platform directories, entry files, and passive installation lifecycle are frozen by repository tests; these maintainer-only constraints do not restrict consuming project layouts. The reviewed npm bin launcher is the sole runCli activation point, and importing the CLI module may load installed dependencies but cannot inspect the consuming project or trigger execution side effects. The package-root public entry is dynamically verified to import without project checks, filesystem mutation, subprocesses, network access, output, or process-exit side effects. The package's own core, gate, orchestration, integration, and public-export boundaries are maintainer checks and are not configurable by consuming projects.",
   "$comment": "repo-guard 的中文用户文案是固定产品契约，不提供可关闭或切换语言的项目配置。仓库检查同时拒绝纯英文文案和夹杂说明性英文的中文文案；稳定机器标识、命令、路径、包名和第三方规则 ID 保持原值。",
+  "$defs": {
+    "nullablePositiveInteger": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -888,6 +894,151 @@
           "minimum": 1,
           "default": 300000,
           "description": "Maximum runtime for the project build process."
+        },
+        "artifactBudget": {
+          "type": "object",
+          "description": "构建成功后分析当前项目唯一选定平台的生产产物。PC 与小程序配置互斥；小程序平台硬限制始终阻断。",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "platform": { "type": ["string", "null"], "enum": ["pc", "miniProgram", null], "default": null },
+            "outputDirectory": {
+              "type": "string",
+              "minLength": 1,
+              "default": "dist",
+              "description": "仓库内未跟踪且不穿过符号链接的生产产物目录；不得为仓库根目录或 src。"
+            },
+            "cleanScript": {
+              "type": ["string", "null"],
+              "pattern": "^[A-Za-z0-9:_-]+$",
+              "default": null,
+              "description": "可选的项目 npm 清理脚本。未配置时，构建本身必须清除 repo-guard 的旧产物探针。"
+            },
+            "action": { "type": "string", "enum": ["report", "error"], "default": "error" },
+            "mode": { "type": "string", "enum": ["strict", "baseline"], "default": "strict" },
+            "baselineFile": {
+              "type": "string",
+              "pattern": "^\\.repo-guard/(?!.*(?:^|/)\\.\\.(?:/|$))[^/]+\\.json$",
+              "default": ".repo-guard/build-artifact-baseline.json",
+              "description": "仅用于 PC 工程预算历史债务的受跟踪 JSON 基线；只能通过 init/prune 命令创建或收缩。"
+            },
+            "scanLimits": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxFiles": { "type": "integer", "minimum": 1, "default": 20000 },
+                "maxTotalBytes": { "type": "integer", "minimum": 1, "default": 1073741824 },
+                "maxCompressionInputBytes": { "type": "integer", "minimum": 1, "default": 104857600 }
+              }
+            },
+            "pc": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["limits"],
+              "properties": {
+                "analyzer": { "type": "string", "enum": ["viteManifest", "directory"], "default": "viteManifest" },
+                "manifest": { "type": "string", "default": ".vite/manifest.json" },
+                "sourceMaps": { "type": "string", "enum": ["allow", "forbid"], "default": "forbid" },
+                "compression": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "default": ["raw", "gzip", "brotli"],
+                  "items": { "type": "string", "enum": ["raw", "gzip", "brotli"] }
+                },
+                "limits": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "minProperties": 1,
+                  "properties": {
+                    "totalRawBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialJsRawBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialJsGzipBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialJsBrotliBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialCssRawBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialCssGzipBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "initialCssBrotliBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "maxChunkRawBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "maxChunkCount": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "maxAssetRawBytes": { "$ref": "#/$defs/nullablePositiveInteger" }
+                  }
+                }
+              }
+            },
+            "miniProgram": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["limits"],
+              "properties": {
+                "provider": { "const": "weixin", "default": "weixin" },
+                "appConfig": { "type": "string", "default": "app.json" },
+                "limits": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["mainPackageBytes", "defaultSubPackageBytes", "totalPackageBytes"],
+                  "properties": {
+                    "mainPackageBytes": { "type": "integer", "minimum": 1 },
+                    "defaultSubPackageBytes": { "type": "integer", "minimum": 1 },
+                    "totalPackageBytes": { "type": "integer", "minimum": 1 },
+                    "maxSingleFileBytes": { "$ref": "#/$defs/nullablePositiveInteger" },
+                    "maxPreloadBytes": { "$ref": "#/$defs/nullablePositiveInteger" }
+                  }
+                },
+                "subPackages": {
+                  "type": "array",
+                  "default": [],
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["root"],
+                    "properties": {
+                      "root": { "type": "string", "minLength": 1 },
+                      "maxBytes": { "$ref": "#/$defs/nullablePositiveInteger" }
+                    }
+                  }
+                },
+                "expectedSubPackages": { "type": "array", "uniqueItems": true, "default": [], "items": { "type": "string", "minLength": 1 } },
+                "exclusions": {
+                  "type": "array",
+                  "default": [],
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["patterns", "reason"],
+                    "properties": {
+                      "patterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+                      "reason": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
+              "then": { "required": ["platform"] }
+            },
+            {
+              "if": { "properties": { "platform": { "const": "pc" } }, "required": ["platform"] },
+              "then": { "required": ["pc"], "properties": { "miniProgram": { "type": "null" } } }
+            },
+            {
+              "if": { "properties": { "platform": { "const": "miniProgram" } }, "required": ["platform"] },
+              "then": {
+                "required": ["miniProgram"],
+                "properties": {
+                  "pc": { "type": "null" },
+                  "action": { "const": "error" },
+                  "mode": { "const": "strict" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "mode": { "const": "baseline" } }, "required": ["mode"] },
+              "then": { "properties": { "action": { "const": "error" } } }
+            }
+          ]
         }
       }
     },

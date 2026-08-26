@@ -7,6 +7,7 @@ import {
   assertKnownProperties,
   configValidationError,
 } from './validation-primitives.js';
+import { validateBuildArtifactBudgetConfiguration } from './build-artifact-budget-validation.js';
 
 export function validateExecutionGateConfiguration(value, configPath) {
   const buildValue = value.build ?? {};
@@ -15,7 +16,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
   }
   assertKnownProperties(
     buildValue,
-    new Set(['enabled', 'script', 'timeoutMs']),
+    new Set(['enabled', 'script', 'timeoutMs', 'artifactBudget']),
     `${configPath} build`,
   );
   if (buildValue.enabled != null && typeof buildValue.enabled !== 'boolean') {
@@ -104,6 +105,10 @@ export function validateExecutionGateConfiguration(value, configPath) {
       enabled: buildValue.enabled ?? DEFAULT_BUILD_CONFIG.enabled,
       script: buildValue.script?.trim() || DEFAULT_BUILD_CONFIG.script,
       timeoutMs: buildValue.timeoutMs ?? DEFAULT_BUILD_CONFIG.timeoutMs,
+      artifactBudget: validateBuildArtifactBudgetConfiguration(
+        buildValue.artifactBudget,
+        configPath,
+      ),
     },
     lighthouse: {
       enabled: lighthouseValue.enabled ?? DEFAULT_LIGHTHOUSE_CONFIG.enabled,

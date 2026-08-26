@@ -54,7 +54,12 @@ export async function runGuardedBuild(script, {
   }
   const buildResult = await runBuildGate({
     root,
-    config: { enabled: true, script: build.script, timeoutMs: build.timeoutMs },
+    config: {
+      enabled: true,
+      script: build.script,
+      timeoutMs: build.timeoutMs,
+      artifactBudget: config.build.artifactBudget,
+    },
     liveOutput: true,
   });
   writeGateResultConsole(buildResult, { label: build.packageScript });

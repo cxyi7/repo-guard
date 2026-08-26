@@ -278,6 +278,7 @@ test('validates and normalizes build gate configuration', () => {
     enabled: true,
     script: 'build:prod',
     timeoutMs: 240000,
+    artifactBudget: DEFAULT_BUILD_CONFIG.artifactBudget,
   });
   assert.throws(
     () => validateConfig(baseConfig({ build: { script: 'vite build' } })),

@@ -192,6 +192,14 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
     'repo-guard dead-code-baseline prune',
   );
   assert.equal(
+    packageJson.scripts['guard:build-artifact-baseline-init'],
+    'repo-guard build-artifact-baseline init',
+  );
+  assert.equal(
+    packageJson.scripts['guard:build-artifact-baseline-prune'],
+    'repo-guard build-artifact-baseline prune',
+  );
+  assert.equal(
     packageJson.scripts['guard:build:mp-weixin'],
     'repo-guard guarded-build build:mp-weixin',
   );
