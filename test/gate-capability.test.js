@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import {
+  CI_GATE_ENVIRONMENTS,
+  GATE_ENVIRONMENTS,
+  GATE_MUTATIONS,
+} from '../src/core/capability/gate-contract.js';
 import { defineGate } from '../src/core/capability/gate-definition.js';
 import { createGateRegistry } from '../src/core/capability/gate-registry.js';
 import { gateRegistry } from '../src/gates/registry.js';
@@ -32,6 +37,27 @@ const CI_POLICY_ENVIRONMENTS = Object.freeze([
   'ci-full',
   'release-ready',
 ]);
+
+test('shares one immutable environment and mutation contract across Gate planning', () => {
+  assert.deepEqual(GATE_ENVIRONMENTS, [
+    'manual',
+    'pre-commit',
+    'pre-push',
+    'ci-policy',
+    'ci-full',
+    'release-ready',
+  ]);
+  assert.deepEqual(CI_GATE_ENVIRONMENTS, ['ci-policy', 'ci-full', 'release-ready']);
+  assert.deepEqual(GATE_MUTATIONS, [
+    'read-only',
+    'working-tree-fix',
+    'managed-files',
+    'external-write',
+  ]);
+  assert.equal(Object.isFrozen(GATE_ENVIRONMENTS), true);
+  assert.equal(Object.isFrozen(CI_GATE_ENVIRONMENTS), true);
+  assert.equal(Object.isFrozen(GATE_MUTATIONS), true);
+});
 
 function reviewedGateDescriptor(id, environments, overrides = {}) {
   return {

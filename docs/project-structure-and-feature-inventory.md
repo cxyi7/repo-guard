@@ -2,17 +2,17 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.21.0`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.21.1`。
 
 当前最新功能分支具有递进关系：
 
 ```text
-1.19.0 图片资源命名、重复、压缩与 WebP 转换治理
-  └─ 1.20.0 无效图片资源静态引用与 Git 基线治理
-       └─ 1.21.0 PC/微信小程序单平台构建产物预算
+1.20.0 无效图片资源静态引用与 Git 基线治理
+  └─ 1.21.0 PC/微信小程序单平台构建产物预算
+       └─ 1.21.1 架构扩展点与配置生命周期一致性优化
 ```
 
-因此，`1.21.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.21.1` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -61,7 +61,7 @@ repo/
 ├─ src/
 │  ├─ config/                        配置默认值、加载、验证和路径匹配
 │  ├─ core/                          稳定领域契约与无业务偏好的基础能力
-│  │  ├─ capability/                 Gate、Registry、Execution Plan、GateContext
+│  │  ├─ capability/                 Gate 公共契约、Registry、Execution Plan、GateContext
 │  │  ├─ error/                      RepoGuardError 和错误分类
 │  │  ├─ execution/                  文件快照、暂存文件、可取消进程和实时输出安全
 │  │  ├─ policy/                     单区块与多区块受管理文本生命周期基础能力
@@ -100,9 +100,9 @@ repo/
 │  │  ├─ doctor/                     项目准备状态诊断
 │  │  ├─ pre-commit/                 暂存隔离、质量段和最终策略段
 │  │  ├─ pre-push/                   精确推送范围与独立重型门禁
-│  │  └─ setup/                      配置、Hook、CI 和受管理文件安装
+│  │  └─ setup/                      配置复制/读写生命周期、Hook、CI 和受管理文件安装
 │  └─ policies/                      纯策略判定、AGENTS 规范目录与渲染、CI 通知内容策略
-├─ test/                             配置、行为、端到端和架构边界测试
+├─ test/                             配置、行为、端到端及按领域拆分的架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ api-performance-config.schema.json Axios 接口性能配置 Schema
 ├─ k6-load-config.schema.json          k6 接口压测配置 Schema
@@ -128,6 +128,8 @@ repo/
 - 循环依赖和无法解析的本地导入均为错误。
 
 这一结构将“事实获取、策略判断、结果表达、生命周期编排”分开，避免 CLI、Hook 和 CI 各自维护一套业务规则。
+
+Gate 环境、CI 环境和副作用级别由 `core/capability/gate-contract.js` 提供唯一不可变契约，Gate 定义与 Execution Plan 不再维护重复枚举。CLI 使用不可变命令处理器表扩展路由；pre-commit 质量 runner 将文件选择、文档同步和步骤执行分阶段编排；Doctor runner 将基础配置、受管 Hook 检查和结果输出拆为独立阶段；setup 中的 `config-copy.js` 只负责嵌套配置的隔离复制，`config-management.js` 继续持有初始化、迁移、功能启停和文件写回。架构边界测试按通用边界与配置边界拆分，配置生命周期契约同时校验 starter、运行时验证、公共 Schema、Registry `configKey` 和功能清单。
 
 GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只判断受控的最终状态并生成经过清理和长度限制的中文内容；`gates/release/gitlab-ci-notification.js` 校验配置与受信 CI 环境，并通过企业微信 integration 完成唯一的外部写入；CLI 只调用该 release 能力，不直接依赖第三方发送适配。
 
@@ -157,7 +159,7 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 
 无效代码治理继续分离工具事实、历史债务策略、门禁决策和人工维护命令：`integrations/knip/` 只解析消费项目安装的 Knip 6.x、执行 CLI 并校验 JSON，其中 repo-guard 的统一 `dependencies` 策略类型会显式映射 Knip 的普通依赖、开发依赖和可选 peer 依赖；Knip 自定义 reporter 是共享控制台渲染边界之外唯一允许直接写 stdout 的窄适配器，只输出带固定标记的配置提示元数据供父进程解析；`git/revision-content.js` 只读取跟踪状态和指定 revision 内容；`policies/dead-code-baseline.js` 只负责稳定指纹、计数、当前债务比较和重命名映射；`gates/quality/dead-code-gate.js` 形成中文 GateResult，`dead-code-baseline-management.js` 在相同受控边界内执行显式基线写入；`orchestration/cli/dead-code-baseline.js` 只负责命令路由和中文结果输出。Knip 配置和项目入口仍由消费项目拥有。
 
-构建产物预算复用既有 `quality.build` Gate，不注册重复门禁，也不重复执行生产构建。`config/build-artifact-budget-validation.js` 固定 PC/小程序二选一和平台专属约束；`integrations/build-artifacts/project.js` 只负责安全解析未跟踪产物目录、压缩体积、Vite manifest、微信小程序 `app.json`、分包归属和预下载事实；`gates/quality/build-artifact-budget.js` 持有预算、source map、异常文件、预期分包和历史债务决策；`build-artifact-baseline-management.js` 与 `orchestration/cli/build-artifact-baseline.js` 形成显式且只减不增的 PC 基线写入边界。小程序硬限制不支持基线或报告降级。构建前旧产物探针和可选项目 `cleanScript` 由 build Gate 与 npm integration 协作验证，repo-guard 只清理本次运行创建的探针，同名文件冲突时保留原文件并拒绝运行，且不递归删除业务产物；变异测试的 `guarded-build` 复用同一规范化产物预算。
+构建产物预算复用既有 `quality.build` Gate，不注册重复门禁，也不重复执行生产构建。`config/build-artifact-budget-validation.js` 固定 PC/小程序二选一和平台专属约束；`integrations/build-artifacts/project.js` 只负责安全解析未跟踪产物目录、压缩体积、Vite manifest、微信小程序 `app.json`、分包归属和预下载事实；`gates/quality/build-artifact-budget.js` 通过显式平台策略表选择检查器与违规收集器，并持有预算、source map、异常文件、预期分包和历史债务决策；`build-artifact-baseline-management.js` 与 `orchestration/cli/build-artifact-baseline.js` 形成显式且只减不增的 PC 基线写入边界。`build-gate.js` 只按产物准备、可选清理、构建执行、陈旧产物校验和预算评估的固定阶段编排。小程序硬限制不支持基线或报告降级。构建前旧产物探针和可选项目 `cleanScript` 由 build Gate 与 npm integration 协作验证，repo-guard 只清理本次运行创建的探针，同名文件冲突时保留原文件并拒绝运行，且不递归删除业务产物；变异测试的 `guarded-build` 复用同一规范化产物预算。
 
 `core/project/repo-guard-package.js` 只提供 npm 包自身的精确版本事实。受管通知 Job 使用该版本生成固定的官方 npm 安装命令，显式清空项目 `before_script`，并携带生成器专用 CI 标记；通知命令不重新加载项目配置，从而不依赖前序 Job 的项目依赖安装或配置校验结果。
 
@@ -170,7 +172,7 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - 唯一 `id`；
 - 配置键和可启停功能名；
 - 支持的执行环境；
-- `read-only`、`working-tree-fix` 或 `external-write` 副作用；
+- `read-only`、`working-tree-fix`、`managed-files` 或 `external-write` 副作用；
 - 超时、取消、所需工具和项目脚本；
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。

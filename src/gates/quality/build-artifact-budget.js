@@ -192,6 +192,30 @@ function miniProgramViolations(inspection, config) {
   return violations;
 }
 
+const BUILD_ARTIFACT_PLATFORM_STRATEGIES = Object.freeze({
+  pc: Object.freeze({
+    inspect: inspectPcBuildArtifacts,
+    collectViolations: pcViolations,
+    description: '桌面网页构建产物',
+  }),
+  miniProgram: Object.freeze({
+    inspect: inspectMiniProgramBuildArtifacts,
+    collectViolations: miniProgramViolations,
+    description: '小程序构建产物',
+  }),
+});
+
+function resolveBuildArtifactPlatformStrategy(platform) {
+  const strategy = BUILD_ARTIFACT_PLATFORM_STRATEGIES[platform];
+  if (!strategy) {
+    throw configurationError(
+      'build-artifact/unsupported-platform',
+      `构建产物预算不支持平台：${platform}`,
+    );
+  }
+  return strategy;
+}
+
 function loadBaseline(root, config) {
   const target = path.resolve(root, config.baselineFile);
   if (!existsSync(target) || !lstatSync(target).isFile()) {
@@ -239,15 +263,16 @@ function loadBaseline(root, config) {
 }
 
 export function inspectBuildArtifactBudget(root, config) {
-  return config.platform === 'pc'
-    ? inspectPcBuildArtifacts(root, config)
-    : inspectMiniProgramBuildArtifacts(root, config);
+  return resolveBuildArtifactPlatformStrategy(config.platform).inspect(root, config);
 }
 
 export function collectBuildArtifactViolations(inspection, config) {
-  return config.platform === 'pc'
-    ? pcViolations(inspection, config)
-    : miniProgramViolations(inspection, config);
+  return resolveBuildArtifactPlatformStrategy(config.platform)
+    .collectViolations(inspection, config);
+}
+
+export function describeBuildArtifactPlatform(platform) {
+  return resolveBuildArtifactPlatformStrategy(platform).description;
 }
 
 export function evaluateBuildArtifactBudget(root, config) {
