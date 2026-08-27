@@ -1,13 +1,8 @@
-const ENVIRONMENTS = [
-  'manual',
-  'pre-commit',
-  'pre-push',
-  'ci-policy',
-  'ci-full',
-  'release-ready',
-];
-const CI_ENVIRONMENTS = ['ci-policy', 'ci-full', 'release-ready'];
-const MUTATIONS = ['read-only', 'working-tree-fix', 'managed-files', 'external-write'];
+import {
+  CI_GATE_ENVIRONMENTS,
+  GATE_ENVIRONMENTS,
+  GATE_MUTATIONS,
+} from './gate-contract.js';
 
 export const CI_GATE_POLICY_MODES = Object.freeze([
   'inherit',
@@ -98,13 +93,13 @@ export function defineGate({
     || configVersions.some((version) => !Number.isInteger(version) || version < 1)) {
     throw new TypeError('门禁 configVersions 必须只包含正整数');
   }
-  if (!MUTATIONS.includes(mutation)) {
-    throw new TypeError(`门禁 mutation 必须是以下值之一： ${MUTATIONS.join(', ')}`);
+  if (!GATE_MUTATIONS.includes(mutation)) {
+    throw new TypeError(`门禁 mutation 必须是以下值之一： ${GATE_MUTATIONS.join(', ')}`);
   }
   const normalizedAllowedMutations = stringArray(
     allowedMutations,
     '门禁 allowedMutations',
-    MUTATIONS,
+    GATE_MUTATIONS,
   );
   if (!normalizedAllowedMutations.includes(mutation)) {
     throw new TypeError('门禁 allowedMutations 必须包含其最高变更级别');
@@ -123,10 +118,10 @@ export function defineGate({
   const normalizedEnvironments = stringArray(
     environments,
     '门禁 environments',
-    ENVIRONMENTS,
+    GATE_ENVIRONMENTS,
   );
   const supportsCi = normalizedEnvironments.some((environment) => (
-    CI_ENVIRONMENTS.includes(environment)
+    CI_GATE_ENVIRONMENTS.includes(environment)
   ));
   if (!supportsCi && ciScopes != null) {
     throw new TypeError('门禁 ciScopes 仅可用于 CI 门禁');

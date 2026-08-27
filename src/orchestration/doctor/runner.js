@@ -33,6 +33,82 @@ import {
 } from '../setup/hook-installer.js';
 import { repairRepository } from '../setup/repository-repair.js';
 
+function renderDoctorResult(root, repairResult, { checks, errors, warnings }) {
+  writeConsoleMessage(`repo-guard doctor 检查目录：${root}`);
+  for (const repair of repairResult.repairs) writeConsoleMessage(`  已修复 ${repair}`);
+  for (const check of checks) writeConsoleMessage(`  正常   ${check}`);
+  for (const warning of warnings) writeConsoleMessage(`  警告   ${warning}`, 'stderr');
+  for (const error of errors) writeConsoleMessage(`  错误 ${error}`, 'stderr');
+  return errors.length === 0 ? 0 : 1;
+}
+
+function inspectBaseConfiguration(root, { checks, errors, warnings }) {
+  if (nodeVersionIsSupported()) {
+    checks.push(`Node.js 版本：${process.versions.node}`);
+  } else {
+    errors.push(`Node.js 版本：${process.versions.node} 不受支持；要求 ${REQUIRED_NODE_RANGE}`);
+  }
+
+  let config;
+  try {
+    config = loadConfig(root, { allowExpiredExceptions: true });
+    checks.push(`配置（${config.rules.length} 条规则，${config.exclusions.length} 条排除项）`);
+  } catch (error) {
+    errors.push(error.message);
+  }
+  if (!config) return null;
+
+  const exceptionResult = inspectExceptionLifecycle(config.exceptions);
+  const agentPolicy = inspectAgentPolicies(root, config);
+  if (agentPolicy.changed) {
+    errors.push(`${AGENT_POLICY_FILE} 托管规范与项目配置不一致；请运行 repo-guard doctor --fix`);
+  } else {
+    checks.push(`${AGENT_POLICY_FILE} 项目托管规范`);
+  }
+  if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
+    errors.push(renderExceptionRegistrySummary(exceptionResult));
+  } else {
+    checks.push(
+      `结构化例外（${exceptionResult.entries.length} 条，共计；`
+      + `${exceptionResult.active.length} 条生效；`
+      + `${exceptionResult.expiring.length} 条即将到期）`,
+    );
+  }
+  if (
+    exceptionResult.expiring.length > 0
+    && exceptionResult.expired.length === 0
+    && exceptionResult.future.length === 0
+  ) {
+    warnings.push(renderExceptionRegistrySummary(exceptionResult));
+  }
+  return config;
+}
+
+function inspectManagedHooks(root, { checks, errors }) {
+  const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
+  if (hooksPath === '.githooks') checks.push('Git Hook 路径：core.hooksPath=.githooks');
+  else errors.push(`core.hooksPath 当前为“${hooksPath || '未配置'}”`);
+
+  for (const hookName of managedHookNames) {
+    const target = path.join(root, '.githooks', hookName);
+    if (!existsSync(target)) {
+      errors.push(`缺少 Git Hook： .githooks/${hookName}`);
+      continue;
+    }
+    const source = readFileSync(target, 'utf8');
+    if (!isManagedHook(source)) {
+      errors.push(`Git Hook 未由 repo-guard 托管： .githooks/${hookName}`);
+      continue;
+    }
+    if (!isCurrentManagedHook(source)) {
+      errors.push(`Git Hook 已过期： .githooks/${hookName}；请运行 repo-guard install-hooks`);
+    }
+  }
+  if (errors.every((message) => !message.includes('Git hook'))) {
+    checks.push(`${managedHookNames.length} 个托管 Git Hook`);
+  }
+}
+
 export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false } = {}) {
   const errors = [];
   const warnings = [];
@@ -45,72 +121,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
 
   errors.push(...repairResult.repairErrors);
 
-  if (nodeVersionIsSupported()) {
-    checks.push(`Node.js 版本：${process.versions.node}`);
-  } else {
-    errors.push(
-      `Node.js 版本：${process.versions.node} 不受支持；要求 ${REQUIRED_NODE_RANGE}`,
-    );
-  }
+  const config = inspectBaseConfiguration(root, { checks, errors, warnings });
 
-  let config;
-  try {
-    config = loadConfig(root, { allowExpiredExceptions: true });
-    checks.push(`配置（${config.rules.length} 条规则，${config.exclusions.length} 条排除项）`);
-  } catch (error) {
-    errors.push(error.message);
-  }
-
-  if (config) {
-    const exceptionResult = inspectExceptionLifecycle(config.exceptions);
-    const agentPolicy = inspectAgentPolicies(root, config);
-    if (agentPolicy.changed) {
-      errors.push(`${AGENT_POLICY_FILE} 托管规范与项目配置不一致；请运行 repo-guard doctor --fix`);
-    } else {
-      checks.push(`${AGENT_POLICY_FILE} 项目托管规范`);
-    }
-    if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
-      errors.push(renderExceptionRegistrySummary(exceptionResult));
-    } else {
-      checks.push(
-        `结构化例外（${exceptionResult.entries.length} 条，共计；`
-        + `${exceptionResult.active.length} 条生效；`
-        + `${exceptionResult.expiring.length} 条即将到期）`,
-      );
-    }
-    if (exceptionResult.expiring.length > 0
-      && exceptionResult.expired.length === 0
-      && exceptionResult.future.length === 0) {
-      warnings.push(renderExceptionRegistrySummary(exceptionResult));
-    }
-  }
-
-  if (!ci) {
-    const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
-    if (hooksPath === '.githooks') {
-      checks.push('Git Hook 路径：core.hooksPath=.githooks');
-    } else {
-      errors.push(`core.hooksPath 当前为“${hooksPath || '未配置'}”`);
-    }
-
-    for (const hookName of managedHookNames) {
-      const target = path.join(root, '.githooks', hookName);
-      if (!existsSync(target)) {
-        errors.push(`缺少 Git Hook： .githooks/${hookName}`);
-        continue;
-      }
-      if (!isManagedHook(readFileSync(target, 'utf8'))) {
-        errors.push(`Git Hook 未由 repo-guard 托管： .githooks/${hookName}`);
-        continue;
-      }
-      if (!isCurrentManagedHook(readFileSync(target, 'utf8'))) {
-        errors.push(`Git Hook 已过期： .githooks/${hookName}；请运行 repo-guard install-hooks`);
-      }
-    }
-    if (errors.every((message) => !message.includes('Git hook'))) {
-      checks.push(`${managedHookNames.length} 个托管 Git Hook`);
-    }
-  }
+  if (!ci) inspectManagedHooks(root, { checks, errors });
 
   const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
   const hasMutationFailureNotification = config?.mutationTest.enabled
@@ -221,19 +234,5 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     }
   }
 
-  writeConsoleMessage(`repo-guard doctor 检查目录：${root}`);
-  for (const repair of repairResult.repairs) {
-    writeConsoleMessage(`  已修复 ${repair}`);
-  }
-  for (const check of checks) {
-    writeConsoleMessage(`  正常   ${check}`);
-  }
-  for (const warning of warnings) {
-    writeConsoleMessage(`  警告   ${warning}`, 'stderr');
-  }
-  for (const error of errors) {
-    writeConsoleMessage(`  错误 ${error}`, 'stderr');
-  }
-
-  return errors.length === 0 ? 0 : 1;
+  return renderDoctorResult(root, repairResult, { checks, errors, warnings });
 }

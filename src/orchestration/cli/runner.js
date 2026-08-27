@@ -90,182 +90,177 @@ ${REGISTERED_MANUAL_HELP}
   3  CI 版本范围不可信
 `.trim();
 
+function withoutOptions(action) {
+  return async (argumentsList) => {
+    ensureSupportedOptions(argumentsList, new Set());
+    return await action();
+  };
+}
+
+function valuedOptions(argumentsList, values, flags = []) {
+  return parseValuedOptions(argumentsList, {
+    flags: new Set(flags),
+    values: new Set(values),
+  });
+}
+
+function requireSingleArgument(argumentsList, { allowed = null, code, message }) {
+  const [value] = argumentsList;
+  if (
+    argumentsList.length !== 1
+    || value.startsWith('-')
+    || (allowed && !allowed.includes(value))
+  ) {
+    throw configurationError(code, message);
+  }
+  return value;
+}
+
+const helpCommand = () => {
+  writeConsoleMessage(HELP_TEXT);
+  return 0;
+};
+
+const COMMAND_HANDLERS = Object.freeze({
+  help: helpCommand,
+  '--help': helpCommand,
+  '-h': helpCommand,
+  init: withoutOptions(runInit),
+  'install-hooks': withoutOptions(runInstallHooks),
+  migrate: withoutOptions(runMigrate),
+  enable: async (argumentsList) => {
+    ensureSupportedOptions(argumentsList, new Set());
+    return runEnable(argumentsList);
+  },
+  disable: async (argumentsList) => {
+    ensureSupportedOptions(argumentsList, new Set());
+    return runDisable(argumentsList);
+  },
+  doctor: async (argumentsList) => {
+    ensureSupportedOptions(argumentsList, new Set(['--fix', '--ci']));
+    return runDoctor(process.cwd(), {
+      fix: argumentsList.includes('--fix'),
+      ci: argumentsList.includes('--ci'),
+    });
+  },
+  'install-ci': async (argumentsList) => {
+    const options = valuedOptions(
+      argumentsList,
+      ['--provider', '--profile', '--stage'],
+      ['--dry-run'],
+    );
+    return runInstallCiCommand(process.cwd(), {
+      provider: options.values['--provider'],
+      profile: options.values['--profile'] || 'policy',
+      stage: options.values['--stage'] || null,
+      dryRun: options.flags.has('--dry-run'),
+    });
+  },
+  ci: async (argumentsList) => {
+    const options = valuedOptions(argumentsList, ['--profile', '--base', '--head', '--report-json']);
+    return runCiCommand(process.cwd(), {
+      profile: options.values['--profile'],
+      base: options.values['--base'] || null,
+      head: options.values['--head'] || null,
+      reportPath: options.values['--report-json'],
+    });
+  },
+  'ci-notify': async (argumentsList) => {
+    const options = valuedOptions(argumentsList, ['--status']);
+    return runGitLabCiNotification({
+      status: options.values['--status'] || null,
+      write: writeConsoleMessage,
+    });
+  },
+  'pre-commit': withoutOptions(runPreCommit),
+  'pre-push': async (argumentsList) => runPrePush(process.cwd(), {
+    input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
+    remoteName: argumentsList[0] || 'origin',
+  }),
+  'quality-files': runQualityFileCommand,
+  check: withoutOptions(runCheck),
+  gate: async (argumentsList) => {
+    ensureSupportedOptions(argumentsList, new Set(['--dry-run', '--force-notify']));
+    return runGate({
+      dryRun: argumentsList.includes('--dry-run'),
+      forceNotify: argumentsList.includes('--force-notify'),
+    });
+  },
+  'dry-run': withoutOptions(() => runGate({ dryRun: true })),
+  'hook-message': runHookMessage,
+  external: async (argumentsList) => {
+    const gateId = requireSingleArgument(argumentsList, {
+      code: 'cli/invalid-external-gate-arguments',
+      message: 'external 命令需要一个 project.<kebab-case> 门禁 id',
+    });
+    return gateResultToExitCode(await runExternalManualGate(gateId));
+  },
+  'api-performance-runner': async (argumentsList) => {
+    const options = valuedOptions(argumentsList, ['--gate-id', '--config']);
+    return runApiPerformanceRunner({
+      gateId: options.values['--gate-id'],
+      configFile: options.values['--config'],
+    });
+  },
+  'k6-runner': async (argumentsList) => {
+    const options = valuedOptions(argumentsList, ['--gate-id', '--config']);
+    return runK6Runner({
+      gateId: options.values['--gate-id'],
+      configFile: options.values['--config'],
+    });
+  },
+  'guarded-build': async (argumentsList) => runGuardedBuild(requireSingleArgument(argumentsList, {
+    code: 'cli/invalid-guarded-build-arguments',
+    message: 'guarded-build 命令需要一个已在 mutationTest.guardedBuilds 中声明的 npm 脚本名称',
+  })),
+  'dead-code-baseline': async (argumentsList) => runDeadCodeBaseline(requireSingleArgument(argumentsList, {
+    allowed: ['init', 'prune'],
+    code: 'cli/invalid-dead-code-baseline-arguments',
+    message: 'dead-code-baseline 命令需要 init 或 prune',
+  })),
+  'build-artifact-baseline': async (argumentsList) => runBuildArtifactBaseline(requireSingleArgument(argumentsList, {
+    allowed: ['init', 'prune'],
+    code: 'cli/invalid-build-artifact-baseline-arguments',
+    message: 'build-artifact-baseline 命令需要 init 或 prune',
+  })),
+  'image-optimize': async (argumentsList) => {
+    const delimiter = argumentsList.indexOf('--');
+    if (delimiter < 0) {
+      throw configurationError(
+        'cli/image-optimize-path-delimiter-required',
+        'image-optimize 必须使用 -- 分隔选项和图片路径',
+      );
+    }
+    const options = valuedOptions(
+      argumentsList.slice(0, delimiter),
+      ['--to'],
+      ['--write', '--allow-lossy'],
+    );
+    return runImageOptimize({
+      paths: argumentsList.slice(delimiter + 1),
+      to: options.values['--to'] ?? null,
+      write: options.flags.has('--write'),
+      allowLossy: options.flags.has('--allow-lossy'),
+    });
+  },
+});
+
+async function runKnownCommand(command, argumentsList) {
+  const handler = COMMAND_HANDLERS[command];
+  if (handler) return await handler(argumentsList);
+  const gate = gateRegistry.findByManualCommand(command);
+  if (gate) {
+    ensureSupportedOptions(argumentsList, new Set(gate.manualOptions));
+    return gateResultToExitCode(await runRegisteredManualGate(command, argumentsList));
+  }
+  throw configurationError('cli/unknown-command', `未知命令： ${command}\n\n${HELP_TEXT}`);
+}
+
 export async function runCli(argumentsList) {
   const [command = 'help', ...rest] = argumentsList;
 
   try {
-    switch (command) {
-      case 'help':
-      case '--help':
-      case '-h':
-        writeConsoleMessage(HELP_TEXT);
-        return 0;
-      case 'init':
-        ensureSupportedOptions(rest, new Set());
-        return runInit();
-      case 'install-hooks':
-        ensureSupportedOptions(rest, new Set());
-        return runInstallHooks();
-      case 'migrate':
-        ensureSupportedOptions(rest, new Set());
-        return runMigrate();
-      case 'enable':
-        ensureSupportedOptions(rest, new Set());
-        return runEnable(rest);
-      case 'disable':
-        ensureSupportedOptions(rest, new Set());
-        return runDisable(rest);
-      case 'doctor':
-        ensureSupportedOptions(rest, new Set(['--fix', '--ci']));
-        return runDoctor(process.cwd(), {
-          fix: rest.includes('--fix'),
-          ci: rest.includes('--ci'),
-        });
-      case 'install-ci': {
-        const options = parseValuedOptions(rest, {
-          flags: new Set(['--dry-run']),
-          values: new Set(['--provider', '--profile', '--stage']),
-        });
-        return runInstallCiCommand(process.cwd(), {
-          provider: options.values['--provider'],
-          profile: options.values['--profile'] || 'policy',
-          stage: options.values['--stage'] || null,
-          dryRun: options.flags.has('--dry-run'),
-        });
-      }
-      case 'ci': {
-        const options = parseValuedOptions(rest, {
-          flags: new Set(),
-          values: new Set(['--profile', '--base', '--head', '--report-json']),
-        });
-        return await runCiCommand(process.cwd(), {
-          profile: options.values['--profile'],
-          base: options.values['--base'] || null,
-          head: options.values['--head'] || null,
-          reportPath: options.values['--report-json'],
-        });
-      }
-      case 'ci-notify': {
-        const options = parseValuedOptions(rest, {
-          flags: new Set(),
-          values: new Set(['--status']),
-        });
-        return await runGitLabCiNotification({
-          status: options.values['--status'] || null,
-          write: writeConsoleMessage,
-        });
-      }
-      case 'pre-commit':
-        ensureSupportedOptions(rest, new Set());
-        return await runPreCommit();
-      case 'pre-push':
-        return await runPrePush(process.cwd(), {
-          input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
-          remoteName: rest[0] || 'origin',
-        });
-      case 'quality-files':
-        return await runQualityFileCommand(rest);
-      case 'check':
-        ensureSupportedOptions(rest, new Set());
-        return runCheck();
-      case 'gate': {
-        const supported = new Set(['--dry-run', '--force-notify']);
-        ensureSupportedOptions(rest, supported);
-        return await runGate({
-          dryRun: rest.includes('--dry-run'),
-          forceNotify: rest.includes('--force-notify'),
-        });
-      }
-      case 'dry-run':
-        ensureSupportedOptions(rest, new Set());
-        return await runGate({ dryRun: true });
-      case 'hook-message':
-        return runHookMessage(rest);
-      case 'external': {
-        if (rest.length !== 1 || rest[0].startsWith('-')) {
-          throw configurationError(
-            'cli/invalid-external-gate-arguments',
-            'external 命令需要一个 project.<kebab-case> 门禁 id',
-          );
-        }
-        const result = await runExternalManualGate(rest[0]);
-        return gateResultToExitCode(result);
-      }
-      case 'api-performance-runner': {
-        const options = parseValuedOptions(rest, {
-          flags: new Set(),
-          values: new Set(['--gate-id', '--config']),
-        });
-        return await runApiPerformanceRunner({
-          gateId: options.values['--gate-id'],
-          configFile: options.values['--config'],
-        });
-      }
-      case 'k6-runner': {
-        const options = parseValuedOptions(rest, {
-          flags: new Set(),
-          values: new Set(['--gate-id', '--config']),
-        });
-        return await runK6Runner({
-          gateId: options.values['--gate-id'],
-          configFile: options.values['--config'],
-        });
-      }
-      case 'guarded-build': {
-        if (rest.length !== 1 || rest[0].startsWith('-')) {
-          throw configurationError(
-            'cli/invalid-guarded-build-arguments',
-            'guarded-build 命令需要一个已在 mutationTest.guardedBuilds 中声明的 npm 脚本名称',
-          );
-        }
-        return await runGuardedBuild(rest[0]);
-      }
-      case 'dead-code-baseline': {
-        if (rest.length !== 1 || !['init', 'prune'].includes(rest[0])) {
-          throw configurationError(
-            'cli/invalid-dead-code-baseline-arguments',
-            'dead-code-baseline 命令需要 init 或 prune',
-          );
-        }
-        return await runDeadCodeBaseline(rest[0]);
-      }
-      case 'build-artifact-baseline': {
-        if (rest.length !== 1 || !['init', 'prune'].includes(rest[0])) {
-          throw configurationError(
-            'cli/invalid-build-artifact-baseline-arguments',
-            'build-artifact-baseline 命令需要 init 或 prune',
-          );
-        }
-        return runBuildArtifactBaseline(rest[0]);
-      }
-      case 'image-optimize': {
-        const delimiter = rest.indexOf('--');
-        if (delimiter < 0) {
-          throw configurationError(
-            'cli/image-optimize-path-delimiter-required',
-            'image-optimize 必须使用 -- 分隔选项和图片路径',
-          );
-        }
-        const options = parseValuedOptions(rest.slice(0, delimiter), {
-          flags: new Set(['--write', '--allow-lossy']),
-          values: new Set(['--to']),
-        });
-        return await runImageOptimize({
-          paths: rest.slice(delimiter + 1),
-          to: options.values['--to'] ?? null,
-          write: options.flags.has('--write'),
-          allowLossy: options.flags.has('--allow-lossy'),
-        });
-      }
-      default:
-        if (gateRegistry.findByManualCommand(command)) {
-          const gate = gateRegistry.findByManualCommand(command);
-          ensureSupportedOptions(rest, new Set(gate.manualOptions));
-          const result = await runRegisteredManualGate(command, rest);
-          return gateResultToExitCode(result);
-        }
-        throw configurationError('cli/unknown-command', `未知命令： ${command}\n\n${HELP_TEXT}`);
-    }
+    return await runKnownCommand(command, rest);
   } catch (error) {
     const typedError = toRepoGuardError(error, {
       kind: 'execution',

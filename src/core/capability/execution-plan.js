@@ -1,17 +1,9 @@
 import { internalError } from '../error/repo-guard-error.js';
+import { GATE_ENVIRONMENTS, GATE_MUTATIONS } from './gate-contract.js';
 
-const PLAN_ENVIRONMENTS = [
-  'manual',
-  'pre-commit',
-  'pre-push',
-  'ci-policy',
-  'ci-full',
-  'release-ready',
-];
-const MUTATIONS = ['read-only', 'working-tree-fix', 'managed-files', 'external-write'];
 const ALLOWED_MUTATIONS = Object.freeze({
-  manual: MUTATIONS,
-  'pre-commit': MUTATIONS,
+  manual: GATE_MUTATIONS,
+  'pre-commit': GATE_MUTATIONS,
   'pre-push': ['read-only'],
   'ci-policy': ['read-only'],
   'ci-full': ['read-only'],
@@ -51,7 +43,7 @@ function normalizeStep(step) {
 
 export function defineExecutionPlan({ id, environment, locked = true, steps }) {
   nonEmptyString(id, '执行计划 id');
-  if (!PLAN_ENVIRONMENTS.includes(environment)) {
+  if (!GATE_ENVIRONMENTS.includes(environment)) {
     throw new TypeError(`执行计划使用了不支持的环境： ${environment}`);
   }
   if (typeof locked !== 'boolean') throw new TypeError('执行计划的 locked 必须是布尔值');
@@ -84,7 +76,7 @@ export function validateExecutionPlan(plan, registry) {
       );
     }
     const mutation = step.mutation ?? gate.mutation;
-    if (!MUTATIONS.includes(mutation)) {
+    if (!GATE_MUTATIONS.includes(mutation)) {
       throw internalError('capability/invalid-execution-plan', `执行计划 ${plan.id} 使用了不支持的变更级别 ${mutation}`);
     }
     if (!gate.allowedMutations.includes(mutation)) {

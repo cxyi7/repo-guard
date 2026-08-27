@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.21.1
+
+- 统一 Gate 定义与 Execution Plan 使用的环境、CI 环境和副作用级别契约，补齐 `managed-files` 长期文档，避免两处枚举独立演进。
+- 将构建产物平台选择改为显式策略表，并把 Build Gate 拆分为产物准备、清理、构建执行、陈旧产物校验和预算评估阶段；PC 与小程序现有判断、输出和安全边界保持不变。
+- 将 CLI 命令分发改为不可变处理器表，拆分 pre-commit 质量文件选择与步骤执行、Doctor 基础配置/Hook 检查/结果输出阶段，并把 setup 配置深复制职责从配置读写生命周期中独立出来；命令参数、固定 Hook 顺序、诊断结果和配置结果保持不变。
+- 按配置领域拆分架构边界测试，并新增 starter、运行时验证、公共 Schema、Registry `configKey` 与可配置功能清单的一致性契约，防止后续功能遗漏同步点。
+
 ## 1.21.0
 
 - 在既有 `quality.build` 中新增默认关闭的跨平台构建产物预算。消费项目必须且只能选择 `platform: "pc"` 或 `platform: "miniProgram"`；原有未配置 `artifactBudget` 的构建行为保持不变，产物预算仍只在手动、pre-push、CI full 和 release-ready 的构建阶段执行，不进入 pre-commit。

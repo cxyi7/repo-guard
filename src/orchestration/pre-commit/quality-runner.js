@@ -74,17 +74,18 @@ function executionConfig(config, {
   };
 }
 
-export async function runQualityExecution({ root, files, config }) {
-  const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
-  const eslintConfig = config.preCommit.eslint;
-  const prettierConfig = config.preCommit.prettier;
-  const stylelintConfig = config.preCommit.stylelint;
-  const maxFileLinesConfig = config.preCommit.maxFileLines;
-  const filePlacementConfig = config.preCommit.filePlacement;
-  const fileHeaderConfig = config.preCommit.fileHeader;
-  const functionDocsConfig = config.preCommit.functionDocs;
-  const asyncResourceCleanupConfig = config.preCommit.asyncResourceCleanup;
-  const pathNamingConfig = config.preCommit.pathNaming;
+function selectQualityFiles(normalizedFiles, config) {
+  const {
+    asyncResourceCleanup: asyncResourceCleanupConfig,
+    eslint: eslintConfig,
+    fileHeader: fileHeaderConfig,
+    filePlacement: filePlacementConfig,
+    functionDocs: functionDocsConfig,
+    maxFileLines: maxFileLinesConfig,
+    pathNaming: pathNamingConfig,
+    prettier: prettierConfig,
+    stylelint: stylelintConfig,
+  } = config.preCommit;
   const asyncResourceFiles = selectAsyncResourceCleanupFiles(
     normalizedFiles,
     asyncResourceCleanupConfig,
@@ -109,62 +110,157 @@ export async function runQualityExecution({ root, files, config }) {
     : [];
   const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
   const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
-  const relevantFiles = uniqueFiles(
-    fileHeaderFiles,
-    functionDocFiles,
-    stylelintFiles,
-    eslintFiles,
-    prettierFiles,
-    maxFileLineFiles,
+  return Object.freeze({
     asyncResourceFiles,
     dynamicCodeFiles,
+    eslintConfig,
+    eslintFiles,
+    fileHeaderFiles,
+    filePlacementConfig,
+    functionDocFiles,
+    maxFileLineFiles,
+    pathNamingConfig,
+    prettierFiles,
+    relevantFiles: uniqueFiles(
+      fileHeaderFiles,
+      functionDocFiles,
+      stylelintFiles,
+      eslintFiles,
+      prettierFiles,
+      maxFileLineFiles,
+      asyncResourceFiles,
+      dynamicCodeFiles,
+      vueSecurityFiles,
+    ),
+    stylelintFiles,
     vueSecurityFiles,
-  );
+  });
+}
 
-  if (relevantFiles.length === 0
-    && !filePlacementConfig.enabled
-    && !pathNamingConfig.enabled) {
-    return Object.freeze({
-      planId: preCommitQualityPlan.id,
-      status: 'passed',
-      outcomes: Object.freeze([]),
-      results: Object.freeze([]),
-      decisiveResult: null,
-      exitCode: 0,
-    });
+function emptyQualityExecution() {
+  return Object.freeze({
+    planId: preCommitQualityPlan.id,
+    status: 'passed',
+    outcomes: Object.freeze([]),
+    results: Object.freeze([]),
+    decisiveResult: null,
+    exitCode: 0,
+  });
+}
+
+function writeFunctionDocumentationWarnings(warnings) {
+  for (const warning of warnings) {
+    const { location } = warning;
+    const position = [location.line, location.column]
+      .filter((value) => value != null)
+      .join(':');
+    writeConsoleMessage(
+      `警告  functionDocs [${warning.code}] ${location.path}${position ? `:${position}` : ''}：${warning.message}`,
+      'stderr',
+    );
+  }
+}
+
+async function runGateWithFiles(gate, stepContext, files = null) {
+  const context = files == null
+    ? stepContext
+    : Object.freeze({ ...stepContext, files });
+  const gatePlan = await gate.plan(context);
+  return await gate.run({ ...stepContext, plan: gatePlan });
+}
+
+async function executeQualityStep({ gate, step, stepContext, selection }) {
+  switch (step.id) {
+    case 'quality.stylelint-fix':
+    case 'quality.stylelint-verify':
+      if (selection.stylelintFiles.length > 0) {
+        return runGateWithFiles(gate, stepContext, selection.stylelintFiles);
+      }
+      break;
+    case 'quality.eslint-fix':
+      if (selection.eslintFiles.length > 0 && selection.eslintConfig.fix) {
+        return runGateWithFiles(gate, stepContext, selection.eslintFiles);
+      }
+      break;
+    case 'quality.prettier':
+      if (selection.prettierFiles.length > 0) {
+        return runGateWithFiles(gate, stepContext, selection.prettierFiles);
+      }
+      break;
+    case 'quality.eslint-verify':
+      if (
+        selection.eslintFiles.length > 0
+        && (!selection.eslintConfig.fix || selection.prettierFiles.length > 0)
+      ) {
+        return runGateWithFiles(gate, stepContext, selection.eslintFiles);
+      }
+      break;
+    case 'quality.vue-async-resource-cleanup':
+      if (selection.asyncResourceFiles.length > 0) {
+        return runGateWithFiles(gate, stepContext, selection.asyncResourceFiles);
+      }
+      break;
+    case 'repository.path-naming':
+      if (selection.pathNamingConfig.enabled) return runGateWithFiles(gate, stepContext);
+      break;
+    case 'security.dynamic-code':
+      if (selection.dynamicCodeFiles.length > 0) return runGateWithFiles(gate, stepContext);
+      break;
+    case 'security.vue-unsafe-html':
+    case 'security.vue-target-blank':
+    case 'accessibility.vue-form-label':
+    case 'accessibility.vue-image-alt':
+      if (selection.vueSecurityFiles.length > 0) return runGateWithFiles(gate, stepContext);
+      break;
+    case 'repository.maximum-file-lines':
+      if (selection.maxFileLineFiles.length > 0) return runGateWithFiles(gate, stepContext);
+      break;
+    case 'repository.file-placement':
+      if (selection.filePlacementConfig.enabled) return runGateWithFiles(gate, stepContext);
+      break;
+    default:
+      throw internalError(
+        'pre-commit/unsupported-quality-step',
+        `不支持的受保护 pre-commit 质量步骤： ${step.id}`,
+      );
+  }
+  return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
+}
+
+export async function runQualityExecution({ root, files, config }) {
+  const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
+  const selection = selectQualityFiles(normalizedFiles, config);
+
+  if (
+    selection.relevantFiles.length === 0
+    && !selection.filePlacementConfig.enabled
+    && !selection.pathNamingConfig.enabled
+  ) {
+    return emptyQualityExecution();
   }
 
-  const originalContents = captureFileContents(relevantFiles);
+  const originalContents = captureFileContents(selection.relevantFiles);
   try {
     const stagedChanges = collectStagedChanges(root);
     synchronizeStagedFileHeaders({
       root,
-      files: fileHeaderFiles,
+      files: selection.fileHeaderFiles,
       changes: stagedChanges,
     });
     const functionDocResult = synchronizeStagedFunctionDocumentation({
       root,
-      files: functionDocFiles,
+      files: selection.functionDocFiles,
     });
-    for (const warning of functionDocResult.warnings) {
-      const { location } = warning;
-      const position = [location.line, location.column]
-        .filter((value) => value != null)
-        .join(':');
-      writeConsoleMessage(
-        `警告  functionDocs [${warning.code}] ${location.path}${position ? `:${position}` : ''}：${warning.message}`,
-        'stderr',
-      );
-    }
+    writeFunctionDocumentationWarnings(functionDocResult.warnings);
     const context = createGateContext({
       root,
       environment: preCommitQualityPlan.environment,
       config: executionConfig(config, {
-        eslintFiles,
-        filePlacementConfig,
-        maxFileLineFiles,
-        prettierFiles,
-        stylelintFiles,
+        eslintFiles: selection.eslintFiles,
+        filePlacementConfig: selection.filePlacementConfig,
+        maxFileLineFiles: selection.maxFileLineFiles,
+        prettierFiles: selection.prettierFiles,
+        stylelintFiles: selection.stylelintFiles,
       }),
       changes: createChangeSet({
         source: 'pre-commit-staged-files',
@@ -177,79 +273,11 @@ export async function runQualityExecution({ root, files, config }) {
       registry: gateRegistry,
       context,
       stopOnFailure: true,
-      executeStep: async ({ context: stepContext, gate, step }) => {
-      switch (step.id) {
-        case 'quality.stylelint-fix':
-          if (stylelintFiles.length === 0) break;
-          {
-            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: stylelintFiles }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'quality.eslint-fix':
-          if (eslintFiles.length === 0 || !eslintConfig.fix) break;
-          {
-            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: eslintFiles }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'quality.prettier':
-          if (prettierFiles.length === 0) break;
-          {
-            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: prettierFiles }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'quality.stylelint-verify':
-          if (stylelintFiles.length === 0) break;
-          {
-            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: stylelintFiles }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'quality.eslint-verify':
-          if (eslintFiles.length === 0 || (eslintConfig.fix && prettierFiles.length === 0)) break;
-          {
-            const gatePlan = await gate.plan(Object.freeze({ ...stepContext, files: eslintFiles }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        case 'quality.vue-async-resource-cleanup':
-          if (asyncResourceFiles.length > 0) {
-            const gatePlan = await gate.plan(Object.freeze({
-              ...stepContext,
-              files: asyncResourceFiles,
-            }));
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-          break;
-        case 'repository.path-naming':
-          if (pathNamingConfig.enabled) {
-            const gatePlan = await gate.plan(stepContext);
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-          break;
-        case 'security.dynamic-code':
-          if (dynamicCodeFiles.length > 0) {
-            const gatePlan = await gate.plan(stepContext);
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-          break;
-        case 'security.vue-unsafe-html':
-        case 'security.vue-target-blank':
-        case 'accessibility.vue-form-label':
-        case 'accessibility.vue-image-alt':
-        case 'repository.maximum-file-lines':
-        case 'repository.file-placement':
-          if (step.id.startsWith('security.') || step.id.startsWith('accessibility.')) {
-            if (vueSecurityFiles.length === 0) break;
-          }
-          if (step.id === 'repository.maximum-file-lines' && maxFileLineFiles.length === 0) break;
-          if (step.id === 'repository.file-placement' && !filePlacementConfig.enabled) break;
-          {
-            const gatePlan = await gate.plan(stepContext);
-            return await gate.run({ ...stepContext, plan: gatePlan });
-          }
-        default:
-          throw internalError('pre-commit/unsupported-quality-step', `不支持的受保护 pre-commit 质量步骤： ${step.id}`);
-      }
-        return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
-      },
+      executeStep: (stepArguments) => executeQualityStep({
+        ...stepArguments,
+        stepContext: stepArguments.context,
+        selection,
+      }),
       onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
     });
     if (execution.exitCode !== 0) restoreFileContents(originalContents);
