@@ -36,6 +36,11 @@ function selectFiles(files, pattern) {
     .map(({ absolute }) => absolute);
 }
 
+function selectUiTokenInputFiles(files, config) {
+  if (!config.enabled) return [];
+  return files.map(({ absolute }) => absolute);
+}
+
 function uniqueFiles(...groups) {
   return [...new Set(groups.flat())];
 }
@@ -110,6 +115,8 @@ function selectQualityFiles(normalizedFiles, config) {
     : [];
   const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
   const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
+  const uiTokenConfig = config.uiTokens;
+  const uiTokenFiles = selectUiTokenInputFiles(normalizedFiles, uiTokenConfig);
   return Object.freeze({
     asyncResourceFiles,
     dynamicCodeFiles,
@@ -131,8 +138,11 @@ function selectQualityFiles(normalizedFiles, config) {
       asyncResourceFiles,
       dynamicCodeFiles,
       vueSecurityFiles,
+      uiTokenFiles,
     ),
     stylelintFiles,
+    uiTokenConfig,
+    uiTokenFiles,
     vueSecurityFiles,
   });
 }
@@ -195,6 +205,17 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
         return runGateWithFiles(gate, stepContext, selection.eslintFiles);
       }
       break;
+    case 'quality.ui-tokens':
+      if (
+        selection.uiTokenConfig.enabled
+        && (
+          selection.uiTokenFiles.length > 0
+          || stepContext.changes.entries.some(({ status }) => status.startsWith('D'))
+        )
+      ) {
+        return runGateWithFiles(gate, stepContext, selection.uiTokenFiles);
+      }
+      break;
     case 'quality.vue-async-resource-cleanup':
       if (selection.asyncResourceFiles.length > 0) {
         return runGateWithFiles(gate, stepContext, selection.asyncResourceFiles);
@@ -230,18 +251,20 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
 export async function runQualityExecution({ root, files, config }) {
   const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
   const selection = selectQualityFiles(normalizedFiles, config);
+  const stagedChanges = collectStagedChanges(root);
+  const hasStagedDeletion = stagedChanges.some(({ status }) => status.startsWith('D'));
 
   if (
     selection.relevantFiles.length === 0
     && !selection.filePlacementConfig.enabled
     && !selection.pathNamingConfig.enabled
+    && !(selection.uiTokenConfig.enabled && hasStagedDeletion)
   ) {
     return emptyQualityExecution();
   }
 
   const originalContents = captureFileContents(selection.relevantFiles);
   try {
-    const stagedChanges = collectStagedChanges(root);
     synchronizeStagedFileHeaders({
       root,
       files: selection.fileHeaderFiles,

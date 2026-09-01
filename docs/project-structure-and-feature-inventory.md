@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.21.1`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.22.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -10,9 +10,10 @@
 1.20.0 无效图片资源静态引用与 Git 基线治理
   └─ 1.21.0 PC/微信小程序单平台构建产物预算
        └─ 1.21.1 架构扩展点与配置生命周期一致性优化
+            └─ 1.22.0 Sass/UnoCSS UI Token 契约门禁
 ```
 
-因此，`1.21.1` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.22.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -24,6 +25,7 @@
 - [x] 按 include、exclude 和扩展名白名单选择函数源文件，用 AST 同步暂存函数 JSDoc。
 - [x] 按 AST 绑定和 Vue 生命周期匹配异步资源创建与释放，启用后以错误阻断无法证明安全的资源泄漏。
 - [x] 在 `camelCase` 与 `kebab-case` 中选择项目唯一规范，统一检查指定范围内的全部已跟踪文件名和文件夹名。
+- [x] 由项目显式启用 Sass/UnoCSS 语言适配器，通过带来源指纹的语言无关 Manifest 约束 12 类 UI Token，并保持其他样式不受管理。
 - [x] 按项目范围治理图片命名、真实格式、精确/像素重复和压缩机会，并提供显式、安全且保留原图的 WebP 转换。
 - [x] 静态分析多种源码中的图片引用，以可验证动态声明覆盖运行时路径，并用 Git 基线只阻止新增无效图片债务。
 - [x] 动态代码执行安全检查，包括 `eval` 和 `Function` 构造器。
@@ -70,7 +72,7 @@ repo/
 │  │  └─ result/                     GateResult、finding、artifact 和退出码
 │  ├─ gates/                         门禁决策、finding 和结果适配
 │  │  ├─ accessibility/              Vue 可访问性门禁
-│  │  ├─ quality/                    lint、格式化、异步资源、无效代码、类型、架构、构建、Lighthouse
+│  │  ├─ quality/                    lint、格式化、UI Token、异步资源、无效代码、类型、架构、构建、Lighthouse
 │  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
 │  │  ├─ repository/                 AGENTS 同步、提交信息、依赖、路径/图片命名、文件位置、代码位置和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
@@ -89,6 +91,7 @@ repo/
 │  │  ├─ npm/                        npm script、包元数据和发布环境
 │  │  ├─ prettier/                   Prettier 项目事实和执行
 │  │  ├─ stylelint/                  Stylelint 项目事实和执行
+│  │  ├─ ui-tokens/                  Manifest、Sass Stylelint 事实、UnoCSS 用法与配置静态事实
 │  │  ├─ stryker/                    Stryker 项目解析、执行、报告校验与中文报告
 │  │  ├─ vitest/                     Vitest、覆盖率和测试源码事实
 │  │  ├─ vue/                        Vue 模板、script、异步资源与交互事实
@@ -104,6 +107,7 @@ repo/
 │  └─ policies/                      纯策略判定、AGENTS 规范目录与渲染、CI 通知内容策略
 ├─ test/                             配置、行为、端到端及按领域拆分的架构边界测试
 ├─ config.schema.json                项目配置 Schema
+├─ ui-token-manifest.schema.json      UI Token、适配器别名、shortcut 与来源指纹 Schema
 ├─ api-performance-config.schema.json Axios 接口性能配置 Schema
 ├─ k6-load-config.schema.json          k6 接口压测配置 Schema
 ├─ external-report.schema.json       外部门禁报告 Schema
@@ -141,6 +145,8 @@ GitLab CI 内置通知沿用该方向：`policies/gitlab-ci-notification.js` 只
 
 路径命名功能由 `config/path-naming-validation.js` 验证项目唯一规范与作用范围，`git/tracked-paths.js` 只读取最终 Git 索引中的完整已跟踪路径事实，`policies/path-naming.js` 纯粹判断文件名和祖先文件夹名，`gates/repository/path-naming-gate.js` 负责环境适配和统一 GateResult。该门禁不自动重命名，也不按目录派生第二套规范。
 
+UI Token 功能同样按契约、事实和决策分层：`config/ui-token-validation.js` 与 `ui-token-manifest-validation.js` 分别规范化项目选择的语言适配器和语言无关 Manifest，并拒绝空白或带 variant 的 UnoCSS 基础 token、别名/shortcut 重名、Manifest 自引用及循环 shortcut；`integrations/ui-tokens/manifest.js` 安全读取来源并计算 SHA-256，`sass.js` 通过消费项目 Stylelint 只提取 `.scss`、`.sass` 和 Vue 显式 Sass style 中的声明与响应式条件，`unocss.js` 提取 Vue/HTML class、Vue/JSX 有限 class 绑定、带值或无值 Attributify、可嵌套 variant group、负值、任意属性与动态用法，`unocss-configuration.js` 只用 AST 静态解析配置中的 shortcuts、rules、`theme.breakpoints`、preset、transformer 和高风险扩展，绝不执行 UnoCSS 配置；`policies/ui-tokens.js` 负责类别、完整别名边界、简写原始值、断点、shortcut 双向一致性、动态边界和结构化例外，`gates/quality/ui-token-gate.js` 负责增量/契约变更全量计划、删除契约识别及统一 GateResult。项目自行生成 Manifest，repo-guard 不猜测任意语言中的 Token 定义语义。
+
 图片资源治理继续分离 Git 二进制事实、第三方工具事实、纯策略和写入边界：`git/binary-content.js` 批量读取索引或 revision 中的 blob 标识与大小，`integrations/images/` 只解析消费项目的 Sharp/SVGO 并生成候选及像素事实，多帧资源同时保留和比较帧数、帧高、播放延迟及循环次数；`policies/image-assets.js` 负责范围、命名、真实格式、重复分组和收益阈值，增量重复分组优先保留未变更的存量资源，`canonicalRoots` 支持仓库内目录或 glob；`gates/repository/image-assets-gate.js` 形成只读 GateResult。显式优化由同领域 `image-assets-optimizer.js` 持有唯一文件写入边界，原格式安全替换保留权限并拒绝临时路径、备份路径和悬空链接碰撞；默认只预览，Hook 与 CI 永不写图片、删除资源或修改引用。
 
 无效图片资源延续相同依赖方向：`integrations/images/references.js` 只从 Vue/NVue、HTML/WXML、JavaScript/TypeScript、样式、Markdown 和 JSON 提取静态引用与 `import.meta.glob` 事实；`policies/unused-image-assets.js` 负责源码范围、别名/public 映射、动态声明有效性和“图片集合减引用集合”的纯判定；`gates/repository/unused-image-assets-gate.js` 负责工作区或 Git revision 快照、安全上限、基线差异、结构化例外与 GateResult。`git/binary-content.js` 通过单次 `cat-file --batch` 读取所需源码 blob，避免逐文件启动 Git。手动命令固定全量审计，pre-push、CI full 和 release-ready 只读执行；不进入 pre-commit，也不自动删除图片或改写引用。
@@ -177,14 +183,14 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 33 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 34 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
 | 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.image-assets`、`repository.unused-image-assets`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
-| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
+| 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.ui-tokens`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
 | 发布准备 | `release.check`、`release.test`、`release.package` |
 
 `coverage` 和 `componentInteraction` 是 `quality.unit-test` 的子能力；Stylelint 复杂度和样式治理在提交门禁中由 `quality.stylelint` 执行，同时提供独立的全项目审计 Gate。
@@ -244,8 +250,9 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | 函数文档同步 | `preCommit.functionDocs` | 默认关闭；按 AST 签名同步暂存 JavaScript、TypeScript 和 Vue script 中的 `@param`/`@returns`，保留人工说明，并提示缺失的 `@throws`；Vue 顶层 script 边界由 `integrations/vue` 共享扫描器提供，不会把注释或 template 文本当成源码 |
 | Vue 异步资源清理 | `preCommit.asyncResourceCleanup` | 默认关闭；按 include、exclude 和扩展名选择 Vue 页面与 composable，匹配定时器、动画帧、监听器、Observer、连接、Worker、订阅、定位监听和请求取消；启用后全部按错误阻断且不自动修复 |
 | 统一路径命名 | `preCommit.pathNaming` | 默认关闭；项目在 camelCase 与 kebab-case 中选择唯一规范，按 include、exclude 检查完整 Git 索引中的文件名和文件夹名；全部按错误阻断且不自动重命名 |
+| UI Token | `uiTokens` | 默认关闭；项目显式启用 Sass/UnoCSS 适配器，以语言无关 Manifest 精确约束 12 类 Token；Sass 图标选择器和 UnoCSS 图标组件上下文由项目声明，配置契约变化触发全量复查，shortcut 与断点配置双向静态校验，其他样式和非断点 variant 不参与判断 |
 
-pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照，完成后把修复写回索引，并恢复同一文件中的未暂存内容；任一步失败都会恢复执行前状态。文件头与函数文档同步均发生在同一暂存快照中。文件头使用匹配源文件的注释形式，并以 Git 记录重建受管字段；函数文档仅处理配置范围内的具名实现，不猜测 Description、参数说明或异常语义，解构参数与 Generator 使用非阻断人工维护提示。
+pre-commit 从不运行项目级 fix。`lint-staged` 只暴露本次暂存快照，完成后把修复写回索引，并恢复同一文件中的未暂存内容；任一步失败都会恢复执行前状态。若暂存区只有删除项而 lint-staged 没有可传递文件，隔离层会补跑一次无文件只读质量入口，使 UI Token Manifest、来源与 UnoCSS 配置删除仍按提交快照阻断。文件头与函数文档同步均发生在同一暂存快照中。文件头使用匹配源文件的注释形式，并以 Git 记录重建受管字段；函数文档仅处理配置范围内的具名实现，不猜测 Description、参数说明或异常语义，解构参数与 Generator 使用非阻断人工维护提示。
 
 ### 5.3 安全与 Vue 静态规则
 
@@ -403,13 +410,13 @@ repo-guard 生成临时受控入口并独占 k6 `options`、thresholds 与 `hand
 
 | 配置档 | 固定能力 |
 |---|---|
-| `policy` | 结构化例外、AGENTS 托管规范、安全与 Vue 可访问性、依赖、文件归位、代码位置、行数、测试策略和保护文件 |
+| `policy` | 结构化例外、AGENTS 托管规范、安全与 Vue 可访问性、UI Token、依赖、文件归位、代码位置、行数、测试策略和保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
 | `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse 和发布包一致性检查 |
 
 CI 使用明确 base/head 或 GitLab 提供的可信范围。浅克隆缺少基准提交时返回范围错误，不会把未知范围当成空变更。
 
-CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。`repository.agent-policy` 在结构化例外之后、其他项目规则之前验证 `AGENTS.md` 已同步，失败时要求在受控写入阶段运行 `repo-guard doctor --fix`。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，调用消费项目显式提供的固定验证/部署 npm scripts；开启通知时再由包内命令读取 GitLab CI 受保护变量并发送结果。
+CI 门禁始终只读：不执行 fix、不安装 Hook、不读取本地企业微信凭据、不发送通知。`repository.agent-policy` 在结构化例外之后、其他项目规则之前验证 `AGENTS.md` 已同步，失败时要求在受控写入阶段运行 `repo-guard doctor --fix`。启用 UI Token 后，policy/full/release-ready 都执行同一规则；主配置、Manifest、Token 来源或 UnoCSS 配置变化时从变更文件提升为配置范围全量复查。报告写入 `reports/` 下经过验证的 JSON 路径，并可以作为 GitLab artifact 保留。可选应用交付 Job 属于独立层，调用消费项目显式提供的固定验证/部署 npm scripts；开启通知时再由包内命令读取 GitLab CI 受保护变量并发送结果。
 
 `ci.gatePolicy` 在现有固定计划之上提供 CI 专属的 Gate 激活和阻断策略：`inherit` 保持原行为，`off` 在 setup 前跳过，`report` 执行但不影响 CI 总退出码，`enforce` 执行并阻断失败。该策略不进入 pre-commit 或 pre-push；显式 `report/enforce` 只修改单个 CI 步骤的不可变上下文副本。
 
@@ -449,6 +456,7 @@ Stylelint fix
   → Prettier
   → Stylelint read-only verify
   → ESLint read-only verify
+  → UI Token（启用时按 Sass/UnoCSS 适配器检查）
   → Vue async-resource-cleanup（启用时阻断）
   → path-naming（启用时检查全部已跟踪路径）
   → dynamic-code
@@ -488,7 +496,7 @@ pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步�
 
 ### 6.3 CI 与 release-ready
 
-CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息；CI 默认拒绝残留的 `fixup!`/`squash!`。无效图片资源只进入 CI full 与 release-ready，不进入轻量 policy。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
+CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息，并在启用时执行 UI Token 门禁；CI 默认拒绝残留的 `fixup!`/`squash!`。无效图片资源只进入 CI full 与 release-ready，不进入轻量 policy。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
 
 ## 7. CLI 命令清单
 
@@ -529,6 +537,7 @@ unit-test
 mutation-test
 async-resource-cleanup
 path-naming
+ui-tokens
 dynamic-code
 unsafe-html
 target-blank
@@ -556,6 +565,7 @@ fileHeader
 functionDocs
 asyncResourceCleanup
 pathNaming
+uiTokens
 imageAssets
 unusedImageAssets
 styleComplexity
@@ -597,6 +607,7 @@ ci
 | `commitMessage` | Commit 提交信息与生命周期治理 |
 | `deadCode` | Knip 项目级无效代码检查与历史债务基线 |
 | `imageAssets` | 图片范围、命名、重复、压缩、WebP 转换、无效资源父级执行模式、收益阈值和安全上限；`unused` 子配置包含引用源码范围与扩展名、别名、公开目录、动态声明、报告级别和源码读取安全上限 |
+| `uiTokens` | UI Token Manifest、检查范围、Sass/UnoCSS 适配器、UnoCSS 配置文件及图标上下文 |
 | `architecture` | dependency-cruiser 门禁 |
 | `build` | 独立构建门禁 |
 | `lighthouse` | Lighthouse 配置和自动执行开关 |
@@ -622,6 +633,7 @@ npm 包根入口只公开稳定构造和结果契约：
 包还公开：
 
 - `@cxyi7/repo-guard/config.schema.json`；
+- `@cxyi7/repo-guard/ui-token-manifest.schema.json`；
 - `@cxyi7/repo-guard/api-performance-config.schema.json`；
 - `@cxyi7/repo-guard/k6-load-config.schema.json`；
 - `@cxyi7/repo-guard/external-report.schema.json`；
@@ -654,6 +666,7 @@ npm 包根入口只公开稳定构造和结果契约：
 - k6 runner 不自动安装本机工具、Docker 或扩展，不调用云端压测，不进入自动化流程，也不保证操作系统强制终止时执行消费者 teardown。
 - 不隐式上传 Lighthouse 或其他报告。
 - 不自动关闭规则、降低阈值、扩大排除项或生成绕过例外。
+- UI Token 门禁当前只适配 Sass 与 UnoCSS，不执行 UnoCSS 配置，只信任可静态证明的官方基础 preset 与 variant-group transformer，不接受动态 shortcut、不可枚举 class 或自定义样式生成扩展，也不治理约定的 12 类之外的普通样式。
 - 不宣称 WebP 对所有图片都有固定压缩率，不自动删除原图、修改源码引用或在 Hook/CI 中写入图片。
 - 不执行 npm 发布、部署、生产环境写入或凭据操作。
 

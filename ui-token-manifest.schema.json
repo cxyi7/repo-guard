@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unpkg.com/@cxyi7/repo-guard/ui-token-manifest.schema.json",
+  "title": "repo-guard UI Token Manifest",
+  "description": "由项目生成并提交的语言无关 UI Token 契约。来源文件指纹用于证明 Manifest 与 Sass、UnoCSS 配置处于同一快照。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "sources", "tokens"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": ".*\\S.*",
+            "description": "仓库内 Token 来源或 UnoCSS 配置文件。"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "来源文件当前内容的小写 SHA-256。"
+          }
+        }
+      }
+    },
+    "tokens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "aliases"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$"
+          },
+          "category": {
+            "enum": [
+              "color",
+              "spacing",
+              "font-family",
+              "font-size",
+              "line-height",
+              "font-weight",
+              "radius",
+              "shadow",
+              "z-index",
+              "breakpoint",
+              "animation-duration",
+              "icon-size"
+            ]
+          },
+          "aliases": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sass": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1, "pattern": ".*\\S.*" }
+              },
+              "unocss": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1, "pattern": "^\\S+$" }
+              }
+            },
+            "anyOf": [
+              { "required": ["sass"], "properties": { "sass": { "minItems": 1 } } },
+              { "required": ["unocss"], "properties": { "unocss": { "minItems": 1 } } }
+            ]
+          }
+        }
+      }
+    },
+    "shortcuts": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "expandsTo"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+          "expandsTo": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+            "description": "必须展开为静态 utility；展开后的受控 utility 仍逐项匹配 Token。"
+          }
+        }
+      }
+    }
+  }
+}

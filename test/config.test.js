@@ -21,6 +21,7 @@ import {
   DEFAULT_STYLELINT_PATTERN,
   DEFAULT_STYLE_GOVERNANCE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
+  DEFAULT_UI_TOKENS_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../src/config/defaults.js';
 import { loadConfig } from '../src/config/configuration-loader.js';
@@ -60,6 +61,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.dependencyPolicy, DEFAULT_DEPENDENCY_POLICY_CONFIG);
   assert.deepEqual(config.commitMessage, DEFAULT_COMMIT_MESSAGE_CONFIG);
   assert.deepEqual(config.imageAssets, DEFAULT_IMAGE_ASSETS_CONFIG);
+  assert.deepEqual(config.uiTokens, DEFAULT_UI_TOKENS_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.accessibilityTest, DEFAULT_ACCESSIBILITY_TEST_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);

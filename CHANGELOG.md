@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.22.0
+
+- 新增默认关闭的 `quality.ui-tokens` 门禁。消费项目必须先在 `uiTokens.adapters` 显式声明启用 `sass`、`unocss` 中的哪些语言适配器；门禁只治理颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸，其他样式保持项目自治。
+- 新增由项目生成并提交的语言无关 `ui-tokens.manifest.json` 及独立 Schema，以稳定 Token id、类别、Sass/UnoCSS 精确别名、静态 shortcut 和来源文件 SHA-256 连接任意 Token 定义方式。Manifest、Token 来源、主配置或 UnoCSS 配置变化会触发全量源码复查，UnoCSS 配置必须纳入来源指纹，启用门禁时 Manifest 自动进入受保护文件通知规则。
+- Sass 适配器复用消费项目自身的 Stylelint、配置和自定义语法，提取 Sass/Vue 声明以及 `@media`/`@container` 条件；拒绝受控属性中的原始值、计算绕过、未知 Token、类别错配和原始断点，不在 Hook 中执行项目级修复。
+- UnoCSS 适配器静态检查 Vue/HTML/JavaScript/TypeScript 中的 class、Attributify、variant group、响应式 variant、图标上下文和动态拼接；配置文件只解析不执行，静态 shortcuts 必须与 Manifest 完全一致，动态 shortcut 和项目自定义 `rules` 直接阻断。同步 Registry、固定 pre-commit/CI/release-ready 计划、配置生命周期、AGENTS 托管规范、中文 GateResult、测试、README 和长期功能清单。
+- 完成 UI Token 独立代码审查并收紧可绕过边界：Sass 别名按完整表达式边界匹配，简写中的命名颜色、字体、时长和阴影原始值不再漏检；UnoCSS 补齐负值、任意属性、HTML/无值 Attributify、Vue/JSX 有限 class 绑定、嵌套 variant group、派生及任意媒体断点，并将非断点 variant 和边框宽度等未管理样式留在治理范围之外。配置只信任静态导入的官方基础 preset 与 variant-group transformer，其他样式生成扩展直接阻断；Manifest 拒绝自引用、别名/shortcut 歧义和循环 shortcut，shortcut 与静态配置双向一致且未使用时也会检查；只有删除项的 pre-commit 仍会按暂存快照验证契约文件。
+
 ## 1.21.1
 
 - 统一 Gate 定义与 Execution Plan 使用的环境、CI 环境和副作用级别契约，补齐 `managed-files` 长期文档，避免两处枚举独立演进。

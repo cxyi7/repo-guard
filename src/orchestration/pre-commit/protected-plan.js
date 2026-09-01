@@ -11,6 +11,7 @@ export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'quality.prettier', gateId: 'quality.prettier', mutation: 'working-tree-fix' }),
   Object.freeze({ id: 'quality.stylelint-verify', gateId: 'quality.stylelint', mutation: 'read-only' }),
   Object.freeze({ id: 'quality.eslint-verify', gateId: 'quality.eslint', mutation: 'read-only' }),
+  Object.freeze({ id: 'quality.ui-tokens', gateId: 'quality.ui-tokens', mutation: 'read-only' }),
   Object.freeze({ id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.path-naming', gateId: 'repository.path-naming', mutation: 'read-only' }),
   Object.freeze({ id: 'security.dynamic-code', gateId: 'security.dynamic-code', mutation: 'read-only' }),

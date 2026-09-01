@@ -4,7 +4,7 @@
 
 它的核心目标是为 AI 辅助开发提供强制、可审计的工程规范，防止 AI 随意修改受保护文件、绕过质量检查、破坏既定目录和依赖边界，或在缺少验证时直接交付代码。
 
-- 当前版本：`1.21.1`
+- 当前版本：`1.22.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 开源协议：MIT
@@ -18,6 +18,8 @@
 - 按固定顺序执行暂存文件的 Stylelint、ESLint、Prettier 修复和只读复检，并通过 `lint-staged` 保留部分暂存内容。
 - 根据 Git 记录同步文件头作者与时间，根据 AST 同步函数 `@param`、`@returns` 并提示缺失的 `@throws`。
 - 治理样式复杂度、样式作用域和 Vue 文件 style 语言一致性，Git Hook 不执行项目级 fix。
+- 提供默认关闭的 UI Token 门禁。项目先声明启用 `sass`、`unocss` 中的哪些适配器，再通过语言无关 Manifest 统一约束颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、断点、动画时长和图标尺寸；其他样式不纳入判断。
+- Sass 适配器复用消费项目的 Stylelint 和语法配置；UnoCSS 适配器检查有限 class 绑定、Attributify、variant group、静态断点和 shortcut，并与 Manifest 双向核对，拒绝受控 utility 的默认刻度、任意值、不可证明的动态拼接、未登记 shortcut 与自定义样式生成扩展；仅删除契约文件的提交也会按暂存快照执行门禁。
 
 ### 安全与仓库治理
 
@@ -48,4 +50,5 @@
 | [版本记录](CHANGELOG.md) | 各版本新增、调整和修复内容 |
 | [发布流程](PUBLISHING.md) | npm 发布前检查、登录、验证和发布流程 |
 | [配置 Schema](config.schema.json) | 主配置字段、类型和约束；其他专项 Schema 位于仓库根目录 |
+| [UI Token Manifest Schema](ui-token-manifest.schema.json) | 语言无关 Token、Sass/UnoCSS 别名、来源指纹与 shortcut 契约 |
 | [MIT 许可证](LICENSE) | 开源许可范围与条款 |

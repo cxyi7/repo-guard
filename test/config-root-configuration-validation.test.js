@@ -16,6 +16,8 @@ test('accepts the complete set of supported root configuration properties', () =
     dependencyPolicy: null,
     commitMessage: null,
     deadCode: null,
+    imageAssets: null,
+    uiTokens: null,
     architecture: null,
     accessibilityTest: null,
     build: null,

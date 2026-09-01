@@ -18,6 +18,7 @@ import {
 } from './protected-file-validation.js';
 import { validateRootConfigurationContract } from './root-configuration-validation.js';
 import { validateUnitTestConfiguration } from './unit-test-validation.js';
+import { validateUiTokenConfiguration } from './ui-token-validation.js';
 import { CONFIG_FILE, configValidationError } from './validation-primitives.js';
 
 export function validateConfigValue(value, configPath = CONFIG_FILE) {
@@ -39,6 +40,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
   const deadCode = validateDeadCodeConfiguration(value, configPath);
 
   const imageAssets = validateImageAssetsConfiguration(value, configPath);
+
+  const uiTokens = validateUiTokenConfiguration(value, configPath);
 
   const architecture = validateArchitectureConfiguration(value, configPath);
 
@@ -79,6 +82,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     commitMessage,
     deadCode,
     imageAssets,
+    uiTokens,
     architecture,
     build,
     lighthouse,

@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.21.1`
+- 当前版本：`1.22.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.21.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.22.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -40,6 +40,7 @@ Stylelint fix
   → Prettier
   → Stylelint read-only verify
   → ESLint read-only verify
+  → UI Token（启用时按项目声明的 Sass/UnoCSS 适配器检查）
   → Vue async-resource-cleanup（启用时阻断）
   → path-naming（启用时检查全部已跟踪路径）
   → dynamic-code
@@ -112,7 +113,7 @@ repo-guard enable dependencies commitMessage architecture deadCode imageAssets
 repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
-repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming imageAssets filePlacement maxFileLines codePlacement
+repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming uiTokens imageAssets filePlacement maxFileLines codePlacement
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -129,6 +130,7 @@ fileHeader
 functionDocs
 asyncResourceCleanup
 pathNaming
+uiTokens
 imageAssets
 styleComplexity
 styleGovernance
@@ -356,6 +358,109 @@ git add .repo-guard/knip-baseline.json
 - pre-commit、CI policy/full 和 release-ready 每次检查 Git 索引中的全部已跟踪路径，不只检查本次变更，因此启用前应先完成存量路径治理；新暂存路径也会立即进入检查，已删除路径不再阻断。
 - `include`、`exclude` 使用仓库相对 glob，且 `exclude` 优先。默认排除隐藏路径和 `generated` 目录；`[id]`、`(auth)` 等框架特殊目录若需要保留，应明确加入排除范围。
 - Git 不跟踪空目录，因此空目录只有在包含已跟踪文件后才会进入检查。门禁不会自动重命名，避免破坏 import、路由、脚本和大小写敏感文件系统中的引用关系。
+
+### 配置 UI Token 门禁
+
+UI Token 门禁默认关闭。项目必须先在 `repo-guard.config.json` 中声明实际使用的适配器，再执行 `repo-guard enable uiTokens`；repo-guard 不会根据文件扩展名猜测语言。当前版本只支持 `sass` 和 `unocss`，可以只启用其中一个，也可以同时启用：
+
+```json
+{
+  "uiTokens": {
+    "enabled": false,
+    "manifestFile": "ui-tokens.manifest.json",
+    "include": ["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"],
+    "exclude": ["**/generated/**", "**/dist/**", "**/coverage/**", "**/reports/**"],
+    "adapters": {
+      "sass": { "enabled": true },
+      "unocss": {
+        "enabled": true,
+        "configFiles": ["uno.config.ts"],
+        "attributify": true,
+        "variantGroups": true
+      }
+    },
+    "icon": {
+      "components": ["UiIcon", "SvgIcon"],
+      "nativeSvg": true,
+      "sassSelectors": ["svg", ".icon", ".ui-icon", ".svg-icon"]
+    }
+  }
+}
+```
+
+保存这段配置后运行：
+
+```bash
+repo-guard enable uiTokens
+```
+
+项目需要用自己的设计系统生成脚本提交 `ui-tokens.manifest.json`。定义源可以是 Sass、JSON、TypeScript 或其他语言；repo-guard 不执行定义源，而是只读取归一化后的 Token 类别与适配器别名。下面的 SHA-256 是格式占位，实际值必须由生成脚本按来源文件原始字节计算并写入：
+
+```json
+{
+  "$schema": "./node_modules/@cxyi7/repo-guard/ui-token-manifest.schema.json",
+  "version": 1,
+  "sources": [
+    {
+      "path": "src/styles/tokens.scss",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "path": "uno.config.ts",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "color.brand",
+      "category": "color",
+      "aliases": {
+        "sass": ["$color-brand"],
+        "unocss": ["bg-brand", "text-brand"]
+      }
+    },
+    {
+      "id": "spacing.md",
+      "category": "spacing",
+      "aliases": {
+        "sass": ["$space-md"],
+        "unocss": ["p-space-md", "gap-space-md"]
+      }
+    },
+    {
+      "id": "breakpoint.tablet",
+      "category": "breakpoint",
+      "aliases": {
+        "sass": ["$breakpoint-tablet"],
+        "unocss": ["tablet"]
+      }
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "card-tokenized",
+      "expandsTo": ["bg-brand", "p-space-md"]
+    }
+  ]
+}
+```
+
+管理范围固定为以下 12 类：`color`、`spacing`、`font-family`、`font-size`、`line-height`、`font-weight`、`radius`、`shadow`、`z-index`、`breakpoint`、`animation-duration`、`icon-size`。宽高、布局、定位模式、透明度、边框宽度、轮廓宽度、文字装饰厚度和描边宽度等其他样式不做判断；唯一例外是配置的图标组件和原生 `svg` 上的 `size`、`w`、`h` UnoCSS utility 会按 `icon-size` 检查。
+
+Sass 适配器有以下边界：
+
+- 使用消费项目自己的 Stylelint、配置和 custom syntax 解析 `.scss`、`.sass`，以及 Vue 中显式标注 `lang="scss"` 或 `lang="sass"` 的 style 块；未选择的 CSS、Less 等语言不会被 Sass 适配器接管。门禁不安装或替换 Sass/Stylelint，也不执行 fix。`icon.sassSelectors` 明确哪些选择器中的 `width`、`height`、`inline-size`、`block-size` 按 `icon-size` 管理，普通元素宽高仍不受约束。
+- 受控声明和 `@media`/`@container` 断点必须引用 Manifest 中类别匹配的 Sass 别名。别名可以是变量、map 访问或函数调用等项目写法，但按完整表达式边界匹配，不能用较短别名前缀伪装未登记变量。
+- 原始颜色（包括简写中的命名颜色）、长度、字体简写、时长、阴影、断点、未登记变量、错误类别、`calc()` 或原始 fallback 等不可证明写法会阻断；`0`、`auto`、`inherit`、`none` 等与设计刻度无关的安全常量允许使用。
+
+UnoCSS 适配器有以下边界：
+
+- 静态检查 Vue/HTML 的 class、Vue/JSX 绑定中的有限字符串分支、JavaScript/TypeScript/JSX 字符串、带值或无值 Attributify，以及包含函数或任意值的嵌套 variant group；受控 utility 必须精确等于对应类别的 Manifest 别名。无法枚举输出的整个动态 class 绑定会阻断；具有固定 utility 前缀的插值仅在该前缀属于受控类别时阻断。负值 utility 和任意 CSS 属性写法同样不能绕过。
+- 默认刻度（例如 `p-4`）、任意值（例如 `bg-[#fff]`）、未登记 breakpoint、任意媒体/容器断点，以及能生成受控 utility 的模板插值或字符串拼接都会阻断。hover、状态、选择器等非断点 variant 不属于 Token 类别，门禁只继续检查其展开后的受控 utility。
+- `configFiles` 只做 AST 静态解析，绝不加载或执行。`theme.breakpoints` 必须静态可证明且每个名称都来自 breakpoint Token；配置与 Manifest 中的静态 shortcut 必须双向一致，所有展开内容即使尚未使用也会检查。基础 utility 只信任从 `unocss` 或对应 `@unocss/*` 包静态导入的 Uno/Mini/Wind/Attributify preset，以及官方 variant-group transformer；其参数必须是静态数据。循环、动态、正则/函数 shortcut、配置展开、自定义 `rules`、preset、variant、preflight、extractor、safelist、postprocess 和其他 transformer 无法形成可验证闭环，因此直接阻断。
+- 每个 UnoCSS 配置文件都必须出现在 Manifest `sources`。主配置、Manifest、任一来源或 UnoCSS 配置发生变化时，pre-commit 与 CI 会从增量检查提升为作用范围内全量复查，避免改 Token 后漏检未修改页面。
+
+Manifest 启用后会自动加入 `notify` 级受保护文件规则。Manifest 不得把自身列为来源；UnoCSS 别名和 shortcut 项必须是单个无空白静态 token，别名与 shortcut 名称不得包含 variant、`!` 前缀或彼此重名。来源哈希不一致、配置未跟踪、别名类别错误、契约文件删除和静态分析无法证明的动态写法都会产生中文结构化问题；即使一次提交只有删除项，pre-commit 也会补跑只读质量入口。临时放行只能使用现有的精确、限时结构化例外。项目的 Manifest 生成器必须以设计系统定义源为事实来源，不能通过删 Token、伪造类别或只刷新哈希来隐藏违规。
 
 ### 配置图片资源治理与 WebP 转换
 
@@ -631,7 +736,7 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 
 | 配置档 | 内容 |
 |---|---|
-| `policy` | 原生安全、Vue 可访问性、结构化例外、依赖、文件/代码位置、行数、测试策略和保护文件 |
+| `policy` | 原生安全、Vue 可访问性、结构化例外、UI Token、依赖、文件/代码位置、行数、测试策略和保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
 | `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse 和发布包一致性检查 |
 
@@ -1080,6 +1185,7 @@ repo-guard dependencies
 repo-guard dynamic-code
 repo-guard async-resource-cleanup
 repo-guard path-naming
+repo-guard ui-tokens
 repo-guard unsafe-html
 repo-guard target-blank
 repo-guard form-labels
@@ -1115,6 +1221,7 @@ dependencyPolicy
 commitMessage
 deadCode
 imageAssets
+uiTokens
 architecture
 build
 lighthouse
@@ -1131,6 +1238,7 @@ exclusions
 
 - [gate-result.schema.json](../gate-result.schema.json)
 - [external-report.schema.json](../external-report.schema.json)
+- [ui-token-manifest.schema.json](../ui-token-manifest.schema.json)
 - [api-performance-config.schema.json](../api-performance-config.schema.json)
 - [k6-load-config.schema.json](../k6-load-config.schema.json)
 

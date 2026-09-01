@@ -83,6 +83,9 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.deadCode.baselineFile, '.repo-guard/knip-baseline.json');
   assert.equal(config.imageAssets.enabled, false);
   assert.equal(config.imageAssets.naming.convention, 'camelCase');
+  assert.equal(config.uiTokens.enabled, false);
+  assert.equal(config.uiTokens.adapters.sass.enabled, false);
+  assert.equal(config.uiTokens.adapters.unocss.enabled, false);
   assert.equal(config.architecture.enabled, false);
   assert.equal(config.accessibilityTest.enabled, false);
   assert.equal(config.architecture.rules.length, 3);
@@ -399,6 +402,32 @@ test('enables and disables the dead-code project gate', (context) => {
   const disabled = setFeaturesEnabled(root, ['deadCode'], false);
   assert.deepEqual(disabled.changed, ['deadCode']);
   assert.equal(readConfig(root).deadCode.enabled, false);
+});
+
+test('在项目先声明语言适配器后启用和禁用 UI Token 门禁', (context) => {
+  const root = createFixture(sparseConfig({
+    uiTokens: {
+      enabled: false,
+      adapters: {
+        sass: { enabled: true },
+        unocss: { enabled: true },
+      },
+    },
+  }));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['uiTokens'], true);
+  assert.deepEqual(enabled.changed, ['uiTokens']);
+  assert.equal(readConfig(root).uiTokens.enabled, true);
+  assert.equal(readConfig(root).uiTokens.adapters.sass.enabled, true);
+  assert.equal(readConfig(root).uiTokens.adapters.unocss.enabled, true);
+  assert.equal(readConfig(root).rules.some(({ pattern, category }) => (
+    pattern === 'ui-tokens.manifest.json' && category === 'UI Token 契约'
+  )), true);
+
+  const disabled = setFeaturesEnabled(root, ['uiTokens'], false);
+  assert.deepEqual(disabled.changed, ['uiTokens']);
+  assert.equal(readConfig(root).uiTokens.enabled, false);
 });
 
 test('enables the dependency governance pre-commit feature', (context) => {

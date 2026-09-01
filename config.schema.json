@@ -800,6 +800,141 @@
         }
       }
     },
+    "uiTokens": {
+      "type": "object",
+      "description": "以语言无关的 Manifest 约束 UI Token 使用；当前提供 Sass 与 UnoCSS 两个静态适配器。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁。"
+        },
+        "manifestFile": {
+          "type": "string",
+          "minLength": 1,
+          "default": "ui-tokens.manifest.json",
+          "description": "仓库内由项目生成并提交的 UI Token Manifest。"
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"],
+          "description": "参与 Sass 或 UnoCSS 静态检查的仓库相对 glob。"
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["**/generated/**", "**/dist/**", "**/coverage/**", "**/reports/**"],
+          "description": "优先于 include 的排除 glob。"
+        },
+        "adapters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sass": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "使用消费项目自身的 Stylelint 与自定义语法解析 Sass 和 Vue style。"
+                }
+              }
+            },
+            "unocss": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "configFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 },
+                  "default": ["uno.config.ts"],
+                  "description": "必须同时列入 Manifest sources 的 UnoCSS 配置文件。"
+                },
+                "attributify": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "是否检查 UnoCSS Attributify 写法。"
+                },
+                "variantGroups": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "是否展开并检查 UnoCSS variant group 写法。"
+                }
+              }
+            }
+          }
+        },
+        "icon": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "components": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "default": ["UiIcon", "SvgIcon"],
+              "description": "在这些组件上将 size、w、h utility 识别为 icon-size。"
+            },
+            "nativeSvg": {
+              "type": "boolean",
+              "default": true,
+              "description": "是否在原生 svg 元素上约束 icon-size utility。"
+            },
+            "sassSelectors": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "default": ["svg", ".icon", ".ui-icon", ".svg-icon"],
+              "description": "在这些 Sass/CSS 选择器上下文中将 width、height、inline-size、block-size 识别为 icon-size。"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["enabled"],
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "required": ["adapters"],
+            "properties": {
+              "adapters": {
+                "anyOf": [
+                  {
+                    "required": ["sass"],
+                    "properties": {
+                      "sass": {
+                        "required": ["enabled"],
+                        "properties": { "enabled": { "const": true } }
+                      }
+                    }
+                  },
+                  {
+                    "required": ["unocss"],
+                    "properties": {
+                      "unocss": {
+                        "required": ["enabled"],
+                        "properties": { "enabled": { "const": true } }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "architecture": {
       "type": "object",
       "description": "Project-wide dependency architecture gate configured and executed by repo-guard through the consuming project's dependency-cruiser installation, with standalone AI repair instructions for blocking violations.",

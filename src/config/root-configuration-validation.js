@@ -21,6 +21,7 @@ export function validateRootConfigurationContract(value, configPath) {
       'commitMessage',
       'deadCode',
       'imageAssets',
+      'uiTokens',
       'architecture',
       'accessibilityTest',
       'build',
