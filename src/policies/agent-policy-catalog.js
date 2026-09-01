@@ -149,11 +149,29 @@ const entries = [
     ],
   }),
   entry({
+    id: 'ui-tokens',
+    groupId: 'staged-quality-policy',
+    gates: ['quality.ui-tokens'],
+    features: ['uiTokens'],
+    when: enabled('uiTokens'),
+    lines: ({ config }) => {
+      const adapters = Object.entries(config.uiTokens.adapters)
+        .filter(([, adapter]) => adapter.enabled)
+        .map(([name]) => name);
+      return [
+        `- UI Token 门禁启用 ${list(adapters)} 适配器；检查范围为 ${list(config.uiTokens.include)}，排除 ${list(config.uiTokens.exclude)}。`,
+        `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
+        `- Sass 只检查 .scss、.sass 和 Vue 中显式声明的 Sass style，必须使用 Manifest 中完整且类别匹配的别名，图标尺寸只在 ${list(config.uiTokens.icon.sassSelectors)} 选择器中检查；UnoCSS 的 class、Attributify、variant group、shortcut 与断点展开后都必须可静态证明，禁止任意值、不可枚举动态 class、项目自定义 rules 及其他样式生成扩展。`,
+        `- ${code(config.uiTokens.manifestFile)} 不得自引用；UnoCSS theme.breakpoints 与静态 shortcut 必须和 Manifest 双向一致，Manifest、来源文件或已启用配置不得从提交快照中被直接删除。`,
+      ];
+    },
+  }),
+  entry({
     id: 'pre-commit-order',
     groupId: 'staged-quality-policy',
     when: () => true,
     lines: () => [
-      '- pre-commit 顺序固定为 Stylelint fix、ESLint fix、Prettier、只读 Stylelint/ESLint 校验、受保护文件门禁；不得运行项目级 fix，不得加入 TypeScript 类型检查。',
+      '- pre-commit 顺序固定为 Stylelint fix、ESLint fix、Prettier、只读 Stylelint/ESLint 校验、只读策略门禁，最后运行受保护文件门禁；不得运行项目级 fix，不得加入 TypeScript 类型检查。',
       '- 所有暂存修复必须通过 lint-staged 保留部分暂存与未暂存内容。',
     ],
   }),

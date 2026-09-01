@@ -36,7 +36,9 @@ import {
   clonePathNamingConfig,
   cloneStylelintConfig,
   cloneUnitTestConfig,
+  cloneUiTokensConfig,
   ensureBuildArtifactBaselineRule,
+  ensureUiTokenManifestRule,
 } from './config-copy.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 
@@ -85,6 +87,7 @@ export function createStarterConfig({
     commitMessage: cloneCommitMessageConfig(),
     deadCode: cloneDeadCodeConfig(),
     imageAssets: cloneImageAssetsConfig(),
+    uiTokens: cloneUiTokensConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -180,6 +183,7 @@ export function migrateProjectConfig(root, {
 
   const preCommit = prepared.preCommit ?? {};
   const migratedBuild = cloneBuildConfig(prepared.build);
+  const migratedUiTokens = cloneUiTokensConfig(prepared.uiTokens);
   const next = {
     $schema: prepared.$schema ?? CONFIG_SCHEMA_PATH,
     ...prepared,
@@ -211,6 +215,7 @@ export function migrateProjectConfig(root, {
     commitMessage: cloneCommitMessageConfig(prepared.commitMessage),
     deadCode: cloneDeadCodeConfig(prepared.deadCode),
     imageAssets: cloneImageAssetsConfig(prepared.imageAssets),
+    uiTokens: migratedUiTokens,
     architecture: cloneArchitectureConfig(prepared.architecture),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -252,7 +257,10 @@ export function migrateProjectConfig(root, {
         ...(preCommit.eslint ?? {}),
       },
     },
-    rules: ensureBuildArtifactBaselineRule(prepared.rules, migratedBuild),
+    rules: ensureUiTokenManifestRule(
+      ensureBuildArtifactBaselineRule(prepared.rules, migratedBuild),
+      migratedUiTokens,
+    ),
     exclusions: prepared.exclusions ?? [],
   };
 
@@ -327,6 +335,8 @@ export function setFeaturesEnabled(root, requestedFeatures, enabled) {
       changed.push(feature);
     }
   }
+
+  next.rules = ensureUiTokenManifestRule(next.rules, next.uiTokens);
 
   validateConfig(next);
   if (changed.length > 0) {

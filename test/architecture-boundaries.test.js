@@ -134,6 +134,7 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'scripts/check-syntax.js',
   'src',
   'config.schema.json',
+  'ui-token-manifest.schema.json',
   'external-report.schema.json',
   'api-performance-config.schema.json',
   'k6-load-config.schema.json',
@@ -157,6 +158,7 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
   'package.json',
   'scripts',
   'src',
+  'ui-token-manifest.schema.json',
 ]);
 
 const REVIEWED_SOURCE_DIRECTORIES = Object.freeze([
@@ -1860,6 +1862,7 @@ test('keeps package exports on reviewed contracts and schemas', () => {
   assert.deepEqual(packageJson.exports, {
     '.': './src/index.js',
     './config.schema.json': './config.schema.json',
+    './ui-token-manifest.schema.json': './ui-token-manifest.schema.json',
     './external-report.schema.json': './external-report.schema.json',
     './api-performance-config.schema.json': './api-performance-config.schema.json',
     './k6-load-config.schema.json': './k6-load-config.schema.json',

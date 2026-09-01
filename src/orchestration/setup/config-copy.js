@@ -18,9 +18,41 @@ import {
   DEFAULT_STYLELINT_CONFIG,
   DEFAULT_STYLE_COMPLEXITY_CONFIG,
   DEFAULT_STYLE_GOVERNANCE_CONFIG,
+  DEFAULT_UI_TOKENS_CONFIG,
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../../config/defaults.js';
+
+export function cloneUiTokensConfig(value = {}) {
+  const adapters = value.adapters ?? DEFAULT_UI_TOKENS_CONFIG.adapters;
+  const sass = adapters.sass ?? DEFAULT_UI_TOKENS_CONFIG.adapters.sass;
+  const unocss = adapters.unocss ?? DEFAULT_UI_TOKENS_CONFIG.adapters.unocss;
+  const icon = value.icon ?? DEFAULT_UI_TOKENS_CONFIG.icon;
+  return {
+    ...DEFAULT_UI_TOKENS_CONFIG,
+    ...value,
+    include: [...(value.include ?? DEFAULT_UI_TOKENS_CONFIG.include)],
+    exclude: [...(value.exclude ?? DEFAULT_UI_TOKENS_CONFIG.exclude)],
+    adapters: {
+      sass: { ...DEFAULT_UI_TOKENS_CONFIG.adapters.sass, ...sass },
+      unocss: {
+        ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss,
+        ...unocss,
+        configFiles: [
+          ...(unocss.configFiles ?? DEFAULT_UI_TOKENS_CONFIG.adapters.unocss.configFiles),
+        ],
+      },
+    },
+    icon: {
+      ...DEFAULT_UI_TOKENS_CONFIG.icon,
+      ...icon,
+      components: [...(icon.components ?? DEFAULT_UI_TOKENS_CONFIG.icon.components)],
+      sassSelectors: [
+        ...(icon.sassSelectors ?? DEFAULT_UI_TOKENS_CONFIG.icon.sassSelectors),
+      ],
+    },
+  };
+}
 
 export function cloneExceptionsConfig(value = {}) {
   return {
@@ -123,6 +155,18 @@ export function ensureBuildArtifactBaselineRule(rules, build) {
     next.push({
       pattern: baseline.baselineFile,
       category: '构建产物历史债务基线',
+      level: 'notify',
+    });
+  }
+  return next;
+}
+
+export function ensureUiTokenManifestRule(rules, uiTokens) {
+  const next = rules.map((rule) => ({ ...rule }));
+  if (uiTokens.enabled && !next.some(({ pattern }) => pattern === uiTokens.manifestFile)) {
+    next.push({
+      pattern: uiTokens.manifestFile,
+      category: 'UI Token 契约',
       level: 'notify',
     });
   }
@@ -340,4 +384,3 @@ export function cloneStylelintConfig(value = {}) {
     },
   };
 }
-
