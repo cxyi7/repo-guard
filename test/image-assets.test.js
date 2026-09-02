@@ -34,6 +34,13 @@ import { inspectPathNaming } from '../src/policies/path-naming.js';
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
+function dateText(offsetDays) {
+  const date = new Date();
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
 function configFixture() {
   const config = createStarterConfig();
   config.imageAssets.enabled = true;
@@ -333,8 +340,8 @@ test('精确重复规则接受同一路径和位置的限时结构化例外', as
     owner: 'frontend-team',
     approvedBy: 'architecture-team',
     ticket: 'ASSET-1001',
-    createdOn: '2026-08-20',
-    expiresOn: '2026-09-01',
+    createdOn: dateText(-1),
+    expiresOn: dateText(30),
   }];
   const config = validateConfig(rawConfig);
   const changes = createChangeSet({
