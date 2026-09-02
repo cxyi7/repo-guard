@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.22.0`
+- 当前版本：`1.22.1`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.22.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.22.1
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -33,6 +33,8 @@ npx repo-guard doctor
 顺序由锁定 Execution Plan 固定，消费项目不能重排：
 
 启用 `preCommit.fileHeader` 或 `preCommit.functionDocs` 后，对应内容会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它们不新增、不删除也不重排计划步骤。
+
+整个 pre-commit 生命周期由仓库级互斥锁保护。同一仓库已有提交或 Hook 正在运行时，重叠实例会在操作 Git 索引、工作区或 `lint-staged` 备份前以 `pre-commit/already-running` 停止；应等待当前实例结束后重试。每个实例使用包含 PID 和随机所有权令牌的唯一锁文件，进程异常退出留下的文件只按自身唯一路径清理，不需要手工删除活动锁。
 
 ```text
 Stylelint fix

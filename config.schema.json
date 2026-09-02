@@ -1594,7 +1594,7 @@
     },
     "preCommit": {
       "type": "object",
-      "description": "Staged quality gates run through an internal orchestration/pre-commit runner and a protected, non-reorderable pre-commit plan. Only staged-file Stylelint/ESLint/Prettier fixes are allowed; project-wide fixes, type checking, tests, builds, and network gates are forbidden. Hard Vue v-html and target=_blank rel-security checks run independently without disable switches. Missing configurable defaults can be materialized with repo-guard migrate.",
+      "description": "暂存质量门禁由内部 orchestration/pre-commit runner 和不可重排的受保护计划执行，并使用仓库级生命周期锁阻止重叠实例交叉修改 Git 索引、工作区或 lint-staged 备份。只允许对暂存文件执行 Stylelint、ESLint 和 Prettier 修复；禁止项目级修复、类型检查、测试、构建和网络门禁。Vue v-html 与 target=_blank rel 安全硬门禁独立执行且不能关闭。缺失的可配置默认值可通过 repo-guard migrate 补齐。",
       "additionalProperties": false,
       "properties": {
         "fileHeader": {

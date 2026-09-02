@@ -353,6 +353,32 @@ test('blocks unfixable syntax errors without committing partial fixes', async (c
   );
 });
 
+test('rejects overlapping pre-commit runs without changing staged or unstaged content', async (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+
+  const staged = 'const = ;\n';
+  const worktree = `${staged}const localOnly = true;\n`;
+  writeFileSync(path.join(root, 'sample.js'), staged);
+  git(root, ['add', 'sample.js']);
+  writeFileSync(path.join(root, 'sample.js'), worktree);
+
+  const firstRun = runPreCommit(root);
+  await assert.rejects(
+    runPreCommit(root),
+    (error) => error?.code === 'pre-commit/already-running',
+  );
+  assert.equal(await firstRun, 1);
+
+  assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), staged);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')),
+    worktree,
+  );
+  assert.doesNotMatch(git(root, ['stash', 'list']), /lint-staged automatic backup/);
+});
+
 test('restores fixes on a failing initial commit without a Git stash', async (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));

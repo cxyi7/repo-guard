@@ -472,13 +472,21 @@ test('keeps staged quality execution and lint-staged isolation in separate pre-c
     'pre-commit',
     'protected-plan.js',
   );
+  const lifecycleLockPath = path.join(
+    SOURCE_ROOT,
+    'orchestration',
+    'pre-commit',
+    'lifecycle-lock.js',
+  );
   assert.equal(existsSync(runnerPath), true);
   assert.equal(existsSync(lintStagedGatePath), true);
   assert.equal(existsSync(protectedPlanPath), true);
+  assert.equal(existsSync(lifecycleLockPath), true);
 
   const runnerSource = readFileSync(runnerPath, 'utf8');
   const lintStagedGateSource = readFileSync(lintStagedGatePath, 'utf8');
   const protectedPlanSource = readFileSync(protectedPlanPath, 'utf8');
+  const lifecycleLockSource = readFileSync(lifecycleLockPath, 'utf8');
   assert.match(runnerSource, /plan: preCommitQualityPlan/);
   assert.match(runnerSource, /registry: gateRegistry/);
   assert.match(runnerSource, /createGateContext/);
@@ -493,6 +501,12 @@ test('keeps staged quality execution and lint-staged isolation in separate pre-c
   assert.match(lintStagedGateSource, /concurrent: false/);
   assert.match(lintStagedGateSource, /relative: false/);
   assert.match(lintStagedGateSource, /stash: true/);
+  assert.match(lifecycleLockSource, /export function acquirePreCommitLock/);
+  assert.match(lifecycleLockSource, /resolveGitPath/);
+  assert.doesNotMatch(
+    lifecycleLockSource,
+    /from ['"]lint-staged['"]|gateRegistry|orchestratePlan/,
+  );
   assert.doesNotMatch(
     lintStagedGateSource,
     /\b(?:preCommitPolicyPlan|runQualityExecution|GateResult|protectedFilesGate)\b/,
@@ -2118,6 +2132,8 @@ test('keeps pre-commit lifecycle orchestration in its domain without a command f
   assert.match(cliRunnerSource, /from ['"]\.\.\/pre-commit\/runner\.js['"]/);
   assert.match(preCommitRunnerSource, /export async function runPreCommit/);
   assert.match(preCommitRunnerSource, /from ['"]\.\/lint-staged-gate\.js['"]/);
+  assert.match(preCommitRunnerSource, /from ['"]\.\/lifecycle-lock\.js['"]/);
+  assert.match(preCommitRunnerSource, /withPreCommitLock/);
   assert.match(preCommitRunnerSource, /from ['"]\.\/protected-plan\.js['"]/);
   assert.doesNotMatch(preCommitRunnerSource, /quality-command\.js|quality-runner\.js/);
   assert.doesNotMatch(preCommitRunnerSource, /from ['"]\.\.\/\.\.\/commands\//);
