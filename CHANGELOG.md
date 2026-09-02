@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.22.1
+
+- 修复重叠 pre-commit 进程可能让两个 `lint-staged` 实例交叉执行 `git reset --hard HEAD`、应用不完整备份并删除完整 stash 的数据丢失风险。新增覆盖整个 pre-commit 生命周期的仓库级互斥锁；活动实例持锁时，后续实例会在修改 Git 索引和工作区前以 `pre-commit/already-running` 停止。
+- 每个生命周期实例使用包含 PID 与所有权令牌的唯一锁文件；异常退出遗留锁只按唯一旧路径清理，避免失效锁清理者误删新锁，正常释放也只删除当前实例持有的锁。补充活动锁、失效锁和真实重叠 pre-commit 的回归测试，并同步 README、使用说明、配置 Schema 与长期项目结构和功能清单。
+
 ## 1.22.0
 
 - 新增默认关闭的 `quality.ui-tokens` 门禁。消费项目必须先在 `uiTokens.adapters` 显式声明启用 `sass`、`unocss` 中的哪些语言适配器；门禁只治理颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸，其他样式保持项目自治。

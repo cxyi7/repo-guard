@@ -15,6 +15,7 @@ import { collectStagedChanges } from '../../git/change-collection.js';
 import { runGit } from '../../git/execution.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { orchestratePlan } from '../orchestrator.js';
+import { withPreCommitLock } from './lifecycle-lock.js';
 import { runQualityGate } from './lint-staged-gate.js';
 import { preCommitPolicyPlan } from './protected-plan.js';
 
@@ -35,9 +36,8 @@ function loadStagedConfig(root) {
   }
 }
 
-export async function runPreCommit(cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const qualityExitCode = await runQualityGate({ cwd });
+async function runPreCommitLifecycle(root) {
+  const qualityExitCode = await runQualityGate({ cwd: root });
   if (qualityExitCode !== 0) {
     return qualityExitCode;
   }
@@ -70,4 +70,9 @@ export async function runPreCommit(cwd = process.cwd()) {
     );
   }
   return execution.exitCode === 0 ? 0 : 1;
+}
+
+export async function runPreCommit(cwd = process.cwd()) {
+  const root = findRepositoryRoot(cwd);
+  return await withPreCommitLock(root, () => runPreCommitLifecycle(root));
 }
