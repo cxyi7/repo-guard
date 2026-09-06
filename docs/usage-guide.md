@@ -1,8 +1,8 @@
 # @cxyi7/repo-guard 使用说明
 
-本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
+本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与生命周期能力见 [README](../README.md)，工作模型与模块职责见[项目结构与能力总览](project-structure-and-feature-inventory.md)，单项能力说明见[功能说明索引](features/README.md)。
 
-- 当前版本：`1.23.0`
+- 当前版本：`1.23.1`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.1
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -1298,7 +1298,7 @@ exclusions
 ## 相关文档
 
 - [项目概览](../README.md)
-- [项目结构与功能清单](project-structure-and-feature-inventory.md)
+- [项目结构与能力总览](project-structure-and-feature-inventory.md)
+- [功能说明索引](features/README.md)
 - [合同驱动交付格式](contract-driven-delivery.md)
 - [版本记录](../CHANGELOG.md)
-- [发布流程](../PUBLISHING.md)

@@ -12,9 +12,11 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Preserve partially staged and unstaged changes through `lint-staged`.
 - Managed Hook upgrades must accept known older markers but generate only the current version.
 - Every behavior change requires tests and synchronized README/config schema updates.
-- Treat `docs/project-structure-and-feature-inventory.md` as a long-lived source of truth.
-  Every feature addition, change, or removal, and every repository-structure, module-responsibility,
-  or dependency-direction change, must update that document in the same change.
+- Treat `docs/project-structure-and-feature-inventory.md` and `docs/features/` as the joint
+  long-lived capability documentation. Every feature addition, change, or removal must update
+  `docs/features/README.md` and its feature document in the same change. Update the project
+  overview when capability domains, lifecycles, repository structure, module responsibilities,
+  or dependency directions change.
 - All repo-guard-authored user-facing statuses, warnings, errors, evidence, expectations,
   remediation steps, constraints, and verification guidance must use Simplified Chinese.
   Keep stable machine identifiers, commands, paths, package names, and third-party rule IDs
@@ -22,15 +24,7 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
   label them explicitly. The English-text migration baseline may only shrink; after translating
   existing debt, use `npm run language:prune-baseline` and review that it only removes allowances.
   Never add, replace, or regenerate baseline entries to bypass the language check.
-- Version every independently released change by impact: use a patch release for one small
-  rule or localized compatible enhancement, a minor release for a substantial new gate or
-  workflow, and explicitly review any incompatible change before selecting a major release.
-- Keep one independently reviewed feature in one release; do not bundle the next feature into
-  a version that has already completed review.
-- Run `npm run check`, `npm test`, and `npm run pack:check` before publishing.
-- Always authenticate to npm in a new visible terminal with the official Web login and
-  account 2FA flow. Verify that `npm whoami` returns `cxyi7`, then publish from a second
-  visible terminal opened in this repository.
-- Never store npm passwords, access tokens, recovery codes, or one-time 2FA codes in the
-  repository, shell scripts, command history, logs, or documentation.
+- For version selection, release preparation, npm authentication, publishing, and registry
+  verification, use `.agents/skills/repo-guard-publishing/SKILL.md` as the only maintained
+  release workflow for this repository.
 - Use `npm run lint:fix` only for explicit repository-wide maintenance; consumer Hooks remain staged-only.

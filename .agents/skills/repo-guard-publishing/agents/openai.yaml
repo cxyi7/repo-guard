@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard npm 发布"
+  short_description: "安全检查、登录、发布并验证 repo-guard npm 版本"
+  default_prompt: "使用 $repo-guard-publishing 检查当前版本并在获得明确授权后发布到 npm。"
+policy:
+  allow_implicit_invocation: true

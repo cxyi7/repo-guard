@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1040" width="1200" height="1040" role="img" aria-labelledby="title desc">
+  <title id="title">repo-guard 生命周期分层能力全景</title>
+  <desc id="desc">按照项目接入、需求与开发、Git commit、Git push、GitLab CI、测试与发布六个生命周期阶段，分层展示 repo-guard 在每个阶段提供的能力。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .title { fill: #111827; font-size: 26px; font-weight: 700; }
+    .subtitle { fill: #4b5563; font-size: 14px; }
+    .stage-title { font-size: 16px; font-weight: 700; }
+    .stage-sub { fill: #6b7280; font-size: 11.5px; }
+    .stage-no { fill: #ffffff; font-size: 11px; font-weight: 700; }
+    .node-title { fill: #111827; font-size: 13.5px; font-weight: 650; }
+    .node-sub { fill: #4b5563; font-size: 11.5px; }
+    .timeline { fill: none; stroke: #cbd5e1; stroke-width: 2; marker-end: url(#arrow-gray); }
+  </style>
+  <defs>
+    <marker id="arrow-gray" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="1040" fill="#ffffff"/>
+  <text class="title" x="50" y="48">repo-guard 生命周期分层能力全景</text>
+  <text class="subtitle" x="50" y="76">代码从接入到交付依次经过六层；每层只展示在该阶段生效或形成证据的能力。</text>
+
+  <path class="timeline" data-graph-role="edge" data-source="stage-1" data-target="stage-2" d="M30 148 V202"/>
+  <path class="timeline" data-graph-role="edge" data-source="stage-2" data-target="stage-3" d="M30 282 V362"/>
+  <path class="timeline" data-graph-role="edge" data-source="stage-3" data-target="stage-4" d="M30 470 V577"/>
+  <path class="timeline" data-graph-role="edge" data-source="stage-4" data-target="stage-5" d="M30 645 V712"/>
+  <path class="timeline" data-graph-role="edge" data-source="stage-5" data-target="stage-6" d="M30 780 V847"/>
+
+  <g data-graph-role="container" data-container-id="stage-1" aria-label="第一层：项目接入">
+    <rect data-graph-role="decoration" x="50" y="95" width="1100" height="100" rx="10" fill="#faf7ff" stroke="#c4b5fd" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="121" r="14" fill="#8b5cf6"/><text class="stage-no" x="78" y="125" text-anchor="middle">01</text>
+    <text class="stage-title" x="102" y="126" fill="#7c3aed">项目接入</text>
+    <text class="stage-sub" x="72" y="151">安装与托管</text>
+
+    <g data-graph-role="node" data-node-id="install"><rect x="230" y="116" width="170" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/><text class="node-title" x="315" y="140" text-anchor="middle">安装固定版本</text><text class="node-sub" x="315" y="160" text-anchor="middle">npm 开发依赖</text></g>
+    <g data-graph-role="node" data-node-id="init-migrate"><rect x="415" y="116" width="170" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/><text class="node-title" x="500" y="140" text-anchor="middle">init / migrate</text><text class="node-sub" x="500" y="160" text-anchor="middle">配置与生命周期迁移</text></g>
+    <g data-graph-role="node" data-node-id="hooks"><rect x="600" y="116" width="170" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/><text class="node-title" x="685" y="140" text-anchor="middle">5 个 Git Hook</text><text class="node-sub" x="685" y="160" text-anchor="middle">托管安装与升级</text></g>
+    <g data-graph-role="node" data-node-id="ci-install"><rect x="785" y="116" width="170" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/><text class="node-title" x="870" y="140" text-anchor="middle">GitLab CI</text><text class="node-sub" x="870" y="160" text-anchor="middle">模板与配置安装</text></g>
+    <g data-graph-role="node" data-node-id="agents-doctor"><rect x="970" y="116" width="155" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd"/><text class="node-title" x="1047.5" y="140" text-anchor="middle">AGENTS + doctor</text><text class="node-sub" x="1047.5" y="160" text-anchor="middle">规范同步与诊断</text></g>
+  </g>
+
+  <g data-graph-role="container" data-container-id="stage-2" aria-label="第二层：需求与开发">
+    <rect data-graph-role="decoration" x="50" y="210" width="1100" height="145" rx="10" fill="#f2fbf9" stroke="#5eead4" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="236" r="14" fill="#14b8a6"/><text class="stage-no" x="78" y="240" text-anchor="middle">02</text>
+    <text class="stage-title" x="102" y="241" fill="#0f766e">需求与开发</text>
+    <text class="stage-sub" x="72" y="266">合同与手动专项</text>
+
+    <g data-graph-role="node" data-node-id="feature-registry"><rect x="230" y="228" width="170" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="315" y="249" text-anchor="middle">树形功能登记</text><text class="node-sub" x="315" y="267" text-anchor="middle">确定长期归属</text></g>
+    <g data-graph-role="node" data-node-id="requirement-snapshot"><rect x="415" y="228" width="170" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="500" y="249" text-anchor="middle">本地需求快照</text><text class="node-sub" x="500" y="267" text-anchor="middle">文件与内容指纹</text></g>
+    <g data-graph-role="node" data-node-id="contract-plan"><rect x="600" y="228" width="170" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="685" y="249" text-anchor="middle">AI 生成合同计划</text><text class="node-sub" x="685" y="267" text-anchor="middle">schemaVersion 2</text></g>
+    <g data-graph-role="node" data-node-id="human-confirm"><rect x="785" y="228" width="170" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="870" y="249" text-anchor="middle">人工确认</text><text class="node-sub" x="870" y="267" text-anchor="middle">归属、范围与资料</text></g>
+    <g data-graph-role="node" data-node-id="boundaries"><rect x="970" y="228" width="155" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="1047.5" y="249" text-anchor="middle">分支与边界</text><text class="node-sub" x="1047.5" y="267" text-anchor="middle">Worktree / 路径 / 并行</text></g>
+
+    <g data-graph-role="node" data-node-id="implementation"><rect x="230" y="291" width="170" height="48" rx="8" fill="#ffffff" stroke="#5eead4"/><text class="node-title" x="315" y="312" text-anchor="middle">AI / 开发者实现</text><text class="node-sub" x="315" y="330" text-anchor="middle">5 个项目级 Skill</text></g>
+    <g data-graph-role="node" data-node-id="mutation"><rect x="415" y="291" width="170" height="48" rx="8" fill="#ffffff" stroke="#99f6e4"/><text class="node-title" x="500" y="312" text-anchor="middle">Stryker 变异测试</text><text class="node-sub" x="500" y="330" text-anchor="middle">受保护构建</text></g>
+    <g data-graph-role="node" data-node-id="image-optimize"><rect x="600" y="291" width="170" height="48" rx="8" fill="#ffffff" stroke="#99f6e4"/><text class="node-title" x="685" y="312" text-anchor="middle">图片安全优化</text><text class="node-sub" x="685" y="330" text-anchor="middle">压缩与 WebP</text></g>
+    <g data-graph-role="node" data-node-id="api-performance"><rect x="785" y="291" width="170" height="48" rx="8" fill="#ffffff" stroke="#99f6e4"/><text class="node-title" x="870" y="312" text-anchor="middle">Axios 接口性能</text><text class="node-sub" x="870" y="330" text-anchor="middle">延迟与错误率</text></g>
+    <g data-graph-role="node" data-node-id="k6"><rect x="970" y="291" width="155" height="48" rx="8" fill="#ffffff" stroke="#99f6e4"/><text class="node-title" x="1047.5" y="312" text-anchor="middle">k6 并发压测</text><text class="node-sub" x="1047.5" y="330" text-anchor="middle">受控负载与阈值</text></g>
+  </g>
+
+  <g data-graph-role="container" data-container-id="stage-3" aria-label="第三层：Git commit">
+    <rect data-graph-role="decoration" x="50" y="370" width="1100" height="200" rx="10" fill="#f4f8ff" stroke="#93c5fd" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="396" r="14" fill="#3b82f6"/><text class="stage-no" x="78" y="400" text-anchor="middle">03</text>
+    <text class="stage-title" x="102" y="401" fill="#2563eb">git commit</text>
+    <text class="stage-sub" x="72" y="426">暂存范围门禁</text><text class="stage-sub" x="72" y="444">固定执行顺序</text>
+
+    <g data-graph-role="node" data-node-id="staged-safety"><rect x="230" y="393" width="280" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="250" y="418">暂存安全</text><text class="node-sub" x="250" y="439">部分暂存保护 · pre-commit 重入锁</text></g>
+    <g data-graph-role="node" data-node-id="docs-format"><rect x="535" y="393" width="280" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="555" y="418">文档同步与格式化</text><text class="node-sub" x="555" y="439">文件头 · 函数文档 · Stylelint</text><text class="node-sub" x="555" y="455">ESLint · Prettier · 只读复检</text></g>
+    <g data-graph-role="node" data-node-id="style-vue-quality"><rect x="840" y="393" width="285" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="860" y="418">样式与 Vue 质量</text><text class="node-sub" x="860" y="439">UI Token · 样式复杂度与作用域</text><text class="node-sub" x="860" y="455">异步资源清理 · 路径命名</text></g>
+    <g data-graph-role="node" data-node-id="security-accessibility"><rect x="230" y="480" width="280" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="250" y="505">安全与静态可访问性</text><text class="node-sub" x="250" y="526">动态代码 · v-html · 外链安全</text><text class="node-sub" x="250" y="542">表单名称 · 图片替代文本</text></g>
+    <g data-graph-role="node" data-node-id="repository-policy"><rect x="535" y="480" width="280" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="555" y="505">仓库治理</text><text class="node-sub" x="555" y="526">行数 · 归位 · 依赖 · 图片 · 代码位置</text><text class="node-sub" x="555" y="542">交付合同 · 保护文件 · 结构化例外</text></g>
+    <g data-graph-role="node" data-node-id="commit-message"><rect x="840" y="480" width="285" height="70" rx="8" fill="#ffffff" stroke="#93c5fd"/><text class="node-title" x="860" y="505">提交信息</text><text class="node-sub" x="860" y="526">Conventional Commit</text><text class="node-sub" x="860" y="542">变更文件摘要与生命周期治理</text></g>
+  </g>
+
+  <g data-graph-role="container" data-container-id="stage-4" aria-label="第四层：Git push">
+    <rect data-graph-role="decoration" x="50" y="585" width="1100" height="120" rx="10" fill="#f4fbf5" stroke="#86efac" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="611" r="14" fill="#22c55e"/><text class="stage-no" x="78" y="615" text-anchor="middle">04</text>
+    <text class="stage-title" x="102" y="616" fill="#15803d">git push</text>
+    <text class="stage-sub" x="72" y="641">推送区间验证</text>
+
+    <g data-graph-role="node" data-node-id="push-commit-message"><rect x="230" y="615" width="170" height="66" rx="8" fill="#ffffff" stroke="#86efac"/><text class="node-title" x="315" y="639" text-anchor="middle">提交信息复核</text><text class="node-sub" x="315" y="660" text-anchor="middle">真实 revision 范围</text></g>
+    <g data-graph-role="node" data-node-id="type-dead-code"><rect x="415" y="615" width="170" height="66" rx="8" fill="#ffffff" stroke="#86efac"/><text class="node-title" x="500" y="639" text-anchor="middle">类型与无效代码</text><text class="node-sub" x="500" y="660" text-anchor="middle">TypeScript · Knip</text></g>
+    <g data-graph-role="node" data-node-id="push-tests"><rect x="600" y="615" width="170" height="66" rx="8" fill="#ffffff" stroke="#86efac"/><text class="node-title" x="685" y="639" text-anchor="middle">测试与可访问性</text><text class="node-sub" x="685" y="658" text-anchor="middle">Vitest · 覆盖率 · 交互</text><text class="node-sub" x="685" y="674" text-anchor="middle">axe · 无效图片</text></g>
+    <g data-graph-role="node" data-node-id="push-build"><rect x="785" y="615" width="170" height="66" rx="8" fill="#ffffff" stroke="#86efac"/><text class="node-title" x="870" y="639" text-anchor="middle">架构与构建</text><text class="node-sub" x="870" y="658" text-anchor="middle">dependency-cruiser</text><text class="node-sub" x="870" y="674" text-anchor="middle">PC / 小程序产物预算</text></g>
+    <g data-graph-role="node" data-node-id="lighthouse"><rect x="970" y="615" width="155" height="66" rx="8" fill="#ffffff" stroke="#86efac"/><text class="node-title" x="1047.5" y="639" text-anchor="middle">Lighthouse</text><text class="node-sub" x="1047.5" y="660" text-anchor="middle">可选 pre-push</text></g>
+  </g>
+
+  <g data-graph-role="container" data-container-id="stage-5" aria-label="第五层：GitLab CI">
+    <rect data-graph-role="decoration" x="50" y="720" width="1100" height="120" rx="10" fill="#fffaf0" stroke="#fcd34d" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="746" r="14" fill="#f59e0b"/><text class="stage-no" x="78" y="750" text-anchor="middle">05</text>
+    <text class="stage-title" x="102" y="751" fill="#b45309">GitLab CI</text>
+    <text class="stage-sub" x="72" y="776">中央统一执行</text>
+
+    <g data-graph-role="node" data-node-id="ci-policy"><rect x="230" y="750" width="170" height="66" rx="8" fill="#ffffff" stroke="#fcd34d"/><text class="node-title" x="315" y="774" text-anchor="middle">policy</text><text class="node-sub" x="315" y="795" text-anchor="middle">轻量仓库策略</text></g>
+    <g data-graph-role="node" data-node-id="ci-full"><rect x="415" y="750" width="170" height="66" rx="8" fill="#ffffff" stroke="#fcd34d"/><text class="node-title" x="500" y="774" text-anchor="middle">full</text><text class="node-sub" x="500" y="795" text-anchor="middle">完整门禁计划</text></g>
+    <g data-graph-role="node" data-node-id="external-gates"><rect x="600" y="750" width="170" height="66" rx="8" fill="#ffffff" stroke="#fcd34d"/><text class="node-title" x="685" y="774" text-anchor="middle">项目外部门禁</text><text class="node-sub" x="685" y="795" text-anchor="middle">受控项目脚本</text></g>
+    <g data-graph-role="node" data-node-id="managed-pipeline"><rect x="785" y="750" width="170" height="66" rx="8" fill="#ffffff" stroke="#fcd34d"/><text class="node-title" x="870" y="774" text-anchor="middle">托管交付流水线</text><text class="node-sub" x="870" y="795" text-anchor="middle">Job · 分支 · 缓存</text></g>
+    <g data-graph-role="node" data-node-id="reports"><rect x="970" y="750" width="155" height="66" rx="8" fill="#ffffff" stroke="#fcd34d"/><text class="node-title" x="1047.5" y="774" text-anchor="middle">统一结果与通知</text><text class="node-sub" x="1047.5" y="793" text-anchor="middle">GateResult · JSON</text><text class="node-sub" x="1047.5" y="809" text-anchor="middle">中文指引 · 企业微信</text></g>
+  </g>
+
+  <g data-graph-role="container" data-container-id="stage-6" aria-label="第六层：测试与发布">
+    <rect data-graph-role="decoration" x="50" y="855" width="1100" height="160" rx="10" fill="#fff7f8" stroke="#fda4af" stroke-width="1.4" stroke-dasharray="7 5"/>
+    <circle cx="78" cy="881" r="14" fill="#f43f5e"/><text class="stage-no" x="78" y="885" text-anchor="middle">06</text>
+    <text class="stage-title" x="102" y="886" fill="#be123c">测试与发布</text>
+    <text class="stage-sub" x="72" y="911">真实反馈闭环</text><text class="stage-sub" x="72" y="929">发布条件复核</text>
+
+    <g data-graph-role="node" data-node-id="test-environment"><rect x="210" y="885" width="145" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="282.5" y="912" text-anchor="middle">部署测试环境</text><text class="node-sub" x="282.5" y="935" text-anchor="middle">项目脚本或</text><text class="node-sub" x="282.5" y="951" text-anchor="middle">托管流水线</text></g>
+    <g data-graph-role="node" data-node-id="real-test"><rect x="368" y="885" width="145" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="440.5" y="912" text-anchor="middle">人工真实测试</text><text class="node-sub" x="440.5" y="935" text-anchor="middle">验收或登记问题</text></g>
+    <g data-graph-role="node" data-node-id="feedback-upgrade"><rect x="526" y="885" width="145" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="598.5" y="912" text-anchor="middle">反馈反向升级</text><text class="node-sub" x="598.5" y="935" text-anchor="middle">回归测试 · 合同</text><text class="node-sub" x="598.5" y="951" text-anchor="middle">Gate · 红—绿证明</text></g>
+    <g data-graph-role="node" data-node-id="evidence"><rect x="684" y="885" width="145" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="756.5" y="912" text-anchor="middle">Evidence Run</text><text class="node-sub" x="756.5" y="935" text-anchor="middle">证据与人工验收</text></g>
+    <g data-graph-role="node" data-node-id="release-ready"><rect x="842" y="885" width="145" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="914.5" y="912" text-anchor="middle">release-ready</text><text class="node-sub" x="914.5" y="935" text-anchor="middle">包 · 版本 · Schema</text><text class="node-sub" x="914.5" y="951" text-anchor="middle">公共入口与完整门禁</text></g>
+    <g data-graph-role="node" data-node-id="release-decision"><rect x="1000" y="885" width="125" height="88" rx="8" fill="#ffffff" stroke="#fda4af"/><text class="node-title" x="1062.5" y="912" text-anchor="middle">团队决定</text><text class="node-sub" x="1062.5" y="935" text-anchor="middle">是否发布或部署</text><text class="node-sub" x="1062.5" y="951" text-anchor="middle">工具不会自动执行</text></g>
+  </g>
+</svg>

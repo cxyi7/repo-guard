@@ -1,7 +1,15 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.23.0",
+  "version": "1.23.1",
   "description": "Structured Git and GitLab CI policy gates with managed application delivery for Vue projects",
+  "homepage": "https://github.com/cxyi7/repo-guard#readme",
+  "bugs": {
+    "url": "https://github.com/cxyi7/repo-guard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cxyi7/repo-guard.git"
+  },
   "keywords": [
     "git-hooks",
     "gitlab-ci",
