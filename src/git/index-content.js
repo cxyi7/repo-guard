@@ -1,4 +1,4 @@
-import { runGit } from './execution.js';
+import { runGit, runGitBinary } from './execution.js';
 
 export function listIndexFiles(root) {
   return runGit(['ls-files', '--cached', '-z'], { cwd: root }).stdout
@@ -12,4 +12,8 @@ export function readIndexTextFiles(root, paths) {
     path: filePath,
     content: runGit(['show', `:${filePath}`], { cwd: root }).stdout,
   }));
+}
+
+export function readIndexFileBuffer(root, filePath) {
+  return runGitBinary(['show', `:${filePath}`], { cwd: root }).stdout;
 }

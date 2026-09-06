@@ -8,6 +8,7 @@ import {
   assertReleaseScriptReadOnly,
   releaseEnvironment,
 } from '../../integrations/npm/release-environment.js';
+import { deliveryEvidenceGate } from './delivery-evidence-gate.js';
 import { passedResult, violationResult } from '../native-result.js';
 import { inspectPackageReadiness } from './package-readiness.js';
 
@@ -143,4 +144,9 @@ const packageGate = defineGate({
   },
 });
 
-export const releaseReadinessGates = Object.freeze([checkGate, testGate, packageGate]);
+export const releaseReadinessGates = Object.freeze([
+  checkGate,
+  testGate,
+  packageGate,
+  deliveryEvidenceGate,
+]);

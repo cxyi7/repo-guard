@@ -2,7 +2,7 @@
 
 本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与功能概览见 [README](../README.md)，完整结构与能力清单见 [项目结构与功能清单](project-structure-and-feature-inventory.md)。
 
-- 当前版本：`1.22.1`
+- 当前版本：`1.23.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 - 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.22.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -55,6 +55,7 @@ Stylelint fix
   → dependency-policy（最终 Git 索引）
   → image-assets（启用时读取最终 Git 索引二进制内容）
   → code-placement（最终 Git 索引）
+  → delivery-contract（最终 Git 索引与完整合同比较范围）
   → protected-files（最后执行）
 ```
 
@@ -116,6 +117,7 @@ repo-guard enable typeCheck unitTest coverage
 repo-guard enable componentInteraction accessibilityTest
 repo-guard enable build lighthouse
 repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming uiTokens imageAssets filePlacement maxFileLines codePlacement
+repo-guard enable deliveryContract
 repo-guard enable notification ci
 
 repo-guard disable lighthouse
@@ -139,6 +141,7 @@ styleGovernance
 maxFileLines
 filePlacement
 codePlacement
+deliveryContract
 dependencies
 commitMessage
 architecture
@@ -688,6 +691,40 @@ repo-guard gate --force-notify
 
 匹配时只统一 CRLF/CR 为 LF，不忽略其他空白，也不把语义相近但文本不同的代码视为相同。
 
+### 配置合同驱动交付
+
+合同驱动交付默认关闭。启用后，项目用树形功能登记表记录人工确认的功能归属，并用当前分支唯一的 `schemaVersion: 2` 多文件活动合同约束本地需求快照、资料计划、Git 历史修订、目标分支、Worktree、路径边界、执行清单、并行协调和发布证据：
+
+```json
+{
+  "deliveryContract": {
+    "enabled": true,
+    "registryPath": "docs/delivery/feature-registry.json",
+    "contractsDirectory": "docs/delivery/contracts",
+    "requiredFor": ["src/**", "test/**", "package.json"],
+    "exclude": ["reports/**"]
+  }
+}
+```
+
+```bash
+repo-guard enable deliveryContract
+repo-guard delivery-contract
+repo-guard delivery-evidence
+```
+
+启用命令会同步安装五个项目级 Skill 到 `.agents/skills/`：功能登记、合同规划、合同执行、反馈闭环和交付证据。每个 Skill 使用标准 `SKILL.md` 入口，并按实际需要带 `agents/openai.yaml`、`references/` 和 `assets/`；`.repo-guard/managed-skills.json` 保存逐文件指纹。资产模板使用明确的 `<REQUIRED_*>` 和 `pending` 保持默认不可通过，必须换成当前仓库事实并由人工确认，不能把零哈希或虚构时间当成起始值。迁移、初始化和 `doctor --fix` 会安全升级，Doctor 会检查缺失或篡改；禁用时只删除仍与托管指纹一致的文件，拒绝覆盖或删除人工修改。
+
+一份逻辑合同由主合同和合同 id 子目录共同组成。主合同只保存身份、仓库边界、资料计划和确认；当前需求事实位于 `requirements/rev-NNN/requirements.md`，追踪关系位于 `traceability.md`，执行清单位于 `obligations.md`，每个正式问题独立位于 `findings/FND-*.md`。Gate 从同一 Git 索引或同一历史提交加载整个合同包，避免单个 Markdown 随任务和问题持续膨胀。
+
+AI 先提出合同类型以及 Spec、Design、Tasks、Examples、Visuals 资料计划，人工确认功能归属、合同定义和最终验收。Gate 不机械要求固定文件数量；它按确认后的 `inline`、`file`、`reference` 或 `not-needed` 计划检查，并重新计算定义与证据指纹。定义发生变化时，Gate 会与 Git 中上一份合同定义比较，要求连续提升 `contractRevision` 和使用新的人工确认；已确认义务、正式发现和历史需求修订文件不能被删除。
+
+需求事实第一版只信任受 Git 跟踪的本地下载文件或真实截图，不访问远端 URL。`allowedPaths` 默认拒绝，`forbiddenPaths` 始终优先；删除检查原路径，重命名检查原路径和新路径，复制检查目标允许范围以及来源、目标禁止范围。并行合同出现实际重叠时，开发阶段提示风险，`release-ready` 要求人工确认协调策略、前置落地提交和带证据的回归覆盖。
+
+`obligations.md` 清单中的 `EVD-*` 不是自由文本，必须引用当前合同 `evidence/runs/` 下受 Git 跟踪的 Evidence Run Markdown。Evidence Run 保存可复算的文件/执行报告指纹、真实提交和完整 GateResult；最终门禁会与本轮 GateResult 比较，并要求最新目标分支提交等于集成基线。证据采用两轮复核：第一轮 release-ready 取得待验收的前序 GateResult 并形成技术证据指纹，人工据此验收；勾选人工验收后再次运行 `delivery-evidence` 更新执行摘要，提交证据元数据，再以最终 release-ready 重跑并比较 GateResult。任何结果变化都会让旧技术指纹和人工验收失效。目标分支从合同基线前进时，还必须保存 Git 可复算的变化路径、AI 影响分析和人工确认。测试环境反馈与 AI 自测发现统一使用独立 `findings/FND-*.md`，每条正式发现必须关联真实任务，未闭环时重新打开任务；实现缺陷必须有红—绿执行日志，测试环境问题必须绑定部署提交和最终人工复测，包括拒绝或延期在内的所有问题都必须完成人工确认的测试/合同/设计/任务模板/Gate 升级决定。
+
+全部字段、目录、清单、`FND-*` 问题闭环和发布证据示例见 [合同驱动交付格式](contract-driven-delivery.md)。
+
 ### 配置不可变文件
 
 使用精确仓库相对路径和 `level: "block"`：
@@ -740,7 +777,7 @@ repo-guard ci --profile release-ready --base <sha> --head <sha>
 |---|---|
 | `policy` | 原生安全、Vue 可访问性、结构化例外、UI Token、依赖、文件/代码位置、行数、测试策略和保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
-| `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse 和发布包一致性检查 |
+| `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse、发布包一致性检查和最终交付证据复核 |
 
 CI 门禁始终只读，不执行 fix、不安装 Hook、不读取本地企业微信凭据。只有显式启用的托管流水线通知会读取 GitLab CI 受保护变量并发送结果。
 
@@ -1196,6 +1233,8 @@ repo-guard image-assets
 repo-guard unused-image-assets
 repo-guard file-placement
 repo-guard code-placement
+repo-guard delivery-contract
+repo-guard delivery-evidence
 repo-guard style-complexity
 repo-guard style-governance
 repo-guard typecheck
@@ -1224,6 +1263,7 @@ commitMessage
 deadCode
 imageAssets
 uiTokens
+deliveryContract
 architecture
 build
 lighthouse
@@ -1259,5 +1299,6 @@ exclusions
 
 - [项目概览](../README.md)
 - [项目结构与功能清单](project-structure-and-feature-inventory.md)
+- [合同驱动交付格式](contract-driven-delivery.md)
 - [版本记录](../CHANGELOG.md)
 - [发布流程](../PUBLISHING.md)

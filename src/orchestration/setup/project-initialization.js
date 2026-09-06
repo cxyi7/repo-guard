@@ -23,6 +23,7 @@ import {
 } from '../../policies/agent-policies.js';
 import { ensureProjectConfig } from './config-management.js';
 import { installHooks } from './hook-installer.js';
+import { syncDeliverySkills } from './delivery-skills.js';
 
 export function runInit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
@@ -52,6 +53,7 @@ export function runInit(cwd = process.cwd()) {
   });
   const config = loadConfig(root);
   const agentPolicy = syncAgentPolicies(root, config);
+  const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
 
   writeConsoleMessage(`repo-guard 已在以下目录完成初始化：${root}`);
   writeConsoleMessage(`- Git Hook 路径：${result.hooksPath}`);
@@ -66,6 +68,9 @@ export function runInit(cwd = process.cwd()) {
   writeConsoleMessage(`- 配置：${CONFIG_FILE}${configCreated ? '（已创建）' : '（已保留）'}`);
   writeConsoleMessage(
     `- ${AGENT_POLICY_FILE}：${agentPolicy.changed ? '已同步' : '已是最新状态'}（项目托管规范）`,
+  );
+  writeConsoleMessage(
+    `- 交付流程 Skills：${deliverySkills.changed ? '已同步' : '已是最新状态'}`,
   );
   if (configCreated && stylelintSetup.ready) {
     writeConsoleMessage(

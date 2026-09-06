@@ -519,6 +519,19 @@ test('enables the maximum file lines pre-commit feature', (context) => {
   assert.equal(readConfig(root).preCommit.maxFileLines.enabled, true);
 });
 
+test('enables and disables contract-driven delivery as one feature', (context) => {
+  const root = createFixture(sparseConfig());
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+
+  const enabled = setFeaturesEnabled(root, ['deliveryContract'], true);
+  assert.deepEqual(enabled.changed, ['deliveryContract']);
+  assert.equal(readConfig(root).deliveryContract.enabled, true);
+
+  const disabled = setFeaturesEnabled(root, ['deliveryContract'], false);
+  assert.deepEqual(disabled.changed, ['deliveryContract']);
+  assert.equal(readConfig(root).deliveryContract.enabled, false);
+});
+
 test('disables and re-enables the default file placement gate', (context) => {
   const root = createFixture(sparseConfig());
   context.after(() => rmSync(root, { recursive: true, force: true }));

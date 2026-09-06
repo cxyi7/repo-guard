@@ -24,6 +24,7 @@ export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'dependencies.policy', gateId: 'dependencies.policy', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.image-assets', gateId: 'repository.image-assets', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.code-placement', gateId: 'repository.code-placement', mutation: 'read-only' }),
+  Object.freeze({ id: 'repository.delivery-contract', gateId: 'repository.delivery-contract', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.protected-files', gateId: 'repository.protected-files', mutation: 'external-write' }),
 ]);
 

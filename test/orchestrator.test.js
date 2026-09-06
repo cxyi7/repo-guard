@@ -80,16 +80,20 @@ test('aggregates all CI results and maps execution errors ahead of violations', 
     third: 'execution-error',
   };
   const receivedChangeSets = [];
+  const priorGateIds = [];
   const execution = await orchestratePlan({
     ...fixtureValue,
     executeStep: async ({ context, step }) => {
       visited.push(step.id);
       receivedChangeSets.push(context.changes);
+      assert.equal(Object.isFrozen(context.priorResults), true);
+      priorGateIds.push(context.priorResults.map(({ gateId }) => gateId));
       return result(step.id, statuses[step.id]);
     },
   });
   assert.deepEqual(visited, ['first', 'second', 'third']);
   assert.equal(receivedChangeSets.every((value) => value === fixtureValue.context.changes), true);
+  assert.deepEqual(priorGateIds, [[], ['first'], ['first', 'second']]);
   assert.equal(execution.status, 'execution-error');
   assert.equal(execution.exitCode, 1);
 });

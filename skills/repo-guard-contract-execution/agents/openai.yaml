@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard 合同执行"
+  short_description: "按照已确认合同边界实施开发、验证并维护结构化执行清单"
+  default_prompt: "使用 $repo-guard-contract-execution 按当前活动合同继续开发和验证。"
+policy:
+  allow_implicit_invocation: true

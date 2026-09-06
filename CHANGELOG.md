@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.23.0
+
+- 新增默认关闭的合同驱动交付能力：树形 JSON 功能登记表保存长期功能归属，`schemaVersion: 2` 多文件 Markdown 合同包将唯一主合同与需求事实、追踪关系、执行清单、逐项正式发现和证据分离，避免任务或反馈增长导致主文件膨胀；合同类型保持 `feature`、`enhancement`、`repair`、`refactor`、`maintenance`，不与 Git 提交类型绑定。
+- 新增 `repository.delivery-contract`，在 pre-commit 最终策略段、CI policy/full 和 release-ready 中确定当前分支的唯一活动合同，复核功能归属、登记引用安全性、Git 历史中的合同修订与重新确认、历史反馈继承、基线祖先关系、目标分支、可选独立 Worktree、本地需求文件时间命名、历史快照保留、截图执行者/覆盖范围/连续序号和逐字节 SHA-256，并以禁止优先规则检查删除、复制和重命名的旧、新路径；原保护文件门禁继续独立且最后执行。
+- 新增 `release.delivery-evidence`，在官方检查、测试、构建、Lighthouse、包检查和项目外部门禁之后复核受 Git 跟踪的 Evidence Run、本轮完整 GateResult、文件与执行报告、目标分支漂移分析、全部必需复选项、人工验收绑定、正式交付发现完整状态、测试环境部署与复测、实现缺陷红—绿证明、需求/资料计划/定义/技术/执行指纹，以及验收后仅允许合同和证据批次元数据提交；状态由系统推导到 `release-ready`，不会声明已经发布。
+- 配置新增 `deliveryContract`、两个手动命令和对应 `guard:*` 脚本；启用功能会自动安装五个符合 Codex 标准结构的项目级 Skill，使用 `SKILL.md`、`agents/openai.yaml`、按需 references/assets 和逐文件托管指纹，迁移、初始化、Doctor 修复和禁用共享安全生命周期且拒绝覆盖人工修改。Doctor 同时检查功能登记表、完整合同包、唯一分支绑定、基线、目标分支、托管脚本和 Skill，并补充 YAML 安全解析、固定执行顺序、`AGENTS.md` 托管规范、并行协调、回归证据与跨平台测试。
+- 收紧五个交付 Skill 的资产和指导：新增功能登记根模板与主合同证据索引，合同起始包预置需求—任务—验证追踪，反馈参考覆盖测试环境复测及拒绝/延期，Evidence Run 提供完整 GateResult、执行日志和结构化证据形状；所有未决值默认不可通过，并增加跨资产语义测试和人工验收前后两轮证据复核说明。
+
 ## 1.22.1
 
 - 修复重叠 pre-commit 进程可能让两个 `lint-staged` 实例交叉执行 `git reset --hard HEAD`、应用不完整备份并删除完整 stash 的数据丢失风险。新增覆盖整个 pre-commit 生命周期的仓库级互斥锁；活动实例持锁时，后续实例会在修改 Git 索引和工作区前以 `pre-commit/already-running` 停止。

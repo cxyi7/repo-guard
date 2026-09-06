@@ -6,6 +6,7 @@ import {
   DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_COMMIT_MESSAGE_CONFIG,
   DEFAULT_COMPONENT_INTERACTION_CONFIG,
+  DEFAULT_DELIVERY_CONTRACT_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_DEAD_CODE_CONFIG,
   DEFAULT_EXCEPTIONS_CONFIG,
@@ -84,6 +85,15 @@ export function cloneDependencyPolicyConfig(value = {}) {
     bannedPackages: (
       value.bannedPackages ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages
     ).map((item) => ({ ...item })),
+  };
+}
+
+export function cloneDeliveryContractConfig(value = {}) {
+  return {
+    ...DEFAULT_DELIVERY_CONTRACT_CONFIG,
+    ...value,
+    requiredFor: [...(value.requiredFor ?? DEFAULT_DELIVERY_CONTRACT_CONFIG.requiredFor)],
+    exclude: [...(value.exclude ?? DEFAULT_DELIVERY_CONTRACT_CONFIG.exclude)],
   };
 }
 

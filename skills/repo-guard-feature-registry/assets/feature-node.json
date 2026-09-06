@@ -1,0 +1,12 @@
+{
+  "id": "<REQUIRED_UNIQUE_FEATURE_ID>",
+  "name": "<REQUIRED_FEATURE_NAME>",
+  "status": "proposed",
+  "confirmedAt": null,
+  "confirmedBy": null,
+  "requirementSource": null,
+  "uiSource": null,
+  "description": "<REQUIRED_STABLE_BUSINESS_RESPONSIBILITY_AND_BOUNDARY>",
+  "children": [],
+  "deliveryContracts": []
+}

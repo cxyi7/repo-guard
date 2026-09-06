@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard 交付反馈"
+  short_description: "记录正式交付发现，完成红绿验证、人工复测与反向升级闭环"
+  default_prompt: "使用 $repo-guard-delivery-feedback 处理刚发现的交付问题并沉淀回归规则。"
+policy:
+  allow_implicit_invocation: true

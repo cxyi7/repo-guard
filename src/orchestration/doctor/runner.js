@@ -32,6 +32,7 @@ import {
   managedHookNames,
 } from '../setup/hook-installer.js';
 import { repairRepository } from '../setup/repository-repair.js';
+import { inspectDeliverySkills } from '../setup/delivery-skills.js';
 
 function renderDoctorResult(root, repairResult, { checks, errors, warnings }) {
   writeConsoleMessage(`repo-guard doctor 检查目录：${root}`);
@@ -64,6 +65,14 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }) {
     errors.push(`${AGENT_POLICY_FILE} 托管规范与项目配置不一致；请运行 repo-guard doctor --fix`);
   } else {
     checks.push(`${AGENT_POLICY_FILE} 项目托管规范`);
+  }
+  const deliverySkills = inspectDeliverySkills(root, config.deliveryContract.enabled);
+  if (deliverySkills.issues.length > 0) {
+    errors.push(...deliverySkills.issues.map((message) => `${message}；请运行 repo-guard doctor --fix`));
+  } else if (config.deliveryContract.enabled) {
+    checks.push(`${deliverySkills.skills.length} 个交付流程 Skills`);
+  } else {
+    checks.push('交付流程 Skills 在功能禁用时未安装');
   }
   if (exceptionResult.expired.length > 0 || exceptionResult.future.length > 0) {
     errors.push(renderExceptionRegistrySummary(exceptionResult));

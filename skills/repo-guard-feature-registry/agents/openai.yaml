@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard 功能登记"
+  short_description: "登记树形功能归属、父子关系，并确定新建、修订或修复合同"
+  default_prompt: "使用 $repo-guard-feature-registry 为当前需求确认功能归属和合同关系。"
+policy:
+  allow_implicit_invocation: true

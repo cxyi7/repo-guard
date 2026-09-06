@@ -2,7 +2,7 @@
 
 ## 1. 文档范围
 
-本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.22.1`。
+本文说明 `@cxyi7/repo-guard` 当前代码结构、模块职责、生命周期和已经实现的功能，适用于版本 `1.23.0`。
 
 当前最新功能分支具有递进关系：
 
@@ -12,9 +12,10 @@
        └─ 1.21.1 架构扩展点与配置生命周期一致性优化
             └─ 1.22.0 Sass/UnoCSS UI Token 契约门禁
                  └─ 1.22.1 pre-commit 跨进程重入保护
+                      └─ 1.23.0 合同驱动交付与证据复核
 ```
 
-因此，`1.22.1` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
+因此，`1.23.0` 已包含此前版本的全部能力。本文只描述当前有效实现，不把历史迁移过程或计划中的能力列为已完成功能。
 
 ## 2. 已完成功能总览
 
@@ -36,6 +37,9 @@
 - [x] 使用消费项目 Knip 检查未使用文件、导出、依赖、缺失依赖与无效入口，并以不可扩张基线治理历史债务。
 - [x] 使用同一 Conventional Commit 策略校验本地提交、推送区间、CI 和发布准备，并分生命周期治理临时提交与不兼容变更。
 - [x] 指定代码只能出现在一个或多个允许文件中的代码位置门禁。
+- [x] 树形功能登记表、`schemaVersion: 2` 多文件 Markdown 交付合同包、本地需求快照、Git 历史修订、目标分支/Worktree/路径边界与人工确认门禁。
+- [x] 启用合同驱动交付时自动安装五个项目级 Codex Skill，并以逐文件指纹安全完成升级、Doctor 修复和禁用清理，拒绝覆盖人工修改。
+- [x] 受跟踪 Evidence Run、完整 GateResult、执行日志、正式交付发现、红—绿回归证明和人工验收共同形成发布证据，最高推导到 `release-ready`。
 - [x] 保护文件 `audit`、`notify` 和不可变 `block` 三级策略。
 - [x] Vitest 单元测试映射、空测试、跳过测试、聚焦测试和覆盖率门禁。
 - [x] Stryker 10.x 变异测试、中文报告、构建前硬门槛与失败通知。
@@ -60,8 +64,10 @@ repo/
 ├─ bin/                              CLI 启动器
 ├─ docs/                             使用说明与长期维护清单
 │  ├─ usage-guide.md                 安装、配置、命令与门禁接入说明
+│  ├─ contract-driven-delivery.md     合同、需求快照、清单、协调与证据格式
 │  └─ project-structure-and-feature-inventory.md  项目结构、职责与完整功能清单
 ├─ scripts/                          仓库自身的语法与中文文案检查脚本
+├─ skills/                           随 deliveryContract 安装的五个项目级 Codex Skill 源文件
 ├─ src/
 │  ├─ config/                        配置默认值、加载、验证和路径匹配
 │  ├─ core/                          稳定领域契约与无业务偏好的基础能力
@@ -75,11 +81,11 @@ repo/
 │  ├─ gates/                         门禁决策、finding 和结果适配
 │  │  ├─ accessibility/              Vue 可访问性门禁
 │  │  ├─ quality/                    lint、格式化、UI Token、异步资源、无效代码、类型、架构、构建、Lighthouse
-│  │  ├─ release/                    发布就绪检查与 GitLab CI 结果通知交付
-│  │  ├─ repository/                 AGENTS 同步、提交信息、依赖、路径/图片命名、文件位置、代码位置和保护文件策略
+│  │  ├─ release/                    发布就绪、交付证据复核与 GitLab CI 结果通知
+│  │  ├─ repository/                 AGENTS 同步、提交信息、依赖、路径/图片命名、文件/代码位置、交付合同和保护文件策略
 │  │  ├─ security/                   动态代码与 Vue 安全门禁
 │  │  └─ testing/                    单元测试、覆盖率、变异测试、接口性能、axe 和外部门禁
-│  ├─ git/                           Git 命令、提交信息、变更范围、二进制对象、revision/索引内容、已跟踪路径和仓库状态
+│  ├─ git/                           Git 命令、提交信息、变更范围、二进制对象、revision/索引内容、合同分支/Worktree 事实和仓库状态
 │  ├─ integrations/                  消费项目工具和第三方协议适配
 │  │  ├─ api-performance/            Axios 性能配置、场景执行、报告生命周期与中文报告
 │  │  ├─ build-artifacts/             PC 与微信小程序构建产物事实、安全扫描和压缩体积
@@ -106,7 +112,7 @@ repo/
 │  │  ├─ pre-commit/                 生命周期互斥、暂存隔离、质量段和最终策略段
 │  │  ├─ pre-push/                   精确推送范围与独立重型门禁
 │  │  └─ setup/                      配置复制/读写生命周期、Hook、CI 和受管理文件安装
-│  └─ policies/                      纯策略判定、AGENTS 规范目录与渲染、CI 通知内容策略
+│  └─ policies/                      纯策略判定、AGENTS 规范目录与渲染、CI 通知内容策略、合同解析/指纹/边界与证据复核
 ├─ test/                             配置、行为、端到端及按领域拆分的架构边界测试
 ├─ config.schema.json                项目配置 Schema
 ├─ ui-token-manifest.schema.json      UI Token、适配器别名、shortcut 与来源指纹 Schema
@@ -185,15 +191,15 @@ k6 接口压测能力遵守相同的外部门禁边界：`integrations/k6/` 负�
 - manual 命令、doctor 顺序和项目 `guard:*` 脚本；
 - `inspectSetup`、`plan` 和 `run` 生命周期。
 
-当前静态 Registry 包含 34 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
+当前静态 Registry 包含 36 个官方 Gate。消费项目配置的 `externalGates` 会在官方 Registry 之后动态追加，但不能替换或重排官方能力。
 
 | 领域 | 官方 Gate ID |
 |---|---|
 | 安全 | `security.dynamic-code`、`security.vue-unsafe-html`、`security.vue-target-blank` |
 | Vue 可访问性 | `accessibility.vue-form-label`、`accessibility.vue-image-alt` |
-| 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`dependencies.policy`、`repository.path-naming`、`repository.image-assets`、`repository.unused-image-assets`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
+| 仓库治理 | `repository.structured-exceptions`、`repository.agent-policy`、`repository.commit-message`、`repository.delivery-contract`、`dependencies.policy`、`repository.path-naming`、`repository.image-assets`、`repository.unused-image-assets`、`repository.file-placement`、`repository.code-placement`、`repository.maximum-file-lines`、`repository.protected-files` |
 | 质量与测试 | `quality.stylelint`、`quality.eslint`、`quality.prettier`、`quality.ui-tokens`、`quality.vue-async-resource-cleanup`、`quality.dead-code`、`quality.typecheck`、`quality.unit-test`、`quality.mutation-test`、`quality.accessibility-test`、`quality.architecture`、`quality.build`、`quality.lighthouse`、`quality.style-complexity`、`quality.style-governance` |
-| 发布准备 | `release.check`、`release.test`、`release.package` |
+| 发布准备 | `release.check`、`release.test`、`release.package`、`release.delivery-evidence` |
 
 `coverage` 和 `componentInteraction` 是 `quality.unit-test` 的子能力；Stylelint 复杂度和样式治理在提交门禁中由 `quality.stylelint` 执行，同时提供独立的全项目审计 Gate。
 
@@ -230,9 +236,9 @@ console 和 CI JSON 都从同一个结果渲染，不允许 Gate 直接决定进
 | `init` | 创建当前配置、安装托管 Hook、设置 `core.hooksPath`、维护忽略文件和项目脚本，并按项目工具准备情况启用能力 |
 | `install-hooks` | 安装 `pre-commit`、`pre-push`、`prepare-commit-msg`、`commit-msg`、`post-commit` 五个 Hook |
 | Hook 升级 | 接受已知旧 marker，但只生成当前 `repo-guard-managed:v4` |
-| `migrate` | 补齐当前配置契约、保留已有显式值并同步当前 AGENTS 托管规范，不保留已删除的旧字段兼容分支 |
-| `doctor` | 检查 Node、配置、Hook、工具、脚本、通知、结构化例外、AGENTS 托管规范和外部门禁准备状态 |
-| `doctor --fix` | 只修复 repo-guard 管理的配置、Hook、CI、忽略项、AGENTS 托管规范和项目脚本 |
+| `migrate` | 补齐当前配置契约、保留已有显式值并同步当前 AGENTS 托管规范与交付流程 Skill，不保留已删除的旧字段兼容分支 |
+| `doctor` | 检查 Node、配置、Hook、工具、脚本、通知、结构化例外、AGENTS 托管规范、交付流程 Skill 和外部门禁准备状态 |
+| `doctor --fix` | 只修复 repo-guard 管理的配置、Hook、CI、忽略项、AGENTS 托管规范、交付流程 Skill 和项目脚本 |
 | `doctor --ci` | 检查 GitLab CI 集成，不要求本地 Hook 或企业微信凭据 |
 | 托管文本换行兼容 | 比较最新状态时统一 LF、CRLF 和 CR，避免 Windows `core.autocrlf` 造成误报或无意义重写；其他内容仍严格匹配 |
 
@@ -279,6 +285,8 @@ pre-commit 从不运行项目级 fix。`lifecycle-lock.js` 在整个 pre-commit 
 | 无效图片资源 | `imageAssets.unused` | 默认关闭；静态解析配置范围源码，支持别名、public URL、`import.meta.glob` 与可验证动态声明；手动全量审计，pre-push、CI full 和 release-ready 按 `changedFiles` 基线或 `allFiles` 模式只读治理 |
 | 单文件行数 | `preCommit.maxFileLines` | 检查最终暂存文件完整行数；支持严格模式、存量不恶化模式、接近上限警告和 Vue 分区统计 |
 | 代码位置 | `codePlacement` | 一段精确代码文本只能出现在一个或多个允许文件；pre-commit 读取最终 Git 索引，CI 扫描完整提交 |
+| 交付合同 | `deliveryContract` | 用树形功能登记表和唯一活动 Markdown 合同复核功能归属、Git 历史修订与重新确认、历史反馈继承、资料计划、需求快照、目标分支、基线、Worktree 和路径边界 |
+| 交付证据 | `deliveryContract` | 在 release-ready 最后复核受跟踪 Evidence Run、当前完整 GateResult、执行报告、目标漂移影响分析、人工验收、正式发现、红—绿回归证明和全部绑定指纹 |
 | 保护文件审计 | 顶层 `rules`、`exclusions` | 第一条匹配规则生效，排除项优先；记录 Git 状态、原路径和目标路径 |
 | 企业微信通知 | `notification` 与 `notify` 规则 | 通知开启时要求发送成功；使用暂存指纹避免重复通知 |
 | 不可变文件 | 顶层规则 `level: "block"` | 修改、删除、重命名或移动匹配文件都会硬阻断；旧路径的 block 不能被目标路径普通规则降级 |
@@ -326,7 +334,19 @@ pre-commit 从不运行项目级 fix。`lifecycle-lock.js` 在整个 pre-commit 
 
 代码位置匹配只统一 CRLF/CR 为 LF，不忽略其他空白，也不把语义相似但文本不同的代码视为相同。
 
-### 5.5 提交、依赖与架构治理
+### 5.5 合同驱动交付与证据复核
+
+合同驱动交付默认关闭。功能登记表的每个递归节点固定包含 `id`、`name`、`status`、确认时间、确认人、原始需求/UI 来源、说明、独立的 `children` 与 `deliveryContracts`；功能归属由人工确认，Gate 只检查树结构、全局唯一性、活动状态和合同引用一致性。
+
+合同类型固定为 `feature`、`enhancement`、`repair`、`refactor`、`maintenance`，不根据 Git commit type 推断。AI 对 Spec、Design、Tasks、Examples、Visuals 分别提出 `inline`、`file`、`reference` 或 `not-needed` 计划，人工确认后由定义指纹锁定；不机械要求六个文件。`schemaVersion: 2` 使用一个主合同和多个组成文件：当前需求事实、追踪关系、执行清单及每个正式发现分别保存，主合同不随任务和问题数量持续膨胀。需求事实第一版只接受 Git 中的本地下载文件和截图，统一确认时间进入文件名，并复算单文件逐字节 SHA-256 与整批路径清单指纹，不访问远端页面。
+
+`policies/delivery-contract/contract-bundle.js` 只负责从同一快照解析主合同及其组成文件，并校验组件类型、合同 id、位置和一对一绑定；`contract-schema.js`、`contract-content.js`、`repository.js` 与 `evidence.js` 分别持有结构约束、Markdown 语义、Git 边界和发布证据决策。`orchestration/setup/delivery-skills.js` 是五个项目级 Skill 的唯一安装、升级、验真和安全删除边界，逐文件指纹记录在 `.repo-guard/managed-skills.json`；人工修改或无效清单一律拒绝覆盖和删除。Skill 资产包含功能登记根结构、不可冒充人工确认的功能节点、互相追踪的合同组成文件、独立发现和完整 Evidence Run/主合同证据索引；所有未决输入使用明确占位符或 `pending`，结构化测试保证资产不会携带可误通过的零哈希、虚构日期或相互断裂的引用。
+
+`repository.delivery-contract` 选择当前分支唯一的 `active` 主合同，并从同一 Git 索引或历史提交加载 requirements、traceability、obligations 和 findings 组成文件；固定基线必须是 HEAD 祖先，目标分支必须可解析。它回看同一合同包的 Git 历史：定义变化必须连续提升 revision 并使用更晚的人工确认，已确认义务、正式发现和旧需求修订快照不得删除；同一功能历史发现必须通过 `historicalFeedbackApplied` 映射到当前需求、任务、测试或 Gate。路径采用默认拒绝和禁止优先；删除检查原路径，重命名检查原、新路径，复制要求新路径允许且原、新路径均未禁止。`worktree.policy` 支持 `any`、`preferred`、`required`，只约束本地开发环境。并行合同的允许范围不是文件所有权；实际业务路径重叠在开发阶段提示风险，在 `release-ready` 阶段必须具有人工确认的协调记录、前置落地提交和全部通过且带证据的回归覆盖。Doctor 会实际解析功能登记、完整合同包、绑定、基线、目标分支、两个托管脚本及五个托管 Skill。
+
+`release.delivery-evidence` 不相信手写完成状态：`obligations.md` 中所有必需 GFM 清单项必须勾选，AI/Gate 项的 `EVD-*` 必须解析到受 Git 跟踪的 Evidence Run 中真实存在的文件、提交、执行日志或 GateResult；人工项必须记录身份、时间和绑定指纹。Gate 项不仅要求本轮实际结果为 `passed`，还会比较本轮完整 GateResult 与 Evidence Run 保存的内容指纹。Evidence Run 采用至少两轮的形成与复核：先运行 release-ready 取得待验收的前序 GateResult 并计算技术证据指纹，人工绑定该指纹验收；人工项变化后再次计算最终执行摘要，提交证据元数据，再由最终 release-ready 重跑并逐项比较。Evidence Run 同时绑定合同/需求/资料计划指纹、最新目标分支、集成基线和 `subjectCommit`；目标分支漂移时，Git 复算路径必须与人工确认的影响分析一致。独立 `findings/FND-*.md` 支持完整反馈状态、测试环境部署提交、人工复测、拒绝/延期确认和逐项升级决策；实现缺陷必须由受跟踪执行报告证明同一回归测试在问题提交失败、在最终代码提交通过。代码 `subjectCommit` 之后只允许提交主合同、执行清单、发现、对应 Evidence Run 及其显式引用并通过指纹校验的报告文件，从而避免 Git 哈希自引用。详细格式见 [合同驱动交付格式](contract-driven-delivery.md)。
+
+### 5.6 提交、依赖与架构治理
 
 | 能力 | 配置位置 | 主要行为 |
 |---|---|---|
@@ -341,7 +361,7 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 
 提交信息门禁默认关闭。启用后，普通提交必须符合 `type(scope)!: 简要说明`，项目可限制类型、scope 和 Unicode 标题长度。不兼容变更可要求标题 `!` 与 `BREAKING CHANGE:` 正文同时存在；merge 在本地通过 `MERGE_HEAD`、在已提交历史中通过父节点数量识别，不能把 revert/cherry-pick 的 Hook 来源误认为 merge；revert 必须保留 Git 生成的标题与回退 SHA。`fixup!`/`squash!` 默认只允许本地整理，pre-push 与 CI 强制阻断；release-ready 只在提交范围含不兼容变更时要求目标提交中的 package major 高于基准版本。
 
-### 5.6 测试、覆盖率与可访问性测试
+### 5.7 测试、覆盖率与可访问性测试
 
 | 能力 | 配置位置 | 主要行为 |
 |---|---|---|
@@ -359,7 +379,7 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 
 `mutationTest.guardedBuilds` 可声明多个任意原始 npm 构建脚本及各自的 `guard:build:*` 别名、构建超时和失败通知开关。别名执行固定闭环：变异测试通过后才运行原始脚本；得分不足、没有可评分变异、执行失败、报告缺失或无效时立即阻断。`repo-guard init` 只补充缺失别名，不覆盖同名自定义脚本；doctor 同时验证原始脚本、精确别名、Stryker 依赖、配置文件和报告忽略规则。企业微信通知复用现有本地凭据；受管 GitLab 流水线通知已启用时抑制重复消息。
 
-### 5.7 类型、构建与 Lighthouse
+### 5.8 类型、构建与 Lighthouse
 
 | 能力 | 配置位置 | 执行位置 | 主要行为 |
 |---|---|---|---|
@@ -369,7 +389,7 @@ repo-guard 不替业务项目设计依赖层级；它负责验证项目已有架
 
 Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 路由，不隐式执行 LHCI upload。
 
-### 5.8 外部门禁
+### 5.9 外部门禁
 
 `externalGates` 用于接入 API 合约、页面、视觉等业务项目自有测试，而不把业务接口或页面语义写入 repo-guard。
 
@@ -384,7 +404,7 @@ Lighthouse 不进入 pre-commit 或普通 CI policy/full，不猜测 Vue Router 
 - 拒绝旧报告、未知字段、敏感数据、已跟踪文件覆盖、路径穿越和符号链接穿越。
 - 超时、取消或输出超限会终止完整 npm 进程树。
 
-### 5.9 Axios 手动接口性能外部门禁
+### 5.10 Axios 手动接口性能外部门禁
 
 Axios 接口性能能力通过 `project.api-performance` 外部门禁接入，不属于静态 Registry 中的官方 Gate。消费项目必须为它提供精确 npm script，外部门禁 `environments` 必须且只能是 `["manual"]`；runner 还会拒绝常见 CI、GitLab CI、GitHub Actions、Azure Pipelines 和 Jenkins 环境标记。因此它不会进入 pre-commit、pre-push、CI policy/full、release-ready、受保护构建或打包流程，只能由用户在本地终端显式运行 `repo-guard external project.api-performance`。
 
@@ -394,7 +414,7 @@ Axios 接口性能能力通过 `project.api-performance` 外部门禁接入，�
 
 目标 URL 必须使用 HTTPS，不得包含凭据、查询参数或片段；解析后的主机必须同时匹配配置白名单和本次运行确认环境变量。报告目录必须位于 `reports/`、被 `.gitignore` 忽略、未被 Git 跟踪且不穿过符号链接。runner 最后写入 `repo-guard-json-v1` 主报告和经过 HTML 转义的中文报告；通用外部门禁随后再次检查报告新鲜度、退出码、Schema、大小、路径和敏感信息。通过、阈值违规和执行错误分别使用退出码 `0`、`2` 和 `1`。
 
-### 5.10 k6 手动接口压测外部门禁
+### 5.11 k6 手动接口压测外部门禁
 
 k6 接口压测通过 `project.k6-load` 外部门禁接入，必须配置 `environments: ["manual"]` 并由本地终端显式执行 `repo-guard external project.k6-load`。runner 拒绝常见自动化环境标记，不进入 pre-commit、pre-push、CI policy/full、release-ready、受保护构建或打包；本期只使用本机 k6 `1.5.0` 至 `2.x`，不自动安装 k6、Docker 或扩展，不调用 k6 cloud，也不上传报告。
 
@@ -408,7 +428,7 @@ repo-guard 生成临时受控入口并独占 k6 `options`、thresholds 与 `hand
 
 测试套件以伪 k6 覆盖稳定的通过、违规和执行错误分支，并提供由 `REPO_GUARD_REAL_K6_BIN` 显式启用的真实集成测试。真实测试固定使用 k6 官方演示站点、1 VU 和 1 秒负载；默认测试流程不联网。
 
-### 5.11 GitLab CI
+### 5.12 GitLab CI
 
 | 配置档 | 固定能力 |
 |---|---|
@@ -428,7 +448,7 @@ CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready
 
 交付配置仅包含阶段、验证/发布镜像、测试/生产分支、Runner 标签、旧 peer dependency 兼容、快速发布与通知开关。`repo_guard` 固定在 `.pre` stage，受管验证与发布 Job 只会在门禁通过后继续。开启通知后，生成器在保留的 `.post` 阶段增加 `when: on_success` 与 `when: on_failure` 两个互斥 Job，任意阻断性 Job 失败会发送一次失败通知，全部成功则发送一次成功通知。运行中的受管 Job 被手动或自动取消时，`after_script` 发送“已取消（canceled）”通知；前置门禁和验证 Job 可自动中断，部署 Job 不改为可自动中断。取消 pending Job 或强制取消时 GitLab 不执行 `after_script`，因此无 Runner 内通知入口。提交标题最多显示前 10 个字符并追加省略号。通知包从 npm 官方 tarball URL 安装到 Job 唯一隔离目录，禁用 lifecycle scripts，并通过绝对路径执行，不使用消费项目的本地可执行文件。通知 Job 使用 `allow_failure: true` 保持原流水线结果。Webhook 来自 `REPO_GUARD_WECOM_WEBHOOK`，可选手机号来自 `REPO_GUARD_MENTION_MOBILES`，二者只从 GitLab CI 变量读取。实际微信小程序上传、Web 镜像构建、蓝绿切换、其他密钥、端口和外部服务地址均由消费项目脚本或 GitLab 受保护变量拥有。`ci.pipeline` 不改变 pre-commit、pre-push 或 `ci.gatePolicy` 的语义。
 
-### 5.12 发布就绪
+### 5.13 发布就绪
 
 `release-ready` 会验证：
 
@@ -439,6 +459,7 @@ CI Gate 集合由 Registry 中声明的 `ci-policy`、`ci-full`、`release-ready
 - Schema、exports、bin 和实际 npm pack 文件一致；
 - `pack:check` 精确使用 `npm pack --dry-run --json --ignore-scripts`；
 - 打包内容不包含凭据、私钥、Token 或其他敏感发布文件。
+- 启用合同驱动交付时，项目外部门禁先完成，最后复核当前合同义务、正式问题、人工验收、代码提交和需求/定义/技术/执行指纹。
 
 该流程只证明“可以发布”，不会生成正式 tarball，不运行 lifecycle script，不执行 `npm publish`、deploy 或任何生产写操作。
 
@@ -471,6 +492,7 @@ Stylelint fix
   → dependency-policy（最终 Git 索引）
   → image-assets（启用时读取最终 Git 索引二进制内容）
   → code-placement（最终 Git 索引）
+  → delivery-contract（最终 Git 索引与完整合同变更范围）
   → protected-files（最后执行）
 ```
 
@@ -498,7 +520,7 @@ pre-push 的 TypeScript、单元测试、axe 和构建脚本通过统一异步�
 
 ### 6.3 CI 与 release-ready
 
-CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息，并在启用时执行 UI Token 门禁；CI 默认拒绝残留的 `fixup!`/`squash!`。无效图片资源只进入 CI full 与 release-ready，不进入轻量 policy。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。
+CI 使用锁定计划聚合所有结果，并将每一步的 GateResult 写入统一报告。CI policy/full 和 release-ready 都在结构化例外之后校验提交信息，并在启用时执行 UI Token 门禁；CI 默认拒绝残留的 `fixup!`/`squash!`。无效图片资源只进入 CI full 与 release-ready，不进入轻量 policy。release-ready 额外把不兼容变更声明与 package major 版本闭环。`full` 不运行 Lighthouse；Lighthouse 只在 manual、可选 pre-push 和 release-ready 中运行。release-ready 中的项目 `project.*` 外部门禁位于 `release.package` 之后、`release.delivery-evidence` 之前，最终证据门禁可以复核本轮前序 GateResult。
 
 ## 7. CLI 命令清单
 
@@ -537,6 +559,8 @@ dead-code
 typecheck
 unit-test
 mutation-test
+delivery-contract
+delivery-evidence
 async-resource-cleanup
 path-naming
 ui-tokens
@@ -575,6 +599,7 @@ styleGovernance
 maxFileLines
 filePlacement
 codePlacement
+deliveryContract
 dependencies
 architecture
 deadCode
@@ -604,6 +629,7 @@ ci
 | `ci` | CI 开关、配置档、报告路径、保护文件行为和独立 Gate 策略 |
 | `externalGates` | 项目自有外部门禁声明 |
 | `codePlacement` | 精确代码文本允许位置规则 |
+| `deliveryContract` | 功能登记表、合同目录、合同触发范围和生成物排除范围；同时控制交付合同与交付证据门禁 |
 | `exceptions` | 精确、限时、可审计的结构化例外 |
 | `dependencyPolicy` | 依赖声明与 lockfile 治理 |
 | `commitMessage` | Commit 提交信息与生命周期治理 |

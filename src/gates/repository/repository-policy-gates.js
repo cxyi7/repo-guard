@@ -24,6 +24,7 @@ import {
 import { codePlacementGate } from './code-placement-gate.js';
 import { commitMessageGate } from './commit-message-gate.js';
 import { inspectAgentPolicies } from '../../policies/agent-policies.js';
+import { deliveryContractGate } from './delivery-contract-gate.js';
 
 const CONFIG_VERSION = [1];
 
@@ -280,5 +281,5 @@ export const repositoryPolicyGates = Object.freeze([
   agentPolicyGate,
   commitMessageGate,
   dependencyPolicyGate, filePlacementGate, codePlacementGate,
-  maximumFileLinesGate, protectedFilesGate,
+  maximumFileLinesGate, deliveryContractGate, protectedFilesGate,
 ]);

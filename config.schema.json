@@ -284,6 +284,44 @@
         }
       }
     },
+    "deliveryContract": {
+      "type": "object",
+      "description": "可选的合同驱动交付门禁。启用后，以树形功能登记表、受 Git 跟踪的 Markdown 交付合同和 Evidence Run 约束当前分支、目标分支、Git 历史修订、基线、需求快照、资料计划、路径边界、执行清单和发布证据。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否启用 repository.delivery-contract 和 release.delivery-evidence。"
+        },
+        "registryPath": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[^!]+\\.json$",
+          "default": "docs/delivery/feature-registry.json",
+          "description": "仓库相对的树形功能登记表 JSON 路径。"
+        },
+        "contractsDirectory": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*!)[^/].*[^/]$",
+          "default": "docs/delivery/contracts",
+          "description": "保存 Markdown 交付合同、Evidence Run、执行报告及本地需求快照的仓库相对目录。"
+        },
+        "requiredFor": {
+          "type": "array",
+          "uniqueItems": true,
+          "default": ["**/*"],
+          "items": { "type": "string", "minLength": 1 },
+          "description": "命中任一 glob 的当前变更必须由唯一交付合同覆盖；空数组表示不自动要求合同。"
+        },
+        "exclude": {
+          "type": "array",
+          "uniqueItems": true,
+          "default": ["reports/**"],
+          "items": { "type": "string", "minLength": 1 },
+          "description": "不触发合同选择的生成物范围；选定合同后不会因此绕过 allowedPaths 或 forbiddenPaths。"
+        }
+      }
+    },
     "exceptions": {
       "type": "object",
       "description": "Human-reviewed, exact-location exceptions shared by repo-guard rules. Expired entries block normal commands.",
@@ -1914,7 +1952,8 @@
                   "allowedPatterns": [
                     "docs/**",
                     ".github/**",
-                    ".changeset/**"
+                    ".changeset/**",
+                    ".agents/skills/**"
                   ],
                   "exceptions": [
                     "README*.md",

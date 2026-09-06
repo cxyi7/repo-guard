@@ -67,6 +67,21 @@ const entries = [
     ],
   }),
   entry({
+    id: 'delivery-contract',
+    groupId: 'repository-governance-policy',
+    gates: ['repository.delivery-contract', 'release.delivery-evidence'],
+    features: ['deliveryContract'],
+    when: enabled('deliveryContract'),
+    lines: ({ config }) => [
+      `- 开发前必须在 ${code(config.deliveryContract.registryPath)} 由人工确认功能归属，并在 ${code(config.deliveryContract.contractsDirectory)} 保存当前分支唯一的活动 Markdown 交付合同；合同类型不得根据 Git commit type 自动推断。`,
+      '- 启用交付合同时使用 `.agents/skills/` 下由 repo-guard 托管的五个流程 Skill：功能登记、合同规划、合同执行、反馈闭环和交付证据；Skill 指导 AI，repo-guard Gate 仍是确定性校验来源。',
+      '- 交付合同使用 `schemaVersion: 2` 多文件合同包；主合同只保存控制信息，requirements、traceability、obligations 和每个 `FND-*` 分别保存在合同子目录的组成文件中。',
+      '- AI 负责提出 Spec、Design、Tasks、Examples、Visuals、变更边界和证据计划；人工负责确认功能归属、合同定义、资料省略理由与最终验收，AI 不得代填或勾选 HUMAN-* 事项。',
+      `- 需求事实只接受受 Git 跟踪的本地下载文件或截图；合同变更范围默认拒绝，forbiddenPaths 优先于 allowedPaths。受合同约束的业务范围为 ${list(config.deliveryContract.requiredFor)}，排除 ${list(config.deliveryContract.exclude)}。合同定义变化必须连续提升修订并重新人工确认，不得删除历史义务、正式发现或需求修订快照。`,
+      '- 已宣称完成后发现的问题必须登记为 FND-*，重新打开关联任务，保留部署提交、执行日志和人工复测，并完成测试、合同、设计、任务模板与 Gate 的反向升级决定；实现缺陷必须用同一回归测试形成红—绿证明。清单证据必须解析到受 Git 跟踪的 Evidence Run，发布前由 release.delivery-evidence 复核完整的本轮 GateResult、最新目标分支、集成影响分析和人工验收。',
+    ],
+  }),
+  entry({
     id: 'commit-message',
     groupId: 'repository-governance-policy',
     gates: ['repository.commit-message'],

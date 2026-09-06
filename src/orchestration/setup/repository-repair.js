@@ -5,6 +5,7 @@ import {
   migrateProjectConfig,
 } from './config-management.js';
 import { installHooks } from './hook-installer.js';
+import { syncDeliverySkills } from './delivery-skills.js';
 
 export function repairRepository(root) {
   const repairs = [];
@@ -31,6 +32,12 @@ export function repairRepository(root) {
       agentPolicy.changed
         ? `已同步 ${AGENT_POLICY_FILE} 项目托管规范`
         : `${AGENT_POLICY_FILE} 项目托管规范已是最新状态`,
+    );
+    const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
+    repairs.push(
+      deliverySkills.changed
+        ? '已同步交付流程 Skills'
+        : '交付流程 Skills 已是最新状态',
     );
   } catch (error) {
     repairErrors.push(`配置修复失败：${error.message}`);

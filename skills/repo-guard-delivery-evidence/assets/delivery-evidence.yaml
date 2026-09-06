@@ -1,0 +1,9 @@
+deliveryEvidence:
+  integrationBaseCommit: pending
+  subjectCommit: pending
+  definitionDigest: pending
+  sourceBundleDigest: pending
+  evidenceRunPath: "docs/delivery/contracts/<REQUIRED_CONTRACT_ID>/evidence/runs/<REQUIRED_RUN_ID>.md"
+  evidenceRunDigest: pending
+  technicalEvidenceDigest: pending
+  executionDigest: pending

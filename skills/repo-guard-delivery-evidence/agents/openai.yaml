@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard 交付证据"
+  short_description: "生成 Evidence Run 并复核提交、门禁、人工验收和发布条件"
+  default_prompt: "使用 $repo-guard-delivery-evidence 为当前合同整理并复核最终交付证据。"
+policy:
+  allow_implicit_invocation: true

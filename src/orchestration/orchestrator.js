@@ -212,6 +212,10 @@ export async function orchestratePlan({
           );
         }
       }
+      stepContext = Object.freeze({
+        ...stepContext,
+        priorResults: Object.freeze(outcomes.map(resultFromOutcome)),
+      });
       outcome = beforeStep
         ? await beforeStep({ context: stepContext, gate, step })
         : null;

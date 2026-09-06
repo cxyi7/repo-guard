@@ -6,6 +6,7 @@ import { validateCommitMessageConfiguration } from './commit-message-validation.
 import { validateCodePlacementConfiguration } from './code-placement-validation.js';
 import { validateDependencyPolicyConfiguration } from './dependency-policy-validation.js';
 import { validateDeadCodeConfiguration } from './dead-code-validation.js';
+import { validateDeliveryContractConfiguration } from './delivery-contract-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
 import { validateImageAssetsConfiguration } from './image-assets-validation.js';
@@ -42,6 +43,8 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
   const imageAssets = validateImageAssetsConfiguration(value, configPath);
 
   const uiTokens = validateUiTokenConfiguration(value, configPath);
+
+  const deliveryContract = validateDeliveryContractConfiguration(value, configPath);
 
   const architecture = validateArchitectureConfiguration(value, configPath);
 
@@ -83,6 +86,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
     deadCode,
     imageAssets,
     uiTokens,
+    deliveryContract,
     architecture,
     build,
     lighthouse,

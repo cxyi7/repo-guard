@@ -27,6 +27,7 @@ import {
   cloneCommitMessageConfig,
   cloneDeadCodeConfig,
   cloneDependencyPolicyConfig,
+  cloneDeliveryContractConfig,
   cloneExceptionsConfig,
   cloneFileHeaderConfig,
   cloneFilePlacementConfig,
@@ -88,6 +89,7 @@ export function createStarterConfig({
     deadCode: cloneDeadCodeConfig(),
     imageAssets: cloneImageAssetsConfig(),
     uiTokens: cloneUiTokensConfig(),
+    deliveryContract: cloneDeliveryContractConfig(),
     architecture: cloneArchitectureConfig({ enabled: architectureEnabled }),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -216,6 +218,7 @@ export function migrateProjectConfig(root, {
     deadCode: cloneDeadCodeConfig(prepared.deadCode),
     imageAssets: cloneImageAssetsConfig(prepared.imageAssets),
     uiTokens: migratedUiTokens,
+    deliveryContract: cloneDeliveryContractConfig(prepared.deliveryContract),
     architecture: cloneArchitectureConfig(prepared.architecture),
     accessibilityTest: {
       ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,

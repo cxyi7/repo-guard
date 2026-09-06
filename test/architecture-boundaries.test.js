@@ -132,6 +132,7 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'bin',
   'docs',
   'scripts/check-syntax.js',
+  'skills',
   'src',
   'config.schema.json',
   'ui-token-manifest.schema.json',
@@ -157,6 +158,7 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
   'k6-load-config.schema.json',
   'package.json',
   'scripts',
+  'skills',
   'src',
   'ui-token-manifest.schema.json',
 ]);

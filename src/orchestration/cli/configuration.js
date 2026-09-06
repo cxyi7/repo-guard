@@ -8,23 +8,31 @@ import {
 import { findRepositoryRoot } from '../../git/repository.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { syncAgentPolicies } from '../../policies/agent-policies.js';
+import { syncDeliverySkills } from '../setup/delivery-skills.js';
 
 export function runMigrate(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   const result = migrateProjectConfig(root);
   const agentPolicy = syncAgentPolicies(root, result.config);
+  const deliverySkills = syncDeliverySkills(root, result.config.deliveryContract.enabled);
   writeConsoleMessage(`repo-guard 配置： ${path.join(root, CONFIG_FILE)}`);
   writeConsoleMessage(`- 迁移：${result.changed ? '已更新' : '已是最新状态'}`);
   writeConsoleMessage(`- 托管规范文件 AGENTS.md：${agentPolicy.changed ? '已同步' : '已是最新状态'}`);
+  writeConsoleMessage(`- 交付流程 Skills：${deliverySkills.changed ? '已同步' : '已是最新状态'}`);
   return 0;
 }
 
 function runFeatureToggle(requestedFeatures, enabled, cwd) {
   const root = findRepositoryRoot(cwd);
   const result = setFeaturesEnabled(root, requestedFeatures, enabled);
-  const agentPolicy = syncAgentPolicies(root, loadConfig(root));
+  const config = loadConfig(root);
+  const agentPolicy = syncAgentPolicies(root, config);
+  const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
   writeConsoleMessage(
     `repo-guard 托管规范文件 AGENTS.md：${agentPolicy.changed ? '已同步' : '已是最新状态'}`,
+  );
+  writeConsoleMessage(
+    `repo-guard 交付流程 Skills：${deliverySkills.changed ? '已同步' : '已是最新状态'}`,
   );
   const state = enabled ? '已启用' : '已禁用';
   writeConsoleMessage(`repo-guard 功能： ${path.join(root, CONFIG_FILE)}`);

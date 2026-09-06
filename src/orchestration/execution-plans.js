@@ -46,6 +46,7 @@ export const ciPolicyPlan = defineExecutionPlan({
     'repository.image-assets',
     'repository.code-placement',
     'repository.maximum-file-lines',
+    'repository.delivery-contract',
     {
       id: 'quality.unit-test-policy',
       gateId: 'quality.unit-test',
@@ -81,6 +82,7 @@ export const ciFullPlan = defineExecutionPlan({
     'repository.image-assets',
     'repository.code-placement',
     'repository.maximum-file-lines',
+    'repository.delivery-contract',
     {
       id: 'quality.unit-test-policy',
       gateId: 'quality.unit-test',
@@ -132,6 +134,7 @@ export const releaseReadyPlan = defineExecutionPlan({
     { id: 'quality.build', gateId: 'quality.build', reportName: 'build' },
     'quality.lighthouse',
     'release.package',
+    'release.delivery-evidence',
   ],
 });
 
@@ -167,20 +170,22 @@ export function createProjectReleaseReadyPlan(
   registry,
   { includeExternalGates = true } = {},
 ) {
+  const externalSteps = config.externalGates
+    .filter((gate) => includeExternalGate(
+      config,
+      gate,
+      'release-ready',
+      includeExternalGates,
+    ))
+    .map(({ id }) => id);
   return validateExecutionPlan(defineExecutionPlan({
     id: 'release-ready',
     environment: 'release-ready',
     locked: true,
     steps: [
-      ...releaseReadyPlan.steps,
-      ...config.externalGates
-        .filter((gate) => includeExternalGate(
-          config,
-          gate,
-          'release-ready',
-          includeExternalGates,
-        ))
-        .map(({ id }) => id),
+      ...releaseReadyPlan.steps.slice(0, -1),
+      ...externalSteps,
+      releaseReadyPlan.steps.at(-1),
     ],
   }), registry);
 }

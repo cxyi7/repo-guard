@@ -90,7 +90,7 @@ async function runGate(root, id) {
   return await gate.run({ ...gateContext, plan });
 }
 
-test('locks release-ready official gates before project external gates', () => {
+test('runs project release gates before the final delivery-evidence review', () => {
   const externalGate = {
     id: 'project.contract',
     enabled: true,
@@ -102,10 +102,15 @@ test('locks release-ready official gates before project external gates', () => {
   const projectConfig = config([externalGate]);
   const registry = createProjectGateRegistry(projectConfig);
   const trusted = createProjectReleaseReadyPlan(projectConfig, registry);
-  assert.equal(trusted.steps.at(-1).id, 'project.contract');
+  assert.equal(trusted.steps.at(-1).id, 'release.delivery-evidence');
   assert.equal(
     trusted.steps.findIndex(({ id }) => id === 'project.contract')
       > trusted.steps.findIndex(({ id }) => id === 'release.package'),
+    true,
+  );
+  assert.equal(
+    trusted.steps.findIndex(({ id }) => id === 'project.contract')
+      < trusted.steps.findIndex(({ id }) => id === 'release.delivery-evidence'),
     true,
   );
   assert.equal(
@@ -276,11 +281,12 @@ test('runs release-ready as a read-only CI profile and records all proof steps',
   ));
   assert.equal(report.profile, 'release-ready');
   assert.equal(report.status, 'passed');
-  assert.deepEqual(report.steps.slice(-5).map(({ name, status }) => ({ name, status })), [
+  assert.deepEqual(report.steps.slice(-6).map(({ name, status }) => ({ name, status })), [
     { name: 'release.check', status: 'passed' },
     { name: 'release.test', status: 'passed' },
     { name: 'build', status: 'skipped' },
     { name: 'quality.lighthouse', status: 'skipped' },
     { name: 'release.package', status: 'passed' },
+    { name: 'release.delivery-evidence', status: 'skipped' },
   ]);
 });

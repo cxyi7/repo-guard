@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -108,6 +109,7 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   config.preCommit.fileHeader.enabled = true;
   config.imageAssets.enabled = true;
   config.architecture.enabled = true;
+  config.deliveryContract.enabled = true;
   config.codePlacement.enabled = true;
   config.codePlacement.rules = [{
     name: '支付签名',
@@ -151,6 +153,10 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   assert.match(enabledContent, /k6 并发压测/);
   assert.match(enabledContent, /图片资源必须遵守/);
   assert.match(enabledContent, /Hook 与 CI 只能检查/);
+  assert.match(enabledContent, /当前分支唯一的活动 Markdown 交付合同/);
+  assert.match(enabledContent, /五个流程 Skill/);
+  assert.match(enabledContent, /schemaVersion: 2/);
+  assert.match(enabledContent, /AI 不得代填或勾选 HUMAN-\* 事项/);
   assert.doesNotMatch(enabledContent, /\bundefined\b/);
   assert.doesNotMatch(enabledContent, /绝不能写入托管规范的敏感匹配内容/);
 
@@ -163,6 +169,7 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   config.preCommit.fileHeader.enabled = false;
   config.imageAssets.enabled = false;
   config.architecture.enabled = false;
+  config.deliveryContract.enabled = false;
   config.codePlacement.enabled = false;
   config.externalGates = [];
   assert.equal(syncAgentPolicies(root, config).changed, true);
@@ -170,6 +177,7 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   assert.doesNotMatch(disabledContent, /文件头由 repo-guard 依据 Git 记录维护/);
   assert.doesNotMatch(disabledContent, /k6 并发压测/);
   assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
+  assert.doesNotMatch(disabledContent, /当前分支唯一的活动 Markdown 交付合同/);
   assert.doesNotMatch(disabledContent, /修改模块依赖后必须运行/);
 });
 
@@ -221,6 +229,38 @@ test('启用和禁用图片治理会同步 AGENTS.md 托管规则', (context) =>
   const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
   assert.match(disabledContent, /repo-guard:repository-governance-policy:start/);
+});
+
+test('启用和禁用交付合同会同步项目级流程 Skills', (context) => {
+  const root = fixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  runGit(['init'], { cwd: root });
+  writeFileSync(
+    path.join(root, 'repo-guard.config.json'),
+    `${JSON.stringify(createStarterConfig(), null, 2)}\n`,
+    'utf8',
+  );
+
+  assert.equal(runEnable(['deliveryContract'], root), 0);
+  assert.equal(existsSync(path.join(root, '.repo-guard', 'managed-skills.json')), true);
+  assert.equal(existsSync(path.join(
+    root,
+    '.agents',
+    'skills',
+    'repo-guard-delivery-contract',
+    'SKILL.md',
+  )), true);
+  assert.match(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /五个流程 Skill/);
+
+  assert.equal(runDisable(['deliveryContract'], root), 0);
+  assert.equal(existsSync(path.join(root, '.repo-guard', 'managed-skills.json')), false);
+  assert.equal(existsSync(path.join(
+    root,
+    '.agents',
+    'skills',
+    'repo-guard-delivery-contract',
+    'SKILL.md',
+  )), false);
 });
 
 test('启用无效图片资源会把静态引用和动态声明边界写入 AGENTS.md', (context) => {

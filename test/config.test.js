@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -8,6 +9,7 @@ import {
   DEFAULT_CODE_PLACEMENT_CONFIG,
   DEFAULT_COMMIT_MESSAGE_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
+  DEFAULT_DELIVERY_CONTRACT_CONFIG,
   DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
@@ -46,6 +48,15 @@ function baseConfig(extra = {}) {
   };
 }
 
+test('keeps the published configuration schema valid JSON', () => {
+  const schema = JSON.parse(
+    readFileSync(new URL('../config.schema.json', import.meta.url), 'utf8'),
+  );
+
+  assert.equal(schema.type, 'object');
+  assert.equal(schema.properties.deliveryContract.type, 'object');
+});
+
 test('preserves public configuration lifecycle exports from their owning modules', () => {
   assert.equal(publicLoadConfig, loadConfig);
   assert.equal(publicValidateConfig, validateConfig);
@@ -62,6 +73,7 @@ test('sparse version 1 configs use the current platform defaults', () => {
   assert.deepEqual(config.commitMessage, DEFAULT_COMMIT_MESSAGE_CONFIG);
   assert.deepEqual(config.imageAssets, DEFAULT_IMAGE_ASSETS_CONFIG);
   assert.deepEqual(config.uiTokens, DEFAULT_UI_TOKENS_CONFIG);
+  assert.deepEqual(config.deliveryContract, DEFAULT_DELIVERY_CONTRACT_CONFIG);
   assert.deepEqual(config.architecture, DEFAULT_ARCHITECTURE_CONFIG);
   assert.deepEqual(config.accessibilityTest, DEFAULT_ACCESSIBILITY_TEST_CONFIG);
   assert.deepEqual(config.build, DEFAULT_BUILD_CONFIG);
@@ -112,6 +124,33 @@ test('validates the project notification switch', () => {
   assert.throws(
     () => validateConfig(baseConfig({ notification: { enabled: 'no' } })),
     /notification.enabled 必须是布尔值/,
+  );
+});
+
+test('validates and normalizes contract-driven delivery configuration', () => {
+  const config = validateConfig(baseConfig({
+    deliveryContract: {
+      enabled: true,
+      registryPath: 'governance/features.json',
+      contractsDirectory: 'governance/contracts',
+      requiredFor: ['src/**', 'test/**'],
+      exclude: ['reports/**'],
+    },
+  }));
+  assert.deepEqual(config.deliveryContract, {
+    enabled: true,
+    registryPath: 'governance/features.json',
+    contractsDirectory: 'governance/contracts',
+    requiredFor: ['src/**', 'test/**'],
+    exclude: ['reports/**'],
+  });
+  assert.throws(
+    () => validateConfig(baseConfig({ deliveryContract: { registryPath: '../features.json' } })),
+    /必须位于仓库内部/,
+  );
+  assert.throws(
+    () => validateConfig(baseConfig({ deliveryContract: { contractsDirectory: 'contracts.md' } })),
+    /必须指向仓库内目录/,
   );
 });
 

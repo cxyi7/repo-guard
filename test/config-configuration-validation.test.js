@@ -28,6 +28,7 @@ test('assembles every normalized configuration domain in contract order', () => 
     'deadCode',
     'imageAssets',
     'uiTokens',
+    'deliveryContract',
     'architecture',
     'build',
     'lighthouse',

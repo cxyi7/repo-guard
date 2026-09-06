@@ -455,6 +455,7 @@ export const DEFAULT_FILE_PLACEMENT_CONFIG = Object.freeze({
         'docs/**',
         '.github/**',
         '.changeset/**',
+        '.agents/skills/**',
       ]),
       exceptions: Object.freeze([
         'README*.md',
@@ -472,6 +473,13 @@ export const DEFAULT_FILE_PLACEMENT_CONFIG = Object.freeze({
 export const DEFAULT_CODE_PLACEMENT_CONFIG = Object.freeze({
   enabled: false,
   rules: Object.freeze([]),
+});
+export const DEFAULT_DELIVERY_CONTRACT_CONFIG = Object.freeze({
+  enabled: false,
+  registryPath: 'docs/delivery/feature-registry.json',
+  contractsDirectory: 'docs/delivery/contracts',
+  requiredFor: Object.freeze(['**/*']),
+  exclude: Object.freeze(['reports/**']),
 });
 export const DEFAULT_LIGHTHOUSE_CONFIG = Object.freeze({
   enabled: false,

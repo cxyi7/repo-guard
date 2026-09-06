@@ -1,0 +1,6 @@
+interface:
+  display_name: "Repo Guard 交付合同"
+  short_description: "规划并生成 schemaVersion 2 多文件交付合同包"
+  default_prompt: "使用 $repo-guard-delivery-contract 为已确认功能生成 schemaVersion 2 交付合同。"
+policy:
+  allow_implicit_invocation: true
