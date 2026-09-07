@@ -1,0 +1,37 @@
+%% 同源节点与连线生成，修改后同步 SVG。
+flowchart TD
+    start["反馈来自真实执行<br/>AI 自测 / CI / 测试环境 / 人工验收 / 发布后使用"]
+    formal{"需要正式 FND 吗？<br/>推翻完成结论、发现遗漏、需永久回归或会重复"}
+    log["普通中间失败<br/>保留执行日志<br/>按当前任务继续"]
+    closed{"原合同已关闭？<br/>保留历史，不回写关闭结论"}
+    repair["新建 repair 合同<br/>关联原功能与历史发现<br/>由人确认本次范围"]
+    register["登记 FND，重新打开关联任务<br/>保留原始反馈、阶段、问题提交、任务与重复特征"]
+    reproduce["复现 → 分类 → 制定处理计划<br/>人 / AI 核实事实，区分实现、需求、设计或流程缺口"]
+    fix["按原因修复并保存证据<br/>实现缺陷：同一测试在错误提交失败、最终提交通过<br/>其他缺口：修正对应资料、实现与验证<br/>拒绝 / 延期：保留调查、理由及人工确认"]
+    env{"来自测试环境或人工验收？<br/>正常关闭时必须人工复测"}
+    retest["人进行真实环境复测<br/>记录实际部署提交<br/>绑定最终 subjectCommit<br/>失败则继续修复"]
+    promotion["逐项分析反向升级，由人确认<br/>测试 · 合同 · 设计 · 任务模板 · Gate<br/>每项记录 required / unchanged / not-needed<br/>只有适用且可确定检查的问题才考虑升级规则"]
+    verify["完成组合验证，复核发现与任务状态<br/>正常关闭需证据齐全；拒绝 / 延期也必须有升级决定"]
+    next["保留改进，进入下一轮交付复核<br/>关闭问题后更新任务；事实变化则重建证据并重新验收"]
+    start --> formal
+    formal -->|"否"| log
+    formal -->|"是"| closed
+    closed -->|"是"| repair
+    closed -->|"否"| register
+    repair --> register
+    register --> reproduce
+    reproduce --> fix
+    fix --> env
+    env -->|"是"| retest
+    env -->|"否 / 已批准拒绝或延期"| promotion
+    retest -->|"复测失败"| fix
+    retest -->|"复测通过"| promotion
+    promotion --> verify
+    verify -->|"要求满足"| next
+    verify -->|"仍未满足：继续处理"| fix
+    classDef human fill:#F4EEFC,stroke:#CFC0E7,color:#152A43
+    classDef decision fill:#ECF3FF,stroke:#B8CDEC,color:#152A43
+    classDef done fill:#E7F5F1,stroke:#A7CDBF,color:#152A43
+    class repair,retest,promotion human
+    class formal,closed,env decision
+    class next done

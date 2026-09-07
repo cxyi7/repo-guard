@@ -1,0 +1,43 @@
+%% 同源数据生成，修改后同步 SVG。
+sequenceDiagram
+    autonumber
+    participant H as 人
+    participant A as AI
+    participant R as repo-guard
+    participant G as Git
+    rect rgb(239, 245, 253)
+    Note over H,G: 01 约定交付
+    H->>A: 提出需求与验收条件
+    A->>G: 保存本地需求、功能登记与合同草稿
+    A->>R: 校验合同、计算指纹
+    R->>G: 读取索引与历史
+    R->>A: 返回当前定义与问题
+    H->>A: 确认归属与合同计划
+    end
+    rect rgb(239, 245, 253)
+    Note over H,G: 02 实现与提交
+    A->>G: 提交实现与测试
+    G->>R: 触发 pre-commit
+    R->>G: 通过才继续提交
+    G->>A: 形成最终代码提交 subjectCommit
+    end
+    rect rgb(239, 245, 253)
+    Note over H,G: 03 技术证据与验收
+    A->>R: 首轮 release-ready
+    R->>G: 核对基线与代码
+    R->>A: 返回前序检查结果
+    A->>G: 保存 Evidence Run 与真实执行日志
+    A->>R: 计算技术证据指纹
+    A->>H: 提交当前代码与证据
+    H->>A: 真实验收并确认
+    end
+    rect rgb(239, 245, 253)
+    Note over H,G: 04 最终复核与发布决定
+    A->>R: 重算执行摘要
+    A->>G: 提交验收与证据元数据
+    A->>R: 最终 release-ready
+    R->>G: 比较基线与提交
+    R->>A: 比对本轮结果与证据
+    A->>H: 报告就绪，交由人发布
+    end
+    Note over H,G: 首轮证据可未完成；最终通过表示就绪。代码、定义、基线或结果变化需重建证据并重新验收。

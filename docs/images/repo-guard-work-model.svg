@@ -1,150 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650" role="img" aria-labelledby="title desc">
-  <title id="title">repo-guard 工作模型</title>
-  <desc id="desc">repo-guard 从项目配置、Git 快照、消费项目工具和交付资料取得事实，经策略与门禁统一判断，由不同生命周期入口编排执行，最终产生一致的结果、修复指引、报告和交付证据。</desc>
-  <style>
-    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
-    .title { fill: #111827; font-size: 27px; font-weight: 700; }
-    .subtitle { fill: #4b5563; font-size: 14px; }
-    .column-title { font-size: 17px; font-weight: 700; }
-    .column-sub { fill: #64748b; font-size: 12px; }
-    .step { fill: #ffffff; font-size: 11px; font-weight: 700; }
-    .node-title { fill: #111827; font-size: 14px; font-weight: 650; }
-    .node-sub { fill: #4b5563; font-size: 11.5px; }
-    .flow-label { fill: #64748b; font-size: 11px; font-weight: 600; }
-    .footer-title { fill: #1e3a8a; font-size: 14px; font-weight: 700; }
-    .footer-text { fill: #475569; font-size: 12px; }
-    .edge { fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow); }
-  </style>
-  <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
-      <polygon points="0 0, 9 3.5, 0 7" fill="#64748b"/>
-    </marker>
-  </defs>
-
-  <rect width="1200" height="650" fill="#ffffff"/>
-  <text class="title" x="42" y="45">repo-guard 工作模型</text>
-  <text class="subtitle" x="42" y="73">它不替项目编写业务规则，而是把可信事实送入统一门禁，再由 Git Hook、CLI 和 CI 复用同一套判断。</text>
-
-  <path class="edge" data-graph-role="edge" data-source="facts" data-target="decision" d="M292 329 H323"/>
-  <path class="edge" data-graph-role="edge" data-source="decision" data-target="orchestration" d="M577 329 H608"/>
-  <path class="edge" data-graph-role="edge" data-source="orchestration" data-target="outputs" d="M862 329 H893"/>
-  <text class="flow-label" x="307" y="315" text-anchor="middle">规范化</text>
-  <text class="flow-label" x="592" y="315" text-anchor="middle">调度</text>
-  <text class="flow-label" x="877" y="315" text-anchor="middle">收敛</text>
-
-  <g data-graph-role="container" data-container-id="facts" aria-label="第一部分：可信事实">
-    <rect data-graph-role="decoration" x="42" y="104" width="250" height="450" rx="12" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <circle cx="70" cy="134" r="15" fill="#8b5cf6"/><text class="step" x="70" y="138" text-anchor="middle">01</text>
-    <text class="column-title" x="96" y="139" fill="#6d28d9">可信事实</text>
-    <text class="column-sub" x="62" y="164">只读取并规范化，不在这里做策略判断</text>
-
-    <g data-graph-role="node" data-node-id="configuration">
-      <rect x="62" y="188" width="210" height="70" rx="9" fill="#ffffff" stroke="#c4b5fd"/>
-      <text class="node-title" x="82" y="215">配置与 Schema</text>
-      <text class="node-sub" x="82" y="238">启用项 · 阈值 · 路径边界</text>
-    </g>
-    <g data-graph-role="node" data-node-id="git-facts">
-      <rect x="62" y="274" width="210" height="70" rx="9" fill="#ffffff" stroke="#c4b5fd"/>
-      <text class="node-title" x="82" y="301">Git 快照</text>
-      <text class="node-sub" x="82" y="324">暂存区 · revision · 分支 · Worktree</text>
-    </g>
-    <g data-graph-role="node" data-node-id="tool-facts">
-      <rect x="62" y="360" width="210" height="70" rx="9" fill="#ffffff" stroke="#c4b5fd"/>
-      <text class="node-title" x="82" y="387">消费项目工具</text>
-      <text class="node-sub" x="82" y="410">lint · 测试 · 构建 · 浏览器</text>
-    </g>
-    <g data-graph-role="node" data-node-id="delivery-facts">
-      <rect x="62" y="446" width="210" height="70" rx="9" fill="#ffffff" stroke="#c4b5fd"/>
-      <text class="node-title" x="82" y="473">交付资料</text>
-      <text class="node-sub" x="82" y="496">功能归属 · 合同 · Evidence Run</text>
-    </g>
-  </g>
-
-  <g data-graph-role="container" data-container-id="decision" aria-label="第二部分：统一判断">
-    <rect data-graph-role="decoration" x="327" y="104" width="250" height="450" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <circle cx="355" cy="134" r="15" fill="#3b82f6"/><text class="step" x="355" y="138" text-anchor="middle">02</text>
-    <text class="column-title" x="381" y="139" fill="#1d4ed8">统一判断</text>
-    <text class="column-sub" x="347" y="164">事实、策略、门禁和结果各自保持边界</text>
-
-    <g data-graph-role="node" data-node-id="policies">
-      <rect x="347" y="188" width="210" height="88" rx="9" fill="#ffffff" stroke="#93c5fd"/>
-      <text class="node-title" x="367" y="215">Policies</text>
-      <text class="node-sub" x="367" y="238">纯策略判断</text>
-      <text class="node-sub" x="367" y="256">不执行命令、不输出终端文本</text>
-    </g>
-    <g data-graph-role="node" data-node-id="gate-registry">
-      <rect x="347" y="292" width="210" height="88" rx="9" fill="#ffffff" stroke="#93c5fd"/>
-      <text class="node-title" x="367" y="319">Gate Registry</text>
-      <text class="node-sub" x="367" y="342">能力 ID · 环境 · 副作用</text>
-      <text class="node-sub" x="367" y="360">配置键 · 超时 · 所需工具</text>
-    </g>
-    <g data-graph-role="node" data-node-id="gate-contract">
-      <rect x="347" y="396" width="210" height="88" rx="9" fill="#ffffff" stroke="#93c5fd"/>
-      <text class="node-title" x="367" y="423">Gate Contract</text>
-      <text class="node-sub" x="367" y="446">inspectSetup · plan · run</text>
-      <text class="node-sub" x="367" y="464">所有入口复用相同能力实现</text>
-    </g>
-  </g>
-
-  <g data-graph-role="container" data-container-id="orchestration" aria-label="第三部分：生命周期编排">
-    <rect data-graph-role="decoration" x="612" y="104" width="250" height="450" rx="12" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <circle cx="640" cy="134" r="15" fill="#22c55e"/><text class="step" x="640" y="138" text-anchor="middle">03</text>
-    <text class="column-title" x="666" y="139" fill="#15803d">生命周期编排</text>
-    <text class="column-sub" x="632" y="164">不同入口选择固定计划，不复制规则</text>
-
-    <g data-graph-role="node" data-node-id="setup-entry">
-      <rect x="632" y="188" width="210" height="70" rx="9" fill="#ffffff" stroke="#86efac"/>
-      <text class="node-title" x="652" y="215">接入与维护</text>
-      <text class="node-sub" x="652" y="238">init · migrate · doctor</text>
-    </g>
-    <g data-graph-role="node" data-node-id="git-entry">
-      <rect x="632" y="274" width="210" height="70" rx="9" fill="#ffffff" stroke="#86efac"/>
-      <text class="node-title" x="652" y="301">Git 生命周期</text>
-      <text class="node-sub" x="652" y="324">commit hooks · pre-push</text>
-    </g>
-    <g data-graph-role="node" data-node-id="ci-entry">
-      <rect x="632" y="360" width="210" height="70" rx="9" fill="#ffffff" stroke="#86efac"/>
-      <text class="node-title" x="652" y="387">CI 与发布准备</text>
-      <text class="node-sub" x="652" y="410">policy · full · release-ready</text>
-    </g>
-    <g data-graph-role="node" data-node-id="manual-entry">
-      <rect x="632" y="446" width="210" height="70" rx="9" fill="#ffffff" stroke="#86efac"/>
-      <text class="node-title" x="652" y="473">手动专项</text>
-      <text class="node-sub" x="652" y="496">gate · external · 基线维护</text>
-    </g>
-  </g>
-
-  <g data-graph-role="container" data-container-id="outputs" aria-label="第四部分：可复核输出">
-    <rect data-graph-role="decoration" x="897" y="104" width="261" height="450" rx="12" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="7 5"/>
-    <circle cx="925" cy="134" r="15" fill="#f97316"/><text class="step" x="925" y="138" text-anchor="middle">04</text>
-    <text class="column-title" x="951" y="139" fill="#c2410c">可复核输出</text>
-    <text class="column-sub" x="917" y="164">人和自动化读取同一份结论与证据</text>
-
-    <g data-graph-role="node" data-node-id="status-output">
-      <rect x="917" y="188" width="221" height="70" rx="9" fill="#ffffff" stroke="#fdba74"/>
-      <text class="node-title" x="937" y="215">统一状态</text>
-      <text class="node-sub" x="937" y="238">通过 · 跳过 · 违规 · 执行错误</text>
-    </g>
-    <g data-graph-role="node" data-node-id="guidance-output">
-      <rect x="917" y="274" width="221" height="70" rx="9" fill="#ffffff" stroke="#fdba74"/>
-      <text class="node-title" x="937" y="301">中文修复指引</text>
-      <text class="node-sub" x="937" y="324">证据 · 期望 · 步骤 · 验证方式</text>
-    </g>
-    <g data-graph-role="node" data-node-id="report-output">
-      <rect x="917" y="360" width="221" height="70" rx="9" fill="#ffffff" stroke="#fdba74"/>
-      <text class="node-title" x="937" y="387">机器报告</text>
-      <text class="node-sub" x="937" y="410">GateResult · JSON · artifacts</text>
-    </g>
-    <g data-graph-role="node" data-node-id="evidence-output">
-      <rect x="917" y="446" width="221" height="70" rx="9" fill="#ffffff" stroke="#fdba74"/>
-      <text class="node-title" x="937" y="473">交付结论</text>
-      <text class="node-sub" x="937" y="496">阻断或放行 · Evidence Run</text>
-    </g>
-  </g>
-
-  <g data-graph-role="node" data-node-id="shared-model">
-    <rect x="42" y="579" width="1116" height="45" rx="9" fill="#eff6ff" stroke="#bfdbfe"/>
-    <text class="footer-title" x="64" y="606">核心约束</text>
-    <text class="footer-text" x="148" y="606">同一事实模型、同一 Gate Registry、同一 GateResult 贯穿全部入口；CLI、Hook 与 CI 只负责选择和执行计划。</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="650" viewBox="0 0 1280 650" role="img" aria-labelledby="title desc">
+<title id="title">repo-guard 工作模型</title><desc id="desc">可信事实是统一判断的依据，生命周期编排负责建立上下文和调度能力，最终形成可复核输出。此图展示职责关系，具体执行顺序由固定计划定义。</desc>
+<style>text { font-family: 'JetBrains Mono', 'Microsoft YaHei', 'PingFang SC', monospace; }</style>
+<defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#93a6bf"/></marker></defs>
+<rect width="1280" height="650" rx="18" fill="#020617"/><rect width="1280" height="650" rx="18" fill="url(#grid)"/>
+<text x="40" y="43" font-size="17" fill="#22d3ee" font-weight="600" text-anchor="start">repo-guard  /  内部工作模型</text>
+<text x="40" y="98" font-size="36" fill="#eaf0fa" font-weight="700" text-anchor="start">多个入口，共用判断和结果。</text>
+<text x="40" y="138" font-size="19" fill="#a8b5ca" font-weight="400" text-anchor="start">入口建立上下文并选择计划，门禁复用事实、策略与工具适配，形成统一结论。</text>
+<path d="M316 352H344" fill="none" stroke="#93a6bf" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M624 352H652" fill="none" stroke="#93a6bf" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M932 352H960" fill="none" stroke="#93a6bf" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="184" width="276" height="334" rx="12" fill="#0b1426" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="60" y="224" font-size="25" fill="#a78bfa" font-weight="700" text-anchor="start">可信事实</text>
+<text x="60" y="253" font-size="16" fill="#a8b5ca" font-weight="400" text-anchor="start">明确本次检查的对象</text>
+<rect x="56" y="282" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="70" y="313" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">配置与 Git</text>
+<text x="70" y="340" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">启用项、路径、暂存与 revision</text>
+<rect x="56" y="408" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="70" y="439" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">项目工具与交付资料</text>
+<text x="70" y="466" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">工具输出、合同和执行证据</text>
+<rect x="348" y="184" width="276" height="334" rx="12" fill="#0b1426" stroke="#22d3ee" stroke-width="1.5"/>
+<text x="368" y="224" font-size="25" fill="#22d3ee" font-weight="700" text-anchor="start">生命周期编排</text>
+<text x="368" y="253" font-size="16" fill="#a8b5ca" font-weight="400" text-anchor="start">明确何时、按什么顺序执行</text>
+<rect x="364" y="282" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="378" y="313" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">CLI / Hook / CI</text>
+<text x="378" y="340" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">建立 GateContext 与变更范围</text>
+<rect x="364" y="408" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="378" y="439" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">能力目录与执行计划</text>
+<text x="378" y="466" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">Registry / Execution Plan</text>
+<rect x="656" y="184" width="276" height="334" rx="12" fill="#0b1426" stroke="#34d399" stroke-width="1.5"/>
+<text x="676" y="224" font-size="25" fill="#34d399" font-weight="700" text-anchor="start">统一判断</text>
+<text x="676" y="253" font-size="16" fill="#a8b5ca" font-weight="400" text-anchor="start">明确是否满足工程约定</text>
+<rect x="672" y="282" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="686" y="313" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">策略判断与工具适配</text>
+<text x="686" y="340" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">Policies / Integrations</text>
+<rect x="672" y="408" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="686" y="439" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">Gate Contract</text>
+<text x="686" y="466" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">组合事实，形成 GateResult</text>
+<rect x="964" y="184" width="276" height="334" rx="12" fill="#0b1426" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="984" y="224" font-size="25" fill="#fbbf24" font-weight="700" text-anchor="start">可复核输出</text>
+<text x="984" y="253" font-size="16" fill="#a8b5ca" font-weight="400" text-anchor="start">让结论可读、可追踪</text>
+<rect x="980" y="282" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="994" y="313" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">给开发者与评审者</text>
+<text x="994" y="340" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">中文结论、问题与修复指引</text>
+<rect x="980" y="408" width="244" height="82" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+<text x="994" y="439" font-size="18" fill="#eaf0fa" font-weight="600" text-anchor="start">给自动化与验收流程</text>
+<text x="994" y="466" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">JSON、产物与 Evidence Run</text>
+<rect x="40" y="558" width="1200" height="48" rx="8" fill="#10212a" stroke="#245453" stroke-width="1.5"/>
+<text x="640" y="588" font-size="18" fill="#34d399" font-weight="400" text-anchor="middle">core 提供稳定契约；事实、策略、工具适配、门禁与编排分别维护，各层边界由测试约束。</text>
+<text x="40" y="634" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="start">箭头表示职责衔接，不代表模块之间可以任意导入。</text>
+<text x="1240" y="634" font-size="14" fill="#a8b5ca" font-weight="400" text-anchor="end">详细依赖方向见项目总览第 5.4 节</text>
 </svg>

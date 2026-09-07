@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1410" height="1790" viewBox="0 0 1410 1790" role="img" aria-labelledby="title desc">
+<title id="title">真实测试反馈与反向升级</title><desc id="desc">先判断是否登记正式发现；已关闭合同使用新的修复合同。问题关联任务，按原因修复，真实环境人工复测，五项升级由人确认，再复核进入下一轮。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#647A92"/></marker></defs>
+<rect width="1410" height="1790" rx="24" fill="#F5F8FC"/>
+<g font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif">
+<text x="42" y="57" font-size="31" fill="#152A43" text-anchor="start" font-weight="700">让真实问题推动下一次交付变好</text>
+<text x="42" y="96" font-size="19" fill="#52677E" text-anchor="start" font-weight="400">反馈不止修一次：保存事实，补齐验证，再决定哪些规范需要升级。</text>
+<path d="M690,230 L690,275" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M455,325 L270,325" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="355" y="309" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">否</text>
+<path d="M690,375 L690,420" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="708" y="401" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">是</text>
+<path d="M910,470 L1095,470" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="1000" y="452" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">是</text>
+<path d="M690,520 L690,579" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="708" y="552" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">否</text>
+<path d="M1230,518 L1230,625 L1010,625" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M690,671 L690,725" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M690,815 L690,864" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M690,994 L690,1050" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M915,1100 L1095,1100" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="1000" y="1084" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">是</text>
+<path d="M690,1150 L690,1223" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="555" y="1195" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">否 / 已批准拒绝或延期</text>
+<path d="M1230,1043 L1230,929 L1010,929" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="1190" y="911" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">复测失败</text>
+<path d="M1230,1157 L1230,1285 L1010,1285" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="1160" y="1267" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">复测通过</text>
+<path d="M690,1347 L690,1414" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M690,1506 L690,1564" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="758" y="1544" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">要求满足</text>
+<path d="M370,1460 L300,1460 L300,929 L370,929" fill="none" stroke="#647A92" stroke-width="2" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="175" y="1410" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">仍未满足：继续处理</text>
+<rect x="370.0" y="150.0" width="640" height="80" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="690" y="182.5" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">反馈来自真实执行</text>
+<text x="690" y="212.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">AI 自测 / CI / 测试环境 / 人工验收 / 发布后使用</text>
+<path d="M690,275.0 L925.0,325 L690,375.0 L455.0,325 Z" fill="#ECF3FF" stroke="#B8CDEC"/>
+<text x="690" y="327" font-size="20" fill="#2463D3" text-anchor="middle" font-weight="700">需要正式 FND 吗？</text>
+<text x="1218" y="298" font-size="18" fill="#52677E" text-anchor="middle" font-weight="700">正式登记的判断依据</text>
+<text x="1218" y="329" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">推翻完成结论 / 发现遗漏</text>
+<text x="1218" y="356" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">需要永久回归 / 可能重复</text>
+<rect x="30.0" y="278.0" width="240" height="94" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="150" y="305.0" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">普通中间失败</text>
+<text x="150" y="335.0" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">保留执行日志</text>
+<text x="150" y="360.0" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">按当前任务继续</text>
+<path d="M690,420.0 L910.0,470 L690,520.0 L470.0,470 Z" fill="#ECF3FF" stroke="#B8CDEC"/>
+<text x="690" y="472" font-size="20" fill="#2463D3" text-anchor="middle" font-weight="700">原合同已关闭？</text>
+<rect x="1095.0" y="422.0" width="270" height="96" rx="14" fill="#F4EEFC" stroke="#CFC0E7"/>
+<text x="1230" y="450.0" font-size="21" fill="#7451B8" text-anchor="middle" font-weight="700">新建 repair 合同</text>
+<text x="1230" y="480.0" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">关联原功能与历史发现</text>
+<text x="1230" y="505.0" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">由人确认本次范围</text>
+<rect x="370.0" y="579.0" width="640" height="92" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="690" y="617.5" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">登记 FND，重新打开关联任务</text>
+<text x="690" y="647.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">保留原始反馈、阶段、问题提交、任务与重复特征</text>
+<rect x="370.0" y="725.0" width="640" height="90" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="690" y="762.5" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">复现 → 分类 → 制定处理计划</text>
+<text x="690" y="792.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">人 / AI 核实事实，区分实现、需求、设计或流程缺口</text>
+<rect x="370.0" y="864.0" width="640" height="130" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="690" y="896.5" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">按原因修复并保存证据</text>
+<text x="690" y="926.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">实现缺陷：同一测试在错误提交失败、最终提交通过</text>
+<text x="690" y="951.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">其他缺口：修正对应资料、实现与验证</text>
+<text x="690" y="976.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">拒绝 / 延期：保留调查、理由及人工确认</text>
+<path d="M690,1050.0 L915.0,1100 L690,1150.0 L465.0,1100 Z" fill="#ECF3FF" stroke="#B8CDEC"/>
+<text x="690" y="1102" font-size="20" fill="#2463D3" text-anchor="middle" font-weight="700">来自测试环境或人工验收？</text>
+<rect x="1095.0" y="1043.0" width="270" height="114" rx="14" fill="#F4EEFC" stroke="#CFC0E7"/>
+<text x="1230" y="1067.5" font-size="21" fill="#7451B8" text-anchor="middle" font-weight="700">人进行真实环境复测</text>
+<text x="1230" y="1097.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">记录实际部署提交</text>
+<text x="1230" y="1122.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">绑定最终 subjectCommit</text>
+<text x="1230" y="1147.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">失败则继续修复</text>
+<rect x="370.0" y="1223.0" width="640" height="124" rx="14" fill="#F4EEFC" stroke="#CFC0E7"/>
+<text x="690" y="1252.5" font-size="21" fill="#7451B8" text-anchor="middle" font-weight="700">逐项分析反向升级，由人确认</text>
+<text x="690" y="1282.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">测试 · 合同 · 设计 · 任务模板 · Gate</text>
+<text x="690" y="1307.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">每项记录 required / unchanged / not-needed</text>
+<text x="690" y="1332.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">只有适用且可确定检查的问题才考虑升级规则</text>
+<rect x="370.0" y="1414.0" width="640" height="92" rx="14" fill="#FFFFFF" stroke="#D8E3EE"/>
+<text x="690" y="1452.5" font-size="21" fill="#152A43" text-anchor="middle" font-weight="700">完成组合验证，复核发现与任务状态</text>
+<text x="690" y="1482.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">正常关闭需证据齐全；拒绝 / 延期也必须有升级决定</text>
+<rect x="370.0" y="1564.0" width="640" height="92" rx="14" fill="#E7F5F1" stroke="#A7CDBF"/>
+<text x="690" y="1602.5" font-size="21" fill="#157866" text-anchor="middle" font-weight="700">保留改进，进入下一轮交付复核</text>
+<text x="690" y="1632.5" font-size="17" fill="#52677E" text-anchor="middle" font-weight="400">关闭问题后更新任务；事实变化则重建证据并重新验收</text>
+<rect x="40" y="1698" width="1330" height="59" rx="14" fill="#FFF8E9" stroke="#EBDCB7"/>
+<text x="705" y="1734" font-size="18" fill="#152A43" text-anchor="middle" font-weight="400">反向升级 ≠ 每个问题都新增 Gate。需要的改动、保持不变的项与不适用的项，都要有依据和人工确认。</text>
+</g></svg>

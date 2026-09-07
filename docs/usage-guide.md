@@ -1,13 +1,32 @@
 # @cxyi7/repo-guard 使用说明
 
-本文集中说明 `@cxyi7/repo-guard` 的安装、初始化、配置、命令和各类门禁接入方式。项目定位与生命周期能力见 [README](../README.md)，工作模型与模块职责见[项目结构与能力总览](project-structure-and-feature-inventory.md)，单项能力说明见[功能说明索引](features/README.md)。
+本手册帮助团队完成接入、配置规则、处理检查结果，并将需求到反馈的交付流程落到项目中。详细规则按功能独立维护，使用时从本页进入对应说明。
 
 - 当前版本：`1.23.1`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
-- 用户可见状态、警告、错误和修复说明：简体中文；纯英文和夹杂说明性英文的中文文案都会被仓库检查阻断
+
+[开始接入](#快速开始) · [配置规则](#配置团队规则) · [日常提交](#固定执行顺序) · [功能用法](#常用使用方式) · [测试与构建](#接入测试与构建) · [交付流程](#完整交付流程) · [CI](#gitlab-ci) · [排查问题](#诊断与修复)
 
 ## 快速开始
+
+### 准备项目工具
+
+在需要接入的 Git 项目根目录操作。repo-guard 调用项目自己的工具和脚本；安装 npm 包不会自动替你准备全部 lint、测试、构建或浏览器环境。
+
+| 要接入的能力 | 项目需要准备 |
+|---|---|
+| ESLint | ESLint 与项目配置；默认预设要求 ESLint `>=9.19` 和 `@eslint/js`，Vue/TS 按项目配置准备插件与解析器 |
+| Prettier | Prettier 3.x 与格式配置，例如 `.prettierrc.json` |
+| Stylelint | Stylelint `>=16 <18`、规则配置及所用样式语言的解析器 |
+| 单元测试 / 组件交互 | Vitest `>=1 <5` 与 `test:unit`；组件交互还需 `@vue/test-utils` 2.x 和 Vue/DOM 测试环境 |
+| 类型 / 构建 | 实际可执行的 `typecheck` / `build` 项目脚本 |
+| 架构 | dependency-cruiser `>=16 <19` 与待检查的源码目录 |
+| axe / Lighthouse | 项目自己的测试集成、浏览器或 DOM 环境；Lighthouse 还需 Vue、`@lhci/cli` 和页面配置 |
+
+这些是当前包声明和运行校验对应的要求。可选能力的准备方式见各功能说明；安装依赖时使用 `--save-exact`，并提交同步的锁文件。
+
+### 安装与初始化
 
 ```bash
 npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.1
@@ -15,18 +34,123 @@ npx repo-guard init
 npx repo-guard doctor
 ```
 
-`init` 会：
+本文在普通终端中使用 `npx repo-guard`。`package.json` 的 npm scripts 内可直接写 `repo-guard`；先确认本项目已经安装该包，再执行命令。
 
-- 创建或补齐 `repo-guard.config.json`；
-- 安装五个托管 Git Hook；
-- 设置当前仓库的 `core.hooksPath=.githooks`；
-- 维护 `.gitattributes`、`.gitignore` 和本地 `.env.config`；
-- 根据消费项目已安装的工具和脚本决定重型门禁是否启用；
-- 增量补充 `guard:*` npm scripts 和受管理的 `AGENTS.md` 策略块。
+`init` 创建或补齐 `repo-guard.config.json`，安装五个托管 Hook，将 `core.hooksPath` 设为 `.githooks`，维护 `.gitattributes`、`.gitignore`、本地 `.env.config`，并补充 `guard:*` 脚本与 AGENTS 托管规范。启用交付合同后还会同步交付流程 Skills。已有非托管 Hook 或不同的 `core.hooksPath` 会提示冲突，不直接覆盖。
 
-已有非托管 Hook 或其他 `core.hooksPath` 不会被覆盖。
+**新建配置时的启用状态：**
+
+- 默认启用 ESLint（含预设）、Prettier、依赖策略、文件归位、单文件行数和通知开关。
+- Stylelint、类型、单元测试、axe、架构和构建根据项目就绪情况启用；Stylelint 就绪时同时启用样式复杂度与样式治理。
+- Lighthouse、覆盖率、组件交互、图片治理、交付合同、变异测试、CI 等能力默认关闭。
+- 通知开关启用不等于通知凭据已经可用；按 Doctor 提示配置本地环境。
+
+已有配置会保留，不会因再次执行 `init` 就重置团队选择。`doctor` 通过表示配置、依赖和托管内容就绪，不等于全部业务测试与性能检查已经通过。
+
+### 完成第一次检查
+
+先按 Doctor 提示修正缺失工具、配置或通知环境，再暂存一次真实变更并提交：
+
+```bash
+git add src/utils/userInfo.js
+git commit -m "feat: 添加用户信息"
+```
+
+将示例路径换成当前变更。检查失败时根据中文提示修复、重新暂存并提交；通过后才能说明本次实际执行的规则已满足。随后推送时，已启用的重型检查由 pre-push 执行。
+
+## 配置团队规则
+
+配置统一保存在项目根目录 `repo-guard.config.json`。本手册的 JSON 标为“配置片段”时，应合并到已有配置，保留 `version`、其他规则与团队已有选择；不要用片段覆盖整个文件。
+
+### 启用或关闭能力
+
+```bash
+npx repo-guard enable pathNaming
+npx repo-guard disable pathNaming
+npx repo-guard enable eslint prettier
+```
+
+启停命令会保存配置并同步 AGENTS 托管规范。直接编辑配置后执行：
+
+```bash
+npx repo-guard migrate
+npx repo-guard doctor
+```
+
+下表列出全部 30 个可配置功能名。默认状态指首次生成配置；“按探测”表示初始化只在项目准备就绪时启用。CI 还有独立策略，自动执行范围见后文。
+
+| 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
+|---|---|---|---|---|
+| `eslint` | `preCommit.eslint` | [检查 JS、TS、Vue 代码问题，并按项目规则修复可修复项](features/eslint.md) | 开 | 提交、CI full |
+| `prettier` | `preCommit.prettier` | [统一缩进、换行、引号等代码与文档格式](features/prettier.md) | 开 | 提交、CI full |
+| `stylelint` | `preCommit.stylelint` | [检查 CSS、预处理样式与 Vue 样式规范](features/stylelint.md) | 按探测 | 提交、CI full |
+| `styleComplexity` | `preCommit.stylelint.complexity` | [限制选择器组合数量和样式嵌套深度](features/style-complexity.md) | 随 Stylelint 探测 | 随 Stylelint |
+| `styleGovernance` | `preCommit.stylelint.governance` | [约束样式优先级、ID、!important 和全局样式位置](features/style-governance.md) | 随 Stylelint 探测 | 随 Stylelint |
+| `fileHeader` | `preCommit.fileHeader` | [按 Git 事实同步文件头信息，保留人工描述](features/file-header.md) | 关 | 提交 |
+| `functionDocs` | `preCommit.functionDocs` | [随函数签名同步文档标签，保留业务说明](features/function-documentation.md) | 关 | 提交 |
+| `asyncResourceCleanup` | `preCommit.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 关 | 提交、CI 三档 |
+| `pathNaming` | `preCommit.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 关 | 提交、CI 三档 |
+| `uiTokens` | `uiTokens` | [要求受控颜色、间距、字号等使用项目声明的设计 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
+| `filePlacement` | `preCommit.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
+| `maxFileLines` | `preCommit.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
+| `codePlacement` | `codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
+| `dependencies` | `dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI 三档 |
+| `commitMessage` | `commitMessage` | [统一提交信息格式，并在推送和 CI 复核提交历史](features/commit-message.md) | 关 | 提交信息、推送、CI 三档 |
+| `imageAssets` | `imageAssets` | [检查图片命名、真实格式、重复内容及优化收益](features/image-assets.md) | 关 | 提交、CI 三档 |
+| `unusedImageAssets` | `imageAssets.unused` | [查找没有有效引用的图片，支持限制新增历史债务](features/unused-image-assets.md) | 关 | 推送、CI full/release-ready |
+| `deliveryContract` | `deliveryContract` | [把需求、任务、测试、人工验收与反馈绑定为可复核交付](features/delivery-contract.md) | 关 | 提交、CI 三档 |
+| `typeCheck` | `typeCheck` | [调用项目类型脚本，检查 TypeScript 或 Vue 类型错误](features/typecheck.md) | 按探测 | 推送、CI full |
+| `architecture` | `architecture` | [检查循环依赖、导入解析与团队模块分层边界](features/architecture.md) | 按探测 | 推送、CI full |
+| `deadCode` | `deadCode` | [使用 Knip 检查无效文件、导出和依赖，支持历史基线](features/dead-code.md) | 关 | 推送、CI full |
+| `build` | `build` | [执行项目构建，并检查已配置的产物预算](features/build.md) | 按探测 | 推送、CI full/release-ready |
+| `lighthouse` | `lighthouse` | [检查 Vue 页面的性能等 Lighthouse 指标和项目断言](features/lighthouse.md) | 关 | 推送、release-ready |
+| `unitTest` | `unitTest` | [执行项目 Vitest，并检查源码与测试的对应关系](features/unit-test.md) | 按探测 | 推送、CI full；其他 CI 为资料策略 |
+| `componentInteraction` | `unitTest.componentInteraction` | [要求 Vue 组件测试包含真实操作及可观察结果断言](features/component-interaction.md) | 关 | 随单元测试及资料策略 |
+| `coverage` | `unitTest.coverage` | [检查测试覆盖率与本次变更行覆盖率是否达标](features/coverage.md) | 关 | 随完整单元测试执行 |
+| `accessibilityTest` | `accessibilityTest` | [执行项目 axe 测试，检查实际界面的可访问性问题](features/accessibility-test.md) | 按探测 | 推送、CI full |
+| `mutationTest` | `mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 关 | 显式手动或受保护构建 |
+| `notification` | `notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
+| `ci` | `ci` | [在 CI 按固定配置档复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
+
+**开关之间的联动：** `coverage`、`componentInteraction` 会启用 `unitTest`；关闭 `unitTest` 会关闭组件交互，保留 coverage 配置但不执行。`styleComplexity`、`styleGovernance` 会启用 Stylelint，关闭 Stylelint 会关闭两项增强。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
+
+**区分三个入口：** 自动 Hook 按功能配置执行；CI 可按 Gate 设置 `inherit/off/report/enforce`；手动专项入口按自身契约运行。例如 `path-naming`、`dead-code`、`lighthouse` 的显式手动命令即使自动开关关闭也会检查，而 `unit-test`、`typecheck`、`build` 仍读取功能开关。
+
+动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `rules` 与 `exclusions` 配置，结构化例外使用 `exceptions`，都不在 30 项功能开关中。
+
+### 初始化、迁移和诊断
+
+| 命令 | 用途 |
+|---|---|
+| `npx repo-guard init` | 首次接入并同步托管文件 |
+| `npx repo-guard install-hooks` | 安装或更新托管 Hook |
+| `npx repo-guard migrate` | 补齐配置结构，并同步 AGENTS 与交付 Skills |
+| `npx repo-guard doctor` | 检查配置、项目工具及托管文件的就绪状态 |
+| `npx repo-guard doctor --fix` | 修复受管配置、Hook、CI、忽略项、项目脚本、AGENTS 和交付 Skills 等受管内容 |
+| `npx repo-guard doctor --ci` | 检查 CI 接入状态 |
+
+`doctor --fix` 不安装项目工具、不填写密钥、不修复业务代码。托管文本检查会统一 LF、CRLF 和 CR；换行差异本身不会造成“托管内容过期”。
+
+### AGENTS.md 托管规范
+
+repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库与变更治理、暂存代码质量、源码安全与资源生命周期、目录与文件结构、依赖与仓库健康度、测试质量、构建/交付与外部门禁。每个可配置功能至少对应一条规范；同一主题的能力会合并到同一区块，避免按功能生成大量零散章节。
+
+- `init`、`enable`、`disable`、`migrate`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
+- 同步前会先校验全部当前 marker 和已知旧 marker，全部有效后才一次写入；marker 缺失、重复、倒置或嵌套时拒绝修改文件。
+- marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除，旧的四类策略 marker 会迁移为当前分组。
+- webhook、通知凭据和 `codePlacement.content` 等敏感值不会写入托管规范。
+- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `npx repo-guard migrate` 或 `npx repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。
+- 托管规范没有独立的 `enabled` 开关，不能在保留功能门禁的同时关闭对应 AI 约束。
 
 ## 固定执行顺序
+
+| Hook | 职责 |
+|---|---|
+| `pre-commit` | 修复和复核暂存代码，再检查仓库策略 |
+| `prepare-commit-msg` | 准备提交信息与变更文件摘要 |
+| `commit-msg` | 按已启用规则校验提交信息并完成摘要 |
+| `post-commit` | 清理提交信息相关临时状态 |
+| `pre-push` | 检查提交范围，并运行已启用的测试、类型、架构、构建等能力 |
 
 ### pre-commit
 
@@ -75,657 +199,106 @@ commit-message
   → lighthouse
 ```
 
-各步骤根据配置启用或跳过，并使用本次推送的精确变更范围。
+各步骤根据配置启用或跳过。提交历史、增量策略与变更行使用可信推送范围；Knip、类型、项目测试和构建等仍按自身契约检查整个项目，不等于只运行变更文件。
 
 `pre-push` 会在重型门禁开始时立即输出中文阶段提示，并实时转发 TypeScript、单元测试、axe 和构建脚本的输出；Knip 与架构检查会显示即时进度，同时保留结构化 JSON 供机器解析。实时输出经过路径与敏感信息脱敏，失败后仍返回结构化问题和退出码，不会让 `git push` 在长时间任务中无提示等待。
 
+这些顺序由固定执行计划维护，项目不能重排。需要全项目修复时由开发者显式运行项目自己的维护命令，不放入 Hook。
+
 ## 常用使用方式
 
-### 初始化、迁移和诊断
+### 代码格式与样式
+
+准备好工具和配置后启用，并使用真实提交验证：
 
 ```bash
-repo-guard init
-repo-guard install-hooks
-repo-guard migrate
-repo-guard doctor
-repo-guard doctor --fix
-repo-guard doctor --ci
+npx repo-guard enable eslint prettier
+npx repo-guard enable stylelint styleComplexity styleGovernance
+npx repo-guard doctor
 ```
 
-`doctor --fix` 只修复 repo-guard 管理的配置、Hook、CI、忽略项、项目脚本和 AGENTS 策略块，不安装项目工具、不填写密钥、不修改业务代码。
+各功能的最小配置、预设、阈值和失败处理见 [ESLint](features/eslint.md)、[Prettier](features/prettier.md)、[Stylelint 与样式规范](features/stylelint.md)。
 
-托管文本的最新状态比较会统一 LF、CRLF 和 CR 后再判断，因此 Windows 的 `core.autocrlf` 不会让内容正确的 `AGENTS.md`、`.gitignore`、`.gitattributes` 或 GitLab CI 被误报为缺失或过期；除换行符外，其他空白和正文仍严格匹配。
+### 文件归位与单文件行数
 
-### AGENTS.md 托管规范
+详见[文件归位](features/file-placement.md)和[单文件行数](features/maximum-file-lines.md)。
 
-repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库与变更治理、暂存代码质量、源码安全与资源生命周期、目录与文件结构、依赖与仓库健康度、测试质量、构建/交付与外部门禁。每个可配置功能至少对应一条规范；同一主题的能力会合并到同一区块，避免按功能生成大量零散章节。
-
-- `init`、`enable`、`disable`、`migrate`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
-- 同步前会先校验全部当前 marker 和已知旧 marker，全部有效后才一次写入；marker 缺失、重复、倒置或嵌套时拒绝修改文件。
-- marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除，旧的四类策略 marker 会迁移为当前分组。
-- webhook、通知凭据和 `codePlacement.content` 等敏感值不会写入托管规范。
-- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `repo-guard migrate` 或 `repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。
-- 托管规范没有独立的 `enabled` 开关，不能在保留功能门禁的同时关闭对应 AI 约束。
-
-### 启用或关闭能力
-
-```bash
-repo-guard enable eslint prettier
-repo-guard enable stylelint styleComplexity styleGovernance
-repo-guard enable dependencies commitMessage architecture deadCode imageAssets
-repo-guard enable typeCheck unitTest coverage
-repo-guard enable componentInteraction accessibilityTest
-repo-guard enable build lighthouse
-repo-guard enable fileHeader functionDocs asyncResourceCleanup pathNaming uiTokens imageAssets filePlacement maxFileLines codePlacement
-repo-guard enable deliveryContract
-repo-guard enable notification ci
-
-repo-guard disable lighthouse
-repo-guard disable notification
-```
-
-支持的功能名：
-
-```text
-stylelint
-eslint
-prettier
-fileHeader
-functionDocs
-asyncResourceCleanup
-pathNaming
-uiTokens
-imageAssets
-styleComplexity
-styleGovernance
-maxFileLines
-filePlacement
-codePlacement
-deliveryContract
-dependencies
-commitMessage
-architecture
-deadCode
-build
-lighthouse
-typeCheck
-unitTest
-accessibilityTest
-componentInteraction
-coverage
-notification
-ci
-```
-
-动态代码、Vue `v-html`、新窗口链接、表单 label 和图片 alt 是原生硬门禁，没有关闭开关。
-
-### 配置 Commit 提交信息门禁
-
-提交信息门禁默认关闭。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
-
-```bash
-repo-guard enable commitMessage
-```
-
-```json
-{
-  "commitMessage": {
-    "enabled": true,
-    "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"],
-    "requireScope": false,
-    "allowedScopes": [],
-    "headerMaxLength": 100,
-    "breakingChange": {
-      "allowed": true,
-      "requireMarker": true,
-      "requireFooter": true,
-      "requireMajorVersionOnRelease": true
-    },
-    "merge": { "allowed": true },
-    "revert": { "allowed": true },
-    "fixup": {
-      "allowLocal": true,
-      "allowPush": false,
-      "allowCi": false
-    }
-  }
-}
-```
-
-普通提交使用 `type(scope)!: 简要说明`；`scope` 和 `!` 是否必需由配置决定。`allowedScopes` 为空表示不限制 scope，非空时只接受列出的值。标题长度按 Unicode 字符计数，不按 UTF-16 字节或代码单元计数。
-
-不兼容变更默认必须同时使用标题 `!` 和正文 `BREAKING CHANGE: 迁移说明`。release-ready 发现提交范围包含不兼容变更时，会比较 Git 基准提交与目标提交中的 `package.json`，并要求 major 提升；未提交的工作区版本修改不能绕过校验。普通提交、pre-push 和日常 CI 不根据提交类型自动改版本。
-
-Git 自动生成的 merge commit 在本地通过 `MERGE_HEAD` 还原待提交父节点、在已提交历史中通过父节点数量识别，普通标题以及 revert/cherry-pick 使用的 `MERGE_MSG` 不能伪装成 merge；revert 必须保留 Git 生成的 `Revert "..."` 标题和 `This reverts commit <sha>.` 正文。默认策略允许开发者在本地创建 `fixup!`/`squash!`，但 pre-push 和 CI 会阻断，要求先执行交互式 rebase/autosquash。只有业务仓库确认由 GitLab 在进入受保护分支前可靠 squash 时，才应评审后将 `allowPush` 调整为 `true`；最终 CI 仍建议保持 `allowCi: false`。
-
-### 配置项目级无效代码门禁
-
-无效代码门禁默认关闭，使用消费项目自己安装的 Knip 6.x 和 `knip.*` 配置；repo-guard 不内置业务入口、不替项目猜测工作区边界，也不会回退到自身的开发依赖。
-
-```bash
-npm install --save-dev --save-exact knip@6.31.0
-repo-guard enable deadCode
-repo-guard dead-code
-```
-
-```json
-{
-  "deadCode": {
-    "enabled": true,
-    "mode": "strict",
-    "configFile": "knip.json",
-    "baselineFile": ".repo-guard/knip-baseline.json",
-    "timeoutMs": 180000,
-    "production": false,
-    "issueTypes": [
-      "files",
-      "dependencies",
-      "unlisted",
-      "binaries",
-      "unresolved",
-      "exports",
-      "types"
-    ],
-    "treatConfigHintsAsErrors": true
-  }
-}
-```
-
-- `strict`：发现任意已启用类型的问题都直接阻断，适合新项目或已清零项目。
-- `noRegression`：允许已经审核并登记的历史问题，但拒绝新增问题、陈旧条目和分支扩大基线，适合旧项目渐进治理。
-- `issueTypes` 中的 `dependencies` 是统一策略类型，会同时启用并归一化 Knip 的 `dependencies`、`devDependencies` 和 `optionalPeerDependencies`，避免开发依赖漏检。
-- Knip 配置提示始终作为配置错误处理，避免因入口、插件或工作区配置不完整而得到虚假的“无问题”结果。
-- 检查按完整项目依赖图运行，因此只进入手动命令、可选 pre-push 和 CI full，不进入 pre-commit；局部未使用变量仍由消费项目 ESLint 负责。
-- `production: true` 只分析 Knip 定义的生产范围；启用前应确认测试、脚本和开发依赖不属于当前治理目标。
-
-旧项目第一次接入时使用基线模式：
-
-```bash
-repo-guard enable deadCode
-# 将 deadCode.mode 改为 noRegression，并先完成 Knip 配置
-npm run guard:dead-code-baseline-init
-git add .repo-guard/knip-baseline.json
-git commit -m "chore: 初始化无效代码基线"
-npm run guard:dead-code
-```
-
-基线由问题类型、仓库相对路径、名称和命名空间生成 SHA-256 指纹，并记录重复数量。运行门禁时，当前 Knip 结果必须和基线完全同步：新增问题会阻断；问题修复后保留的陈旧条目也会阻断。确认只删除已解决债务后运行：
-
-```bash
-npm run guard:dead-code-baseline-prune
-git diff -- .repo-guard/knip-baseline.json
-git add .repo-guard/knip-baseline.json
-```
-
-`init` 拒绝覆盖现有文件；`prune` 拒绝接纳任何新增问题。pre-push 和 CI full 还会把当前基线与 Git 基准提交比较，阻止通过手工修改、重新生成或增加计数扩大历史债务；纯文件重命名会按 Git 重命名关系映射，不会制造新债务。基线必须位于仓库内、不得经过符号链接、必须由 Git 跟踪，`issueTypes` 变化后需要先清理真实问题并重新评审接入方案，不能用重建基线绕过检查。
-
-### 配置暂存文件头
-
-文件头默认关闭，可通过 `repo-guard enable fileHeader` 启用，再在 `repo-guard.config.json` 中调整作用范围：
+初始化默认启用。文件归位默认约束新增资源与 Markdown 的目录；单文件行数按文件类型检查。以下是按团队约定调整的配置片段：
 
 ```json
 {
   "preCommit": {
-    "fileHeader": {
+    "filePlacement": {
       "enabled": true,
-      "include": ["src/**", "scripts/**"],
-      "exclude": ["src/generated/**", "src/vendor/**"],
-      "extensions": [".vue", ".html", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".less", ".scss", ".sass"]
-    }
-  }
-}
-```
-
-- `include` 和 `exclude` 都使用仓库相对 glob；`exclude` 优先，适合排除生成代码、第三方代码和无需托管的目录。
-- `extensions` 是白名单，不能填写当前支持范围以外的扩展名。
-- `.vue`、`.html` 使用 `<!-- ... -->`；脚本和样式文件使用 `/* ... */`。
-- 脚本 shebang 和样式 `@charset` 等必须位于首行的声明会保留在文件头之前。
-- `@Author`、`@Date` 取文件第一次新增到 Git 历史时的作者和提交时间；新文件在首次提交前使用当前 Git 提交身份和时间。
-- `@LastEditor`、`@LastEditTime` 每次从当前 Git 提交身份和时间重建；手动修改这四个字段不会保留。
-- `@Description` 由开发者维护。已有受管文件头会保留该字段；新文件先生成空值，不根据文件名主观猜测描述。
-- 即使用户删除 `@Description` 或乱写 Git 字段，只要顶部注释仍包含 LastEditor/LastEditTime，或同时包含 Author/Date，也会识别为受管文件头并整体重建；普通许可证和只有单个 Author 的 JSDoc 不会被覆盖。
-- 历史字段输出统一使用 `@LastEditor`，旧的 `@LastEditors` 会在下一次同步时归一化。
-- 已跟踪文件若因浅克隆而无法追溯首次新增记录，会停止同步并提示先补全 Git 历史，避免写入错误作者和时间。
-- 文件头同步只处理本次暂存文件，并继续由 `lint-staged` 隔离和恢复未暂存改动。
-
-### 配置暂存函数文档
-
-函数文档同步默认关闭，可通过 `repo-guard enable functionDocs` 启用：
-
-```json
-{
-  "preCommit": {
-    "functionDocs": {
-      "enabled": true,
-      "include": ["src/**"],
-      "exclude": ["**/*.d.ts", "**/*.min.js", "**/generated/**", "**/*.spec.*", "**/*.test.*"],
-      "extensions": [".vue", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]
-    }
-  }
-}
-```
-
-- 仅处理本次暂存且同时命中 `include`、未命中 `exclude`、扩展名已启用的文件；默认排除声明文件、压缩产物、生成目录和测试文件。
-- 使用 Babel AST 识别具名函数、类/对象方法、单变量绑定的箭头或函数实现，以及默认导出实现；匿名回调不会被自动补文档。
-- 参数新增、删除或调序时同步 `@param`；有返回值时补齐 `@returns`，无返回值时删除陈旧返回标签。新标签只写参数名或标签名，不猜测“用户 ID”等业务说明。
-- 保留人工维护的 `@Description`、标签说明和未托管标签；兼容 `@arg`/`@argument`、`@return` 和 `@exception` 别名。TypeScript 函数会移除 `@param`/`@returns` 中与签名重复的类型，但不改写说明。
-- 函数存在直接逃逸的 `throw` 或返回的 `Promise.reject` 且缺少 `@throws`/`@exception` 时，只输出可定位的中文警告，不自动猜测异常说明，不阻断提交。
-- 匿名解构参数不自动改写整个函数文档，而是给出提示；Generator 只同步参数，保留已有返回标签并提示人工维护 `@yields`。
-- Vue 文件只解析顶层内联 `<script>` 和 `<script setup>`，跳过注释、template、style 和带 `src` 的外部 script。同步结果幂等，并继续由 `lint-staged` 保护部分暂存内容。
-
-### 配置 Vue 异步资源清理
-
-异步资源清理默认关闭，可通过 `repo-guard enable asyncResourceCleanup` 启用。启用后发现的问题全部按 `error` 阻断，不提供自动修复：
-
-```json
-{
-  "preCommit": {
-    "asyncResourceCleanup": {
-      "enabled": true,
-      "include": ["src/**/*.vue", "src/**/composables/**/*.{js,jsx,ts,tsx,mjs,cjs}"],
-      "exclude": ["**/*.d.ts", "**/*.spec.*", "**/*.test.*", "**/generated/**"],
-      "extensions": [".vue", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
-      "timeoutThresholdMs": 1000,
-      "requestFunctions": ["fetch", "api.request"]
-    }
-  }
-}
-```
-
-- 使用 Babel AST 按绑定身份匹配创建与释放，不用文本正则猜测；Vue 文件复用共享 script 扫描器，跳过 template、style、注释和外部 `src` script。
-- 检查 `setInterval`、达到阈值或动态延迟的 `setTimeout`、已保存或递归的 `requestAnimationFrame`、事件监听器、Observer、WebSocket/EventSource/BroadcastChannel、Worker、订阅和定位监听。
-- `addEventListener` 必须用相同目标、静态事件名、稳定回调和相同 `capture` 移除；`once: true` 可直接通过，`signal` 方式要求对应控制器在生命周期结束时 `abort()`。
-- `requestFunctions` 中的请求必须传入可静态追踪的 `AbortController.signal`，并在卸载时 `abort()`；动态拼装且无法证明 signal 归属的写法会阻断。
-- 支持 `onBeforeUnmount`、`onUnmounted`、`onScopeDispose`、Options API 卸载钩子和 Vue 2 销毁钩子；`onActivated` 中创建的资源必须在 `onDeactivated` 释放。清理可通过本地 helper 间接调用，但在 `await` 后才注册或执行的清理不算可靠。
-- 短于阈值的定时器和 `new Promise(resolve => setTimeout(resolve, ...))` 延时写法不检查；同一句柄存在多个静态创建点时会额外报告覆盖风险。
-- 可使用结构化例外临时批准精确规则、文件和位置；普通注释、disable 指令或项目 lint 配置不能关闭这项门禁。
-
-### 配置统一路径命名
-
-路径命名默认关闭，可通过 `repo-guard enable pathNaming` 启用。npm 包同时支持 `camelCase` 和 `kebab-case`，但一个消费项目只能配置一个字符串值，所有指定目录共用同一规范：
-
-```json
-{
-  "preCommit": {
-    "pathNaming": {
-      "enabled": true,
-      "convention": "camelCase",
-      "include": ["src/**", "utils/**"],
-      "exclude": ["**/.*", "**/.*/**", "**/generated/**"]
-    }
-  }
-}
-```
-
-- `convention` 只能是 `camelCase` 或 `kebab-case`，不能填写数组，也不能为不同目录分别覆盖；业务项目启用后只有一种统一标准。
-- 文件名和文件夹名使用同一规范。`camelCase` 接受 `committeeInfo`，`kebab-case` 接受 `committee-info`；全小写单词（如 `utils`）在两种规范下都合法。
-- 文件扩展名不参与检查；多段文件名会逐段检查除最终扩展名外的名称，例如 `committeeInfo.service.ts` 和 `committee-info.service.ts` 分别符合对应规范。
-- pre-commit、CI policy/full 和 release-ready 每次检查 Git 索引中的全部已跟踪路径，不只检查本次变更，因此启用前应先完成存量路径治理；新暂存路径也会立即进入检查，已删除路径不再阻断。
-- `include`、`exclude` 使用仓库相对 glob，且 `exclude` 优先。默认排除隐藏路径和 `generated` 目录；`[id]`、`(auth)` 等框架特殊目录若需要保留，应明确加入排除范围。
-- Git 不跟踪空目录，因此空目录只有在包含已跟踪文件后才会进入检查。门禁不会自动重命名，避免破坏 import、路由、脚本和大小写敏感文件系统中的引用关系。
-
-### 配置 UI Token 门禁
-
-UI Token 门禁默认关闭。项目必须先在 `repo-guard.config.json` 中声明实际使用的适配器，再执行 `repo-guard enable uiTokens`；repo-guard 不会根据文件扩展名猜测语言。当前版本只支持 `sass` 和 `unocss`，可以只启用其中一个，也可以同时启用：
-
-```json
-{
-  "uiTokens": {
-    "enabled": false,
-    "manifestFile": "ui-tokens.manifest.json",
-    "include": ["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"],
-    "exclude": ["**/generated/**", "**/dist/**", "**/coverage/**", "**/reports/**"],
-    "adapters": {
-      "sass": { "enabled": true },
-      "unocss": {
-        "enabled": true,
-        "configFiles": ["uno.config.ts"],
-        "attributify": true,
-        "variantGroups": true
-      }
-    },
-    "icon": {
-      "components": ["UiIcon", "SvgIcon"],
-      "nativeSvg": true,
-      "sassSelectors": ["svg", ".icon", ".ui-icon", ".svg-icon"]
-    }
-  }
-}
-```
-
-保存这段配置后运行：
-
-```bash
-repo-guard enable uiTokens
-```
-
-项目需要用自己的设计系统生成脚本提交 `ui-tokens.manifest.json`。定义源可以是 Sass、JSON、TypeScript 或其他语言；repo-guard 不执行定义源，而是只读取归一化后的 Token 类别与适配器别名。下面的 SHA-256 是格式占位，实际值必须由生成脚本按来源文件原始字节计算并写入：
-
-```json
-{
-  "$schema": "./node_modules/@cxyi7/repo-guard/ui-token-manifest.schema.json",
-  "version": 1,
-  "sources": [
-    {
-      "path": "src/styles/tokens.scss",
-      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    },
-    {
-      "path": "uno.config.ts",
-      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    }
-  ],
-  "tokens": [
-    {
-      "id": "color.brand",
-      "category": "color",
-      "aliases": {
-        "sass": ["$color-brand"],
-        "unocss": ["bg-brand", "text-brand"]
-      }
-    },
-    {
-      "id": "spacing.md",
-      "category": "spacing",
-      "aliases": {
-        "sass": ["$space-md"],
-        "unocss": ["p-space-md", "gap-space-md"]
-      }
-    },
-    {
-      "id": "breakpoint.tablet",
-      "category": "breakpoint",
-      "aliases": {
-        "sass": ["$breakpoint-tablet"],
-        "unocss": ["tablet"]
-      }
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "card-tokenized",
-      "expandsTo": ["bg-brand", "p-space-md"]
-    }
-  ]
-}
-```
-
-管理范围固定为以下 12 类：`color`、`spacing`、`font-family`、`font-size`、`line-height`、`font-weight`、`radius`、`shadow`、`z-index`、`breakpoint`、`animation-duration`、`icon-size`。宽高、布局、定位模式、透明度、边框宽度、轮廓宽度、文字装饰厚度和描边宽度等其他样式不做判断；唯一例外是配置的图标组件和原生 `svg` 上的 `size`、`w`、`h` UnoCSS utility 会按 `icon-size` 检查。
-
-Sass 适配器有以下边界：
-
-- 使用消费项目自己的 Stylelint、配置和 custom syntax 解析 `.scss`、`.sass`，以及 Vue 中显式标注 `lang="scss"` 或 `lang="sass"` 的 style 块；未选择的 CSS、Less 等语言不会被 Sass 适配器接管。门禁不安装或替换 Sass/Stylelint，也不执行 fix。`icon.sassSelectors` 明确哪些选择器中的 `width`、`height`、`inline-size`、`block-size` 按 `icon-size` 管理，普通元素宽高仍不受约束。
-- 受控声明和 `@media`/`@container` 断点必须引用 Manifest 中类别匹配的 Sass 别名。别名可以是变量、map 访问或函数调用等项目写法，但按完整表达式边界匹配，不能用较短别名前缀伪装未登记变量。
-- 原始颜色（包括简写中的命名颜色）、长度、字体简写、时长、阴影、断点、未登记变量、错误类别、`calc()` 或原始 fallback 等不可证明写法会阻断；`0`、`auto`、`inherit`、`none` 等与设计刻度无关的安全常量允许使用。
-
-UnoCSS 适配器有以下边界：
-
-- 静态检查 Vue/HTML 的 class、Vue/JSX 绑定中的有限字符串分支、JavaScript/TypeScript/JSX 字符串、带值或无值 Attributify，以及包含函数或任意值的嵌套 variant group；受控 utility 必须精确等于对应类别的 Manifest 别名。无法枚举输出的整个动态 class 绑定会阻断；具有固定 utility 前缀的插值仅在该前缀属于受控类别时阻断。负值 utility 和任意 CSS 属性写法同样不能绕过。
-- 默认刻度（例如 `p-4`）、任意值（例如 `bg-[#fff]`）、未登记 breakpoint、任意媒体/容器断点，以及能生成受控 utility 的模板插值或字符串拼接都会阻断。hover、状态、选择器等非断点 variant 不属于 Token 类别，门禁只继续检查其展开后的受控 utility。
-- `configFiles` 只做 AST 静态解析，绝不加载或执行。`theme.breakpoints` 必须静态可证明且每个名称都来自 breakpoint Token；配置与 Manifest 中的静态 shortcut 必须双向一致，所有展开内容即使尚未使用也会检查。基础 utility 只信任从 `unocss` 或对应 `@unocss/*` 包静态导入的 Uno/Mini/Wind/Attributify preset，以及官方 variant-group transformer；其参数必须是静态数据。循环、动态、正则/函数 shortcut、配置展开、自定义 `rules`、preset、variant、preflight、extractor、safelist、postprocess 和其他 transformer 无法形成可验证闭环，因此直接阻断。
-- 每个 UnoCSS 配置文件都必须出现在 Manifest `sources`。主配置、Manifest、任一来源或 UnoCSS 配置发生变化时，pre-commit 与 CI 会从增量检查提升为作用范围内全量复查，避免改 Token 后漏检未修改页面。
-
-Manifest 启用后会自动加入 `notify` 级受保护文件规则。Manifest 不得把自身列为来源；UnoCSS 别名和 shortcut 项必须是单个无空白静态 token，别名与 shortcut 名称不得包含 variant、`!` 前缀或彼此重名。来源哈希不一致、配置未跟踪、别名类别错误、契约文件删除和静态分析无法证明的动态写法都会产生中文结构化问题；即使一次提交只有删除项，pre-commit 也会补跑只读质量入口。临时放行只能使用现有的精确、限时结构化例外。项目的 Manifest 生成器必须以设计系统定义源为事实来源，不能通过删 Token、伪造类别或只刷新哈希来隐藏违规。
-
-### 配置图片资源治理与 WebP 转换
-
-图片治理默认关闭，消费项目需自行安装兼容的 Sharp 和 SVGO，再显式启用：
-
-```bash
-npm install --save-dev --save-exact sharp@0.35.3 svgo@4.1.0
-repo-guard enable imageAssets
-repo-guard doctor
-```
-
-通过 `repo-guard enable imageAssets` 启用时会同步 `AGENTS.md` 托管区块，写入当前生效的命名、真实格式、重复、压缩范围以及 Hook/CI 只读约束；关闭功能会移除对应规则。若直接编辑配置，请运行 `repo-guard migrate` 或 `repo-guard doctor --fix` 完成同步，CI 只检查一致性，不会写入文件。
-
-```json
-{
-  "imageAssets": {
-    "enabled": true,
-    "enforcement": "changedFiles",
-    "include": ["src/assets/**/*.{png,jpg,jpeg,webp,avif,svg}"],
-    "exclude": ["**/generated/**", "**/dist/**", "**/reports/**"],
-    "extensions": ["png", "jpg", "jpeg", "webp", "avif", "svg"],
-    "naming": {
-      "enabled": true,
-      "convention": "camelCase",
-      "lowercaseExtension": true,
-      "densitySuffixes": ["@2x", "@3x"],
-      "allowNinePatch": false
-    },
-    "duplicates": {
-      "exact": "error",
-      "pixel": "off",
-      "canonicalRoots": ["src/assets"]
-    },
-    "compression": {
-      "enabled": true,
-      "action": "report",
-      "minInputBytes": 8192,
-      "minSavingsBytes": 2048,
-      "minSavingsPercent": 10,
-      "raster": {
-        "enabled": true,
-        "allowLossy": false,
-        "metadata": "preserve"
-      },
-      "svg": {
-        "enabled": true,
-        "allowWrite": false
-      },
-      "conversion": {
-        "enabled": true,
-        "target": "webp",
-        "sourceFormats": ["png", "jpg", "jpeg"],
-        "action": "report",
-        "minInputBytes": 8192,
-        "minSavingsBytes": 4096,
-        "minSavingsPercent": 20,
-        "pngMode": "lossless",
-        "jpegQuality": 82,
-        "effort": 6,
-        "exactAlpha": true,
-        "allowFallbackOriginal": false
-      }
-    },
-    "limits": {
-      "maxInputBytes": 26214400,
-      "maxPixels": 40000000,
-      "maxFrames": 1
-    }
-  }
-}
-```
-
-- `changedFiles` 只阻止本次新增或修改产生的新问题，适合旧项目接入；`allFiles` 每次治理完整范围。精确重复使用 Git blob 标识或内容哈希，不依赖文件名；`canonicalRoots` 接受仓库内目录或 glob，并决定建议保留路径。增量模式优先保留未变更的存量资源，工具不会自动删除副本。
-- `duplicates.pixel` 可设为 `report` 或 `error`，通过 Sharp 旋转归一、转换 sRGB 并解码静态像素后比较，能够发现 PNG/JPEG/WebP/AVIF 间的视觉重复；为保持 pre-commit 与 CI policy 轻量，该项只在手动、CI full 和 release-ready 执行。允许原图回退时，同目录同主名的原图/WebP 组合不会被当作像素重复。
-- 压缩和 WebP 建议同时满足最小输入体积、最小节省字节数、最小节省比例才会报告。WebP 并不存在对所有 PNG 固定节省 70% 到 80% 的保证：照片、插画、透明图和已压缩素材差异很大，因此门禁只依据每个文件的真实候选结果判断。
-- `compression.enabled` 是原格式压缩和 WebP 转换的统一父开关；关闭后即使保留 `conversion.enabled: true` 也不会运行转换分析或写入。像素重复属于独立检查，不受该父开关影响。
-- PNG 默认只生成无损候选并复核像素一致性；JPEG/WebP 原格式压缩需先配置 `raster.allowLossy: true`。写入 JPEG/WebP 原格式压缩或 JPEG/有损 PNG 转 WebP 时，还必须传入 `--allow-lossy` 完成第二次确认；只读预览不会要求命令行确认。`metadata` 决定候选保留或移除元数据。
-- SVGO 使用保守插件集合，并在接受候选前复核 `viewBox`、ID、类名、ARIA/role、引用、`url(#...)`、`title` 和 `desc`。SVG 写入还必须显式设置 `svg.allowWrite: true`。
-- 图片命名与 `preCommit.pathNaming` 同时启用时必须使用同一种 `convention`；图片由 `imageAssets.naming` 检查，避免同一路径被两套规则重复报告。扩展名必须小写，倍率后缀只能使用配置白名单。
-- Hook 与 CI 只读取最终暂存区或目标 revision，不读取未暂存副本，也绝不自动改图。输入体积、解码像素和帧数超过上限时停止分析并给出结构化问题，避免压缩炸弹和动画资源造成不可控消耗。
-
-只预览真实收益：
-
-```bash
-repo-guard image-optimize -- src/assets/logo.png
-repo-guard image-optimize --to webp -- src/assets/banner.jpg
-```
-
-显式写入：
-
-```bash
-repo-guard image-optimize --write -- src/assets/logo.png
-repo-guard image-optimize --to webp --write --allow-lossy -- src/assets/banner.jpg
-```
-
-写入只接受范围内、由 Git 跟踪且没有暂存/未暂存修改的源文件，并拒绝路径任意层级的符号链接。原格式压缩使用不冲突的临时文件和备份完成安全替换，并保留原文件权限；WebP 转换只创建同目录同主名的 `.webp`，包括悬空符号链接在内的目标路径已存在就停止，原图和代码引用保持不变，必须由开发者完成视觉、浏览器/小程序兼容性和引用切换验证。
-
-### 配置无效图片资源门禁
-
-无效图片是指位于 `imageAssets.include` 范围内，但没有被配置范围源码静态引用、也没有被有效动态声明覆盖的图片。该能力默认关闭，不会进入 pre-commit；启用时同步打开父级图片治理：
-
-```bash
-repo-guard enable unusedImageAssets
-repo-guard unused-image-assets
-```
-
-```json
-{
-  "imageAssets": {
-    "enabled": true,
-    "enforcement": "changedFiles",
-    "unused": {
-      "enabled": true,
-      "action": "error",
-      "sourceInclude": ["*.{html,md}", "src/**/*.{vue,nvue,html,wxml,js,jsx,ts,tsx,mjs,cjs,css,less,scss,sass,wxss,json}", "public/**/*.html", "docs/**/*.md"],
-      "sourceExclude": ["**/*.spec.*", "**/*.test.*", "**/generated/**", "**/dist/**"],
-      "sourceExtensions": [".vue", ".nvue", ".html", ".wxml", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".less", ".scss", ".sass", ".wxss", ".md", ".json"],
-      "aliases": [{ "prefix": "@/", "directory": "src" }],
-      "publicRoots": [{ "directory": "public", "urlPrefix": "/" }],
-      "dynamicReferences": [
+      "mode": "newFiles",
+      "rules": [
         {
-          "sourcePatterns": ["src/pages/gallery.ts"],
-          "assetPatterns": ["src/assets/runtime/*.png"],
-          "reason": "接口只返回文件名，页面在受控目录内拼接图片路径"
+          "name": "图片资源",
+          "patterns": ["**/*.{png,jpg,svg}"],
+          "allowedPatterns": ["src/assets/**", "docs/assets/**"],
+          "exceptions": ["public/favicon.svg"],
+          "suggestedDirectory": "src/assets"
         }
-      ],
-      "limits": {
-        "maxSourceFiles": 10000,
-        "maxSourceBytes": 2097152,
-        "maxTotalSourceBytes": 104857600
-      }
+      ]
+    },
+    "maxFileLines": {
+      "enabled": true,
+      "mode": "strict",
+      "warnAt": 0.85,
+      "rules": [{ "pattern": "**/*.vue", "maxLines": 700 }],
+      "exclusions": []
     }
   }
 }
 ```
 
-- 解析 JS/TS 的静态字符串、`new URL` 和 `import.meta.glob`，Vue/HTML/WXML 的 `src`、静态绑定、`srcset`、`poster`，CSS/Less/SCSS/Sass/WXSS 的 `url()`，以及明确纳入范围的 Markdown 和 JSON；远程 URL、`data:`、`blob:`、注释和动态模板不会被误计为使用。
-- 相对路径以引用源码目录解析，别名与公开 URL 分别由 `aliases` 和 `publicRoots` 映射；查询参数和 hash 不参与文件匹配。路径必须留在仓库内，Git revision 源码通过单次批量对象读取并受文件数、单文件和总字节上限保护。
-- 默认 `/assets/logo.png` 按 Vite 的 `public/assets/logo.png` 解析；uni-app 若把 `/static/logo.png` 实际存放在 `src/static/logo.png`，应将映射改为 `{ "directory": "src", "urlPrefix": "/" }`，并同步把 `src/static` 加入 `imageAssets.include`，避免把平台根路径误认为 `public` 路径。
-- 运行时拼接无法静态证明时，必须配置 `dynamicReferences`。每项声明都要有原因，并同时匹配真实源码和图片；整个仓库通配、空匹配和已经失效的声明会作为配置错误处理。
-- 手动命令始终审计当前工作区全量。`changedFiles` 在 pre-push、CI full 和 release-ready 中比较基线与当前 revision 的“未使用集合”，只阻止新增未引用图片或删除最后一处引用造成的新债务；`allFiles` 阻止全部存量。
-- `action: "report"` 只报告警告，`error` 产生阻断错误。结构化例外仍需精确匹配 `assets/unused` 与图片路径。工具只提供证据，不自动删除图片或改写引用；删除前必须人工确认运行时、后端下发和平台约定路径。
+数组代表这一项的完整规则集合，实际配置应保留其他需要的文件类型。归位失败时移动文件并同步引用，行数超限时拆分职责，重新暂存后复核；`npx repo-guard file-placement` 可显式审计工作区。没有单独的单文件行数手动命令，通过提交或 CI 复核。
 
-### 配置变异测试与受保护构建
+### 依赖声明与锁文件
 
-变异测试默认关闭，并且不会进入 pre-commit、pre-push 或固定 CI 计划。消费项目先按 [StrykerJS 官方初始化流程](https://stryker-mutator.io/docs/stryker-js/getting-started/)安装自身需要的 `@stryker-mutator/core` 10.x、测试运行器和 `stryker.config.*`；repo-guard 只调用消费项目的安装与配置，不内置测试运行器。
+详见[依赖声明与锁文件](features/dependency-policy.md)。
 
-Stryker 的 `thresholds.break` 是必需的构建硬门槛，必须配置为 0 到 100 之间的数值；缺失时也会阻断构建。repo-guard 强制使用本地 `json`、`html`、`clear-text` 和 `progress` reporter，强制关闭 `inPlace`，不会启用 `dashboard` 或隐式上传报告。每次运行前都会删除旧报告，仅接受本次新生成且符合 Stryker `schemaVersion: "1.0"` 的报告。
+依赖策略默认启用，要求精确版本与同步锁文件。项目可配置允许的协议和禁用依赖：
 
 ```json
 {
-  "mutationTest": {
+  "dependencyPolicy": {
     "enabled": true,
-    "configFile": "stryker.config.mjs",
-    "timeoutMs": 1800000,
-    "reportsDirectory": "reports/mutation",
-    "originalHtml": true,
-    "guardedBuilds": [
-      {
-        "script": "build:mp-weixin",
-        "packageScript": "guard:build:mp-weixin",
-        "timeoutMs": 300000,
-        "notifyOnFailure": true
-      },
-      {
-        "script": "build:h5",
-        "packageScript": "guard:build:h5",
-        "timeoutMs": 300000,
-        "notifyOnFailure": true
-      }
-    ]
-  }
-}
-```
-
-运行 `repo-guard init` 后，repo-guard 会在别名不存在时加入以下脚本，并把报告目录加入受管 `.gitignore`：
-
-```json
-{
-  "scripts": {
-    "guard:mutation-test": "repo-guard mutation-test",
-    "guard:build:mp-weixin": "repo-guard guarded-build build:mp-weixin",
-    "guard:build:h5": "repo-guard guarded-build build:h5"
-  }
-}
-```
-
-`guardedBuilds` 可声明任意多个原始 npm 构建脚本，不限于小程序。受保护别名先执行完整变异测试；得分低于 `thresholds.break`、没有可评分变异、Stryker 执行失败、报告缺失或报告无效时都不会运行原始构建。通过后才执行对应的 `script`。原始 `build:*` 脚本保持不变并仍可直接调用，因此团队和 CI 必须改用 `guard:build:*` 才能获得强制保护；`repo-guard doctor` 会检查原始脚本和别名是否完整且未被替换。
-
-报告默认写入 `reports/mutation/mutation.json`、中文 `mutation.html` 和可选的 Stryker 原始 `mutation-original.html`。路径必须位于 `reports/`、被 Git 忽略、不得穿过符号链接，也不得覆盖已跟踪文件。`notifyOnFailure` 与全局 `notification.enabled` 同时开启时，失败会复用现有企业微信配置发送项目、分支、构建脚本、得分、门槛和报告位置；GitLab 受管流水线通知已开启时不会重复发送。
-
-保护文件检查：
-
-```bash
-repo-guard check
-repo-guard gate
-repo-guard dry-run
-repo-guard gate --force-notify
-```
-
-### 配置指定代码允许位置
-
-`codePlacement` 使用精确文本匹配。pre-commit 检查格式化完成后的最终 Git 索引，未暂存内容不会误阻断本次提交。
-
-```json
-{
-  "codePlacement": {
-    "enabled": true,
-    "rules": [
-      {
-        "name": "支付签名实现",
-        "content": "const signature = createPaymentSignature(payload);",
-        "allowedFiles": [
-          "src/payment/signature.ts",
-          "src/admin/payment-signature.ts"
-        ],
-        "scanPatterns": ["src/**/*.{js,jsx,ts,tsx,vue}"]
-      }
-    ]
-  }
-}
-```
-
-匹配时只统一 CRLF/CR 为 LF，不忽略其他空白，也不把语义相近但文本不同的代码视为相同。
-
-### 配置合同驱动交付
-
-合同驱动交付默认关闭。启用后，项目用树形功能登记表记录人工确认的功能归属，并用当前分支唯一的 `schemaVersion: 2` 多文件活动合同约束本地需求快照、资料计划、Git 历史修订、目标分支、Worktree、路径边界、执行清单、并行协调和发布证据：
-
-```json
-{
-  "deliveryContract": {
-    "enabled": true,
-    "registryPath": "docs/delivery/feature-registry.json",
-    "contractsDirectory": "docs/delivery/contracts",
-    "requiredFor": ["src/**", "test/**", "package.json"],
-    "exclude": ["reports/**"]
+    "requireExactVersions": true,
+    "requireLockfile": true,
+    "allowedProtocols": ["npm", "workspace"],
+    "bannedPackages": []
   }
 }
 ```
 
 ```bash
-repo-guard enable deliveryContract
-repo-guard delivery-contract
-repo-guard delivery-evidence
+npx repo-guard dependencies
 ```
 
-启用命令会同步安装五个项目级 Skill 到 `.agents/skills/`：功能登记、合同规划、合同执行、反馈闭环和交付证据。每个 Skill 使用标准 `SKILL.md` 入口，并按实际需要带 `agents/openai.yaml`、`references/` 和 `assets/`；`.repo-guard/managed-skills.json` 保存逐文件指纹。资产模板使用明确的 `<REQUIRED_*>` 和 `pending` 保持默认不可通过，必须换成当前仓库事实并由人工确认，不能把零哈希或虚构时间当成起始值。迁移、初始化和 `doctor --fix` 会安全升级，Doctor 会检查缺失或篡改；禁用时只删除仍与托管指纹一致的文件，拒绝覆盖或删除人工修改。
+提交阶段读取最终 Git 索引中的依赖声明和锁文件。按报告修复版本、依赖分组、来源或锁文件一致性，再同时暂存相关文件。
 
-一份逻辑合同由主合同和合同 id 子目录共同组成。主合同只保存身份、仓库边界、资料计划和确认；当前需求事实位于 `requirements/rev-NNN/requirements.md`，追踪关系位于 `traceability.md`，执行清单位于 `obligations.md`，每个正式问题独立位于 `findings/FND-*.md`。Gate 从同一 Git 索引或同一历史提交加载整个合同包，避免单个 Markdown 随任务和问题持续膨胀。
+### 原生安全与基础可访问性
 
-AI 先提出合同类型以及 Spec、Design、Tasks、Examples、Visuals 资料计划，人工确认功能归属、合同定义和最终验收。Gate 不机械要求固定文件数量；它按确认后的 `inline`、`file`、`reference` 或 `not-needed` 计划检查，并重新计算定义与证据指纹。定义发生变化时，Gate 会与 Git 中上一份合同定义比较，要求连续提升 `contractRevision` 和使用新的人工确认；已确认义务、正式发现和历史需求修订文件不能被删除。
+| 检查 | 典型修复方向 | 手动命令 |
+|---|---|---|
+| 动态代码 | 移除不安全的动态求值，改为明确的数据与控制流程 | `npx repo-guard dynamic-code` |
+| Vue 不安全 HTML | 避免未经规则允许的 `v-html` 写法 | `npx repo-guard unsafe-html` |
+| 新窗口链接 | 为 `target="_blank"` 配置安全的 `rel` | `npx repo-guard target-blank` |
+| 表单标签 | 为控件提供可识别的标签或可访问名称 | `npx repo-guard form-labels` |
+| 图片替代文本 | 根据图片用途提供适当的替代文本 | `npx repo-guard image-alt` |
 
-需求事实第一版只信任受 Git 跟踪的本地下载文件或真实截图，不访问远端 URL。`allowedPaths` 默认拒绝，`forbiddenPaths` 始终优先；删除检查原路径，重命名检查原路径和新路径，复制检查目标允许范围以及来源、目标禁止范围。并行合同出现实际重叠时，开发阶段提示风险，`release-ready` 要求人工确认协调策略、前置落地提交和带证据的回归覆盖。
+详细用法：[动态代码](features/dynamic-code.md)、[Vue 不安全 HTML](features/vue-unsafe-html.md)、[新窗口链接](features/vue-target-blank.md)、[表单标签](features/vue-form-label.md)、[图片替代文本](features/vue-image-alt.md)。
 
-`obligations.md` 清单中的 `EVD-*` 不是自由文本，必须引用当前合同 `evidence/runs/` 下受 Git 跟踪的 Evidence Run Markdown。Evidence Run 保存可复算的文件/执行报告指纹、真实提交和完整 GateResult；最终门禁会与本轮 GateResult 比较，并要求最新目标分支提交等于集成基线。证据采用两轮复核：第一轮 release-ready 取得待验收的前序 GateResult 并形成技术证据指纹，人工据此验收；勾选人工验收后再次运行 `delivery-evidence` 更新执行摘要，提交证据元数据，再以最终 release-ready 重跑并比较 GateResult。任何结果变化都会让旧技术指纹和人工验收失效。目标分支从合同基线前进时，还必须保存 Git 可复算的变化路径、AI 影响分析和人工确认。测试环境反馈与 AI 自测发现统一使用独立 `findings/FND-*.md`，每条正式发现必须关联真实任务，未闭环时重新打开任务；实现缺陷必须有红—绿执行日志，测试环境问题必须绑定部署提交和最终人工复测，包括拒绝或延期在内的所有问题都必须完成人工确认的测试/合同/设计/任务模板/Gate 升级决定。
+这些静态规则覆盖各自能识别的源码写法，实际界面还需测试与人工验收。具体违规以报告中的规则、位置、证据和修复要求为准。
 
-全部字段、目录、清单、`FND-*` 问题闭环和发布证据示例见 [合同驱动交付格式](contract-driven-delivery.md)。
+### 结构化例外
+
+有些规则允许经审核的精确、限时例外。需记录规则 ID、文件位置、原因、责任人、批准人、关联问题和有效期。完整字段及复核流程见[结构化例外](features/structured-exceptions.md)。
 
 ### 配置不可变文件
+
+详见[保护文件](features/protected-files.md)。
 
 使用精确仓库相对路径和 `level: "block"`：
 
@@ -744,7 +317,20 @@ AI 先提出合同类型以及 Spec、Design、Tasks、Examples、Visuals 资料
 
 修改、删除、重命名或移动该文件都会阻断提交和 CI。规则按数组顺序采用第一条匹配，精确 `block` 规则应放在可能覆盖它的宽泛规则之前；`exclusions` 优先于规则。
 
+`audit`、`notify`、`block` 分别用于审计、通知和阻断级别；CI 的保护文件动作另受 `ci.protectedFiles.action` 约束，但 `block` 仍必须阻断。下列命令只针对保护文件及其相关检查，不代表运行全部测试：
+
+```bash
+npx repo-guard check
+npx repo-guard gate
+npx repo-guard dry-run
+npx repo-guard gate --force-notify
+```
+
+`check` 查看工作区受保护变更，发现此类变更就会返回非零；`gate` 执行提交侧保护流程；`dry-run` 预览保护文件判断，不发送通知。
+
 ### 企业微信通知
+
+详见[企业微信通知](features/wecom-notification.md)。
 
 `init` 会创建被 Git 忽略的 `.env.config`：
 
@@ -755,550 +341,253 @@ REPO_GUARD_MENTION_MOBILES=
 
 系统环境变量优先于文件值。CI 不读取本地通知凭据，也不发送保护文件通知。
 
-### GitLab CI
-
-安装或检查 CI：
-
-```bash
-repo-guard install-ci --provider gitlab --profile policy --dry-run
-repo-guard install-ci --provider gitlab --profile policy
-repo-guard doctor --ci
-```
-
-显式执行：
-
-```bash
-repo-guard ci --profile policy --base <sha> --head <sha>
-repo-guard ci --profile full --base <sha> --head <sha>
-repo-guard ci --profile release-ready --base <sha> --head <sha>
-```
-
-| 配置档 | 内容 |
-|---|---|
-| `policy` | 原生安全、Vue 可访问性、结构化例外、UI Token、依赖、文件/代码位置、行数、测试策略和保护文件 |
-| `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、完整单元测试/覆盖率、axe、架构和构建 |
-| `release-ready` | `policy` 加项目 `check`、项目 `test`、构建、可选 Lighthouse、发布包一致性检查和最终交付证据复核 |
-
-CI 门禁始终只读，不执行 fix、不安装 Hook、不读取本地企业微信凭据。只有显式启用的托管流水线通知会读取 GitLab CI 受保护变量并发送结果。
-
-#### CI 门禁策略
-
-`ci.gatePolicy` 只控制 `repo-guard ci` 使用的 `ci-policy`、`ci-full` 和 `release-ready` 环境，不会被 pre-commit 或 pre-push 读取。同一个 Gate 可以在提交时强制执行、在 CI 中关闭，也可以在提交时关闭、仅在 CI 中报告或强制执行。
-
-```json
-{
-  "ci": {
-    "enabled": true,
-    "profile": "policy",
-    "reportPath": "reports/repo-guard.json",
-    "protectedFiles": { "action": "report" },
-    "gatePolicy": {
-      "defaultMode": "inherit",
-      "gates": {
-        "security.dynamic-code": {
-          "mode": "enforce",
-          "scope": "changed-files"
-        },
-        "accessibility.vue-image-alt": {
-          "mode": "report"
-        },
-        "repository.maximum-file-lines": {
-          "mode": "off"
-        }
-      }
-    }
-  }
-}
-```
-
-| 模式 | CI 行为 |
-|---|---|
-| `inherit` | 保持 1.7.0 之前的兼容行为：沿用 Gate 原有 `enabled` 配置，失败会阻断 CI |
-| `off` | 在 setup 和执行之前跳过该 CI Gate，不阻断 CI |
-| `report` | 仅在隔离的 CI 上下文中启用并执行，失败写入步骤报告但不阻断 CI |
-| `enforce` | 仅在隔离的 CI 上下文中启用并执行，失败阻断 CI |
-
-`scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
-
-CI Gate 由 Registry 的 CI environment 元数据自动发现，配置 Schema 使用稳定 Gate id 的通用键约束，不维护容易遗漏的手写 Gate 枚举。仓库测试还要求每个官方 CI Gate 至少属于一个受审固定执行计划；因此未来新增 CI Gate 时，如果忘记进入执行计划，发布检查会直接失败，而进入计划后会自动获得 `inherit/off/report/enforce` 策略能力。
-
-### 托管应用交付流水线
-
-`1.8.0` 在原有 `install-ci` 受管 include 上增加可选的应用交付标准，不引入另一套 CI 安装方式。npm 包负责生成和校验 GitLab Job、分支规则、阶段、Node 环境、npm 缓存、依赖安装、门禁先行以及手动发布语义；消费项目继续拥有实际构建、上传和部署实现。
-
-消费项目只需实现固定的 npm scripts：
-
-| script | 何时需要 | 项目职责 |
-|---|---|---|
-| `ci:verify` | 始终 | 对非交付分支执行项目自己的构建或验证 |
-| `ci:deploy:test` | 始终 | 发布测试环境；可读取 `CI_COMMIT_BRANCH` 区分 `dev`、`test` 或 `future/*` |
-| `ci:deploy:production` | 配置了生产分支时 | 执行人工确认后的生产发布 |
-| `ci:deploy:quick` | `quickDeploy: true` | 执行任意分支的人工快速发布 |
-
-示例配置：
-
-```json
-{
-  "ci": {
-    "enabled": true,
-    "profile": "policy",
-    "pipeline": {
-      "enabled": true,
-      "verifyStage": "build",
-      "deployStage": "deploy",
-      "verifyImage": "node:22.23.2",
-      "deployImage": "node:22.23.2",
-      "testBranches": ["dev", "future/*"],
-      "productionBranches": ["publish"],
-      "runnerTags": ["docker"],
-      "legacyPeerDeps": true,
-      "quickDeploy": true,
-      "notifications": true
-    }
-  }
-}
-```
-
-配置并补齐 scripts 后运行：
-
-```bash
-repo-guard install-ci --provider gitlab --profile policy --dry-run
-repo-guard install-ci --provider gitlab --profile policy
-repo-guard doctor --ci
-```
-
-当 `notifications: true` 时，生成器会在 GitLab 保留的 `.post` 末尾阶段增加两个互斥的通知 Job：`repo_guard_notify_success` 使用 `when: on_success`，`repo_guard_notify_failure` 使用 `when: on_failure`。GitLab 根据此前所有阶段的最终结果只执行其中一个，因此整条流水线只发送一条成功或失败通知；任何会阻断流水线的 Job 失败都会进入失败通知。受管 Job 在运行中被手动取消，或前置门禁/验证 Job 被 GitLab 自动取消时，`after_script` 会发送“已取消（canceled）”通知。业务项目不再需要提供 `ci:notify` script。
-
-通知内容包含项目、流水线编号、分支、提交、提交人和流水线链接。提交标题最多显示前 10 个字符，更长时追加省略号。两个末尾通知 Job 都设置 `allow_failure: true`，因此企业微信暂时不可用不会篡改原流水线结果；GitLab 原本标记为 `allow_failure: true` 的非阻断 Job 也继续按成功处理。
-
-在 GitLab 的 CI/CD Variables 中配置：
-
-| 变量 | 要求 | 用途 |
-|---|---|---|
-| `REPO_GUARD_WECOM_WEBHOOK` | 必需，建议设为 Masked 与 Protected | 企业微信群机器人 Webhook；只接受官方 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...` 地址 |
-| `REPO_GUARD_MENTION_MOBILES` | 可选，建议设为 Masked 与 Protected | 逗号分隔的 11 位手机号；未配置时只发消息、不 @ 成员 |
-
-通知命令只允许在 `GITLAB_CI=true` 且带有受管通知标记的生成 Job 中执行。成功、失败和取消入口分别向包内命令传入受控的 `success`、`failed` 或 `canceled` 状态，不会重新加载可能已经导致流水线失败的项目配置。通知包会在 `$CI_BUILDS_DIR` 下按项目、流水线和 Job 组成的唯一目录中，从 npm 官方 tarball URL 精确安装生成流水线时对应版本的 `@cxyi7/repo-guard`；安装时禁用 lifecycle scripts，执行时使用隔离目录中的绝对 CLI 路径，不会解析消费项目的本地可执行文件。因此配置错误或前序 Job 的项目 `npm ci` 失败不会连带阻止末尾通知。
-
-GitLab 只会在运行中的 Job 被取消时执行 `after_script`。因此，取消通知覆盖手动或自动取消时正在运行的 repo-guard 受管 Job；如果 Job 尚未开始就在 pending 状态被取消，或使用 GitLab 强制取消跳过 `after_script`，则 Runner 没有可执行的通知入口。
-
-启用后，`repo_guard` 固定在 GitLab 的 `.pre` stage 覆盖分支和合并请求流水线，确保受管验证与发布 Job 在门禁通过后才执行；测试发布自动执行，生产与快速发布保持手动，其中快速发布允许失败。验证作业会跳过已由测试或生产发布脚本负责构建的分支，避免重复构建。`verifyImage` 和 `deployImage` 分别控制验证与发布容器，二者都必须包含 Node.js 与 npm；Web 容器发布可以把 `deployImage` 指向项目内部维护的 Node.js + Docker CLI 镜像。`install-ci` 与 `doctor --ci` 会拒绝缺少固定 scripts、阶段未声明、保留 Job 名冲突、模板被改写或模板版本不匹配等状态。
-
-三个现有项目建议采用同一个外壳：`owner` 与 `employee` 的 `ci:deploy:*` 继续调用各自的 `mp-ci-deploy.js`；`front` 的 `ci:deploy:test` 根据分支调用其 Web 构建、镜像和蓝绿部署脚本。镜像仓库、端口、微信小程序机器人和密钥仍由项目脚本持有；通知 Webhook 只放在 GitLab 受保护变量中，不进入 repo-guard 配置。
-
-### 外部门禁
-
-消费项目可以通过严格的 npm script 和 `repo-guard-json-v1` 报告接入项目自有检查：
-
-```json
-{
-  "externalGates": [
-    {
-      "id": "project.api-contract",
-      "enabled": true,
-      "environments": ["manual", "ci-full", "release-ready"],
-      "script": "test:api-contract",
-      "timeoutMs": 120000,
-      "report": {
-        "format": "repo-guard-json-v1",
-        "path": "reports/api-contract.json"
-      }
-    }
-  ]
-}
-```
-
-```bash
-repo-guard external project.api-contract
-```
-
-外部门禁不进入 pre-commit、pre-push 或 CI policy，也不能插入或重排官方计划。它们仍然只在可信的 GitLab 受保护分支环境中运行；`ci.gatePolicy` 不会绕过该安全限制。
-
-### Axios 手动接口性能外部门禁
-
-`1.14.0` 提供外部门禁专用的 Axios 性能 runner。它不是官方 Gate，不进入 Registry 固定计划；只有消费项目显式执行 `repo-guard external project.api-performance` 时，现有外部门禁才会调用项目精确 npm script。runner 同时要求 `environments` 只能是 `["manual"]`，并拒绝在带有常见 CI、GitLab CI、GitHub Actions、Azure Pipelines 或 Jenkins 环境标记的进程中运行。
-
-消费项目配置：
-
-```json
-{
-  "externalGates": [
-    {
-      "id": "project.api-performance",
-      "enabled": true,
-      "environments": ["manual"],
-      "script": "test:api-performance:runner",
-      "timeoutMs": 300000,
-      "report": {
-        "format": "repo-guard-json-v1",
-        "path": "reports/api-performance/axios-gate.json"
-      }
-    }
-  ]
-}
-```
-
-```json
-{
-  "scripts": {
-    "test:api-performance:runner": "repo-guard api-performance-runner --gate-id project.api-performance --config test/performance/api-performance.config.json",
-    "guard:api-performance": "repo-guard external project.api-performance"
-  }
-}
-```
-
-`test/performance/api-performance.config.json`：
-
-```json
-{
-  "$schema": "../../node_modules/@cxyi7/repo-guard/api-performance-config.schema.json",
-  "target": {
-    "baseUrlEnv": "REPO_GUARD_PERF_BASE_URL",
-    "allowedHosts": ["api-test.example.com"],
-    "confirmationEnv": "REPO_GUARD_PERF_CONFIRM_HOST"
-  },
-  "client": {
-    "module": "test/performance/axios-client.mjs"
-  },
-  "scenarios": [
-    "test/performance/scenarios/current-user.perf.mjs"
-  ],
-  "execution": {
-    "warmupIterations": 2,
-    "iterations": 20,
-    "concurrency": 1
-  },
-  "thresholds": {
-    "p95Ms": 500,
-    "p99Ms": 1000,
-    "errorRate": 0
-  },
-  "safety": {
-    "allowWrites": false
-  }
-}
-```
-
-项目提供 Node.js 可加载的客户端工厂，以复用业务 Axios 工厂、拦截器、Token 注入和错误处理；repo-guard 不安装第二份 Axios，也不修改生产实例：
-
-```js
-import { createRequestClient } from '../../src/api/request-factory.js';
-
-export function createPerformanceClient({ baseURL }) {
-  return createRequestClient({
-    baseURL,
-    getToken: () => process.env.REPO_GUARD_PERF_TOKEN,
-  });
-}
-```
-
-场景模块只提供稳定标签和真实调用，标签不得包含查询参数或凭据：
-
-```js
-export default {
-  name: '查询当前用户',
-  method: 'GET',
-  pathLabel: '/user/current',
-  async run({ client }) {
-    await client.get('/user/current');
-  },
-};
-```
-
-执行前必须显式确认目标：
-
-```powershell
-$env:REPO_GUARD_PERF_BASE_URL = 'https://api-test.example.com/'
-$env:REPO_GUARD_PERF_CONFIRM_HOST = 'api-test.example.com'
-$env:REPO_GUARD_PERF_TOKEN = '<仅用于测试环境的临时凭据>'
-npm run guard:api-performance
-```
-
-runner 只接受 HTTPS、精确主机白名单和本次确认值。默认只允许 `GET`、`HEAD`、`OPTIONS`；`POST`、`PUT`、`PATCH`、`DELETE` 必须同时启用全局 `safety.allowWrites`、场景 `allowWrites: true` 并提供 `cleanup`。清理失败、预热失败、配置错误或报告错误使用退出码 `1` 且不生成主报告；阈值不满足生成 `violation` 报告并使用退出码 `2`；通过使用退出码 `0`。报告目录必须被 `.gitignore` 忽略，最终生成协议 JSON 和 `axios-report.html` 中文报告，二者仍由通用外部门禁执行新鲜度、路径、Git 跟踪状态和敏感信息复检。
-
-### k6 手动接口压测外部门禁
-
-`1.15.0` 新增使用消费项目本机 k6 二进制的并发压测 runner。它与 Axios 性能 runner 互补：Axios runner 验证业务客户端、拦截器和低并发真实调用链；k6 runner 验证服务在受控并发或恒定到达率下的延迟、错误率、检查成功率和丢弃迭代。k6 不是 Node.js 运行时，不能直接加载 Axios 客户端；本功能不修改业务 Axios 实例，也不进入提交、推送、CI、发布、受保护构建或打包流程。
-
-先按 [k6 官方安装说明](https://grafana.com/docs/k6/latest/set-up/install-k6/) 安装本机 k6。当前支持 k6 `1.5.0` 至 `2.x`，不自动安装扩展、不使用 Docker、不调用 k6 cloud，也不上传结果。
-
-消费项目声明 manual-only 外部门禁和两个显式 npm script：
-
-```json
-{
-  "externalGates": [
-    {
-      "id": "project.k6-load",
-      "enabled": true,
-      "environments": ["manual"],
-      "script": "test:k6:runner",
-      "timeoutMs": 900000,
-      "report": {
-        "format": "repo-guard-json-v1",
-        "path": "reports/k6/k6-gate.json"
-      }
-    }
-  ]
-}
-```
-
-```json
-{
-  "scripts": {
-    "test:k6:runner": "repo-guard k6-runner --gate-id project.k6-load --config test/performance/k6-load.config.json",
-    "guard:k6": "repo-guard external project.k6-load"
-  }
-}
-```
-
-`test/performance/k6-load.config.json` 的负载、阈值和目标都由纯 JSON 配置控制。下面示例的确认值必须精确包含“主机、配置档、执行器、最大 VU、总阶段时长和只读模式”：
-
-```json
-{
-  "$schema": "../../node_modules/@cxyi7/repo-guard/k6-load-config.schema.json",
-  "target": {
-    "baseUrlEnv": "REPO_GUARD_K6_BASE_URL",
-    "allowedHosts": ["api-test.example.com"],
-    "confirmationEnv": "REPO_GUARD_K6_CONFIRM",
-    "requireHttps": true
-  },
-  "script": "test/performance/scenarios/read.k6.js",
-  "profile": {
-    "name": "smoke-read",
-    "executor": "ramping-vus",
-    "startVUs": 0,
-    "stages": [
-      { "duration": "30s", "target": 5 },
-      { "duration": "1m", "target": 20 },
-      { "duration": "30s", "target": 0 }
-    ],
-    "gracefulRampDown": "30s",
-    "gracefulStop": "30s"
-  },
-  "thresholds": {
-    "p95Ms": 500,
-    "p99Ms": 1000,
-    "errorRate": 0.01,
-    "checkRate": 0.99,
-    "maxDroppedIterations": 0
-  },
-  "environment": {
-    "pass": ["REPO_GUARD_K6_TEST_TOKEN"]
-  },
-  "safety": {
-    "allowWrites": false
-  }
-}
-```
-
-场景必须默认导出函数、直接从 `__ENV` 读取受控基础地址，并至少产生一次 HTTP 请求和一次 `check`：
-
-```js
-import http from 'k6/http';
-import { check } from 'k6';
-
-const baseURL = __ENV.REPO_GUARD_K6_BASE_URL;
-
-export default function readScenario() {
-  const response = http.get(`${baseURL}/health`, {
-    headers: { Authorization: `Bearer ${__ENV.REPO_GUARD_K6_TEST_TOKEN}` },
-  });
-  check(response, { '状态码为 200': (value) => value.status === 200 });
-}
-```
-
-```powershell
-$env:REPO_GUARD_K6_BASE_URL = 'https://api-test.example.com/'
-$env:REPO_GUARD_K6_CONFIRM = 'api-test.example.com:smoke-read:ramping-vus:20vus:120s:readonly'
-$env:REPO_GUARD_K6_TEST_TOKEN = '<仅用于测试环境的临时凭据>'
-npm run guard:k6
-```
-
-受控入口会覆盖消费者脚本的 `options` 和 `handleSummary`，所以场景不得导出这两个名称。所有阈值与报告指标都绑定当前 `scenario`，只统计正式压测迭代，不让 `setup`/`teardown` 的登录、造数和清理请求污染 p95、p99、错误率、检查率或请求量。为保留这些场景子指标，runner 不启用 k6 可选的新机器摘要格式，而是校验受控 `handleSummary` 写出的聚合指标对象。入口关闭 k6 使用情况上报和自动扩展解析，先运行 `k6 inspect`，再运行本地 `k6 run`；子进程只接收操作系统启动所需变量、`environment.pass` 白名单、基础地址和本次随机 `runId`。脚本只能导入仓库内相对模块和 k6 内置模块，不得使用远程模块、`k6/x/*`、硬编码 HTTP 地址、动态请求方法或转存 `k6/http` 绑定。
-
-默认仅允许 `GET`、`HEAD` 和 `OPTIONS`。启用 `safety.allowWrites` 后，脚本必须包含可静态识别的写方法、导出 `teardown`，并在 teardown 中使用 `__ENV.REPO_GUARD_K6_RUN_ID` 发出可静态验证的直接清理请求；进程被强制终止时 teardown 仍无法保证执行，因此写压测还必须使用测试账号、幂等或可过期数据，并由服务端提供兜底清理。`externalGates.timeoutMs` 至少覆盖负载时长、`gracefulStop`、setup、teardown 和 30 秒进程余量。
-
-通过时退出码为 `0`；k6 阈值失败的原始退出码必须为 `99`，runner 生成 `violation` 后对外返回 `2`；其他退出码、超时、报告缺失或判定不一致均返回 `1`，且不生成可误用的主报告。报告目录必须位于已忽略、未跟踪且不穿过符号链接的 `reports/`，成功执行会保留 k6 机器摘要 `k6-summary.json`、中文 `k6-report.html` 和外部门禁 JSON；报告不会保存配置中的凭据。
-
-维护者可显式设置 `REPO_GUARD_REAL_K6_BIN` 为本机官方 `k6` 可执行文件路径，再运行 `node --test test/k6-load.test.js`。该可选集成测试只对 k6 官方演示站点执行 1 VU、1 秒负载；常规 `npm test` 会跳过它，不会隐式联网或产生压测流量。
+可用 `npx repo-guard enable notification` 或 `disable notification` 切换本地通知开关。凭据填写在本地 `.env.config` 或系统环境中，不能提交到 Git；缺失配置时按 Doctor 提示处理。GitLab 流水线通知有独立设置，见[托管应用交付流水线](features/managed-delivery-pipeline.md)。
+
+### 配置 Commit 提交信息门禁
+
+校验团队提交格式，并在推送、CI 和发布准备中复核真实提交对象。 接入配置、执行范围与修复说明见[提交信息](features/commit-message.md)。
+
+### 配置项目级无效代码门禁
+
+使用项目自己的 Knip 检查全项目依赖图，并支持逐步清理历史债务。 接入配置、执行范围与修复说明见[无效代码与基线](features/dead-code.md)。
+
+### 配置暂存文件头
+
+根据 Git 事实同步暂存文件头，保留人工维护的描述。 接入配置、执行范围与修复说明见[文件头同步](features/file-header.md)。
+
+### 配置暂存函数文档
+
+随函数参数和返回结构更新文档标签，保留业务说明。 接入配置、执行范围与修复说明见[函数文档同步](features/function-documentation.md)。
+
+### 配置 Vue 异步资源清理
+
+检查组件与组合函数创建的异步资源是否有可靠的生命周期清理。 接入配置、执行范围与修复说明见[Vue 异步资源清理](features/async-resource-cleanup.md)。
+
+### 配置统一路径命名
+
+统一范围内的文件和目录命名，支持 camelCase 或 kebab-case。 接入配置、执行范围与修复说明见[路径命名](features/path-naming.md)。
+
+### 配置 UI Token 门禁
+
+按项目 Manifest 检查 Sass 与 UnoCSS 的设计 Token 使用。 接入配置、执行范围与修复说明见[UI Token 契约](features/ui-tokens.md)。
+
+### 配置图片资源治理与 WebP 转换
+
+检查图片命名、格式、重复与优化收益，显式选择是否写入优化结果。 接入配置、执行范围与修复说明见[图片资源治理与安全优化](features/image-assets.md)。
+
+### 配置无效图片资源门禁
+
+通过源码引用与动态声明识别未使用图片，并检查新增债务。 接入配置、执行范围与修复说明见[无效图片资源](features/unused-image-assets.md)。
+
+### 配置变异测试与受保护构建
+
+运行 Stryker 并按变异得分决定是否执行受保护构建别名。 接入配置、执行范围与修复说明见[变异测试与受保护构建](features/mutation-test.md)。
+
+### 配置指定代码允许位置
+
+限制指定精确代码文本出现的位置，避免实现散落到未允许的文件。 接入配置、执行范围与修复说明见[代码位置](features/code-placement.md)。
+
+### 配置合同驱动交付
+
+关联需求、功能、任务、真实反馈、人工确认和技术证据。 接入配置、执行范围与修复说明见[合同驱动交付](features/delivery-contract.md)。
 
 ### 配置构建产物预算
 
-产物预算是现有 `build` 门禁的可选后置阶段。一个业务项目只能选择一种平台：PC 项目配置 `pc`，小程序项目配置 `miniProgram`，不能同时存在。未启用 `artifactBudget` 时，原有构建行为不变。
+在实际构建后复核 PC 或小程序产物体积，并控制历史超限债务。 接入配置、执行范围与修复说明见[构建产物预算](features/build-artifact-budget.md)。
 
-PC/Vite 项目示例：
+## 接入测试与构建
 
-```json
-{
-  "build": {
-    "enabled": true,
-    "script": "build",
-    "timeoutMs": 300000,
-    "artifactBudget": {
-      "enabled": true,
-      "platform": "pc",
-      "outputDirectory": "dist",
-      "cleanScript": "clean:dist",
-      "action": "error",
-      "mode": "strict",
-      "pc": {
-        "analyzer": "viteManifest",
-        "manifest": ".vite/manifest.json",
-        "sourceMaps": "forbid",
-        "compression": ["raw", "gzip", "brotli"],
-        "limits": {
-          "totalRawBytes": 8388608,
-          "initialJsBrotliBytes": 358400,
-          "initialCssBrotliBytes": 153600,
-          "maxChunkRawBytes": 614400,
-          "maxChunkCount": 80,
-          "maxAssetRawBytes": 2097152
-        }
-      }
-    }
-  }
-}
-```
+### 单元测试、组件交互与覆盖率
 
-`viteManifest` 从生产产物中的 manifest 查找 `isEntry=true` 入口，并递归统计静态 `imports` 及关联 CSS/资源；动态导入不计入首屏。`directory` 适用于非 Vite 构建，只能使用全目录、分块和资源指标，配置首屏指标会直接报配置错误。只有 `compression` 中启用的算法才能对应配置压缩体积限制。
-
-微信小程序示例：
-
-```json
-{
-  "build": {
-    "enabled": true,
-    "script": "build:mp-weixin",
-    "timeoutMs": 300000,
-    "artifactBudget": {
-      "enabled": true,
-      "platform": "miniProgram",
-      "outputDirectory": "unpackage/dist/build/mp-weixin",
-      "action": "error",
-      "mode": "strict",
-      "miniProgram": {
-        "provider": "weixin",
-        "appConfig": "app.json",
-        "limits": {
-          "mainPackageBytes": 2097152,
-          "defaultSubPackageBytes": 2097152,
-          "totalPackageBytes": 20971520,
-          "maxSingleFileBytes": 524288,
-          "maxPreloadBytes": 4194304
-        },
-        "subPackages": [
-          { "root": "pagesA", "maxBytes": 1572864 },
-          { "root": "pagesB", "maxBytes": 1835008 }
-        ],
-        "expectedSubPackages": ["pagesA", "pagesB"],
-        "exclusions": [
-          {
-            "patterns": ["project.private.config.json"],
-            "reason": "微信开发者工具本机配置"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-小程序分析读取构建后的 `app.json`，兼容 `subPackages`/`subpackages`，每个文件按 root 前缀唯一归入一个分包，其他文件归入主包；重复、嵌套或越界 root 会阻断。独立分包仍单独计量。`preloadRule` 引用不存在的分包或 `packages` 结构错误会阻断，`maxPreloadBytes` 按单条规则可能加载的主包/分包体积计算。`exclusions` 只允许微信开发者工具确定不上传的 `.DS_Store`、`project.config.json` 和 `project.private.config.json`，不能用 glob 排除业务产物。平台体积值可能变化，因此 repo-guard 不在运行代码中永久写死数值，项目需要依据当前发布平台规则显式配置；小程序固定为 `action=error`、`mode=strict`，不能降级。
-
-产物目录必须在仓库内部，不得为根目录或 `src`，不得包含符号链接或 Git 已跟踪文件。`scanLimits.maxFiles`、`scanLimits.maxTotalBytes` 与 `scanLimits.maxCompressionInputBytes` 防止异常产物耗尽扫描和压缩资源。若配置 `cleanScript`，repo-guard 会先运行该精确 npm 脚本并验证其清除旧产物；未配置时，实际构建必须清除旧产物探针。repo-guard 只删除本次运行创建的探针，不会递归删除业务目录；若产物中已存在同名探针文件，门禁会拒绝运行并保留原文件。
-
-PC 旧项目可以使用 `mode: "baseline"` 接受当前超限债务：先按相同配置完成一次生产构建，再执行：
+先准备 Vitest、真实 `test:unit` 脚本与源码对应测试，再启用：
 
 ```bash
-repo-guard build-artifact-baseline init
-git add .repo-guard/build-artifact-baseline.json
+npx repo-guard enable unitTest
+npx repo-guard unit-test
 ```
 
-基线必须被 Git 跟踪并与当前平台、产物目录和 PC 预算配置指纹一致。新增问题或指标增长仍会阻断；债务下降后执行 `repo-guard build-artifact-baseline prune`，命令只能降低数值或删除已解决项，拒绝新增和扩大允许值。`action: "report"` 可用于 PC 试运行并以 warning 报告，但不能用于小程序平台硬限制。
+组件交互要求 Vue Test Utils、Vue 编译与 DOM 环境；覆盖率要求与 Vitest 匹配的 provider。准备后可分别启用 `componentInteraction` 和 `coverage`。可复制配置、真实交互断言及覆盖率阈值见[单元测试接入](features/unit-test.md)。
+
+### 类型、架构与项目构建
+
+类型与构建调用项目脚本，架构检查使用项目自己的 dependency-cruiser。项目需先具备真实 `typecheck`、`build` 脚本和源码目录；例如 Vue 的类型脚本通常调用项目自己的 `vue-tsc`，普通 TS 项目使用适合自身配置的 `tsc`。
+
+```json
+{
+  "typeCheck": { "enabled": true, "script": "typecheck", "timeoutMs": 180000 },
+  "architecture": { "enabled": true, "sourcePaths": ["src"], "timeoutMs": 120000 },
+  "build": { "enabled": true, "script": "build", "timeoutMs": 300000 }
+}
+```
+
+```bash
+npx repo-guard enable typeCheck architecture build
+npx repo-guard doctor
+npx repo-guard typecheck
+npx repo-guard architecture
+npx repo-guard build
+```
+
+架构默认检查循环依赖、无法解析的导入，以及生产代码导入测试代码。配置 `architecture.rules` 时是替换规则数组，应显式保留仍需执行的基础规则；通过 `sourcePaths`、`tsConfig`、`exclude` 对齐项目结构。
+
+这三项不进入 pre-commit；pre-push 和 CI `full` 按配置执行。`release-ready` 有构建步骤，类型和架构不会作为独立步骤自动加入，应明确纳入项目 `check` 脚本或此前的验证流程。失败时先修正对应类型错误、依赖方向或构建原因，再复跑。
+
+### axe 可访问性测试
+
+准备独立 `test:a11y` 脚本、axe 集成、真实测试文件和零违规断言，再运行：
+
+```bash
+npx repo-guard enable accessibilityTest
+npx repo-guard doctor
+npx repo-guard accessibility-test
+```
+
+支持的集成、配置示例和执行范围见 [axe 可访问性测试](features/accessibility-test.md)。
+
+### Lighthouse 页面检查
+
+项目需声明 Vue，准备 `@lhci/cli`、Chrome、预览页面与 Lighthouse 配置：
+
+```bash
+npx repo-guard enable lighthouse
+npx repo-guard doctor
+npx repo-guard lighthouse
+```
+
+默认关闭，可显式执行或接入 pre-push、发布就绪检查；不进入 pre-commit 和 CI `full`。配置与报告位置见 [Lighthouse](features/lighthouse.md)。
+
+## 完整交付流程
+
+需要将需求、实现、测试与反馈统一记录时，按[合同驱动交付配置](features/delivery-contract.md)准备功能登记、合同和资料，再启用 `deliveryContract`。初始化不会替团队决定需求或生成已经验收的证据。
+
+| 阶段 | 实际操作 | 完成依据 |
+|---|---|---|
+| 需求 | 人工确认功能归属、目标、范围与验收条件，登记需求快照和合同 | 可追溯的需求事实与已确认约定 |
+| 开发 | 拆分任务，开发者或 AI 实现，提交时执行已启用规则 | 代码变更、任务记录与检查结果 |
+| 测试 | 执行项目测试，验证真实效果；登记失败和正式发现 | 测试结果、回归记录与人工确认 |
+| 发布 | 按合同流程准备技术证据，人工验收后完成最终复核 | 本轮有效证据与发布就绪结果 |
+| 反馈 | 将测试或使用中的问题关联任务，修复并复测 | 正式发现及其闭环记录 |
+| 反向升级 | 人工确认是否完善需求、设计、测试、任务模板或规则 | 升级决定及下一轮改进任务 |
+
+启用后同步的五个 Skills 分别支持功能登记、合同规划、合同执行、反馈闭环和交付证据。技术结果变化会使旧证据与验收失效；已关闭交付出现新问题时使用新的修复合同，保留原历史。
+
+证据复核需要先形成技术结果，再人工验收、更新证据元数据，最后重新检查。接入、四方时序、两轮复核、反馈升级与字段格式统一见[交付合同手册](features/delivery-contract.md)。`release-ready` 提供检查结论，npm 发布或应用部署由团队另行执行。
+
+## 接入 CI 与交付流水线
+
+### GitLab CI
+
+```bash
+npx repo-guard install-ci --provider gitlab --profile policy --dry-run
+npx repo-guard install-ci --provider gitlab --profile policy
+npx repo-guard doctor --ci
+```
+
+| 配置档 | 当前固定计划 |
+|---|---|
+| `policy` | 例外、AGENTS、提交信息、异步资源、路径命名、UI Token、安全与基础可访问性、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
+| `full` | `policy` 的步骤，加只读 Stylelint/ESLint/Prettier、类型、Knip、无效图片、完整单元测试及已启用覆盖率、axe、架构、构建 |
+| `release-ready` | `policy` 的步骤，加无效图片、项目 `check`、项目 `test`、构建、可选 Lighthouse、包一致性和最终交付证据 |
+
+`full` 与 `release-ready` 不是简单的逐级包含关系。`release-ready` 不自动逐项重跑 `full`，项目的 `check` 和 `test` 脚本需承担团队约定的发布前验证。单元测试“资料策略”只检查测试对应关系和绕过等，不运行完整测试脚本。
+
+CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](features/gitlab-ci.md)。源码修复步骤不在 CI 执行；测试、构建和报告仍会生成各自的产物。
+
+### 托管应用交付流水线
+
+在同一 `install-ci` 入口启用 `ci.pipeline`，接入项目自己的验证和部署脚本。测试发布自动运行，生产及快速发布保留人工触发；通知使用 GitLab 配置的变量。完整配置见[托管交付流水线](features/managed-delivery-pipeline.md)。
+
+### 外部门禁
+
+通过 `externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v1` 报告。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
+
+### Axios 手动接口性能外部门禁
+
+复用业务 Axios 客户端，验证真实调用链、延迟与错误率。仅通过显式手动入口执行，需要精确目标确认。配置、场景和报告见 [Axios 接口性能](features/api-performance.md)。
+
+### k6 手动接口压测外部门禁
+
+使用消费项目的本机 k6，在受控负载下检查延迟、错误率与吞吐相关指标。只支持显式手动执行，不进入 Hook、CI 或发布流程。配置、确认值与场景边界见 [k6 接口压测](features/k6-load-test.md)。
+
+## 诊断与修复
+
+| 现象 | 先检查什么 | 修复后如何复核 |
+|---|---|---|
+| 提示找不到命令 | 本项目是否安装包，是否在项目根目录使用 `npx` | `npx repo-guard --help` |
+| Doctor 报依赖或脚本缺失 | 工具是否属于当前项目，脚本与配置文件是否存在 | 补齐后重新运行 Doctor |
+| 修改配置后 CI 提示 AGENTS 不一致 | 是否同步托管规范并将改动提交 | `migrate` 后检查差异，再暂存配置与受管文件 |
+| 启用后仍显示跳过 | 功能开关、父级开关、入口、文件范围及 CI 模式 | 确认跳过原因，再运行适用入口 |
+| 提交自动修复后仍失败 | 最终规则是否仍违规，修复内容是否已重新暂存 | 修复指定位置并重新提交 |
+| 推送检查与预期范围不同 | Git 比较范围与单项全项目检查的区别 | 确认推送目标、配置和检查报告 |
+| CI 返回范围不可信 | 基准/目标提交是否存在、可信且有正确关系，历史是否完整 | 补全历史或修正基准后重跑 |
+| 测试通过但交付证据不通过 | 报告、提交、合同版本和人工确认是否属于同一轮 | 按证据流程更新并重新验收、复核 |
+| Hook 重复运行被阻止 | 同仓库是否已有提交或 Hook 在执行 | 等当前实例结束后重试，不删除活动锁 |
+
+### 如何理解退出码
+
+| 入口 | 含义 |
+|---|---|
+| 普通结构化 Gate / CI | `0` 通过或明确跳过；`1` 配置或执行错误；`2` 策略违规；`3` 不可信的 Git/CI 范围 |
+| `pre-commit` | 正常通过为 `0`；规则失败会归为 `1`，不能只凭退出码区分违规和配置错误 |
+| `check` | `0` 表示没有受保护工作区变更；`2` 表示发现此类变更，并不代表全部规则已检查 |
+| 第三方工具 | 原始退出码可能不同，先看 repo-guard 的中文结论与结构化状态 |
+
+repo-guard 自有诊断提供问题、位置、证据、预期和修复指引；第三方原始输出会经过脱敏处理，并与主结论区分。pre-push 会实时显示运行进度。
+
+## 配置与结果
 
 ### 手动运行专项门禁
 
 ```bash
-repo-guard exceptions
-repo-guard dependencies
-repo-guard dynamic-code
-repo-guard async-resource-cleanup
-repo-guard path-naming
-repo-guard ui-tokens
-repo-guard unsafe-html
-repo-guard target-blank
-repo-guard form-labels
-repo-guard image-alt
-repo-guard image-assets
-repo-guard unused-image-assets
-repo-guard file-placement
-repo-guard code-placement
-repo-guard delivery-contract
-repo-guard delivery-evidence
-repo-guard style-complexity
-repo-guard style-governance
-repo-guard typecheck
-repo-guard unit-test
-repo-guard mutation-test
-repo-guard accessibility-test
-repo-guard architecture
-repo-guard dead-code
-repo-guard build
-repo-guard lighthouse
-repo-guard lighthouse --skip-build
+npx repo-guard exceptions
+npx repo-guard dependencies
+npx repo-guard dynamic-code
+npx repo-guard async-resource-cleanup
+npx repo-guard path-naming
+npx repo-guard ui-tokens
+npx repo-guard unsafe-html
+npx repo-guard target-blank
+npx repo-guard form-labels
+npx repo-guard image-alt
+npx repo-guard image-assets
+npx repo-guard unused-image-assets
+npx repo-guard file-placement
+npx repo-guard code-placement
+npx repo-guard delivery-contract
+npx repo-guard delivery-evidence
+npx repo-guard style-complexity
+npx repo-guard style-governance
+npx repo-guard typecheck
+npx repo-guard unit-test
+npx repo-guard mutation-test
+npx repo-guard accessibility-test
+npx repo-guard architecture
+npx repo-guard dead-code
+npx repo-guard build
+npx repo-guard lighthouse
+npx repo-guard lighthouse --skip-build
 ```
 
-## 配置与结果
+命令存在不代表会忽略开关。执行前查看对应功能的手动语义；没有专用命令的检查通过提交或 CI 复核。`npx repo-guard --help` 可查看全部当前命令与参数。
 
-完整配置字段以 [config.schema.json](../config.schema.json) 为准。主要顶层配置包括：
+### Schema 与报告
 
-```text
-notification
-ci
-externalGates
-codePlacement
-exceptions
-dependencyPolicy
-commitMessage
-deadCode
-imageAssets
-uiTokens
-deliveryContract
-architecture
-build
-lighthouse
-typeCheck
-accessibilityTest
-unitTest
-mutationTest
-preCommit
-rules
-exclusions
-```
+完整主配置以 [config.schema.json](../config.schema.json) 为准，主要顶层字段包含 `preCommit`、`rules`、`exclusions`、`exceptions`、`dependencyPolicy`、`commitMessage`、`codePlacement`、`deadCode`、`imageAssets`、`uiTokens`、`deliveryContract`、`typeCheck`、`unitTest`、`accessibilityTest`、`architecture`、`build`、`mutationTest`、`lighthouse`、`notification`、`ci` 和 `externalGates`。
 
-统一结果 Schema：
+| Schema | 对应用途 |
+|---|---|
+| [GateResult](../gate-result.schema.json) | 单项检查的结构化状态、问题与产物 |
+| [外部门禁报告](../external-report.schema.json) | `repo-guard-json-v1` 协议 |
+| [UI Token Manifest](../ui-token-manifest.schema.json) | Token 来源、类别与适配器别名 |
+| [Axios 性能配置](../api-performance-config.schema.json) | 目标、客户端、场景与阈值 |
+| [k6 压测配置](../k6-load-config.schema.json) | 目标、负载、场景与阈值 |
 
-- [gate-result.schema.json](../gate-result.schema.json)
-- [external-report.schema.json](../external-report.schema.json)
-- [ui-token-manifest.schema.json](../ui-token-manifest.schema.json)
-- [api-performance-config.schema.json](../api-performance-config.schema.json)
-- [k6-load-config.schema.json](../k6-load-config.schema.json)
-
-退出码：
-
-| 退出码 | 含义 |
-|---:|---|
-| `0` | 通过或明确跳过 |
-| `1` | 配置错误或执行错误 |
-| `2` | 策略违规 |
-| `3` | Git/CI 变更范围不可信 |
-
-所有 repo-guard 自有错误都应说明问题位置、原因、预期状态和解决方式。第三方原始输出只进入经过脱敏和长度限制的 diagnostics，或作为经过脱敏的 `pre-push` 实时进度输出。
+CI 默认将整体报告写到 `reports/repo-guard.json`，可通过 `ci.reportPath` 或 `--report-json` 指定合规路径。整体 CI 报告包含步骤与单项结果，不能把它直接当成一个 GateResult。截图、HTML 或单次“通过”提示不能代替当前交付合同要求的完整证据。
 
 ## 相关文档
 
-- [项目概览](../README.md)
+- [项目介绍](../README.md)
 - [项目结构与能力总览](project-structure-and-feature-inventory.md)
 - [功能说明索引](features/README.md)
-- [合同驱动交付格式](contract-driven-delivery.md)
+- [交付合同手册](features/delivery-contract.md)
 - [版本记录](../CHANGELOG.md)

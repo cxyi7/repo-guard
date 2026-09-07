@@ -10,7 +10,7 @@ description: 为 repo-guard 已确认归属的功能创建或修订 schemaVersio
 ## 工作流
 
 1. 确认功能登记表中的 `featureId` 已由人工确认且状态为 `active`。
-2. 阅读 [references/contract-workflow.md](references/contract-workflow.md) 和已安装包中的 `node_modules/@cxyi7/repo-guard/docs/contract-driven-delivery.md`。
+2. 阅读 [references/contract-workflow.md](references/contract-workflow.md) 和已安装包中的 `node_modules/@cxyi7/repo-guard/docs/features/delivery-contract.md`。
 3. 从本地下载文件或截图建立当前需求修订，不覆盖旧修订。
 4. 生成 Spec、Design、Tasks、Examples、Visuals 资料计划；按实际需要使用 `inline`、`file`、`reference` 或 `not-needed`。
 5. 创建 `schemaVersion: 2` 合同包。把 [assets/contract-bundle/contract.md](assets/contract-bundle/contract.md) 复制到 `<contractsDirectory>/<contractId>.md`，把 `requirements.md` 复制到 `<contractsDirectory>/<contractId>/requirements/rev-001/requirements.md`，再把 `traceability.md`、`obligations.md` 复制到 `<contractsDirectory>/<contractId>/`。这些资产故意包含不可通过 Gate 的 `<REQUIRED_*>` 和 `pending`，必须逐项替换，不能直接作为已确认合同提交。
