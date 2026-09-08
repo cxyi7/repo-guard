@@ -9,7 +9,8 @@ import {
   configurationError,
   toRepoGuardError,
 } from '../../core/error/repo-guard-error.js';
-import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { createCommitAnimation } from '../../core/report/commit-animation/presenter.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { collectStagedChanges } from '../../git/change-collection.js';
 import { runGit } from '../../git/execution.js';
@@ -36,11 +37,15 @@ function loadStagedConfig(root) {
   }
 }
 
-async function runPreCommitLifecycle(root) {
-  const qualityExitCode = await runQualityGate({ cwd: root });
+async function runPreCommitLifecycle(root, animation) {
+  let completed = 0;
+  const total = preCommitPolicyPlan.steps.length + 1;
+  animation.start({ label: '暂存文件质量检查 · 格式化与规则验证' });
+  const qualityExitCode = await runQualityGate({ cwd: root, animation });
   if (qualityExitCode !== 0) {
     return qualityExitCode;
   }
+  completed += 1;
   const config = loadStagedConfig(root);
   const changes = createChangeSet({
     source: 'pre-commit',
@@ -57,7 +62,16 @@ async function runPreCommitLifecycle(root) {
     registry: gateRegistry,
     context,
     stopOnFailure: true,
-    onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
+    beforeStep: () => {
+      animation.start({ completed, total, label: '暂存区策略检查 · 验证仓库规则' });
+      return null;
+    },
+    onResult: ({ result, step }) => {
+      completed += 1;
+      if (['passed', 'skipped'].includes(result.status)) animation.pause();
+      else animation.fail();
+      writeGateResultConsole(result, { label: step.id });
+    },
   });
   if (execution.status.endsWith('-error')) {
     const decisiveError = execution.decisiveResult?.error;
@@ -74,5 +88,18 @@ async function runPreCommitLifecycle(root) {
 
 export async function runPreCommit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
-  return await withPreCommitLock(root, () => runPreCommitLifecycle(root));
+  return await withPreCommitLock(root, async () => {
+    const config = loadConfig(root);
+    const animation = createCommitAnimation(config.commitAnimation);
+    try {
+      const code = await runPreCommitLifecycle(root, animation);
+      animation.close();
+      if (config.commitAnimation.enabled) {
+        writeConsoleMessage(code === 0
+          ? '提交前检查通过；等待提交信息校验和 Git 创建提交。'
+          : '提交已阻止。请按上方问题、位置和修复建议处理后重新提交。', code === 0 ? 'stdout' : 'stderr');
+      }
+      return code;
+    } finally { animation.close(); }
+  });
 }

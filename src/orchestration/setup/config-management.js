@@ -1,3 +1,4 @@
+import { DEFAULT_COMMIT_ANIMATION_CONFIG } from '../../config/commit-animation-validation.js';
 import {
   existsSync,
   readFileSync,
@@ -57,6 +58,7 @@ export const CONFIGURABLE_FEATURES = Object.freeze([
   'fileHeader',
   'functionDocs',
   'notification',
+  'commitAnimation',
   'ci',
 ]);
 
@@ -72,6 +74,7 @@ export function createStarterConfig({
     $schema: CONFIG_SCHEMA_PATH,
     version: 1,
     notification: { ...DEFAULT_NOTIFICATION_CONFIG },
+    commitAnimation: { ...DEFAULT_COMMIT_ANIMATION_CONFIG },
     ci: {
       ...DEFAULT_CI_CONFIG,
       protectedFiles: { ...DEFAULT_CI_CONFIG.protectedFiles },
@@ -189,6 +192,7 @@ export function migrateProjectConfig(root, {
   const next = {
     $schema: prepared.$schema ?? CONFIG_SCHEMA_PATH,
     ...prepared,
+    commitAnimation: { ...DEFAULT_COMMIT_ANIMATION_CONFIG, ...(prepared.commitAnimation ?? {}) },
     notification: {
       ...DEFAULT_NOTIFICATION_CONFIG,
       ...(prepared.notification ?? {}),
@@ -292,7 +296,7 @@ function featureConfig(config, feature) {
   if (gate) {
     return gate.configKey.split('.').reduce((current, key) => current[key], config);
   }
-  if (feature === 'ci' || feature === 'notification') return config[feature];
+  if (feature === 'ci' || feature === 'notification' || feature === 'commitAnimation') return config[feature];
   throw configurationError('config/management-invalid', `不支持的可配置功能： ${feature}`);
 }
 

@@ -1,6 +1,6 @@
 # repo-guard 项目结构与能力总览
 
-本文作为**维护者架构说明**保留，适用于版本 `1.23.1`。只维护代码结构、模块职责、依赖方向和文档维护边界。使用原文件名是为了保持仓库约定与已有链接稳定。
+本文作为**维护者架构说明**保留，适用于版本 `1.24.0`。只维护代码结构、模块职责、依赖方向和文档维护边界。使用原文件名是为了保持仓库约定与已有链接稳定。
 
 产品介绍见 [README](../README.md)，安装配置见[使用说明](usage-guide.md)，单项能力见[功能说明文档索引](features/README.md)，完整交付流程见[交付合同手册](features/delivery-contract.md)。这些内容各自只有一个详细维护入口。
 
@@ -86,6 +86,10 @@ repo/
 | Delivery Contract / Evidence Run | 绑定功能归属、需求事实、任务、反馈、人工确认与执行证据 | Git 中受跟踪的 Markdown 合同包和报告 |
 
 npm 包根入口只公开稳定的配置、Gate 构造、Context、Result 和错误契约；具体 runner、Gate、integration 和 orchestration 属于内部实现。公开 Schema 以 `package.json` 的 `exports` 与实际 npm 打包结果为准。
+
+提交动画属于可选报告展示能力，配置入口是 `commitAnimation`，不注册为 Gate。`core/report/commit-animation` 负责小猫、小狗、道具和彩蛋像素与终端生命周期；预提交编排提供真实阶段并在输出诊断前停止重绘，`lint-staged` 仍负责暂存隔离与恢复；提交信息编排只在 `post-commit` 入口播放成功庆祝。预览命令使用明确标记的模拟数据，不执行 Git 写入。详细行为见[提交动画](features/commit-animation.md)。
+
+提交信息校验与动画道具共享 `core/policy/commit-header.js` 的标题语法；允许哪些类型仍由提交信息策略决定，动画只对默认十种类型提供道具。特殊与未知类型退回普通包裹。彩蛋类型和触发概率属于展示层内部实现，不进入项目配置。
 
 
 ## 文档职责与维护规则

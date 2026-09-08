@@ -48,6 +48,15 @@ function entry({ id, groupId, gates = [], features = [], capabilities = [], when
 
 const entries = [
   entry({
+    id: 'commit-animation',
+    groupId: 'repository-governance-policy',
+    features: ['commitAnimation'],
+    when: enabled('commitAnimation'),
+    lines: () => [
+      '- 提交动画仅显示检查状态，不能替代门禁；完整失败诊断必须保留，成功庆祝只能发生在 Git 创建提交后。',
+    ],
+  }),
+  entry({
     id: 'structured-exceptions',
     groupId: 'repository-governance-policy',
     gates: ['repository.structured-exceptions'],

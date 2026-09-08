@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { repoGuardPackageVersion } from '../src/core/project/repo-guard-package.js';
@@ -30,8 +31,9 @@ function gitLabEnvironment(overrides = {}) {
   };
 }
 
-test('reads the restored repo-guard package version used by managed notification jobs', () => {
-  assert.equal(repoGuardPackageVersion(), '1.23.1');
+test('通知任务使用当前包版本', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(repoGuardPackageVersion(), manifest.version);
 });
 
 test('recognizes final GitLab success, failure, and cancellation statuses', () => {

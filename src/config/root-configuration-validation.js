@@ -13,6 +13,7 @@ export function validateRootConfigurationContract(value, configPath) {
       '$schema',
       'version',
       'notification',
+      'commitAnimation',
       'ci',
       'externalGates',
       'codePlacement',

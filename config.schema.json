@@ -24,6 +24,32 @@
       "const": 1,
       "description": "Configuration format version."
     },
+    "commitAnimation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "可关闭的终端小猫或小狗动画；不改变检查结果，仅在读取到真实提交记录后庆祝。非交互终端、CI、无颜色或小窗口自动保留文字输出；中断先恢复光标再交还原有取消流程，终端检测和绘制异常自动降级。",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否启用提交动画。"
+        },
+        "theme": {
+          "type": "string",
+          "enum": [
+            "cat",
+            "dog"
+          ],
+          "default": "cat",
+          "description": "cat 为小猫，dog 为小狗。"
+        },
+        "commitTypeProps": {
+          "type": "boolean",
+          "default": true,
+          "description": "成功后按实际标题显示十种默认提交类型道具；特殊提交、未知类型和检查阶段使用普通包裹。彩蛋由代码内置，不能配置类型或概率。"
+        }
+      }
+    },
     "notification": {
       "type": "object",
       "description": "Project-wide WeCom notification switch. Omitted values use the current platform default.",

@@ -82,6 +82,7 @@ test('derives configurable Gate feature names from the Registry without omission
     'fileHeader',
     'functionDocs',
     'notification',
+    'commitAnimation',
     'ci',
   ];
 

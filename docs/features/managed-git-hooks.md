@@ -18,7 +18,7 @@ npx repo-guard doctor
 | `pre-commit` | 暂存格式修复、只读复核、策略检查和末尾保护文件门禁 |
 | `prepare-commit-msg` | 准备提交信息与变更摘要 |
 | `commit-msg` | 校验已启用的提交信息规范 |
-| `post-commit` | 清理提交信息临时状态 |
+| `post-commit` | 清理提交信息临时状态，按配置播放[提交成功动画](commit-animation.md) |
 | `pre-push` | 按真实推送范围执行提交历史检查及已启用重型能力 |
 
 ## 固定顺序与范围
