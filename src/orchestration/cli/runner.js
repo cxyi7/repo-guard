@@ -1,3 +1,4 @@
+import { runAnimationPreview } from './animation-preview.js';
 import { readFileSync } from 'node:fs';
 import { runCheck } from './check.js';
 import { runCiCommand } from '../ci/command.js';
@@ -51,6 +52,7 @@ const CONFIGURABLE_FEATURE_HELP = [
   'fileHeader',
   'functionDocs',
   'notification',
+  'commitAnimation',
   'ci',
 ].join('|');
 
@@ -72,6 +74,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard gate [--dry-run] [--force-notify]
   repo-guard dry-run
   repo-guard pre-commit
+  repo-guard animation-preview [--theme cat|dog] [--type feat|fix|docs|style|refactor|perf|test|build|ci|chore] [--egg auto|none|meteor|butterfly|fireworks] [--fail] [--plain]
   repo-guard pre-push
   repo-guard external <project.gate-id>
   repo-guard api-performance-runner --gate-id <project.gate-id> --config <path>
@@ -81,7 +84,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard build-artifact-baseline <init|prune>
   repo-guard image-optimize [--to webp] [--write] [--allow-lossy] -- <paths...>
 ${REGISTERED_MANUAL_HELP}
-  repo-guard hook-message <prepare|finalize|cleanup> [hook arguments]
+  repo-guard hook-message <prepare|finalize|cleanup|success> [hook arguments]
 
 退出码：
   0  成功
@@ -172,6 +175,7 @@ const COMMAND_HANDLERS = Object.freeze({
       write: writeConsoleMessage,
     });
   },
+  'animation-preview': runAnimationPreview,
   'pre-commit': withoutOptions(runPreCommit),
   'pre-push': async (argumentsList) => runPrePush(process.cwd(), {
     input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),

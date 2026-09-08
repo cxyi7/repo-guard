@@ -108,7 +108,7 @@ test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
   assert.equal(isCurrentManagedHook(hook), true);
   assert.equal(isManagedHook(hook.replaceAll('\n', '\r')), true);
   assert.equal(isCurrentManagedHook(hook.replaceAll('\n', '\r')), true);
-  assert.match(hook, /repo-guard-managed:v4/);
+  assert.match(hook, /repo-guard-managed:v5/);
   assert.match(hook, /repo_guard_cli" pre-commit/);
   assert.doesNotMatch(hook, /repo_guard_cli" gate/);
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /coverage\//);
@@ -259,7 +259,7 @@ test('recognizes and upgrades managed v2 hooks', (context) => {
   installHooks({ cwd: root });
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
-    /repo-guard-managed:v4/,
+    /repo-guard-managed:v5/,
   );
 });
 
@@ -275,8 +275,21 @@ test('recognizes and upgrades managed v3 hooks', (context) => {
 
   installHooks({ cwd: root });
   const hook = readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8');
-  assert.match(hook, /repo-guard-managed:v4/);
+  assert.match(hook, /repo-guard-managed:v5/);
   assert.match(hook, /pre-push "\$@"/);
+});
+
+test('升级 v4 提交后 Hook 并连接真实成功入口', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(path.join(root, '.githooks'), { recursive: true });
+  writeFileSync(path.join(root, '.githooks', 'post-commit'),
+    '#!/bin/sh\n# repo-guard-managed:v4\nexec node old-cli hook-message cleanup\n');
+  installHooks({ cwd: root });
+  const hook = readFileSync(path.join(root, '.githooks', 'post-commit'), 'utf8');
+  assert.match(hook, /repo-guard-managed:v5/);
+  assert.match(hook, /hook-message success/);
+  assert.doesNotMatch(hook, /hook-message cleanup/);
 });
 
 test('preflights every hook before upgrading any managed file', (context) => {

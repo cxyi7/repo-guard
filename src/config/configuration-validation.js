@@ -1,3 +1,4 @@
+import { validateCommitAnimationConfiguration } from './commit-animation-validation.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { validateAccessibilityConfiguration } from './accessibility-validation.js';
 import { validateArchitectureConfiguration } from './architecture-validation.js';
@@ -77,6 +78,7 @@ export function validateConfigValue(value, configPath = CONFIG_FILE) {
   return {
     version: 1,
     notification,
+    commitAnimation: validateCommitAnimationConfiguration(value, configPath),
     ci,
     externalGates,
     codePlacement,

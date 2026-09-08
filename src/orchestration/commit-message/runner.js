@@ -7,11 +7,12 @@ import {
 } from '../../policies/commit-message-summary.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
-import { gitValue } from '../../git/execution.js';
+import { gitValue, runGit } from '../../git/execution.js';
 import { collectPendingCommitParents } from '../../git/commit-messages.js';
 import { createCommitMessageResult } from '../../gates/repository/commit-message-gate.js';
 import { gateResultToExitCode } from '../../core/result/gate-result.js';
-import { writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
+import { createCommitAnimation } from '../../core/report/commit-animation/presenter.js';
 
 export function runHookMessage(argumentsList, cwd = process.cwd()) {
   const [mode, messageFile = '', source = '', sourceCommit = ''] = argumentsList;
@@ -20,6 +21,24 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
   if (mode === 'cleanup') {
     cleanupCommitMessage(root);
     return 0;
+  }
+
+  if (mode === 'success') {
+    // post-commit 的展示失败不得把已经创建的提交报告为失败。
+    try {
+      cleanupCommitMessage(root);
+      const config = loadConfig(root);
+      if (!config.commitAnimation.enabled) return 0;
+      const committed = runGit(['log', '-1', '--format=%P%n%s'], { allowFailure: true, cwd: root });
+      if (committed.status !== 0) return 0;
+      const [parentLine = '', ...subject] = committed.stdout.split(/\r?\n/);
+      const parents = parentLine.trim().split(/\s+/).filter(Boolean);
+      const message = subject.join('\n').trim();
+      return createCommitAnimation(config.commitAnimation).celebrate(message, { parents }).then(() => {
+        writeConsoleMessage('提交成功，Git 已创建提交。');
+        return 0;
+      }).catch(() => 0);
+    } catch { return 0; }
   }
 
   if (!messageFile) {

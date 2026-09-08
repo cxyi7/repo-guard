@@ -19,6 +19,7 @@ test('assembles every normalized configuration domain in contract order', () => 
   assert.deepEqual(Object.keys(config), [
     'version',
     'notification',
+    'commitAnimation',
     'ci',
     'externalGates',
     'codePlacement',

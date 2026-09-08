@@ -12,6 +12,7 @@
 | 配置迁移 | [docs/features/configuration-migration.md](configuration-migration.md) | 已维护 |
 | Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护 |
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护 |
+| 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
 | AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护 |
 | GitLab CI 安装与配置档 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护 |
 
@@ -113,7 +114,7 @@
 | 发生什么变化 | 同步哪些内容 |
 |---|---|
 | 新增、修改或移除功能 | 对应功能说明、此索引、使用说明入口及开关描述；领域或生命周期变化时同步项目总览 |
-| 开关、默认值、范围、联动改变 | 使用说明的 30 项表、相关专题的配置示例与字段说明、配置 Schema 与测试 |
+| 开关、默认值、范围、联动改变 | 使用说明的能力开关表、相关专题的配置示例与字段说明、配置 Schema 与测试 |
 | CLI、Hook、CI 或报告变化 | 操作示例、执行范围、错误处理、相应流程图与回归测试 |
 | 交付字段或验收规则变化 | 统一交付手册的流程、时序、反馈图、字段参考，以及 Skill 模板与测试 |
 | 模块或依赖边界变化 | 维护者架构说明与架构测试 |

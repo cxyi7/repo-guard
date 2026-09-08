@@ -7,6 +7,7 @@ import {
 } from '../../core/execution/streaming-process.js';
 import { collectStagedChanges } from '../../git/change-collection.js';
 import { findRepositoryRoot } from '../../git/repository.js';
+import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 
 const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
 
@@ -14,7 +15,7 @@ function quoteCommandArgument(value) {
   return `"${String(value).replace(/\\/g, '/').replace(/"/g, '\\"')}"`;
 }
 
-export async function runQualityGate({ cwd = process.cwd() } = {}) {
+export async function runQualityGate({ cwd = process.cwd(), animation = null } = {}) {
   const root = findRepositoryRoot(cwd);
   loadConfig(root);
   const stagedChanges = collectStagedChanges(root);
@@ -24,6 +25,12 @@ export async function runQualityGate({ cwd = process.cwd() } = {}) {
     'quality-files',
   ].join(' ');
 
+  const animated = Boolean(animation?.active);
+  const log = (stream) => (message) => {
+    if (stream === 'stderr') animation?.fail();
+    else animation?.pause();
+    writeConsoleMessage(message, stream);
+  };
   const passed = await lintStaged({
     allowEmpty: false,
     concurrent: false,
@@ -34,7 +41,11 @@ export async function runQualityGate({ cwd = process.cwd() } = {}) {
     relative: false,
     stash: true,
     verbose: true,
-  });
+    // 仅替换任务列表渲染；verbose 保留成功和失败任务的完整诊断。
+    quiet: animated,
+  }, animated ? { log: log('stdout'), warn: log('stderr'), error: log('stderr') } : undefined);
+
+  animation?.pause();
 
   if (!passed) return 1;
   if (

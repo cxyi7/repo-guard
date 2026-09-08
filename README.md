@@ -8,14 +8,46 @@ repo-guard 是一个面向 Vue、JavaScript 和 TypeScript 项目的 npm 包。�
 - **统一规范**：提交代码前自动检查，给出具体问题、位置和中文修复指引。
 - **贯通交付**：关联需求、任务、验证与反馈，让本轮问题推动下一轮改进。
 
-[安装](#安装) · [配置规则](#配置规则) · [功能](#功能) · [提交检查示例](#提交检查示例) · [完整交付闭环](#完整交付闭环) · [使用说明](docs/usage-guide.md)
+[提交动画](#提交时的小伙伴) · [安装](#安装) · [配置规则](#配置规则) · [功能](#功能) · [提交检查示例](#提交检查示例) · [完整交付闭环](#完整交付闭环) · [使用说明](docs/usage-guide.md)
+
+<a id="提交时的小伙伴"></a>
+
+## 提交时的小伙伴 ![新功能](docs/images/new-feature.svg)
+
+**让小猫、小狗陪你完成每一次提交。**
+
+检查时，小伙伴在终端里小跑、摇尾；Git 创建提交后，它会把包裹送达，偶尔还会带来一份小惊喜。
+
+![小猫与小狗提交动画：模拟检查、道具送达，以及蝴蝶和烟花彩蛋](docs/images/commit-animation-demo.gif)
+
+*动图由当前终端渲染代码生成，模拟预览流程，固定展示两种成功彩蛋。真实检查阶段使用普通包裹，提交成功后按类型切换道具；彩蛋仅偶尔出现。*
+
+- **看得见检查状态**：展示真实执行阶段；检查失败时停止动画，保留完整问题、位置和修复建议。
+- **不同提交，不同道具**：新增功能送礼盒，修复问题带工具箱，性能优化背小火箭。全部 10 种默认提交类型都有对应道具，猫狗共用。
+- **成功后的小惊喜**：流星、蝴蝶或烟花偶尔出现，无需配置。只有 Git 真正创建提交后才会庆祝。
+
+![小猫与小狗共用的十种提交类型道具，实际终端像素放大展示](docs/images/commit-animation-props.svg)
+
+动画默认关闭，可以随时启停。日常仍使用熟悉的 `git commit`；检查规则和暂存保护照常执行，CI 与非交互终端自动使用文字输出。
+
+**先试试看。**
+
+```bash
+# 小猫送礼盒
+npx repo-guard animation-preview --theme cat --type feat
+
+# 小狗背火箭
+npx repo-guard animation-preview --theme dog --type perf
+```
+
+选择主题、启用或关闭动画，以及完整字段说明，见[提交动画使用指南](docs/features/commit-animation.md)。
 
 ## 安装
 
 在要接入的 Git 项目根目录执行。需要 Node.js `>=22.23.2`。
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -24,7 +56,7 @@ npx repo-guard doctor
 
 ESLint、Prettier、Stylelint 等工具使用项目已有的安装与配置；初始化根据项目准备状态启用部分检查，其余能力按需接入。已有非托管 Hook 会提示冲突，接入方式见[安装与初始化说明](docs/usage-guide.md#快速开始)。
 
-- 当前版本：`1.23.1`
+- 当前版本：`1.24.0`
 - npm 包：[`@cxyi7/repo-guard`](https://www.npmjs.com/package/@cxyi7/repo-guard)
 
 ## 配置规则

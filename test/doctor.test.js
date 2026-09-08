@@ -179,7 +179,7 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
-    /repo-guard-managed:v4/,
+    /repo-guard-managed:v5/,
   );
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8'),

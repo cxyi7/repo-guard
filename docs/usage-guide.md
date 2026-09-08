@@ -2,7 +2,7 @@
 
 本手册帮助团队完成接入、配置规则、处理检查结果，并将需求到反馈的交付流程落到项目中。详细规则按功能独立维护，使用时从本页进入对应说明。
 
-- 当前版本：`1.23.1`
+- 当前版本：`1.24.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 
@@ -29,7 +29,7 @@
 ### 安装与初始化
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.23.1
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.0
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -77,7 +77,7 @@ npx repo-guard migrate
 npx repo-guard doctor
 ```
 
-下表列出全部 30 个可配置功能名。默认状态指首次生成配置；“按探测”表示初始化只在项目准备就绪时启用。CI 还有独立策略，自动执行范围见后文。
+下表列出全部 31 个可配置功能名。默认状态指首次生成配置；“按探测”表示初始化只在项目准备就绪时启用。CI 还有独立策略，自动执行范围见后文。
 
 | 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
 |---|---|---|---|---|
@@ -110,13 +110,14 @@ npx repo-guard doctor
 | `accessibilityTest` | `accessibilityTest` | [执行项目 axe 测试，检查实际界面的可访问性问题](features/accessibility-test.md) | 按探测 | 推送、CI full |
 | `mutationTest` | `mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 关 | 显式手动或受保护构建 |
 | `notification` | `notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
+| `commitAnimation` | `commitAnimation` | [用小猫或小狗展示提交检查状态，真实提交成功后播放类型道具和彩蛋](features/commit-animation.md) | 关 | 本地 `pre-commit` / `post-commit` |
 | `ci` | `ci` | [在 CI 按固定配置档复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
 
 **开关之间的联动：** `coverage`、`componentInteraction` 会启用 `unitTest`；关闭 `unitTest` 会关闭组件交互，保留 coverage 配置但不执行。`styleComplexity`、`styleGovernance` 会启用 Stylelint，关闭 Stylelint 会关闭两项增强。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
 
 **区分三个入口：** 自动 Hook 按功能配置执行；CI 可按 Gate 设置 `inherit/off/report/enforce`；手动专项入口按自身契约运行。例如 `path-naming`、`dead-code`、`lighthouse` 的显式手动命令即使自动开关关闭也会检查，而 `unit-test`、`typecheck`、`build` 仍读取功能开关。
 
-动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `rules` 与 `exclusions` 配置，结构化例外使用 `exceptions`，都不在 30 项功能开关中。
+动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `rules` 与 `exclusions` 配置，结构化例外使用 `exceptions`，都不在 31 项功能开关中。
 
 ### 初始化、迁移和诊断
 
@@ -572,7 +573,7 @@ npx repo-guard lighthouse --skip-build
 
 ### Schema 与报告
 
-完整主配置以 [config.schema.json](../config.schema.json) 为准，主要顶层字段包含 `preCommit`、`rules`、`exclusions`、`exceptions`、`dependencyPolicy`、`commitMessage`、`codePlacement`、`deadCode`、`imageAssets`、`uiTokens`、`deliveryContract`、`typeCheck`、`unitTest`、`accessibilityTest`、`architecture`、`build`、`mutationTest`、`lighthouse`、`notification`、`ci` 和 `externalGates`。
+完整主配置以 [config.schema.json](../config.schema.json) 为准，主要顶层字段包含 `preCommit`、`rules`、`exclusions`、`exceptions`、`dependencyPolicy`、`commitMessage`、`codePlacement`、`deadCode`、`imageAssets`、`uiTokens`、`deliveryContract`、`typeCheck`、`unitTest`、`accessibilityTest`、`architecture`、`build`、`mutationTest`、`lighthouse`、`notification`、`commitAnimation`、`ci` 和 `externalGates`。
 
 | Schema | 对应用途 |
 |---|---|

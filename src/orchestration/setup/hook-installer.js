@@ -18,11 +18,12 @@ import { findRepositoryRoot } from '../../git/repository.js';
 import { ensureLocalEnvironment } from '../../policies/local-environment.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 
-const MANAGED_MARKER = '# repo-guard-managed:v4';
+const MANAGED_MARKER = '# repo-guard-managed:v5';
 const LEGACY_MANAGED_MARKERS = Object.freeze([
   '# repo-guard-managed:v1',
   '# repo-guard-managed:v2',
   '# repo-guard-managed:v3',
+  '# repo-guard-managed:v4',
 ]);
 const HOOKS_DIRECTORY = '.githooks';
 const PACKAGE_JSON_PATH = fileURLToPath(new URL('../../../package.json', import.meta.url));
@@ -32,7 +33,7 @@ const HOOK_COMMANDS = {
   'pre-push': ['pre-push', '"$@"'],
   'prepare-commit-msg': ['hook-message', 'prepare', '"$@"'],
   'commit-msg': ['hook-message', 'finalize', '"$1"'],
-  'post-commit': ['hook-message', 'cleanup'],
+  'post-commit': ['hook-message', 'success'],
 };
 
 function loadPackageName() {

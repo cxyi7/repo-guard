@@ -23,7 +23,7 @@ npx repo-guard doctor
 | `AGENTS.md` | 将实际配置同步为项目 AI 规范 |
 | `.agents/skills/` | 启用合同后同步五个交付流程 Skill |
 
-首次生成配置默认开启 ESLint、Prettier、依赖、文件归位、行数和通知。Stylelint、类型、单元测试、axe、架构及构建根据项目准备情况启用；详细状态见[30 项开关](../usage-guide.md#启用或关闭能力)。重复初始化不会重新探测并重置已有选择。
+首次生成配置默认开启 ESLint、Prettier、依赖、文件归位、行数和通知。Stylelint、类型、单元测试、axe、架构及构建根据项目准备情况启用；详细状态见[能力开关表](../usage-guide.md#启用或关闭能力)。重复初始化不会重新探测并重置已有选择。
 
 ## 完成接入的判断
 

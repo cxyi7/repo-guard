@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="84" height="26" viewBox="0 0 84 26" role="img" aria-labelledby="title">
+  <title id="title">新功能</title>
+  <rect width="84" height="26" rx="13" fill="#d1fae5"/>
+  <path d="m14 6 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" fill="#047857"/>
+  <text x="49" y="17.5" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#065f46">新功能</text>
+</svg>

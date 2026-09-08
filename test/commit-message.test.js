@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -63,6 +64,52 @@ function commitFile(root, file, content, message) {
   git(root, ['commit', '-q', '-m', message]);
   return git(root, ['rev-parse', 'HEAD']);
 }
+
+test('真实 Git 提交成功才显示庆祝状态，提交信息失败保持 HEAD 不变', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = createStarterConfig();
+  config.commitAnimation.enabled = true;
+  config.commitMessage.enabled = true;
+  writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify(config));
+  const hooks = path.join(root, '.githooks');
+  mkdirSync(hooks);
+  git(root, ['config', 'core.hooksPath', '.githooks']);
+  const node = process.execPath.replaceAll('\\', '/');
+  const cli = path.resolve('bin/repo-guard.js').replaceAll('\\', '/');
+  for (const [name, args] of [['post-commit', 'success'], ['commit-msg', 'finalize "$1"']]) {
+    const file = path.join(hooks, name);
+    writeFileSync(file, `#!/bin/sh\nexec "${node}" "${cli}" hook-message ${args}\n`);
+    chmodSync(file, 0o755);
+  }
+  writeFileSync(path.join(root, 'sample.js'), 'export const value = 1;\n');
+  git(root, ['add', '.']);
+  const success = spawnSync('git', ['commit', '-m', 'feat: 新增示例'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.equal(success.status, 0, success.stderr);
+  assert.match(success.stdout + success.stderr, /提交成功，Git 已创建提交/);
+  assert.equal((success.stdout + success.stderr).includes('\u001b'), false);
+  const head = git(root, ['rev-parse', 'HEAD']);
+  writeFileSync(path.join(root, 'sample.js'), 'export const value = 2;\n');
+  git(root, ['add', 'sample.js']);
+  const failure = spawnSync('git', ['commit', '-m', '不合规范的标题'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.notEqual(failure.status, 0);
+  assert.doesNotMatch(failure.stdout + failure.stderr, /提交成功/);
+  assert.match(failure.stdout + failure.stderr, /commit-message\/format/);
+  assert.equal(git(root, ['rev-parse', 'HEAD']), head);
+});
+
+test('空仓库调用成功入口不会误报已创建提交', context => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = createStarterConfig();
+  config.commitAnimation.enabled = true;
+  writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify(config));
+  const result = spawnSync(process.execPath, [path.resolve('bin/repo-guard.js'), 'hook-message', 'success'], {
+    cwd: root, encoding: 'utf8', windowsHide: true,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout + result.stderr, /提交成功|Git 已创建提交/);
+});
 
 test('accepts configured Conventional Commit headers and reports stable rule ids', () => {
   const accepted = inspect('feat(auth): 增加登录校验', {

@@ -24,6 +24,7 @@ import {
 import { renderManagedPipelineRoot } from '../src/orchestration/setup/gitlab-managed-pipeline.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
+const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 mkdirSync(TEST_ROOT, { recursive: true });
 
 async function runCiGate(options) {
@@ -554,6 +555,7 @@ test('installs the managed application-delivery contract from project configurat
   ];
   for (const jobName of managedJobNames) {
     const job = yamlJob(root, jobName);
+    assert.ok(job.includes(`https://registry.npmjs.org/@cxyi7/repo-guard/-/repo-guard-${PACKAGE_VERSION}.tgz`), `${jobName} 必须使用当前版本的通知工具`);
     assert.match(job, /after_script:/);
     assert.match(job, /CI_JOB_STATUS" = "canceled"/);
     assert.match(job, /--status canceled/);
@@ -563,9 +565,8 @@ test('installs the managed application-delivery contract from project configurat
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_test'), /interruptible: true/);
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_production'), /interruptible: true/);
   assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
-  assert.match(
-    root,
-    /npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID" https:\/\/registry\.npmjs\.org\/@cxyi7\/repo-guard\/-\/repo-guard-1\.23\.1\.tgz/,
+  assert.ok(
+    root.includes(`npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "$CI_BUILDS_DIR/.repo-guard-notify-$CI_PROJECT_ID-$CI_PIPELINE_ID-$CI_JOB_ID" https://registry.npmjs.org/@cxyi7/repo-guard/-/repo-guard-${PACKAGE_VERSION}.tgz`),
   );
   assert.match(
     root,
@@ -573,11 +574,11 @@ test('installs the managed application-delivery contract from project configurat
   );
   assert.match(
     root,
-    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.23\.1\.tgz[\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
   );
   assert.match(
     root,
-    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard-1\.23\.1\.tgz[\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
   );
   assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
   const installedConfig = validateConfig(JSON.parse(readFileSync(

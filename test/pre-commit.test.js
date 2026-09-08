@@ -10,6 +10,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { runPreCommit } from '../src/orchestration/pre-commit/runner.js';
+import { runQualityGate } from '../src/orchestration/pre-commit/lint-staged-gate.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
@@ -254,6 +255,43 @@ test('auto-fixes only staged content and restores unstaged edits', async (contex
   assert.match(worktree, /^const value = 2;/);
   assert.match(worktree, /const localOnly = 3/);
   assert.doesNotMatch(git(root, ['show', ':sample.js']), /localOnly/);
+});
+
+test('动画接管任务列表时仍保留部分暂存内容和完整质量诊断', async (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+  const file = path.join(root, 'sample.js');
+  writeFileSync(file, 'const value = 2\n');
+  git(root, ['add', 'sample.js']);
+  writeFileSync(file, 'const value = 2\nconst localOnly = 3\n');
+  let paused = 0;
+  const animation = { active: true, pause: () => { paused += 1; }, fail: () => assert.fail('成功检查不应显示失败') };
+  assert.equal(await runQualityGate({ cwd: root, animation }), 0);
+  assert.ok(paused > 1, '输出诊断前必须暂停动画');
+  assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), 'const value = 2;\n');
+  assert.match(readFileSync(file, 'utf8'), /localOnly/);
+  assert.doesNotMatch(git(root, ['show', ':sample.js']), /localOnly/);
+});
+
+test('动画模式质量失败保留退出码并恢复原始暂存和未暂存内容', async (context) => {
+  const root = createRepository();
+  git(root, ['config', 'core.autocrlf', 'false']);
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  commitBaseline(root);
+  const file = path.join(root, 'sample.js');
+  const invalid = 'const = ;\n';
+  writeFileSync(file, invalid);
+  git(root, ['add', 'sample.js']);
+  writeFileSync(file, `${invalid}const localOnly = true;\n`);
+  const originalWorktree = readFileSync(file, 'utf8');
+  const originalIndex = git(root, ['show', ':sample.js']);
+  let failures = 0;
+  const animation = { active: true, pause() {}, fail: () => { failures += 1; } };
+  assert.equal(await runQualityGate({ cwd: root, animation }), 1);
+  assert.ok(failures > 0, '失败诊断必须通知展示层停止角色');
+  assert.equal(git(root, ['show', ':sample.js']), originalIndex);
+  assert.equal(readFileSync(file, 'utf8'), originalWorktree);
 });
 
 test('根据 Git 记录同步暂存文件头并保留未暂存内容', async (context) => {

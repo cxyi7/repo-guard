@@ -1,4 +1,4 @@
-const CONVENTIONAL_HEADER = /^([a-z][a-z0-9-]*)(?:\(([a-z0-9][a-z0-9._/@-]*)\))?(!)?: (.+)$/u;
+import { matchConventionalHeader } from '../core/policy/commit-header.js';
 const FIXUP_HEADER = /^(fixup|squash)! (.+)$/u;
 const REVERT_HEADER = /^Revert "[^"\r\n]+"$/u;
 const REVERT_FOOTER = /^This reverts commit [0-9a-f]{7,40}\.$/imu;
@@ -54,7 +54,7 @@ function inspectConventionalMessage(
   const issues = [];
   const lengthProblem = inspectHeaderLength ? headerLengthIssue(header, config) : null;
   if (lengthProblem) issues.push(lengthProblem);
-  const match = CONVENTIONAL_HEADER.exec(header);
+  const match = matchConventionalHeader(header);
   if (!match || header !== header.trim()) {
     issues.push(issue(
       'commit-message/format',
