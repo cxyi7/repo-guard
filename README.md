@@ -33,7 +33,7 @@ repo-guard 是安装在 Vue、JavaScript 和 TypeScript 项目中的 **团队规
 在要接入的 Git 项目根目录执行，需要 Node.js `>=22.23.2`：
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.1
 npx repo-guard init
 npx repo-guard doctor
 ```
@@ -53,7 +53,7 @@ git commit -m "feat: 添加用户信息"
 
 检查未通过时，根据提示修复、重新暂存并提交。提交阶段的格式修复通过 `lint-staged` 处理暂存内容，保留部分暂存和未暂存改动。
 
-- 当前版本：`1.24.0`
+- 当前版本：`1.24.1`
 - npm 包：[`@cxyi7/repo-guard`](https://www.npmjs.com/package/@cxyi7/repo-guard)
 
 ## 配置规则
