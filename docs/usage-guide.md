@@ -2,7 +2,7 @@
 
 本手册帮助团队完成接入、配置规则、处理检查结果，并将需求到反馈的交付流程落到项目中。详细规则按功能独立维护，使用时从本页进入对应说明。
 
-- 当前版本：`1.24.0`
+- 当前版本：`1.24.1`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 1`
 
@@ -29,7 +29,7 @@
 ### 安装与初始化
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.1
 npx repo-guard init
 npx repo-guard doctor
 ```
