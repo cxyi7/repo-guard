@@ -10,30 +10,30 @@ export function validateArchitectureConfiguration(value, configPath) {
   const architectureValue = value.architecture ?? {};
   if (!architectureValue || typeof architectureValue !== 'object'
     || Array.isArray(architectureValue)) {
-    throw configValidationError(`${configPath} architecture 必须是对象`);
+    throw configValidationError(`${configPath} checks.architecture 必须是对象`);
   }
   assertKnownProperties(
     architectureValue,
     new Set(['enabled', 'timeoutMs', 'sourcePaths', 'tsConfig', 'exclude', 'rules']),
-    `${configPath} architecture`,
+    `${configPath} checks.architecture`,
   );
   if (architectureValue.enabled != null && typeof architectureValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} architecture.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.architecture.enabled 必须是布尔值`);
   }
   if (architectureValue.timeoutMs != null
     && (!Number.isInteger(architectureValue.timeoutMs) || architectureValue.timeoutMs <= 0)) {
-    throw configValidationError(`${configPath} architecture.timeoutMs 必须是正整数`);
+    throw configValidationError(`${configPath} checks.architecture.timeoutMs 必须是正整数`);
   }
   const architectureSourcePaths = normalizePatternList(
     architectureValue.sourcePaths ?? DEFAULT_ARCHITECTURE_CONFIG.sourcePaths,
-    `${configPath} architecture.sourcePaths`,
+    `${configPath} checks.architecture.sourcePaths`,
   );
   let architectureTsConfig = architectureValue.tsConfig
     ?? DEFAULT_ARCHITECTURE_CONFIG.tsConfig;
   if (architectureTsConfig !== null) {
     architectureTsConfig = normalizeRelativePattern(
       architectureTsConfig,
-      `${configPath} architecture.tsConfig`,
+      `${configPath} checks.architecture.tsConfig`,
     );
   }
   const architectureExclude = architectureValue.exclude === undefined
@@ -41,23 +41,23 @@ export function validateArchitectureConfiguration(value, configPath) {
     : architectureValue.exclude;
   if (architectureExclude !== null
     && (typeof architectureExclude !== 'string' || !architectureExclude.trim())) {
-    throw configValidationError(`${configPath} architecture.exclude 必须为 null 或非空正则表达式`);
+    throw configValidationError(`${configPath} checks.architecture.exclude 必须为 null 或非空正则表达式`);
   }
   if (architectureExclude !== null) {
     try {
       new RegExp(architectureExclude);
     } catch (error) {
-      throw configValidationError(`${configPath} architecture.exclude 必须是有效的正则表达式： ${error.message}`);
+      throw configValidationError(`${configPath} checks.architecture.exclude 必须是有效的正则表达式： ${error.message}`);
     }
   }
   const architectureRulesValue = architectureValue.rules
     ?? DEFAULT_ARCHITECTURE_CONFIG.rules;
   if (!Array.isArray(architectureRulesValue) || architectureRulesValue.length === 0) {
-    throw configValidationError(`${configPath} architecture.rules 必须是非空数组`);
+    throw configValidationError(`${configPath} checks.architecture.rules 必须是非空数组`);
   }
   const architectureRuleNames = new Set();
   const architectureRules = architectureRulesValue.map((rule, index) => {
-    const label = `${configPath} architecture 规则 ${index + 1}`;
+    const label = `${configPath} checks.architecture 规则 ${index + 1}`;
     if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
       throw configValidationError(`${label} 必须是对象`);
     }
@@ -70,7 +70,7 @@ export function validateArchitectureConfiguration(value, configPath) {
       throw configValidationError(`${label}.name 必须是 kebab-case 标识符`);
     }
     if (architectureRuleNames.has(rule.name)) {
-      throw configValidationError(`${configPath} architecture 规则名称重复： ${rule.name}`);
+      throw configValidationError(`${configPath} checks.architecture 规则名称重复： ${rule.name}`);
     }
     architectureRuleNames.add(rule.name);
     if (rule.comment != null && (typeof rule.comment !== 'string' || !rule.comment.trim())) {

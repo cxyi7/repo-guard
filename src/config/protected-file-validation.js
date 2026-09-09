@@ -11,7 +11,7 @@ export function validateProtectedFileConfigurationShape(value, configPath) {
     throw configValidationError(`${configPath} 必须至少定义一条规则`);
   }
   if (value.exclusions != null && !Array.isArray(value.exclusions)) {
-    throw configValidationError(`${configPath} exclusions 必须是数组`);
+    throw configValidationError(`${configPath} repository.exclusions 必须是数组`);
   }
 }
 

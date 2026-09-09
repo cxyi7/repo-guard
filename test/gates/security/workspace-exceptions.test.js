@@ -48,10 +48,10 @@ test('仓库例外只放行指定应用，同名文件与根目录例外不能�
   const original = readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8');
   for (const options of [{}, { readDocument: (relative) => readFileSync(path.join(root, relative), 'utf8') }]) {
     const workspace = loadWorkspace(root, options);
-    assert.deepEqual(workspace.repositoryConfig.exceptions.entries.map(({ path: file }) => file), entries.map(({ path: file }) => file));
+    assert.deepEqual(workspace.repositoryConfig.repository.exceptions.entries.map(({ path: file }) => file), entries.map(({ path: file }) => file));
     const [api, worker] = workspace.projects;
-    assert.deepEqual(api.config.exceptions.entries.map(({ id, path: file }) => ({ id, path: file })), [{ id: 'api-approved', path: 'src/runtime.js' }]);
-    assert.deepEqual(worker.config.exceptions.entries, []);
+    assert.deepEqual(api.config.repository.exceptions.entries.map(({ id, path: file }) => ({ id, path: file })), [{ id: 'api-approved', path: 'src/runtime.js' }]);
+    assert.deepEqual(worker.config.repository.exceptions.entries, []);
     const approved = inspect(api);
     assert.equal(approved.status, 'passed', approved.summary);
     assert.equal(approved.metrics.approvedExceptions, 1);
@@ -64,6 +64,6 @@ test('仓库例外只放行指定应用，同名文件与根目录例外不能�
 test('根目录应用保留完整相对路径，例外的单应用语义不变', (context) => {
   const root = fixture(context, [{ id: 'api', root: '.', config: 'guard.project.json' }], [approval('api-approved', 'src/runtime.js')]);
   const { projects, repositoryConfig } = loadWorkspace(root);
-  assert.deepEqual(projects[0].config.exceptions, repositoryConfig.exceptions);
+  assert.deepEqual(projects[0].config.repository.exceptions, repositoryConfig.repository.exceptions);
   assert.equal(inspect(projects[0]).status, 'passed');
 });

@@ -80,7 +80,7 @@ function validManifest(value, expectedPaths) {
     ['schemaVersion', 'feature', 'repoGuardVersion', 'skills', 'files'],
   )) return false;
   if (
-    value.schemaVersion !== 1
+    value.schemaVersion !== 2
     || value.feature !== 'deliveryContract'
     || !VERSION.test(value.repoGuardVersion ?? '')
     || !Array.isArray(value.skills)
@@ -154,7 +154,7 @@ function removeEmptyParents(root, relativePath) {
 
 function manifestValue(files) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     feature: 'deliveryContract',
     repoGuardVersion: packageVersion(),
     skills: [...SKILL_NAMES],
@@ -165,17 +165,23 @@ function manifestValue(files) {
   };
 }
 
-export function syncDeliverySkills(root, enabled) {
-  const expectedFiles = sourceFiles();
+/** 允许清单缺失或当前内容待同步；只拒绝无法安全解释的已有清单。 */
+export function assertDeliverySkillManifestFormat(root, expectedFiles = sourceFiles()) {
   const previous = readManifest(root, expectedFiles);
-  const previousFiles = new Map((previous?.files ?? []).map((file) => [file.path, file]));
   if (manifestExists(root) && !previous) {
     throw securityError(
       'delivery-skills/invalid-manifest',
       `拒绝处理无法解析或版本不受支持的托管 Skill 清单：${MANIFEST_PATH}`,
-      { remediation: '检查清单内容并恢复有效版本后，再运行 repo-guard doctor --fix。' },
+      { remediation: '托管 Skill 清单仅支持 schemaVersion: 2。请人工保存并处理旧清单与文件，按当前格式重新接入；不会自动转换或覆盖。' },
     );
   }
+  return previous;
+}
+
+export function syncDeliverySkills(root, enabled) {
+  const expectedFiles = sourceFiles();
+  const previous = assertDeliverySkillManifestFormat(root, expectedFiles);
+  const previousFiles = new Map((previous?.files ?? []).map((file) => [file.path, file]));
   if (!enabled) {
     if (!previous) return { changed: false, enabled: false, skills: [] };
     for (const file of previous?.files ?? []) {
@@ -206,16 +212,6 @@ export function syncDeliverySkills(root, enabled) {
   }
 
   assertSafeToReplace(root, expectedFiles, previousFiles);
-  const expectedPaths = new Set(expectedFiles.map(({ path: filePath }) => filePath));
-  for (const file of previous?.files ?? []) {
-    if (expectedPaths.has(file.path) || !existsSync(absolute(root, file.path))) continue;
-    if (currentDigest(root, file.path) !== file.digest) {
-      throw securityError(
-        'delivery-skills/obsolete-modified-file',
-        `旧版托管 Skill 文件已被人工修改，拒绝自动删除：${file.path}`,
-      );
-    }
-  }
 
   let changed = false;
   for (const file of expectedFiles) {
@@ -223,14 +219,6 @@ export function syncDeliverySkills(root, enabled) {
     if (currentDigest(root, file.path) === file.digest) continue;
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, file.source);
-    changed = true;
-  }
-  for (const file of previous?.files ?? []) {
-    if (expectedPaths.has(file.path)) continue;
-    const target = absolute(root, file.path);
-    if (!existsSync(target)) continue;
-    unlinkSync(target);
-    removeEmptyParents(root, file.path);
     changed = true;
   }
   const nextManifest = `${JSON.stringify(manifestValue(expectedFiles), null, 2)}\n`;

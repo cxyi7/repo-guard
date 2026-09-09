@@ -18,14 +18,9 @@ import { findRepositoryRoot } from '../../git/repository.js';
 import { ensureLocalEnvironment } from '../../policies/local-environment.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
 import { selectProjects } from '../workspace/targets.js';
+import { assertManagedDocumentFormats } from './managed-format-preflight.js';
 
 const MANAGED_MARKER = '# repo-guard-managed:v5';
-const LEGACY_MANAGED_MARKERS = Object.freeze([
-  '# repo-guard-managed:v1',
-  '# repo-guard-managed:v2',
-  '# repo-guard-managed:v3',
-  '# repo-guard-managed:v4',
-]);
 const HOOKS_DIRECTORY = '.githooks';
 const PACKAGE_JSON_PATH = fileURLToPath(new URL('../../../package.json', import.meta.url));
 
@@ -91,7 +86,7 @@ export function guardedBuildCommand(script, application, repositoryRoot) {
 }
 
 function synchronizeGuardedBuildScripts(packageJson, application, repositoryRoot) {
-  for (const guardedBuild of application.config.mutationTest.guardedBuilds) {
+  for (const guardedBuild of application.config.checks.mutationTest.guardedBuilds) {
     const expected = guardedBuildCommand(guardedBuild.script, application, repositoryRoot);
     const current = packageJson.scripts[guardedBuild.packageScript];
     if (!current) packageJson.scripts[guardedBuild.packageScript] = expected;
@@ -116,7 +111,6 @@ function ensurePackageScripts(root, workspace, projectId) {
   const packageJson = JSON.parse(readFileSync(target, 'utf8'));
   packageJson.scripts ||= {};
   packageJson.scripts['guard:init'] ||= 'repo-guard init';
-  packageJson.scripts['guard:migrate'] ||= 'repo-guard migrate';
   packageJson.scripts['guard:enable-dependencies'] ||= 'repo-guard enable dependencies';
   for (const gate of gateRegistry.all) {
     if (gate.packageScript && gate.manualCommand) {
@@ -165,7 +159,7 @@ function ensurePackageScripts(root, workspace, projectId) {
 
   writeFileSync(target, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
   for (const application of applications.filter((entry) => entry.root !== root)) {
-    if (application.config.mutationTest.guardedBuilds.length === 0) continue;
+    if (application.config.checks.mutationTest.guardedBuilds.length === 0) continue;
     const appManifestPath = path.join(application.root, 'package.json');
     const original = readFileSync(appManifestPath, 'utf8');
     const appManifest = JSON.parse(original);
@@ -174,6 +168,29 @@ function ensurePackageScripts(root, workspace, projectId) {
     const content = `${JSON.stringify(appManifest, null, 2)}\n`;
     if (original !== content) writeFileSync(appManifestPath, content, 'utf8');
   }
+}
+
+/** 安装前只读校验目标路径和已有 Hook，初始化也在创建配置前复用。 */
+export function assertHookInstallationSupported(root) {
+  const configuredHooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
+  if (configuredHooksPath && configuredHooksPath !== HOOKS_DIRECTORY) {
+    throw securityError(
+      'hooks/existing-hooks-path',
+      `core.hooksPath 已配置为 "${configuredHooksPath}"; `
+      + `拒绝将其替换为 "${HOOKS_DIRECTORY}"`,
+      { decision: { aiAction: 'request-human-review', humanApprovalRequired: true } },
+    );
+  }
+  const hooksPath = path.join(root, HOOKS_DIRECTORY);
+  for (const hookName of Object.keys(HOOK_COMMANDS)) {
+    const target = path.join(hooksPath, hookName);
+    if (existsSync(target) && !isManagedHook(readFileSync(target, 'utf8'))) {
+      throw securityError('hooks/non-managed-hook', `拒绝覆盖非托管 Git Hook： ${target}`, {
+        decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
+      });
+    }
+  }
+  return { configuredHooksPath, hooksPath };
 }
 
 export function installHooks({
@@ -203,26 +220,8 @@ export function installHooks({
     throw configurationError('hooks/missing-package-manifest', '仓库根目录中未找到 package.json；当前 npm 入口必须安装在仓库根目录。');
   }
 
-  const configuredHooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
-  if (configuredHooksPath && configuredHooksPath !== HOOKS_DIRECTORY) {
-    throw securityError(
-      'hooks/existing-hooks-path',
-      `core.hooksPath 已配置为 "${configuredHooksPath}"; `
-      + `拒绝将其替换为 "${HOOKS_DIRECTORY}"`,
-      { decision: { aiAction: 'request-human-review', humanApprovalRequired: true } },
-    );
-  }
-
-  const hooksPath = path.join(root, HOOKS_DIRECTORY);
-
-  for (const hookName of Object.keys(HOOK_COMMANDS)) {
-    const target = path.join(hooksPath, hookName);
-    if (existsSync(target) && !isManagedHook(readFileSync(target, 'utf8'))) {
-      throw securityError('hooks/non-managed-hook', `拒绝覆盖非托管 Git Hook： ${target}`, {
-        decision: { aiAction: 'request-human-review', humanApprovalRequired: true },
-      });
-    }
-  }
+  assertManagedDocumentFormats(root, { workspace, projectId });
+  const { configuredHooksPath, hooksPath } = assertHookInstallationSupported(root);
 
   const packageName = loadPackageName();
   mkdirSync(hooksPath, { recursive: true });
@@ -239,8 +238,8 @@ export function installHooks({
   const ignores = workspace ? selectProjects(workspace, projectId).map((application) => (
     ensureLighthouseIgnore(
       application.root,
-      application.config.unitTest.coverage?.reportsDirectory ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory,
-      application.config.mutationTest.enabled ? application.config.mutationTest.reportsDirectory : null,
+      application.config.checks.coverage?.reportsDirectory ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory,
+      application.config.checks.mutationTest.enabled ? application.config.checks.mutationTest.reportsDirectory : null,
     )
   )) : [ensureLighthouseIgnore(root)];
   const lighthouseIgnore = { ...ignores[0], changed: ignores.some((result) => result.changed), projects: ignores };
@@ -264,15 +263,14 @@ export function installHooks({
 }
 
 export function isManagedHook(content) {
-  const lines = String(content).replace(/\r\n?/g, '\n').split('\n')
-    .map((line) => line.trim());
-  return lines.includes(MANAGED_MARKER)
-    || LEGACY_MANAGED_MARKERS.some((marker) => lines.includes(marker));
+  const markers = String(content).replace(/\r\n?/g, '\n').split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^#\s*repo-guard-managed\b/.test(line));
+  return markers.length === 1 && markers[0] === MANAGED_MARKER;
 }
 
 export function isCurrentManagedHook(content) {
-  return String(content).replace(/\r\n?/g, '\n').split('\n')
-    .some((line) => line.trim() === MANAGED_MARKER);
+  return isManagedHook(content);
 }
 
 export const managedHookNames = Object.freeze(Object.keys(HOOK_COMMANDS));

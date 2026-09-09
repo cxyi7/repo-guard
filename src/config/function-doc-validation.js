@@ -27,9 +27,9 @@ function normalizeExtensions(value, label) {
   return normalized;
 }
 
-export function validateFunctionDocConfiguration(preCommitValue, configPath) {
-  const value = preCommitValue.functionDocs ?? {};
-  const label = `${configPath} preCommit.functionDocs`;
+export function validateFunctionDocConfiguration(checksValue, configPath) {
+  const value = checksValue.functionDocs ?? {};
+  const label = `${configPath} checks.functionDocs`;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw configValidationError(`${label} 必须是对象`);
   }

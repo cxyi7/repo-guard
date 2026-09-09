@@ -1,7 +1,6 @@
 import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
-import { validateConfig } from '../../config/configuration-validation.js';
 import { loadWorkspace } from '../../config/workspace-configuration.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import {
@@ -116,26 +115,26 @@ function inspectSnapshot(snapshot, imageConfig, validateDynamicDeclarations) {
   });
 }
 
+function imageReferenceOptions(checks) {
+  return { ...checks.imageAssets, unused: checks.unusedImageAssets };
+}
+
 function baselineImageConfig(root, repositoryRoot, revision, config) {
-  const fallback = { root, imageConfig: config.imageAssets };
+  const fallback = { root, imageConfig: imageReferenceOptions(config.checks) };
   const snapshot = readFileAtRevision(repositoryRoot, revision, CONFIG_FILE);
   if (!snapshot.exists) return fallback;
   try {
-    const document = JSON.parse(snapshot.content);
-    if (document.version === 2) {
-      const workspace = loadWorkspace(repositoryRoot, {
+    const workspace = loadWorkspace(repositoryRoot, {
         allowExpiredExceptions: true,
         readDocument(relative) {
           const file = readFileAtRevision(repositoryRoot, revision, relative);
           if (!file.exists) throw executionError('unused-image-assets/baseline-config-missing', `基线提交缺少应用配置：${relative}`);
           return file.content;
         },
-      });
-      const project = workspace.projects.find((entry) => config.project
-        ? entry.id === config.project.id : path.resolve(entry.root) === path.resolve(root));
-      return project ? { root: project.root, imageConfig: project.config.imageAssets } : fallback;
-    }
-    return { root, imageConfig: validateConfig(document, `${CONFIG_FILE}@${revision.slice(0, 12)}`).imageAssets };
+    });
+    const project = workspace.projects.find((entry) => config.project
+      ? entry.id === config.project.id : path.resolve(entry.root) === path.resolve(root));
+    return project ? { root: project.root, imageConfig: imageReferenceOptions(project.config.checks) } : fallback;
   } catch (error) {
     throw executionError(
       'unused-image-assets/baseline-config-invalid',
@@ -149,8 +148,8 @@ function findingsWithExceptions(paths, config) {
   const approved = [];
   const violations = [];
   for (const filePath of paths) {
-    const finding = unusedImageAssetFinding(filePath, config.imageAssets.unused.action);
-    const exception = findStructuredException(config.exceptions, finding);
+    const finding = unusedImageAssetFinding(filePath, config.checks.unusedImageAssets.action);
+    const exception = findStructuredException(config.repository.exceptions, finding);
     if (exception) approved.push({ finding, exception });
     else violations.push(finding);
   }
@@ -159,10 +158,10 @@ function findingsWithExceptions(paths, config) {
 
 export const unusedImageAssetsGate = defineGate({
   id: UNUSED_IMAGE_ASSETS_GATE_ID,
-  configKey: 'imageAssets.unused',
+  configKey: 'checks.unusedImageAssets',
   featureName: 'unusedImageAssets',
   featureOrder: 43,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   ciScopes: ['all-files'],
   mutation: 'read-only',
@@ -182,15 +181,15 @@ export const unusedImageAssetsGate = defineGate({
   inspectSetup({ config }) {
     return {
       status: 'ready',
-      summary: config.imageAssets.unused.enabled
-        ? `无效图片资源门禁已启用（${config.imageAssets.enforcement === 'changedFiles' ? '只阻止新增债务' : '阻止全部存量'}）`
+      summary: config.checks.unusedImageAssets.enabled
+        ? `无效图片资源门禁已启用（${config.checks.imageAssets.enforcement === 'changedFiles' ? '只阻止新增债务' : '阻止全部存量'}）`
         : '无效图片资源门禁已禁用，可使用 repo-guard enable unusedImageAssets 启用',
     };
   },
   plan({ config, environment, revision, files }) {
     return Object.freeze({
       enabled: environment === 'manual'
-        || config.imageAssets.unused.enabled,
+        || config.checks.unusedImageAssets.enabled,
       environment,
       files: Object.freeze([...(files ?? [])]),
       revision: revision ? Object.freeze({ ...revision }) : null,
@@ -200,16 +199,17 @@ export const unusedImageAssetsGate = defineGate({
     const startedAt = Date.now();
     if (!plan.enabled) return skippedResult(UNUSED_IMAGE_ASSETS_GATE_ID, '无效图片资源门禁已禁用');
     try {
+      const imageConfig = imageReferenceOptions(config.checks);
       const currentSnapshot = plan.environment === 'manual'
-        ? worktreeSnapshot(root, plan.files, config.imageAssets)
-        : revisionSnapshot(root, plan.revision?.head ?? 'HEAD', config.imageAssets);
-      const current = inspectSnapshot(currentSnapshot, config.imageAssets, true);
+        ? worktreeSnapshot(root, plan.files, imageConfig)
+        : revisionSnapshot(root, plan.revision?.head ?? 'HEAD', imageConfig);
+      const current = inspectSnapshot(currentSnapshot, imageConfig, true);
       if (current.assetPaths.length === 0) {
         return skippedResult(UNUSED_IMAGE_ASSETS_GATE_ID, '没有匹配配置范围的图片资源');
       }
       let governedPaths = current.unusedPaths;
       let baselineUnusedCount = 0;
-      if (plan.environment !== 'manual' && config.imageAssets.enforcement === 'changedFiles') {
+      if (plan.environment !== 'manual' && config.checks.imageAssets.enforcement === 'changedFiles') {
         if (!plan.revision?.base) {
           throw rangeError(
             'unused-image-assets/revision-required',

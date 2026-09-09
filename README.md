@@ -49,6 +49,10 @@ npx repo-guard init --project api --role backend --stack node --preset node-type
 
 repo-guard 使用项目已有的 ESLint、Prettier、Stylelint、测试和构建工具。安装这个包后，仍需按 `doctor` 提示准备对应依赖与配置。首次初始化会启用部分基础检查，其他能力按需开启；已有非托管 Hook 会提示冲突。详见[接入准备与默认开关](docs/usage-guide.md#快速开始)。
 
+项目与工作区配置只支持 `version: 2`，不提供旧配置转换命令或兼容执行。已有旧配置会被拒绝且保持原文件不变；请人工保存原资料，按新架构重新建立配置。详见[配置管理与规则启停](docs/features/configuration-management.md)。
+
+本版也统一使用 v2 功能登记表、托管 Skill 清单、UI Token 清单、基线和检查报告；外部门禁使用 `repo-guard-json-v2`。Hook 只接受当前 v5 标记，AGENTS 只接受当前托管区块，不再识别旧标记作为可升级文件。
+
 准备完成后，照常暂存和提交代码：
 
 ```bash
@@ -105,6 +109,8 @@ npx repo-guard ci --project api --profile full
 ```
 
 提交和推送会按清单检查各应用。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
+
+独立运维可显式开启整条流水线的成功、失败通知，覆盖合并请求与分支流水线；升级后需重新生成托管片段，见[运维通知与更新说明](docs/features/operations.md#流水线通知)。
 
 接入示例见[前后端与多应用配置](docs/features/project-workspace.md)。当前接入范围为通用工程检查，不判断接口输入输出、身份权限或业务是否正确。Java 身份与工具需求接口已预留，Java 执行器和依赖自动安装将在后续实现。
 
@@ -179,7 +185,7 @@ npx repo-guard animation-preview --theme dog --type perf
 | [功能说明索引](docs/features/README.md) | 各项能力的用途、字段说明和执行要求 |
 | [交付合同手册](docs/features/delivery-contract.md) | 需求到反馈的接入方式、角色分工与完整流程 |
 | [维护者架构说明](docs/project-structure-and-feature-inventory.md) | 代码结构、模块职责与依赖关系 |
-| [2.0 重构剩余工作](docs/refactor-2.0-remaining-work.md) | 当前完成范围、尚未完成的内部调整与验收标准 |
+| [2.0 重构工作清单](docs/refactor-2.0-remaining-work.md) | 原生 v2 模型、旧兼容移除、独立运维及回归验收记录 |
 | [更新日志](CHANGELOG.md) | 各版本的变更记录 |
 
 ## 贡献与反馈

@@ -95,7 +95,7 @@ function readDocument(root, configPath, options) {
 }
 
 function validateExceptions(config, { allowExpiredExceptions = false, now = new Date() }) {
-  if (!allowExpiredExceptions) assertExceptionLifecycleCurrent(config.exceptions, { now });
+  if (!allowExpiredExceptions) assertExceptionLifecycleCurrent(config.repository.exceptions, { now });
   return config;
 }
 
@@ -105,10 +105,13 @@ function scopeProjectExceptions(config, repositoryRoot, applicationRoot) {
   const prefix = `${relativeRoot}/`;
   return {
     ...config,
-    exceptions: {
-      ...config.exceptions,
-      entries: config.exceptions.entries.filter((entry) => entry.path.startsWith(prefix))
-        .map((entry) => ({ ...entry, path: entry.path.slice(prefix.length) })),
+    repository: {
+      ...config.repository,
+      exceptions: {
+        ...config.repository.exceptions,
+        entries: config.repository.exceptions.entries.filter((entry) => entry.path.startsWith(prefix))
+          .map((entry) => ({ ...entry, path: entry.path.slice(prefix.length) })),
+      },
     },
   };
 }

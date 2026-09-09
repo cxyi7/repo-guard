@@ -60,13 +60,15 @@ test('supports project-defined file types and directories', () => {
   const config = {
     enabled: true,
     mode: 'newFiles',
-    rules: [{
-      name: '设计源文件',
-      patterns: ['**/*.{fig,sketch}'],
-      allowedPatterns: ['design/**'],
-      exceptions: [],
-      suggestedDirectory: 'design',
-    }],
+    rules: [
+      {
+        name: '设计源文件',
+        patterns: ['**/*.{fig,sketch}'],
+        allowedPatterns: ['design/**'],
+        exceptions: [],
+        suggestedDirectory: 'design',
+      },
+    ],
   };
   const result = inspectFilePlacement({
     config,
@@ -108,32 +110,61 @@ test('full-project inspection checks tracked and non-ignored untracked files reg
   git(root, ['init']);
   mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
   mkdirSync(path.join(root, 'docs'), { recursive: true });
-  writeFileSync(path.join(root, 'src', 'components', 'legacy.md'), '# legacy\n');
+  writeFileSync(
+    path.join(root, 'src', 'components', 'legacy.md'),
+    '# legacy\n',
+  );
   writeFileSync(path.join(root, 'docs', 'guide.md'), '# guide\n');
   writeFileSync(path.join(root, '.gitignore'), 'ignored.md\n');
   writeFileSync(path.join(root, 'ignored.md'), '# ignored\n');
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-      version: 1,
-      notification: { enabled: false },
-      preCommit: {
-        filePlacement: {
-          ...DEFAULT_FILE_PLACEMENT_CONFIG,
-          enabled: false,
-          mode: 'newFiles',
+    `${stringifyProjectFixture(
+      {
+        version: 2,
+        project: {
+          id: 'web',
+          role: 'frontend',
+          stack: 'node',
+          preset: 'vue-javascript',
+        },
+        checks: {
+          filePlacement: {
+            ...DEFAULT_FILE_PLACEMENT_CONFIG,
+            enabled: false,
+            mode: 'newFiles',
+          },
+        },
+        repository: {
+          rules: [
+            {
+              pattern: '**',
+              category: 'Fixture',
+              level: 'audit',
+            },
+          ],
+          exclusions: [],
+        },
+        reporting: {
+          notification: {
+            enabled: false,
+          },
         },
       },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-      exclusions: [],
-    }, null, 2)}\n`,
+      null,
+      2,
+    )}\n`,
   );
   git(root, ['add', 'src/components/legacy.md', '.gitignore']);
 
-  const failedCliResult = spawnSync(process.execPath, [CLI_PATH, 'file-placement'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
+  const failedCliResult = spawnSync(
+    process.execPath,
+    [CLI_PATH, 'file-placement'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    },
+  );
   assert.equal(failedCliResult.status, 2);
   assert.match(failedCliResult.stderr, /src\/components\/legacy\.md/);
   assert.doesNotMatch(failedCliResult.stderr, /ignored\.md/);

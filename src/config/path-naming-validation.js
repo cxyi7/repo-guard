@@ -8,9 +8,9 @@ import {
   normalizePatternList,
 } from './validation-primitives.js';
 
-export function validatePathNamingConfiguration(preCommitValue, configPath) {
-  const value = preCommitValue.pathNaming ?? {};
-  const label = `${configPath} preCommit.pathNaming`;
+export function validatePathNamingConfiguration(checksValue, configPath) {
+  const value = checksValue.pathNaming ?? {};
+  const label = `${configPath} checks.pathNaming`;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw configValidationError(`${label} 必须是对象`);
   }

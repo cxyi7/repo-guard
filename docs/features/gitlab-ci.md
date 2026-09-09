@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到仓库根目录的 `repo-guard.config.json`。`ci` 统一定义质量检查策略；多应用的子配置只维护项目身份与 `checks`，不能覆盖根目录的 CI 策略。直接编辑 v2 配置后运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到仓库根目录的 `repo-guard.config.json`。`ci` 统一定义质量检查策略；多应用的子配置只维护项目身份与 `checks`，不能覆盖根目录的 CI 策略。直接编辑 v2 配置后运行 `npx repo-guard doctor`。
 
 安装或检查 CI：
 
@@ -17,6 +17,10 @@ npx repo-guard install-ci --provider gitlab --profile policy --dry-run
 npx repo-guard install-ci --provider gitlab --profile policy
 npx repo-guard doctor --ci
 ```
+
+`install-ci` 未传 `--profile` 时沿用当前 `ci.profile`，不会将已有 `full` 或 `release-ready` 降为 `policy`；只有显式传入该选项才覆盖配置档，预览和实际安装遵循相同规则。
+
+安装先只读校验已有 Skill 清单和各相关目录的 `AGENTS.md` 标记。旧格式会在写入 CI 模板、主配置或规范前拒绝，原文件保持不变；缺失文件和当前格式下待同步的正文不会因此被拒绝。
 
 显式执行：
 
@@ -31,9 +35,11 @@ npx repo-guard ci --profile full --project api --base <sha> --head <sha>
 |---|---|
 | `policy` | 结构化例外、AGENTS、提交信息、异步资源、路径命名、UI Token、安全与基础可访问性、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、Knip、无效图片、完整单元测试/覆盖率、axe、架构和构建 |
-| `release-ready` | 配置 v2 使用 `full` 的通用工程检查，加适用且启用的 Lighthouse 和最终交付证据复核；不强制项目提供固定的 `check`、`test`、`pack:check` 脚本，不执行 npm 发布 |
+| `release-ready` | 使用 `full` 的通用工程检查，加适用且启用的 Lighthouse 和最终交付证据复核；不强制项目提供固定的 `check`、`test`、`pack:check` 脚本，不执行 npm 发布 |
 
 CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；测试、构建和报告仍会生成产物。流水线生成与部署由独立的[运维模块](managed-delivery-pipeline.md)管理，开启 CI 质量检查不会连带开启部署。
+
+`install-ci` 生成的模板只包含质量基类与 `policy / full / release-ready`，不生成构建发布基类、部署作业或通知。已有模板必须使用当前标记，且正文与当前生成模板一致，才允许重复安装；旧模板、未知内容或人工修改会被拒绝并保留原文件，不提供自动转换。根托管区块也必须符合当前结构；自定义 include 或无法识别的区块需人工合并预览。构建和部署按独立的 `repo-guard.ops.json` 重新接入。
 
 ## 多应用执行与负责人
 
@@ -51,6 +57,8 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 | 公共仓库报告 | `reports/repo-guard-workspace/repository.json` |
 | 应用报告 | 各应用目录内的 `reports/repo-guard-workspace/projects/<项目 id>.json` |
 | 最终交付证据报告 | `release-ready` 执行完成后的 `reports/repo-guard-workspace/evidence.json` |
+
+单应用、聚合报告、各目标报告及配置或范围错误报告统一使用 `version: 2`。写入和汇总只接受版本 2，嵌套目标中的版本 1 也会被拒绝；旧报告需重新运行 CI 生成，不会自动转换。各步骤的 `GateResult` 使用 `schemaVersion: 2`。
 
 聚合报告与各目标报告不得使用同一路径；报告不覆盖受跟踪文件或穿过符号链接。应用检查互相隔离，任何按策略必须阻断的失败都会使整体退出码非零。前后端负责人可在各自 CI 作业中选择应用；联合验证时不传 `--project`。
 
@@ -112,7 +120,7 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 
 `scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
 
-配置 v2 的 `release-ready` 包含完整工程检查，并在所有应用检查之后复核交付证据。具体构建和测试脚本分别由 `checks.build.script`、`checks.unitTest.script` 等配置；未启用或不适用的能力显示跳过。后端项目不会执行 Vue 专用检查，CI 模式不会把前端能力强制套用到后端。外部门禁只在受信任的 GitLab CI 中按声明追加。
+`release-ready` 包含完整工程检查，并在所有应用检查之后复核交付证据。具体构建和测试脚本分别由 `checks.build.script`、`checks.unitTest.script` 等配置；未启用或不适用的能力显示跳过。后端项目不会执行 Vue 专用检查，CI 模式不会把前端能力强制套用到后端。外部门禁只在受信任的 GitLab CI 中按声明追加。
 
 ## 执行与复核
 

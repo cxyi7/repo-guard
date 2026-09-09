@@ -66,8 +66,9 @@ export function inspectFeatureRegistry(
     return { contracts, features, issues, sourcePaths };
   }
   exactKeys(registry, new Set(['schemaVersion', 'features']), '功能登记表', issues, registryPath);
-  if (registry.schemaVersion !== 1) {
-    issue(issues, '功能登记表 schemaVersion 必须为 1', registryPath);
+  if (registry.schemaVersion !== 2) {
+    issue(issues, '功能登记表 schemaVersion 必须为 2；旧格式不再支持，请按当前规范重新建立', registryPath);
+    return { contracts, features, issues, sourcePaths };
   }
   if (!Array.isArray(registry.features)) {
     issue(issues, '功能登记表 features 必须是数组', registryPath);

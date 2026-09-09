@@ -115,7 +115,11 @@ test('pre-commit plans the complete tracked scope instead of only staged input',
   runGit(root, ['rm', '--cached', 'src/deleted-name.ts']);
 
   const featureConfig = config('camelCase');
-  const gateConfig = { preCommit: { pathNaming: featureConfig } };
+  const gateConfig = {
+  checks: {
+    pathNaming: featureConfig
+  }
+};
   const plan = pathNamingGate.plan({
     root,
     config: gateConfig,
@@ -132,7 +136,11 @@ test('pre-commit plans the complete tracked scope instead of only staged input',
 
 test('manual command audits the supplied project scope even while disabled', () => {
   const featureConfig = { ...config('camelCase'), enabled: false };
-  const gateConfig = { preCommit: { pathNaming: featureConfig } };
+  const gateConfig = {
+  checks: {
+    pathNaming: featureConfig
+  }
+};
   const plan = pathNamingGate.plan({
     root: process.cwd(),
     config: gateConfig,

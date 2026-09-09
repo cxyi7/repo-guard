@@ -19,15 +19,17 @@ const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
 function rawConfigFixture({ enforcement = 'allFiles', action = 'error' } = {}) {
-  const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.enforcement = enforcement;
-  config.imageAssets.include = ['src/assets/**/*.{png,svg}', 'public/assets/**/*.png'];
-  config.imageAssets.exclude = [];
-  config.imageAssets.unused.enabled = true;
-  config.imageAssets.unused.action = action;
-  config.imageAssets.unused.sourceInclude = ['src/**/*.{vue,ts,css,json}', 'docs/**/*.md'];
-  config.imageAssets.unused.sourceExclude = [];
+  const config = createStarterConfig({ project: {
+    id: 'web', role: 'frontend', stack: 'node', preset: 'vue-typescript',
+  } });
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.enforcement = enforcement;
+  config.checks.imageAssets.include = ['src/assets/**/*.{png,svg}', 'public/assets/**/*.png'];
+  config.checks.imageAssets.exclude = [];
+  config.checks.unusedImageAssets.enabled = true;
+  config.checks.unusedImageAssets.action = action;
+  config.checks.unusedImageAssets.sourceInclude = ['src/**/*.{vue,ts,css,json}', 'docs/**/*.md'];
+  config.checks.unusedImageAssets.sourceExclude = [];
   return config;
 }
 
@@ -39,7 +41,7 @@ function analyze(entries, contents, config = configFixture()) {
   return analyzeUnusedImageAssets({
     entries: entries.map((filePath) => ({ path: filePath, size: contents.get(filePath)?.length ?? 1 })),
     readSource: (filePath) => contents.get(filePath),
-    imageConfig: config.imageAssets,
+    imageConfig: { ...config.checks.imageAssets, unused: config.checks.unusedImageAssets },
   });
 }
 
@@ -99,7 +101,7 @@ test('默认扫描根目录 HTML 和 Markdown 中的 public 与文档图片引�
 
 test('识别 import.meta.glob，并要求动态声明同时匹配真实源码与图片', () => {
   const config = configFixture();
-  config.imageAssets.unused.dynamicReferences = [{
+  config.checks.unusedImageAssets.dynamicReferences = [{
     sourcePatterns: ['src/pages/gallery.ts'],
     assetPatterns: ['src/assets/runtime/*.png'],
     reason: '后端只返回图片文件名，运行时按目录拼接',
@@ -114,7 +116,7 @@ test('识别 import.meta.glob，并要求动态声明同时匹配真实源码与
   ];
   assert.deepEqual(analyze(entries, contents, config).unusedPaths, []);
 
-  config.imageAssets.unused.dynamicReferences[0].sourcePatterns = ['src/pages/missing.ts'];
+  config.checks.unusedImageAssets.dynamicReferences[0].sourcePatterns = ['src/pages/missing.ts'];
   assert.throws(
     () => analyze(entries, contents, config),
     (error) => error.code === 'unused-image-assets/stale-dynamic-reference',
@@ -142,7 +144,9 @@ test('注释中的伪引用不掩盖无效图片，glob 排除项不会计为使
 });
 
 test('手动门禁全量报告未引用图片且 report 模式不阻断', () => {
-  const config = configFixture({ action: 'report' });
+  const config = configFixture({
+  action: 'report'
+});
   const root = path.join(TEST_ROOT, `manual-${Date.now()}`);
   mkdirSync(path.join(root, 'src', 'assets'), { recursive: true });
   mkdirSync(path.join(root, 'src', 'pages'), { recursive: true });
@@ -183,7 +187,9 @@ test('Git 增量门禁阻断新增未引用图片和删除最后一处引用，�
   runGit(['add', '.'], { cwd: root });
   runGit(['commit', '-m', 'test: 制造新增图片债务'], { cwd: root });
   const head = runGit(['rev-parse', 'HEAD'], { cwd: root }).stdout.trim();
-  const config = configFixture({ enforcement: 'changedFiles' });
+  const config = configFixture({
+  enforcement: 'changedFiles'
+});
   const plan = unusedImageAssetsGate.plan({
     config,
     environment: 'ci-full',
@@ -201,7 +207,9 @@ test('Git 增量门禁阻断新增未引用图片和删除最后一处引用，�
 
 test('Git 增量门禁分别使用基线与当前配置，阻断移除别名造成的新债务', (context) => {
   const root = gitFixture(context);
-  const baselineConfig = rawConfigFixture({ enforcement: 'changedFiles' });
+  const baselineConfig = rawConfigFixture({
+  enforcement: 'changedFiles'
+});
   writeFileSync(path.join(root, 'src', 'assets', 'logo.png'), 'logo');
   writeFileSync(path.join(root, 'src', 'pages', 'home.ts'), "import logo from '@/assets/logo.png';");
   writeFileSync(
@@ -213,7 +221,7 @@ test('Git 增量门禁分别使用基线与当前配置，阻断移除别名造�
   const base = runGit(['rev-parse', 'HEAD'], { cwd: root }).stdout.trim();
 
   const currentConfig = structuredClone(baselineConfig);
-  currentConfig.imageAssets.unused.aliases = [];
+  currentConfig.checks.unusedImageAssets.aliases = [];
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(currentConfig, null, 2)}\n`,
@@ -239,7 +247,9 @@ test('多应用图片增量检查从基线清单读取自定义子配置，忽�
   mkdirSync(path.join(appRoot, 'src', 'assets'), { recursive: true });
   mkdirSync(path.join(appRoot, 'src', 'pages'), { recursive: true });
   const appConfigFile = path.join(appRoot, 'guard.project.json');
-  const document = projectFixtureDocument(rawConfigFixture({ enforcement: 'changedFiles' }));
+  const document = projectFixtureDocument(rawConfigFixture({
+  enforcement: 'changedFiles'
+}));
   const { repository, reporting, ci, ...appDocument } = document;
   writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify({
     version: 2, projects: [{ id: 'web', root: 'apps/web', config: 'guard.project.json' }],

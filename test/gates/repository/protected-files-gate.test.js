@@ -8,21 +8,35 @@ const IMMUTABLE_FILE = 'src/security/permission-map.ts';
 
 function protectedConfig({ action = 'report', level = 'block', rules = null } = {}) {
   return validateConfig({
-    version: 1,
-    notification: { enabled: false },
-    ci: {
-      enabled: true,
-      profile: 'policy',
-      reportPath: 'reports/repo-guard.json',
-      protectedFiles: { action },
-    },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
     rules: rules ?? [{
       pattern: IMMUTABLE_FILE,
       category: '不可变安全文件',
-      level,
+      level
     }],
-    exclusions: [],
-  });
+    exclusions: []
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  },
+  ci: {
+    enabled: true,
+    profile: 'policy',
+    reportPath: 'reports/repo-guard.json',
+    protectedFiles: {
+      action
+    }
+  }
+});
 }
 
 function gatePlan(config, changes, mutation = 'read-only') {
@@ -65,19 +79,18 @@ test('block rules reject modifications, deletions, renames, and moves', async ()
 
 test('a destination audit rule cannot downgrade a block rule from the original path', async () => {
   const config = protectedConfig({
-    rules: [
-      {
-        pattern: IMMUTABLE_FILE,
-        category: '不可变安全文件',
-        level: 'block',
-      },
-      {
-        pattern: 'src/shared/**',
-        category: '共享文件',
-        level: 'audit',
-      },
-    ],
-  });
+  repository: {
+    rules: [{
+      pattern: IMMUTABLE_FILE,
+      category: '不可变安全文件',
+      level: 'block'
+    }, {
+      pattern: 'src/shared/**',
+      category: '共享文件',
+      level: 'audit'
+    }]
+  }
+});
   const changes = [{
     status: 'R100',
     oldPath: IMMUTABLE_FILE,
@@ -96,7 +109,9 @@ test('a destination audit rule cannot downgrade a block rule from the original p
 
 test('audit and notify rules keep their existing non-blocking behavior', async () => {
   for (const level of ['audit', 'notify']) {
-    const config = protectedConfig({ level });
+    const config = protectedConfig({
+  level
+});
     const changes = [{ status: 'M', oldPath: null, path: IMMUTABLE_FILE }];
     const result = await protectedFilesGate.run({
       root: process.cwd(),
@@ -111,7 +126,10 @@ test('audit and notify rules keep their existing non-blocking behavior', async (
 });
 
 test('CI fail action still promotes every protected-file level to an error', async () => {
-  const config = protectedConfig({ action: 'fail', level: 'audit' });
+  const config = protectedConfig({
+  action: 'fail',
+  level: 'audit'
+});
   const changes = [{ status: 'M', oldPath: null, path: IMMUTABLE_FILE }];
   const result = await protectedFilesGate.run({
     root: process.cwd(),

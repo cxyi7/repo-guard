@@ -189,7 +189,7 @@ export function buildDynamicCodeGateResult({ root, files, exceptions }) {
 
 export const dynamicCodeGate = defineGate({
   id: DYNAMIC_CODE_GATE_ID,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'read-only',
@@ -223,7 +223,7 @@ export const dynamicCodeGate = defineGate({
     return buildDynamicCodeGateResult({
       root,
       files: plan.files,
-      exceptions: config.exceptions,
+      exceptions: config.repository.exceptions,
     });
   },
 });

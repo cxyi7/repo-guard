@@ -68,11 +68,32 @@ function createFixture({ enabled = true } = {}) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      typeCheck: { ...typeCheckConfig(), enabled },
-      notification: { enabled: false },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    typeCheck: {
+      ...typeCheckConfig(),
+      enabled
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`,
   );
   return root;
 }

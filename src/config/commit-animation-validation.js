@@ -12,7 +12,7 @@ export const DEFAULT_COMMIT_ANIMATION_CONFIG = Object.freeze({
 export function validateCommitAnimationConfiguration(value, configPath) {
   const supplied =
     value.commitAnimation === undefined ? {} : value.commitAnimation;
-  const location = `${configPath} commitAnimation`;
+  const location = `${configPath} reporting.commitAnimation`;
   if (!supplied || typeof supplied !== 'object' || Array.isArray(supplied)) {
     throw configValidationError(`${location} 必须是对象`);
   }

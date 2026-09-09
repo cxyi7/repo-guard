@@ -3,15 +3,10 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { parse as parseYaml } from 'yaml';
 import { planOperationsPipeline } from '../../src/operations/pipeline/plan.js';
 import { inspectOperationsGitLabPipeline, installOperationsGitLabPipeline } from '../../src/operations/gitlab/installation.js';
 import { OPERATIONS_PIPELINE_FILE, renderOperationsGitLabPipeline } from '../../src/operations/gitlab/renderer.js';
-import { renderManagedPipelineRoot as bridge } from '../../src/orchestration/setup/gitlab-managed-pipeline.js';
-import { renderManagedPipelineRoot as implementation } from '../../src/operations/gitlab/gitlab-managed-pipeline.js';
-import { inspectGitLabCi as inspectBridge } from '../../src/orchestration/setup/gitlab-ci.js';
-import { inspectGitLabCi as inspectImplementation } from '../../src/operations/gitlab/gitlab-ci.js';
-import { runGitLabCiNotification as notifyBridge } from '../../src/gates/release/gitlab-ci-notification.js';
-import { runGitLabCiNotification as notifyImplementation } from '../../src/operations/notifications/gitlab-ci-notification.js';
 import { nodeArtifactVerificationProgram } from '../../src/operations/providers/node.js';
 
 function fixture(context) {
@@ -103,7 +98,15 @@ test('空仓库安装独立根引用，禁用时提示清理残留部署配置',
   assert.deepEqual(inspectOperationsGitLabPipeline(root, operations(), projects).problems, []);
   const generatedFile = path.join(root, OPERATIONS_PIPELINE_FILE);
   writeFileSync(generatedFile, readFileSync(generatedFile, 'utf8').replace('allow_failure: false', 'allow_failure: true'));
-  assert.match(inspectOperationsGitLabPipeline(root, operations(), projects).problems.join('\n'), /已修改/);
+  assert.match(inspectOperationsGitLabPipeline(root, operations(), projects).problems.join('\n'), /人工修改/);
+  const changed = readFileSync(generatedFile, 'utf8');
+  assert.throws(() => installOperationsGitLabPipeline(root, operations(), projects), /拒绝覆盖人工修改/);
+  assert.equal(readFileSync(generatedFile, 'utf8'), changed);
+  const preview = installOperationsGitLabPipeline(root, operations(), projects, { dryRun: true });
+  assert.equal(preview.integrated, false);
+  assert.match(preview.guidance, /拒绝覆盖人工修改/);
+  assert.match(renderOperationsGitLabPipeline(preview.plan), /allow_failure: false/);
+  assert.equal(readFileSync(generatedFile, 'utf8'), changed);
   assert.throws(() => installOperationsGitLabPipeline(root, { version: 2 }, projects), /仍存在/);
 });
 
@@ -114,11 +117,81 @@ test('拒绝覆盖同路径的自定义流水线', (context) => {
   assert.throws(() => installOperationsGitLabPipeline(root, operations(), projects), /拒绝覆盖/);
 });
 
-test('旧安装、渲染和通知入口使用运维实现，保持公共契约', () => {
-  assert.equal(bridge, implementation);
-  assert.equal(inspectBridge, inspectImplementation);
-  assert.equal(notifyBridge, notifyImplementation);
-  assert.deepEqual(bridge({ enabled: false }), { gateOverrides: '', jobs: '' });
+test('关闭通知时不生成通知作业，显式开启才生成成功失败及尽力取消通知', (context) => {
+  const { root, projects } = fixture(context);
+  const plain = renderOperationsGitLabPipeline(planOperationsPipeline(root, operations(), projects));
+  assert.doesNotMatch(plain, /ci-notify|OPERATIONS_NOTIFICATION|after_script/);
+  const enabled = { ...operations(), notifications: { enabled: true } };
+  const pipeline = renderOperationsGitLabPipeline(planOperationsPipeline(root, enabled, projects));
+  assert.match(pipeline, /repo_guard_operations_notify_success/);
+  assert.match(pipeline, /repo_guard_operations_notify_failed/);
+  assert.match(pipeline, /ci-notify --status success/);
+  assert.match(pipeline, /ci-notify --status failed/);
+  assert.match(pipeline, /ci-notify --status canceled/);
+  assert.match(pipeline, /when: on_success/);
+  assert.match(pipeline, /when: on_failure/);
+  assert.match(pipeline, /REPO_GUARD_OPERATIONS_NOTIFICATIONS: "true"/);
+  assert.doesNotMatch(pipeline, /REPO_GUARD_PIPELINE_NOTIFICATION|npm install|npm ci|ci\.pipeline/);
+  const notifications = pipeline.slice(pipeline.indexOf('"repo_guard_operations_notify_success":'));
+  assert.match(notifications, /allow_failure: true/);
+  assert.doesNotMatch(notifications, /needs:|artifacts:/);
+});
+
+test('成功与失败通知覆盖与质量构建相同的 MR 和分支流水线，保留各自状态条件', (context) => {
+  const { root, projects } = fixture(context);
+  const config = { ...operations(), notifications: { enabled: true } };
+  const plan = planOperationsPipeline(root, config, projects);
+  const pipeline = parseYaml(renderOperationsGitLabPipeline(plan));
+  const expectedRules = [
+    { if: '$CI_PIPELINE_SOURCE == "merge_request_event"' },
+    { if: '$CI_COMMIT_BRANCH' },
+  ];
+  for (const project of plan.projects) {
+    for (const name of [project.quality.job, project.build.job]) {
+      assert.deepEqual(pipeline[name].rules, expectedRules);
+      assert.equal(pipeline[name].variables.REPO_GUARD_OPERATIONS_NOTIFICATIONS, 'true');
+    }
+  }
+  for (const [status, when] of [['success', 'on_success'], ['failed', 'on_failure']]) {
+    const job = pipeline[`repo_guard_operations_notify_${status}`];
+    // GitLab 未声明 rules 的作业默认排除 MR；统一通知必须覆盖被去重的质量作业。
+    assert.deepEqual(job.rules, expectedRules, `${status} 通知必须包含 MR 和分支规则`);
+    assert.equal(job.when, when);
+    assert.equal(job.stage, '.post');
+    assert.equal(job.allow_failure, true);
+    assert.equal(Object.hasOwn(job, 'needs'), false);
+    assert.equal(job.variables.REPO_GUARD_OPERATIONS_NOTIFICATION, 'true');
+    assert.ok(job.script.includes(`npx --no-install repo-guard ci-notify --status ${status}`));
+  }
+});
+
+test('无摘要片段即使与当前内容相同也不再收养，保留文件供人工接入', (context) => {
+  const { root, projects } = fixture(context);
+  const config = operations();
+  installOperationsGitLabPipeline(root, config, projects);
+  const file = path.join(root, OPERATIONS_PIPELINE_FILE);
+  const original = readFileSync(file, 'utf8');
+  const rootFile = path.join(root, '.gitlab-ci.yml');
+  const originalRoot = readFileSync(rootFile, 'utf8');
+  const unmarked = original.replace(/^# repo-guard-content-sha256: [a-f0-9]{64}\n/m, '');
+  writeFileSync(file, unmarked);
+  assert.throws(() => installOperationsGitLabPipeline(root, config, projects), /非托管/);
+  const preview = installOperationsGitLabPipeline(root, config, projects, { dryRun: true });
+  assert.equal(preview.integrated, false);
+  assert.match(preview.guidance, /非托管/);
+  assert.match(inspectOperationsGitLabPipeline(root, config, projects).problems.join('\n'), /非托管/);
+  assert.equal(readFileSync(file, 'utf8'), unmarked);
+  assert.equal(readFileSync(rootFile, 'utf8'), originalRoot);
+});
+
+test('当前带摘要片段允许配置变化后的更新和再次安装', (context) => {
+  const { root, projects } = fixture(context);
+  const config = operations();
+  installOperationsGitLabPipeline(root, config, projects);
+  const updated = { ...config, notifications: { enabled: true } };
+  assert.equal(installOperationsGitLabPipeline(root, updated, projects).pipelineChanged, true);
+  assert.deepEqual(inspectOperationsGitLabPipeline(root, updated, projects).problems, []);
+  assert.equal(installOperationsGitLabPipeline(root, updated, projects).pipelineChanged, false);
 });
 
 test('构建成功却缺失或只有空目录时产物检查阻断，真实文件才通过', (context) => {

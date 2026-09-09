@@ -69,11 +69,11 @@ export async function runPreCommit(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
   return await withPreCommitLock(root, async () => {
     const config = loadStagedWorkspace(root).repositoryConfig;
-    const animation = createCommitAnimation(config.commitAnimation);
+    const animation = createCommitAnimation(config.reporting.commitAnimation);
     try {
       const code = await runPreCommitLifecycle(root, animation);
       animation.close();
-      if (config.commitAnimation.enabled) {
+      if (config.reporting.commitAnimation.enabled) {
         writeConsoleMessage(code === 0
           ? '提交前检查通过；等待提交信息校验和 Git 创建提交。'
           : '提交已阻止。请按上方问题、位置和修复建议处理后重新提交。', code === 0 ? 'stdout' : 'stderr');

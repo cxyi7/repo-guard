@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { defineExecutionPlan } from '../../src/core/capability/execution-plan.js';
 import { defineGate } from '../../src/core/capability/gate-definition.js';
-import { createGateContext, createChangeSet } from '../../src/core/capability/gate-context.js';
+import {
+  createGateContext,
+  createChangeSet,
+} from '../../src/core/capability/gate-context.js';
 import { createGateRegistry } from '../../src/core/capability/gate-registry.js';
 import { createGateResult } from '../../src/core/result/gate-result.js';
 import {
@@ -13,15 +16,30 @@ import { orchestratePlan } from '../../src/orchestration/orchestrator.js';
 
 function config(mode, scope = 'all-files') {
   return {
-    version: 1,
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
+    },
+    checks: {
+      example: {
+        enabled: false,
+      },
+    },
     ci: {
       gatePolicy: {
         defaultMode: 'inherit',
-        gates: { 'quality.example': { mode, scope } },
+        gates: {
+          'quality.example': {
+            mode,
+            scope,
+          },
+        },
       },
+      externalGates: [],
     },
-    externalGates: [],
-    preCommit: { example: { enabled: false } },
   };
 }
 
@@ -29,7 +47,7 @@ function fixture(mode, scope = 'all-files') {
   const observations = [];
   const gate = defineGate({
     id: 'quality.example',
-    configKey: 'preCommit.example',
+    configKey: 'checks.example',
     environments: ['pre-commit', 'ci-full'],
     ciScopes: ['all-files', 'changed-files'],
     mutation: 'read-only',
@@ -41,7 +59,7 @@ function fixture(mode, scope = 'all-files') {
     plan(context) {
       observations.push({ phase: 'plan', context });
       return {
-        enabled: context.config.preCommit.example.enabled,
+        enabled: context.config.checks.example.enabled,
         files: context.files,
       };
     },
@@ -116,9 +134,12 @@ test('report activates a disabled Gate only inside CI and never blocks CI', asyn
   assert.equal(execution.status, 'violation');
   assert.equal(evaluated.status, 'passed');
   assert.equal(evaluated.exitCode, 0);
-  assert.equal(value.observations[0].context.config.preCommit.example.enabled, true);
-  assert.equal(value.projectConfig.preCommit.example.enabled, false);
-  assert.equal(value.context.config.preCommit.example.enabled, false);
+  assert.equal(
+    value.observations[0].context.config.checks.example.enabled,
+    true,
+  );
+  assert.equal(value.projectConfig.checks.example.enabled, false);
+  assert.equal(value.context.config.checks.example.enabled, false);
 });
 
 test('enforce activates a disabled Gate in CI and preserves blocking failures', async () => {
@@ -136,7 +157,10 @@ test('inherit preserves the existing Gate enabled setting', async () => {
 
   assert.equal(evaluated.status, 'passed');
   assert.equal(evaluated.exitCode, 0);
-  assert.equal(value.observations[1].context.config.preCommit.example.enabled, false);
+  assert.equal(
+    value.observations[1].context.config.checks.example.enabled,
+    false,
+  );
 });
 
 test('changed-files narrows only the CI Gate file scope', async () => {
@@ -150,26 +174,33 @@ test('changed-files narrows only the CI Gate file scope', async () => {
 test('rejects unknown CI Gate ids and unsupported scopes at the Registry boundary', () => {
   const value = fixture('enforce');
   assert.throws(
-    () => validateCiGatePolicy({
-      ...value.projectConfig,
-      ci: {
-        gatePolicy: {
-          defaultMode: 'inherit',
-          gates: { 'quality.unknown': { mode: 'off', scope: 'all-files' } },
+    () =>
+      validateCiGatePolicy(
+        {
+          ...value.projectConfig,
+          ci: {
+            gatePolicy: {
+              defaultMode: 'inherit',
+              gates: { 'quality.unknown': { mode: 'off', scope: 'all-files' } },
+            },
+          },
         },
-      },
-    }, value.registry),
+        value.registry,
+      ),
     /未知或非 CI 门禁/,
   );
   assert.throws(
-    () => createCiGatePolicyController({
-      config: config('enforce', 'changed-files'),
-      registry: createGateRegistry([defineGate({
-        ...value.registry.get('quality.example'),
-        ciScopes: ['all-files'],
-      })]),
-      plan: value.plan,
-    }),
+    () =>
+      createCiGatePolicyController({
+        config: config('enforce', 'changed-files'),
+        registry: createGateRegistry([
+          defineGate({
+            ...value.registry.get('quality.example'),
+            ciScopes: ['all-files'],
+          }),
+        ]),
+        plan: value.plan,
+      }),
     /不支持 changed-files/,
   );
 });

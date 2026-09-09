@@ -6,13 +6,14 @@ import { calculateGateResultDigest } from '../../policies/delivery-contract/dige
 import { selectProjects } from '../workspace/targets.js';
 import { resolveCiRange } from './change-range.js';
 import { runCiGate } from './runner.js';
-import { writeCiReport } from './report.js';
+import { assertCiReportVersion, CI_REPORT_VERSION, writeCiReport } from './report.js';
 
 /** 同一门禁跨应用时按最严重结果汇总，避免后执行的成功覆盖先前失败。 */
 export function aggregateWorkspaceGateResults(targets) {
   const latestByTarget = new Map();
   const failureRank = { 'execution-error': 3, 'configuration-error': 2, 'range-error': 2, violation: 1 };
   for (const target of targets) {
+    assertCiReportVersion(target.report);
     const results = (target.report.steps ?? []).map(({ gateResult }) => gateResult).filter(Boolean);
     if (target.report.gateResult) results.push(target.report.gateResult);
     for (const result of results) {
@@ -50,7 +51,7 @@ function failedTargetReport(error, profile, range, target) {
   const status = errorStatus(typed);
   const result = createGateResult({ gateId: 'ci.execution', status, summary: typed.message, error: typed });
   return {
-    version: 1, status: 'error', profile, base: range.base, head: range.head,
+    version: CI_REPORT_VERSION, status: 'error', profile, base: range.base, head: range.head,
     projectId: target.projectId, projectRoot: target.projectRoot, scope: target.scope,
     steps: [], error: typed.message, gateResult: renderGateResultJson(result),
   };
@@ -81,7 +82,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
     throw configurationError('ci/report-path-collision', '聚合报告路径不得与仓库、应用或交付证据报告路径相同。');
   }
   const externalReports = new Set([workspace.repositoryConfig, ...projects.map(({ config }) => config)]
-    .flatMap((config, index) => config.externalGates.map(({ report }) => (
+    .flatMap((config, index) => config.ci.externalGates.map(({ report }) => (
       path.resolve(index === 0 ? workspace.root : projects[index - 1].root, report.path).toLowerCase()
     ))));
   const generatedReports = [aggregatePath, ...targets.map((target) => path.resolve(target.root, target.reportPath).toLowerCase())];
@@ -119,7 +120,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
   }
   const exitCode = completed.find((target) => target.exitCode !== 0)?.exitCode ?? 0;
   const report = {
-    version: 2,
+    version: CI_REPORT_VERSION,
     status: exitCode === 0 ? 'passed' : 'failed',
     profile, base: range.base, head: range.head,
     selectedProjects: projects.map(({ id }) => id),

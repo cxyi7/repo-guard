@@ -87,16 +87,24 @@ export function buildManagedTextBlock({
  */
 export function buildManagedTextBlocks({
   current,
-  legacyMarkers = [],
   blocks,
   target,
 }) {
   const normalized = normalizeNewlines(current);
   const lines = normalized.split('\n');
-  const markers = [
-    ...legacyMarkers,
-    ...blocks.map(({ startMarker, endMarker }) => ({ startMarker, endMarker })),
-  ];
+  const markers = blocks.map(({ startMarker, endMarker }) => ({ startMarker, endMarker }));
+  const supportedMarkers = new Set(markers.flatMap(({ startMarker, endMarker }) => [startMarker, endMarker]));
+  const unsupported = lines.find((line) => /^\s*<!--\s*repo-guard:/.test(line) && !supportedMarkers.has(line));
+  if (unsupported !== undefined) {
+    throw configurationError(
+      'managed-text/unsupported-markers',
+      `${target} 包含旧版、未知或非标准格式的 repo-guard 托管标记；已保留原文件，请人工确认后按当前规范重新接入。`,
+      {
+        details: { location: { path: target } },
+        expected: '只接受当前托管区块的完整标记，不转换旧标记或追加新旧并存的规范。',
+      },
+    );
+  }
   const ranges = [];
 
   for (const { startMarker, endMarker } of markers) {

@@ -6,6 +6,8 @@
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 2`，项目身份由人或 AI 明确配置
 
+配置文件与运行时共用 `checks / repository / reporting / ci` 分区，只支持 `version: 2`，不转换或兼容执行旧配置。质量配置不接受 `ci.pipeline`，应用构建、部署与流水线通知另见[独立运维](features/operations.md)。旧文件保持不变，按新架构重新建立配置的说明见[配置管理与规则启停](features/configuration-management.md)。
+
 [开始接入](#快速开始) · [配置规则](#配置团队规则) · [日常提交](#固定执行顺序) · [功能用法](#常用使用方式) · [测试与构建](#接入测试与构建) · [交付流程](#完整交付流程) · [CI](#gitlab-ci) · [排查问题](#诊断与修复)
 
 ## 快速开始
@@ -132,13 +134,12 @@ npx repo-guard doctor
 
 动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行，Vue 专用检查只面向前端。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `repository.rules` 与 `repository.exclusions` 配置，结构化例外使用 `repository.exceptions`，都不在 31 项功能开关中。
 
-### 初始化、迁移和诊断
+### 初始化、配置和诊断
 
 | 命令 | 用途 |
 |---|---|
 | `npx repo-guard init --project api --role backend --stack node --preset node-typescript` | 按明确身份首次接入并同步托管文件 |
 | `npx repo-guard install-hooks` | 安装或更新托管 Hook |
-| `npx repo-guard migrate --project api --role backend --stack node --preset node-typescript` | 备份并迁移单项目 v1 配置为 v2；前端须使用对应身份与预设 |
 | `npx repo-guard doctor` | 检查配置、项目工具及托管文件的就绪状态 |
 | `npx repo-guard doctor --fix` | 修复受管配置、Hook、CI、忽略项、项目脚本、AGENTS 和交付 Skills 等受管内容 |
 | `npx repo-guard doctor --ci` | 检查 CI 接入状态 |
@@ -149,11 +150,11 @@ npx repo-guard doctor
 
 repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库与变更治理、暂存代码质量、源码安全与资源生命周期、目录与文件结构、依赖与仓库健康度、测试质量、构建/交付与外部门禁。每个可配置功能至少对应一条规范；同一主题的能力会合并到同一区块，避免按功能生成大量零散章节。
 
-- `init`、`enable`、`disable`、`migrate`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
-- 同步前会先校验全部当前 marker 和已知旧 marker，全部有效后才一次写入；marker 缺失、重复、倒置或嵌套时拒绝修改文件。
-- marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除，旧的四类策略 marker 会迁移为当前分组。
+- `init`、`enable`、`disable`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
+- 同步前先校验全部当前 marker，全部有效后才一次写入；旧或未知 marker，以及缺失、重复、倒置或嵌套的区块均拒绝修改文件。
+- marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除。旧的四类策略 marker 不再转换，也不会追加当前区块造成新旧并存。
 - webhook、通知凭据和 `repository.codePlacement.content` 等敏感值不会写入托管规范。
-- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `npx repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。`migrate` 专用于旧配置升级。
+- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `npx repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。这些入口均不转换旧项目配置。
 - 托管规范没有独立的 `enabled` 开关，不能在保留功能门禁的同时关闭对应 AI 约束。
 
 ## 固定执行顺序
@@ -548,7 +549,7 @@ CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](fe
 
 ### 外部门禁
 
-通过 `ci.externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v1` 报告。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
+通过 `ci.externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v2` 报告，报告固定为 `schemaVersion: 2`，旧格式直接拒绝。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
 
 ### Axios 手动接口性能外部门禁
 
@@ -626,7 +627,7 @@ npx repo-guard lighthouse --skip-build
 | Schema | 对应用途 |
 |---|---|
 | [GateResult](../gate-result.schema.json) | 单项检查的结构化状态、问题与产物 |
-| [外部门禁报告](../external-report.schema.json) | `repo-guard-json-v1` 协议 |
+| [外部门禁报告](../external-report.schema.json) | `repo-guard-json-v2` 协议，只接受 `schemaVersion: 2` |
 | [UI Token Manifest](../ui-token-manifest.schema.json) | Token 来源、类别与适配器别名 |
 | [Axios 性能配置](../api-performance-config.schema.json) | 目标、客户端、场景与阈值 |
 | [k6 压测配置](../k6-load-config.schema.json) | 目标、负载、场景与阈值 |

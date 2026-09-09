@@ -1,8 +1,10 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { collectStagedChanges } from '../git/change-collection.js';
 import { classifyChanges, displayPath } from './change-classification.js';
 import { gitValue, runGit } from '../git/execution.js';
+import { resolveGitPath } from '../git/repository.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
 import {
   clearCommitMessageState,
   readCommitMessageState,
@@ -13,6 +15,30 @@ const AUTO_HEADING = '【自动变更文件】';
 const MARKER_BEGIN = '<!-- repo-guard:files:start -->';
 const MARKER_END = '<!-- repo-guard:files:end -->';
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+const STATE_VERSION = 2;
+
+function readCurrentCommitMessageState(root) {
+  const state = readCommitMessageState(root);
+  const target = resolveGitPath(root, 'repo-guard-commit-message.json');
+  if (state === null && !existsSync(target)) return null;
+  if (state?.version !== STATE_VERSION) {
+    throw configurationError(
+      'commit-message/unsupported-state-version',
+      `提交信息临时状态仅支持 version: ${STATE_VERSION}；旧版、未知或无法解析的状态已保留，请人工确认后重新提交。`,
+      {
+        details: { location: { path: target } },
+        expected: '只使用本版本生成的提交信息状态，不改写或清理无法识别的状态文件。',
+        remediation: {
+          goal: '保留原始提交内容并重新建立当前格式的临时状态。',
+          steps: ['确认没有仍在运行的 Git 提交，再人工核对并处理遗留状态文件。', '重新运行 git commit，由当前 Hook 创建状态。'],
+          constraints: ['不要改写版本号绕过校验或删除仍被使用的状态文件。'],
+          verification: ['本轮 Hook 不再报告 commit-message/unsupported-state-version。'],
+        },
+      },
+    );
+  }
+  return state;
+}
 
 function resolveMessagePath(root, messageFile) {
   return path.isAbsolute(messageFile) ? messageFile : path.join(root, messageFile);
@@ -35,7 +61,7 @@ function buildState(root, config, base, { source = '', sourceCommit = '' } = {})
   );
 
   return {
-    version: 2,
+    version: STATE_VERSION,
     base,
     source,
     sourceCommit,
@@ -105,6 +131,7 @@ function writeMessage(root, messageFile, state, marked) {
 }
 
 export function prepareCommitMessage(root, config, messageFile, source = '', sourceCommit = '') {
+  readCurrentCommitMessageState(root);
   const base = resolveBase(root, source, sourceCommit);
   const state = buildState(root, config, base, { source, sourceCommit });
   saveCommitMessageState(root, state);
@@ -112,20 +139,20 @@ export function prepareCommitMessage(root, config, messageFile, source = '', sou
 }
 
 export function readPreparedCommitMessage(root, messageFile) {
-  const state = readCommitMessageState(root);
+  const state = readCurrentCommitMessageState(root);
   const target = resolveMessagePath(root, messageFile);
   return Object.freeze({
     message: removeAutoBlock(readFileSync(target, 'utf8')),
-    source: state?.version === 2 ? state.source : '',
-    sourceCommit: state?.version === 2 ? state.sourceCommit : '',
+    source: state?.source ?? '',
+    sourceCommit: state?.sourceCommit ?? '',
   });
 }
 
 export function finalizeCommitMessage(root, config, messageFile) {
-  let state = readCommitMessageState(root);
+  let state = readCurrentCommitMessageState(root);
   const currentTree = runGit(['write-tree'], { cwd: root }).stdout.trim();
 
-  if (!state || state.version !== 2 || state.indexTree !== currentTree) {
+  if (!state || state.indexTree !== currentTree) {
     const base = state?.base || gitValue(['rev-parse', '--verify', 'HEAD'], EMPTY_TREE, root);
     state = buildState(root, config, base, {
       source: state?.source ?? '',
@@ -138,5 +165,6 @@ export function finalizeCommitMessage(root, config, messageFile) {
 }
 
 export function cleanupCommitMessage(root) {
+  readCurrentCommitMessageState(root);
   clearCommitMessageState(root);
 }

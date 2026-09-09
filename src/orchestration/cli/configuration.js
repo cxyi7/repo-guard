@@ -1,26 +1,11 @@
 import path from 'node:path';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
-import {
-  migrateProjectConfig,
-  setFeaturesEnabled,
-} from '../setup/config-management.js';
+import { setFeaturesEnabled } from '../setup/config-management.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { syncAgentPolicies } from '../../policies/agent-policies.js';
 import { syncDeliverySkills } from '../setup/delivery-skills.js';
-
-export function runMigrate(cwd = process.cwd(), options = {}) {
-  const root = findRepositoryRoot(cwd);
-  const result = migrateProjectConfig(root, options);
-  const agentPolicy = syncAgentPolicies(root, result.config);
-  const deliverySkills = syncDeliverySkills(root, result.config.deliveryContract.enabled);
-  writeConsoleMessage(`repo-guard 配置： ${path.join(root, CONFIG_FILE)}`);
-  writeConsoleMessage(`- 迁移：${result.changed ? '已更新' : '已是最新状态'}`);
-  writeConsoleMessage(`- 托管规范文件 AGENTS.md：${agentPolicy.changed ? '已同步' : '已是最新状态'}`);
-  writeConsoleMessage(`- 交付流程 Skills：${deliverySkills.changed ? '已同步' : '已是最新状态'}`);
-  return 0;
-}
 
 function runFeatureToggle(requestedFeatures, enabled, cwd, options) {
   const root = findRepositoryRoot(cwd);
@@ -30,7 +15,7 @@ function runFeatureToggle(requestedFeatures, enabled, cwd, options) {
   const policies = workspace.projects.map((application) => syncAgentPolicies(application.root, application.config));
   if (!workspace.projects.some((application) => application.root === root)) policies.push(syncAgentPolicies(root, config));
   const agentPolicy = { changed: policies.some((policy) => policy.changed) };
-  const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
+  const deliverySkills = syncDeliverySkills(root, config.repository.deliveryContract.enabled);
   writeConsoleMessage(
     `repo-guard 托管规范文件 AGENTS.md：${agentPolicy.changed ? '已同步' : '已是最新状态'}`,
   );
@@ -39,9 +24,6 @@ function runFeatureToggle(requestedFeatures, enabled, cwd, options) {
   );
   const state = enabled ? '已启用' : '已禁用';
   writeConsoleMessage(`repo-guard 功能： ${path.join(root, CONFIG_FILE)}`);
-  if (result.migrated) {
-    writeConsoleMessage('- 配置：已迁移');
-  }
   for (const feature of result.changed) {
     writeConsoleMessage(`- ${feature}: ${state}`);
   }

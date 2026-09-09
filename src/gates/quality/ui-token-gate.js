@@ -75,9 +75,9 @@ function contractChanged(config, manifest, changes) {
 }
 
 function inspectSetup({ root, config }) {
-  if (!config.uiTokens.enabled) return readyGateSetup('UI Token 门禁已禁用');
-  loadUiTokenManifest(root, config.uiTokens);
-  if (config.uiTokens.adapters.sass.enabled) {
+  if (!config.checks.uiTokens.enabled) return readyGateSetup('UI Token 门禁已禁用');
+  loadUiTokenManifest(root, config.checks.uiTokens);
+  if (config.checks.uiTokens.adapters.sass.enabled) {
     const stylelint = resolveProjectStylelintMetadata(root);
     if (!findProjectStylelintConfig(root)) {
       throw configurationError(
@@ -92,7 +92,7 @@ function inspectSetup({ root, config }) {
 
 export const uiTokenGate = definePlatformGate({
   id: UI_TOKEN_GATE_ID,
-  configKey: 'uiTokens',
+  configKey: 'checks.uiTokens',
   featureName: 'uiTokens',
   featureOrder: 39,
   doctorOrder: 147,
@@ -104,10 +104,10 @@ export const uiTokenGate = definePlatformGate({
   rules: UI_TOKEN_RULES,
   inspectSetup,
   plan({ root, config, files, changes }) {
-    if (!config.uiTokens.enabled) return Object.freeze({ enabled: false, files: [] });
-    const manifest = loadUiTokenManifest(root, config.uiTokens);
+    if (!config.checks.uiTokens.enabled) return Object.freeze({ enabled: false, files: [] });
+    const manifest = loadUiTokenManifest(root, config.checks.uiTokens);
     const projectFiles = contractChanged(
-      config.uiTokens,
+      config.checks.uiTokens,
       manifest,
       changes,
     ) ? collectProjectFiles(root) : files;
@@ -115,25 +115,25 @@ export const uiTokenGate = definePlatformGate({
       enabled: true,
       manifest,
       deletedContractPaths: Object.freeze(deletedContractPaths(
-        config.uiTokens,
+        config.checks.uiTokens,
         manifest,
         changes,
       )),
-      files: Object.freeze(selectedFiles(root, projectFiles, config.uiTokens)),
+      files: Object.freeze(selectedFiles(root, projectFiles, config.checks.uiTokens)),
     });
   },
   async run({ root, config, plan }) {
     if (!plan.enabled) return skippedResult(UI_TOKEN_GATE_ID, 'UI Token 门禁已禁用');
     const sassFiles = plan.files
-      .filter(({ relative }) => config.uiTokens.adapters.sass.enabled && SASS_FILE.test(relative))
+      .filter(({ relative }) => config.checks.uiTokens.adapters.sass.enabled && SASS_FILE.test(relative))
       .map(({ absolute }) => absolute);
     const unoFiles = plan.files.filter(({ relative }) => (
-      config.uiTokens.adapters.unocss.enabled && UNOCSS_FILE.test(relative)
+      config.checks.uiTokens.adapters.unocss.enabled && UNOCSS_FILE.test(relative)
     ));
     const project = sassFiles.length > 0 ? await loadProjectStylelint(root) : null;
     const manifestSourcePaths = new Set(plan.manifest.sources.map(({ path: source }) => source));
-    const unoConfigFiles = config.uiTokens.adapters.unocss.enabled
-      ? config.uiTokens.adapters.unocss.configFiles.filter((file) => manifestSourcePaths.has(file))
+    const unoConfigFiles = config.checks.uiTokens.adapters.unocss.enabled
+      ? config.checks.uiTokens.adapters.unocss.configFiles.filter((file) => manifestSourcePaths.has(file))
       : [];
     const [sassFacts, unocssFacts, unocssConfigurationFacts] = await Promise.all([
       project
@@ -142,12 +142,12 @@ export const uiTokenGate = definePlatformGate({
       collectUnoCssFacts({
         root,
         files: unoFiles,
-        config: config.uiTokens.adapters.unocss,
+        config: config.checks.uiTokens.adapters.unocss,
       }),
       collectUnoCssConfigurationFacts({ root, files: unoConfigFiles }),
     ]);
     const result = inspectUiTokens({
-      config: { ...config.uiTokens, exceptions: config.exceptions },
+      config: { ...config.checks.uiTokens, exceptions: config.repository.exceptions },
       manifest: plan.manifest,
       deletedContractPaths: plan.deletedContractPaths,
       sassFacts,

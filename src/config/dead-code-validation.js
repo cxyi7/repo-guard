@@ -12,7 +12,7 @@ const MODES = Object.freeze(['strict', 'noRegression']);
 
 export function validateDeadCodeConfiguration(value, configPath) {
   const candidate = value.deadCode ?? {};
-  const label = `${configPath} deadCode`;
+  const label = `${configPath} checks.deadCode`;
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
     throw configValidationError(`${label} 必须是对象`);
   }

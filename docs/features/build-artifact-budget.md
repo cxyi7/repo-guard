@@ -8,11 +8,11 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 产物预算是现有 `build` 门禁的可选后置阶段。一个业务项目只能选择一种平台：PC 项目配置 `pc`，小程序项目配置 `miniProgram`，不能同时存在。未启用 `artifactBudget` 时，原有构建行为不变。
 
-迁移旧配置或通过命令启停功能时，已启用的 `baseline` 模式会为 `baselineFile` 补充根配置 `repository.rules` 保护。多应用使用带应用目录的仓库相对路径；已有同路径规则保留原级别，避免降低对基线的团队约束。手动编辑配置时也应一并维护该保护规则。
+通过命令启停功能时，已启用的 `baseline` 模式会为 `baselineFile` 补充根配置 `repository.rules` 保护。多应用使用带应用目录的仓库相对路径；已有同路径规则保留原级别，避免降低对基线的团队约束。手动编辑配置时也应一并维护该保护规则。
 
 PC/Vite 项目示例：
 
@@ -180,7 +180,7 @@ npx repo-guard build-artifact-baseline init
 git add .repo-guard/build-artifact-baseline.json
 ```
 
-基线必须被 Git 跟踪并与当前平台、产物目录和 PC 预算配置指纹一致。新增问题或指标增长仍会阻断；债务下降后执行 `npx repo-guard build-artifact-baseline prune`，命令只能降低数值或删除已解决项，拒绝新增和扩大允许值。`action: "report"` 可用于 PC 试运行并以 warning 报告，但不能用于小程序平台硬限制。
+基线只生成并接受 `version: 2`，必须被 Git 跟踪并与当前平台、产物目录和 PC 预算配置指纹一致。版本 1、缺少版本或其他版本在检查与裁剪时都会被拒绝，不会自动转换；已有旧基线需重新评审产物债务并按当前格式登记。新增问题或指标增长仍会阻断；债务下降后执行 `npx repo-guard build-artifact-baseline prune`，命令只能降低数值或删除已解决项，拒绝新增和扩大允许值。`action: "report"` 可用于 PC 试运行并以 warning 报告，但不能用于小程序平台硬限制。
 
 ## 执行与复核
 

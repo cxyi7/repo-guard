@@ -13,47 +13,60 @@ test('applies ESLint defaults when configuration is omitted', () => {
 });
 
 test('normalizes ESLint staged quality settings', () => {
-  assert.deepEqual(validateEslintConfiguration({
-    eslint: {
+  assert.deepEqual(
+    validateEslintConfiguration(
+      {
+        eslint: {
+          enabled: false,
+          preset: false,
+          pattern: ' src/**/*.{js,vue} ',
+          fix: false,
+          maxWarnings: 3,
+        },
+      },
+      CONFIG_PATH,
+    ),
+    {
       enabled: false,
       preset: false,
-      pattern: ' src/**/*.{js,vue} ',
+      pattern: 'src/**/*.{js,vue}',
       fix: false,
       maxWarnings: 3,
     },
-  }, CONFIG_PATH), {
-    enabled: false,
-    preset: false,
-    pattern: 'src/**/*.{js,vue}',
-    fix: false,
-    maxWarnings: 3,
-  });
+  );
 });
 
 test('requires an ESLint object with supported properties', () => {
   assert.throws(
     () => validateEslintConfiguration({ eslint: [] }, CONFIG_PATH),
-    /preCommit\.eslint 必须是对象/,
+    /checks\.eslint 必须是对象/,
   );
   assert.throws(
-    () => validateEslintConfiguration({
-      eslint: { command: 'eslint --fix' },
-    }, CONFIG_PATH),
+    () =>
+      validateEslintConfiguration(
+        {
+          eslint: { command: 'eslint --fix' },
+        },
+        CONFIG_PATH,
+      ),
     /包含不支持的属性： command/,
   );
 });
 
 test('requires valid ESLint staged quality settings', () => {
   assert.throws(
-    () => validateEslintConfiguration({ eslint: { enabled: 'yes' } }, CONFIG_PATH),
+    () =>
+      validateEslintConfiguration({ eslint: { enabled: 'yes' } }, CONFIG_PATH),
     /eslint\.enabled 必须是布尔值/,
   );
   assert.throws(
-    () => validateEslintConfiguration({ eslint: { preset: 'yes' } }, CONFIG_PATH),
+    () =>
+      validateEslintConfiguration({ eslint: { preset: 'yes' } }, CONFIG_PATH),
     /eslint\.preset 必须是布尔值/,
   );
   assert.throws(
-    () => validateEslintConfiguration({ eslint: { pattern: '  ' } }, CONFIG_PATH),
+    () =>
+      validateEslintConfiguration({ eslint: { pattern: '  ' } }, CONFIG_PATH),
     /eslint\.pattern 必须是非空字符串/,
   );
   assert.throws(
@@ -61,7 +74,8 @@ test('requires valid ESLint staged quality settings', () => {
     /eslint\.fix 必须是布尔值/,
   );
   assert.throws(
-    () => validateEslintConfiguration({ eslint: { maxWarnings: -1 } }, CONFIG_PATH),
+    () =>
+      validateEslintConfiguration({ eslint: { maxWarnings: -1 } }, CONFIG_PATH),
     /eslint\.maxWarnings 必须是非负整数/,
   );
 });

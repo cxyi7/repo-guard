@@ -8,6 +8,8 @@ import {
   inspectPcBuildArtifacts,
 } from '../../integrations/build-artifacts/project.js';
 
+const BASELINE_VERSION = 2;
+
 const PC_METRIC_LABELS = Object.freeze({
   totalRawBytes: 'PC 产物总体积',
   initialJsRawBytes: '首屏 JavaScript 原始体积',
@@ -241,9 +243,14 @@ function loadBaseline(root, config) {
   } catch (error) {
     throw configurationError('build-artifact/invalid-baseline-json', `构建产物历史基线不是有效 JSON：${config.baselineFile}`, { cause: error });
   }
+  if (baseline?.version !== BASELINE_VERSION) {
+    throw configurationError(
+      'build-artifact/unsupported-baseline-version',
+      `构建产物基线仅支持 version: 2，请按当前格式重新评审并登记基线：${config.baselineFile}`,
+    );
+  }
   if (
-    baseline?.version !== 1
-    || baseline.platform !== config.platform
+    baseline.platform !== config.platform
     || baseline.configFingerprint !== configFingerprint(config)
     || !baseline.allowances
     || typeof baseline.allowances !== 'object'
@@ -298,7 +305,7 @@ export function evaluateBuildArtifactBudget(root, config) {
 
 export function buildArtifactBaselineDocument(config, violations) {
   return Object.freeze({
-    version: 1,
+    version: BASELINE_VERSION,
     platform: config.platform,
     configFingerprint: configFingerprint(config),
     allowances: Object.freeze(Object.fromEntries(

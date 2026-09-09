@@ -43,12 +43,14 @@ Doctor 先加载根配置及所有应用配置，验证应用身份、路径和�
 
 `--fix` 同步仓库和所选应用的受管 `AGENTS.md`、交付流程 Skills、仓库根 Hook、换行属性、本地通知文件与忽略项，以及辅助 npm 脚本。受保护构建包装脚本写入对应应用；已有其他用途的脚本或 Hook 会提示冲突，不直接替换。
 
+修复先只读检查已有 Skill 清单、相关 `AGENTS.md` 标记和全部目标 Hook；旧格式或 Hook 冲突会在任何修复写入前停止，保留配置、规范、Hook 及原资料。缺失的文件和当前格式但内容过期的规范仍可正常同步，不要求人工提前生成最新内容。
+
 以下操作需要使用各自的入口，不由 Doctor 自动完成：
 
 | 情况 | 处理方式 |
 |---|---|
 | 首次接入，没有配置 | 使用带有身份参数的 `init`，例如 `npx repo-guard init --project api --role backend --stack node --preset node-typescript` |
-| 旧版配置 | 按[配置迁移](configuration-migration.md)显式迁移并保留备份；`--fix` 不推断身份或改写 v1 配置 |
+| 非 v2 配置 | 直接拒绝并保留原文件；按[配置管理与规则启停](configuration-management.md)重新建立 v2 配置，`--fix` 不转换旧结构或推断身份 |
 | 工具、插件或项目配置缺失 | 在应用中准备兼容的依赖、配置和 npm 脚本，再次运行 Doctor |
 | CI 或发布流水线缺失 | 质量 CI 使用 `install-ci`；独立运维使用 `ops plan`、`ops install` |
 | 密钥或业务代码需要修复 | 在本机配置真实凭据，或修改项目代码后执行对应检查 |

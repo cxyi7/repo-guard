@@ -92,7 +92,7 @@ function createExternalReport(gateId, reports, configuration, metrics) {
   const findings = thresholdFindings(configuration, metrics);
   const passed = findings.length === 0;
   return Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: 2,
     gateId,
     status: passed ? 'passed' : 'violation',
     summary: passed

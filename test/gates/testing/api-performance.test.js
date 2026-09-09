@@ -1,4 +1,5 @@
 import { stringifyProjectFixture } from '../../helpers/project-config.js';
+import { assertExternalReportSchema } from '../../helpers/external-report.js';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -29,8 +30,40 @@ function git(root, args) {
 
 function projectConfig(environments = ['manual']) {
   return {
-    version: 1,
-    notification: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    eslint: {
+      enabled: false
+    },
+    prettier: {
+      enabled: false
+    },
+    maxFileLines: {
+      enabled: false
+    }
+  },
+  repository: {
+    dependencyPolicy: {
+      enabled: false
+    },
+    rules: [{
+      pattern: 'src/**',
+      category: '源码',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  },
+  ci: {
     externalGates: [{
       id: 'project.api-performance',
       enabled: true,
@@ -38,18 +71,12 @@ function projectConfig(environments = ['manual']) {
       script: 'test:api-performance:runner',
       timeoutMs: 30000,
       report: {
-        format: 'repo-guard-json-v1',
-        path: 'reports/api-performance/axios-gate.json',
-      },
-    }],
-    dependencyPolicy: { enabled: false },
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      maxFileLines: { enabled: false },
-    },
-    rules: [{ pattern: 'src/**', category: '源码', level: 'audit' }],
-  };
+        format: 'repo-guard-json-v2',
+        path: 'reports/api-performance/axios-gate.json'
+      }
+    }]
+  }
+};
 }
 
 function performanceConfig({
@@ -159,6 +186,7 @@ test('生成通过状态的外部门禁 JSON 和中文 HTML 报告', async (cont
   });
 
   assert.equal(report.status, 'passed');
+  assertExternalReportSchema(report);
   assert.equal(report.metrics.scenarioCount, 1);
   assert.equal(report.metrics.totalSamples, 10);
   assert.equal(report.artifacts[0].path, 'reports/api-performance/axios-report.html');

@@ -111,7 +111,7 @@ function writeReport(root, issues) {
 function gateContext(root, deadCode, extra = {}) {
   return {
     root,
-    config: { deadCode },
+    config: { version: 2, checks: { deadCode } },
     changes: { entries: [] },
     logger: { info() {} },
     ...extra,
@@ -160,6 +160,34 @@ test('配置提示导致门禁失败，不能生成可信的无问题结论', as
     () => runDeadCodeGate(gateContext(root, config())),
     /配置提示/,
   );
+});
+
+test('无效代码基线仅生成和接受 schemaVersion 2，拒绝旧格式', () => {
+  const baseline = createDeadCodeBaseline([issue()], DEFAULT_DEAD_CODE_CONFIG.issueTypes);
+  assert.equal(baseline.schemaVersion, 2);
+  assert.deepEqual(parseDeadCodeBaseline(baseline, baseline.issueTypes), baseline);
+  for (const schemaVersion of [1, '2', 3, null, undefined]) {
+    assert.throws(
+      () => parseDeadCodeBaseline({ ...baseline, schemaVersion }, baseline.issueTypes),
+      /schemaVersion.*2/,
+    );
+  }
+});
+
+test('无效代码旧基线无法初始化覆盖或裁剪转换，原文件保持不变', async (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const deadCode = config({ mode: 'noRegression' });
+  const file = path.join(root, deadCode.baselineFile);
+  mkdirSync(path.dirname(file), { recursive: true });
+  const original = JSON.stringify({
+    ...createDeadCodeBaseline([issue()], deadCode.issueTypes), schemaVersion: 1,
+  });
+  writeFileSync(file, original);
+  git(root, ['add', deadCode.baselineFile]);
+  await assert.rejects(() => initializeDeadCodeBaseline(root, deadCode), /拒绝覆盖/);
+  await assert.rejects(() => pruneDeadCodeBaseline(root, deadCode), /schemaVersion.*2/);
+  assert.equal(readFileSync(file, 'utf8'), original);
 });
 
 test('基线指纹识别新增、已解决问题，并支持 Git 重命名比较', () => {
@@ -226,12 +254,30 @@ test('基线初始化拒绝覆盖，裁剪只允许删除已解决债务', async
   const deadCode = config({ mode: 'noRegression' });
   writeReport(root, [issue()]);
   writeFileSync(path.join(root, 'repo-guard.config.json'), `${stringifyProjectFixture({
-    version: 1,
-    notification: { enabled: false },
-    deadCode,
-    rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    exclusions: [],
-  }, null, 2)}\n`);
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    deadCode
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }],
+    exclusions: []
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`);
 
   const initialized = spawnSync(process.execPath, [
     CLI_PATH,

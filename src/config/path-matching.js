@@ -38,11 +38,11 @@ export function globToRegExp(pattern) {
 
 export function matchRule(filePath, config) {
   const normalized = normalizeGitPath(filePath);
-  if (config.exclusions.some(({ matcher }) => matcher.test(normalized))) {
+  if (config.repository.exclusions.some(({ matcher }) => matcher.test(normalized))) {
     return null;
   }
 
-  const rule = config.rules.find(({ matcher }) => matcher.test(normalized));
+  const rule = config.repository.rules.find(({ matcher }) => matcher.test(normalized));
   if (!rule) {
     return null;
   }

@@ -20,6 +20,16 @@ function candidate(fingerprint, text = 'English error') {
   });
 }
 
+test('中文文案基线只接受当前格式，拒绝旧格式且不改变豁免条目', () => {
+  const baseline = createLanguageDebtBaseline([candidate('existing')]);
+  assert.equal(baseline.schemaVersion, 2);
+  const previous = Object.freeze({ ...baseline, schemaVersion: 1 });
+  assert.throws(() => compareLanguageDebt([], previous), /仅支持 schemaVersion: 2/);
+  assert.throws(() => pruneLanguageDebtBaseline([], previous), /仅支持 schemaVersion: 2/);
+  assert.deepEqual(previous.entries, baseline.entries);
+  assert.equal(previous.debtCount, baseline.debtCount);
+});
+
 test('finds English and mixed-language primary output while allowing machine identifiers', (context) => {
   const root = mkdtempSync(path.join(tmpdir(), 'repo-guard-language-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));

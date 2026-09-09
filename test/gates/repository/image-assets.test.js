@@ -44,11 +44,11 @@ function dateText(offsetDays) {
 
 function configFixture() {
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.include = ['src/assets/**/*.{png,jpg,jpeg,webp,svg}'];
-  config.imageAssets.exclude = [];
-  config.imageAssets.compression.enabled = false;
-  config.imageAssets.duplicates.pixel = 'off';
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.include = ['src/assets/**/*.{png,jpg,jpeg,webp,svg}'];
+  config.checks.imageAssets.exclude = [];
+  config.checks.imageAssets.compression.enabled = false;
+  config.checks.imageAssets.duplicates.pixel = 'off';
   return validateConfig(config);
 }
 
@@ -74,7 +74,7 @@ function gitFixture(context) {
 }
 
 test('识别图片真实格式并接受统一命名和倍率后缀', async () => {
-  const config = configFixture().imageAssets;
+  const config = configFixture().checks.imageAssets;
   config.naming.convention = 'kebab-case';
   const valid = ['src/assets/user-avatar.png', 'src/assets/user-avatar@2x.png'];
   assert.deepEqual(inspectImageAssetNames(valid, config), []);
@@ -171,7 +171,7 @@ test('增量重复资源优先保留存量文件，并且同批变更只保留�
 });
 
 test('新增图片会与存量路径比较大小写碰撞，且通用规则仍检查图片父目录', () => {
-  const imageConfig = configFixture().imageAssets;
+  const imageConfig = configFixture().checks.imageAssets;
   const collisions = inspectImageAssetNames(
     ['src/assets/logo.png', 'src/assets/Logo.png'],
     imageConfig,
@@ -182,7 +182,7 @@ test('新增图片会与存量路径比较大小写碰撞，且通用规则仍�
     1,
   );
 
-  const pathConfig = createStarterConfig().preCommit.pathNaming;
+  const pathConfig = createStarterConfig().checks.pathNaming;
   pathConfig.enabled = true;
   pathConfig.include = ['src/**'];
   pathConfig.exclude = [];
@@ -197,13 +197,13 @@ test('新增图片会与存量路径比较大小写碰撞，且通用规则仍�
 
 test('拒绝图片命名与全项目路径命名混用两套规范', () => {
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.naming.convention = 'kebab-case';
-  config.preCommit.pathNaming.enabled = true;
-  config.preCommit.pathNaming.convention = 'camelCase';
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.naming.convention = 'kebab-case';
+  config.checks.pathNaming.enabled = true;
+  config.checks.pathNaming.convention = 'camelCase';
   assert.throws(
     () => validateConfig(config),
-    /imageAssets\.naming\.convention 必须与 preCommit\.pathNaming\.convention 保持一致/,
+    /imageAssets\.naming\.convention 必须与 checks\.pathNaming\.convention 保持一致/,
   );
 });
 
@@ -266,8 +266,8 @@ test('压缩父开关关闭时不执行 WebP 转换分析', async (context) => {
   writeFileSync(path.join(root, 'src', 'assets', 'logo.png'), await pngBuffer());
   runGit(['add', '.'], { cwd: root });
   const config = configFixture();
-  config.imageAssets.compression.enabled = false;
-  config.imageAssets.compression.conversion.enabled = true;
+  config.checks.imageAssets.compression.enabled = false;
+  config.checks.imageAssets.compression.conversion.enabled = true;
   const changes = createChangeSet({
     source: 'pre-commit',
     changes: [{ status: 'A', oldPath: null, path: 'src/assets/logo.png' }],
@@ -327,11 +327,11 @@ test('精确重复规则接受同一路径和位置的限时结构化例外', as
   writeFileSync(path.join(root, 'src', 'assets', 'logoCopy.png'), buffer);
   runGit(['add', '.'], { cwd: root });
   const rawConfig = createStarterConfig();
-  rawConfig.imageAssets.enabled = true;
-  rawConfig.imageAssets.include = ['src/assets/**/*.png'];
-  rawConfig.imageAssets.exclude = [];
-  rawConfig.imageAssets.compression.enabled = false;
-  rawConfig.exceptions.entries = [{
+  rawConfig.checks.imageAssets.enabled = true;
+  rawConfig.checks.imageAssets.include = ['src/assets/**/*.png'];
+  rawConfig.checks.imageAssets.exclude = [];
+  rawConfig.checks.imageAssets.compression.enabled = false;
+  rawConfig.repository.exceptions.entries = [{
     id: 'legacy-image-copy',
     rule: 'assets/exact-duplicate',
     path: 'src/assets/logoCopy.png',
@@ -392,13 +392,13 @@ test('显式命令生成 WebP 且保留原图和引用', async (context) => {
   const imagePath = path.join(root, 'src', 'assets', 'banner.png');
   writeFileSync(imagePath, await pngBuffer());
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.include = ['src/assets/**/*.png'];
-  config.imageAssets.exclude = [];
-  config.imageAssets.compression.conversion.enabled = true;
-  config.imageAssets.compression.conversion.minInputBytes = 0;
-  config.imageAssets.compression.conversion.minSavingsBytes = 1;
-  config.imageAssets.compression.conversion.minSavingsPercent = 1;
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.include = ['src/assets/**/*.png'];
+  config.checks.imageAssets.exclude = [];
+  config.checks.imageAssets.compression.conversion.enabled = true;
+  config.checks.imageAssets.compression.conversion.minInputBytes = 0;
+  config.checks.imageAssets.compression.conversion.minSavingsBytes = 1;
+  config.checks.imageAssets.compression.conversion.minSavingsPercent = 1;
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(config, null, 2)}\n`,
@@ -440,12 +440,12 @@ test('原格式安全替换压缩图片并保留文件权限', async (context) =
   const imagePath = path.join(root, 'src', 'assets', 'logo.png');
   writeFileSync(imagePath, await pngBuffer());
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.include = ['src/assets/**/*.png'];
-  config.imageAssets.exclude = [];
-  config.imageAssets.compression.minInputBytes = 0;
-  config.imageAssets.compression.minSavingsBytes = 1;
-  config.imageAssets.compression.minSavingsPercent = 1;
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.include = ['src/assets/**/*.png'];
+  config.checks.imageAssets.exclude = [];
+  config.checks.imageAssets.compression.minInputBytes = 0;
+  config.checks.imageAssets.compression.minSavingsBytes = 1;
+  config.checks.imageAssets.compression.minSavingsPercent = 1;
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(config, null, 2)}\n`,
@@ -480,9 +480,9 @@ test('显式优化拒绝经过任意父级符号链接的图片路径', async (c
   writeFileSync(path.join(realDirectory, 'banner.png'), await pngBuffer());
   symlinkSync(realDirectory, path.join(root, 'src', 'assets', 'linked'), 'junction');
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.include = ['src/assets/**/*.png'];
-  config.imageAssets.exclude = [];
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.include = ['src/assets/**/*.png'];
+  config.checks.imageAssets.exclude = [];
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(config, null, 2)}\n`,
@@ -503,10 +503,10 @@ test('有损 WebP 写入要求配置与命令行双重授权', async (context) =
   const imagePath = path.join(root, 'src', 'assets', 'photo.jpg');
   writeFileSync(imagePath, await sharp(await pngBuffer()).jpeg().toBuffer());
   const config = createStarterConfig();
-  config.imageAssets.enabled = true;
-  config.imageAssets.include = ['src/assets/**/*.jpg'];
-  config.imageAssets.exclude = [];
-  config.imageAssets.compression.conversion.enabled = true;
+  config.checks.imageAssets.enabled = true;
+  config.checks.imageAssets.include = ['src/assets/**/*.jpg'];
+  config.checks.imageAssets.exclude = [];
+  config.checks.imageAssets.compression.conversion.enabled = true;
   const configPath = path.join(root, 'repo-guard.config.json');
   writeFileSync(configPath, `${stringifyProjectFixture(config, null, 2)}\n`, 'utf8');
 
@@ -521,7 +521,7 @@ test('有损 WebP 写入要求配置与命令行双重授权', async (context) =
     (error) => error.code === 'image-optimize/lossy-not-confirmed',
   );
 
-  config.imageAssets.compression.raster.allowLossy = true;
+  config.checks.imageAssets.compression.raster.allowLossy = true;
   writeFileSync(configPath, `${stringifyProjectFixture(config, null, 2)}\n`, 'utf8');
   await assert.rejects(
     runImageOptimize({

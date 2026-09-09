@@ -63,17 +63,17 @@ function executionConfig(config, {
 }) {
   return {
     ...config,
-    preCommit: {
-      ...config.preCommit,
-      eslint: { ...config.preCommit.eslint, enabled: eslintFiles.length > 0 },
-      prettier: { ...config.preCommit.prettier, enabled: prettierFiles.length > 0 },
-      stylelint: { ...config.preCommit.stylelint, enabled: stylelintFiles.length > 0 },
+    checks: {
+      ...config.checks,
+      eslint: { ...config.checks.eslint, enabled: eslintFiles.length > 0 },
+      prettier: { ...config.checks.prettier, enabled: prettierFiles.length > 0 },
+      stylelint: { ...config.checks.stylelint, enabled: stylelintFiles.length > 0 },
       maxFileLines: {
-        ...config.preCommit.maxFileLines,
+        ...config.checks.maxFileLines,
         enabled: maxFileLineFiles.length > 0,
       },
       filePlacement: {
-        ...config.preCommit.filePlacement,
+        ...config.checks.filePlacement,
         enabled: filePlacementConfig.enabled,
       },
     },
@@ -91,7 +91,7 @@ function selectQualityFiles(normalizedFiles, config) {
     pathNaming: pathNamingConfig,
     prettier: prettierConfig,
     stylelint: stylelintConfig,
-  } = config.preCommit;
+  } = config.checks;
   const asyncResourceFiles = selectAsyncResourceCleanupFiles(
     normalizedFiles,
     asyncResourceCleanupConfig,
@@ -116,7 +116,7 @@ function selectQualityFiles(normalizedFiles, config) {
     : [];
   const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
   const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
-  const uiTokenConfig = config.uiTokens;
+  const uiTokenConfig = config.checks.uiTokens;
   const uiTokenFiles = selectUiTokenInputFiles(normalizedFiles, uiTokenConfig);
   return Object.freeze({
     asyncResourceFiles,

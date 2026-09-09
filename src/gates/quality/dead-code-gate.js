@@ -98,7 +98,7 @@ function outputDiagnostics(execution, root) {
 
 export async function runDeadCodeGate(context) {
   const { root, config: projectConfig, signal } = context;
-  const config = projectConfig.deadCode;
+  const config = projectConfig.checks.deadCode;
   const setup = validateDeadCodeSetup(root, config);
   context.logger?.info('repo-guard 无效代码：正在运行消费项目的 Knip 全项目分析...');
   const analysis = await executeKnipAnalysis({ root, config, signal });

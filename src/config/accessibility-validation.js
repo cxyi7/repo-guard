@@ -12,18 +12,18 @@ export function validateAccessibilityConfiguration(value, configPath) {
     || typeof accessibilityTestValue !== 'object'
     || Array.isArray(accessibilityTestValue)
   ) {
-    throw configValidationError(`${configPath} accessibilityTest 必须是对象`);
+    throw configValidationError(`${configPath} checks.accessibilityTest 必须是对象`);
   }
   assertKnownProperties(
     accessibilityTestValue,
     new Set(['enabled', 'script', 'timeoutMs', 'testPatterns']),
-    `${configPath} accessibilityTest`,
+    `${configPath} checks.accessibilityTest`,
   );
   if (
     accessibilityTestValue.enabled != null
     && typeof accessibilityTestValue.enabled !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} accessibilityTest.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.accessibilityTest.enabled 必须是布尔值`);
   }
   if (
     accessibilityTestValue.script != null
@@ -32,7 +32,7 @@ export function validateAccessibilityConfiguration(value, configPath) {
       || !/^[A-Za-z0-9:_-]+$/.test(accessibilityTestValue.script.trim())
     )
   ) {
-    throw configValidationError(`${configPath} accessibilityTest.script 必须是 npm 脚本名称`);
+    throw configValidationError(`${configPath} checks.accessibilityTest.script 必须是 npm 脚本名称`);
   }
   if (
     accessibilityTestValue.timeoutMs != null
@@ -41,11 +41,11 @@ export function validateAccessibilityConfiguration(value, configPath) {
       || accessibilityTestValue.timeoutMs <= 0
     )
   ) {
-    throw configValidationError(`${configPath} accessibilityTest.timeoutMs 必须是正整数`);
+    throw configValidationError(`${configPath} checks.accessibilityTest.timeoutMs 必须是正整数`);
   }
   const accessibilityTestPatterns = normalizePatternList(
     accessibilityTestValue.testPatterns ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns,
-    `${configPath} accessibilityTest.testPatterns`,
+    `${configPath} checks.accessibilityTest.testPatterns`,
   );
 
   return {

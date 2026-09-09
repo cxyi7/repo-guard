@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
+import { inspectFeatureRegistry } from '../../src/policies/delivery-contract/feature-registry.js';
 import {
   parseDeliveryContractMarkdown,
   parseMarkdownFrontmatter,
@@ -53,7 +54,8 @@ test('功能登记资产提供空根结构和默认不可冒充确认的节点',
     'feature-node.json',
   ));
 
-  assert.deepEqual(registry, { schemaVersion: 1, features: [] });
+  assert.deepEqual(registry, { schemaVersion: 2, features: [] });
+  assert.deepEqual(inspectFeatureRegistry(registry, 'features.json').issues, []);
   assert.equal(node.status, 'proposed');
   assert.equal(node.confirmedAt, null);
   assert.equal(node.confirmedBy, null);

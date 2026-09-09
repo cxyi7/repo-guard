@@ -14,7 +14,7 @@
 | `gates/security/` | 通用代码安全规则 |
 | `gates/release/` | 交付就绪检查与门禁通知 |
 | `integrations/` | 外部工具调用、结果解析与适配 |
-| `setup/` | CLI 参数、初始化、启停、迁移和 Doctor |
+| `setup/` | CLI 参数、初始化、启停和 Doctor |
 | `provisioning/` | 工具安装、基础配置准备及就绪验证 |
 | `hooks/` | Hook 安装、暂存隔离、并发锁和提交动画 |
 | `ci/` | CI 中的质量执行、检查范围和报告 |
@@ -28,7 +28,9 @@
 
 `integrations/`、`provisioning/`、`e2e/` 是已登记的职责分组，按实际测试需要创建；其中 `provisioning/` 预留给后续工具自动接入功能。尚未创建测试的分组不会在完整运行中伪报通过，显式选择空分组会报错。
 
-新旧配置契约测试统一归属 `config/`，多应用调度归属 `ci/`，运维、Doctor 和 Hook 测试分别归属 `operations/`、`setup/` 和 `hooks/`；不再按版本号另建测试目录。
+配置契约测试统一归属 `config/`，多应用调度归属 `ci/`，运维、Doctor 和 Hook 测试分别归属 `operations/`、`setup/` 和 `hooks/`；不按版本号另建测试目录。
+
+所有常规项目夹具直接使用 `version: 2` 的 `project / checks / repository / reporting / ci` 契约。`helpers/project-config.js` 仅负责补齐 v2 默认值、剥离编译后的路径匹配器并序列化；读回断言直接检查真实 v2 文档。repo-guard 自有的登记表、Skill 清单、UI Token、基线和报告均使用当前 v2，Hook 只接受当前 v5，AGENTS 只接受当前职责区块。旧输入仅作为拒绝且原文件不变的反例，不测试旧结构转换；同时覆盖 CLI 在任何配置或托管文件写入前完成格式预检。第三方 Stryker/k6 原生报告、Git 输出及摘要算法仍按其自身规范构造，不能只修改数字伪造协议。
 
 ## 执行方式
 

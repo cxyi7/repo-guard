@@ -43,9 +43,9 @@ function normalizeRequestFunctions(value, label) {
   return functions;
 }
 
-export function validateAsyncResourceCleanupConfiguration(preCommitValue, configPath) {
-  const value = preCommitValue.asyncResourceCleanup ?? {};
-  const label = `${configPath} preCommit.asyncResourceCleanup`;
+export function validateAsyncResourceCleanupConfiguration(checksValue, configPath) {
+  const value = checksValue.asyncResourceCleanup ?? {};
+  const label = `${configPath} checks.asyncResourceCleanup`;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw configValidationError(`${label} 必须是对象`);
   }

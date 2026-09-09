@@ -225,13 +225,15 @@ test('runs enabled accessibility tests from pre-push', async (context) => {
   const source = "import { axe } from 'vitest-axe';\ntest('a11y', async () => { expect(await axe(document.body)).toHaveNoViolations(); });\n";
   const root = createFixture(source);
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  const projectConfig = createStarterConfig({ accessibilityTestEnabled: true });
-  projectConfig.notification.enabled = false;
-  projectConfig.preCommit.eslint.enabled = false;
-  projectConfig.preCommit.prettier.enabled = false;
-  projectConfig.preCommit.filePlacement.enabled = false;
-  projectConfig.preCommit.maxFileLines.enabled = false;
-  projectConfig.dependencyPolicy.enabled = false;
+  const projectConfig = createStarterConfig({
+  accessibilityTestEnabled: true
+});
+  projectConfig.reporting.notification.enabled = false;
+  projectConfig.checks.eslint.enabled = false;
+  projectConfig.checks.prettier.enabled = false;
+  projectConfig.checks.filePlacement.enabled = false;
+  projectConfig.checks.maxFileLines.enabled = false;
+  projectConfig.repository.dependencyPolicy.enabled = false;
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(projectConfig, null, 2)}\n`,

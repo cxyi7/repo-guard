@@ -24,15 +24,15 @@ function loadConfigAtRevision(root, revision) {
 }
 
 function usesPrePushGate(config) {
-  return config?.accessibilityTest.enabled
-    || config?.commitMessage.enabled
-    || config?.deadCode.enabled
-    || config?.imageAssets.unused.enabled
-    || config?.typeCheck.enabled
-    || config?.unitTest.enabled
-    || config?.architecture.enabled
-    || config?.build.enabled
-    || config?.lighthouse.enabled;
+  return config?.checks.accessibilityTest.enabled
+    || config?.repository.commitMessage.enabled
+    || config?.checks.deadCode.enabled
+    || config?.checks.unusedImageAssets.enabled
+    || config?.checks.typeCheck.enabled
+    || config?.checks.unitTest.enabled
+    || config?.checks.architecture.enabled
+    || config?.checks.build.enabled
+    || config?.checks.lighthouse.enabled;
 }
 
 function assertExactPushSnapshot(root, revision) {

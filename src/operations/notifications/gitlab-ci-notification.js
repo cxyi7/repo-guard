@@ -20,10 +20,10 @@ export async function runGitLabCiNotification({
   write = () => {},
   now = new Date(),
 } = {}) {
-  if (environment.REPO_GUARD_PIPELINE_NOTIFICATION !== 'true') {
+  if (environment.REPO_GUARD_OPERATIONS_NOTIFICATION !== 'true') {
     throw configurationError(
       'gitlab-ci/unmanaged-notification-job',
-      'GitLab CI 内置通知只能由 repo-guard 生成的托管 Job 调用',
+      'GitLab CI 内置通知只能由开启 notifications.enabled 的独立运维托管 Job 调用；旧发布模板不再支持，请按当前独立运维重新接入',
     );
   }
   if (environment.GITLAB_CI !== 'true') {

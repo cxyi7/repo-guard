@@ -57,10 +57,22 @@ function createFixture(source, entries = []) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      exceptions: registry(entries),
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
+    exceptions: registry(entries),
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  }
+}, null, 2)}\n`,
   );
   return root;
 }
@@ -159,10 +171,22 @@ test('exposes a full-project image-alt CLI with unified reporting', (context) =>
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      exceptions: registry([exceptionFor(finding)]),
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
+    exceptions: registry([exceptionFor(finding)]),
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  }
+}, null, 2)}\n`,
   );
   const approved = spawnSync(process.execPath, [CLI_PATH, 'image-alt'], {
     cwd: root,

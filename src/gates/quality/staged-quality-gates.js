@@ -33,18 +33,18 @@ function matchingFiles(root, files, pattern) {
 }
 
 async function inspectEslintSetup({ root, config }) {
-  if (!config.preCommit.eslint.enabled) return readyGateSetup('ESLint 门禁已禁用');
+  if (!config.checks.eslint.enabled) return readyGateSetup('ESLint 门禁已禁用');
   const eslint = resolveProjectEslintMetadata(root);
-  if (config.preCommit.eslint.preset) {
+  if (config.checks.eslint.preset) {
     await resolveRepoGuardEslintPreset(root, eslint.version, config.project);
   }
   return readyGateSetup(`ESLint 门禁（版本 ${eslint.version}）`);
 }
 
 async function inspectPrettierSetup({ root, config }) {
-  if (!config.preCommit.prettier.enabled) return readyGateSetup('Prettier 门禁已禁用');
+  if (!config.checks.prettier.enabled) return readyGateSetup('Prettier 门禁已禁用');
   const prettier = resolveProjectPrettierMetadata(root);
-  if (config.preCommit.prettier.requireConfig && !await resolveProjectPrettierConfigFile(root)) {
+  if (config.checks.prettier.requireConfig && !await resolveProjectPrettierConfigFile(root)) {
     throw configurationError(
       'prettier/missing-project-config',
       'Prettier 门禁要求项目配置文件',
@@ -54,9 +54,9 @@ async function inspectPrettierSetup({ root, config }) {
 }
 
 function inspectStylelintSetup({ root, config }) {
-  if (!config.preCommit.stylelint.enabled) return readyGateSetup('Stylelint 门禁已禁用');
+  if (!config.checks.stylelint.enabled) return readyGateSetup('Stylelint 门禁已禁用');
   const stylelint = resolveProjectStylelintMetadata(root);
-  if (config.preCommit.stylelint.requireConfig && !findProjectStylelintConfig(root)) {
+  if (config.checks.stylelint.requireConfig && !findProjectStylelintConfig(root)) {
     throw configurationError(
       'stylelint/missing-project-config',
       'Stylelint 门禁要求项目配置文件',
@@ -67,7 +67,7 @@ function inspectStylelintSetup({ root, config }) {
 
 export const stylelintGate = definePlatformGate({
   id: 'quality.stylelint',
-  configKey: 'preCommit.stylelint',
+  configKey: 'checks.stylelint',
   featureName: 'stylelint',
   featureOrder: 30,
   doctorOrder: 160,
@@ -80,27 +80,27 @@ export const stylelintGate = definePlatformGate({
   supportsFix: true,
   inspectSetup: inspectStylelintSetup,
   plan: ({ root, config, files, step }) => ({
-    enabled: config.preCommit.stylelint.enabled,
-    files: matchingFiles(root, files, config.preCommit.stylelint.pattern),
-    fix: step?.mutation === 'working-tree-fix' && config.preCommit.stylelint.fix,
+    enabled: config.checks.stylelint.enabled,
+    files: matchingFiles(root, files, config.checks.stylelint.pattern),
+    fix: step?.mutation === 'working-tree-fix' && config.checks.stylelint.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled
     ? runStylelintFiles({
         root,
         files: plan.files,
         fix: plan.fix,
-        maxWarnings: config.preCommit.stylelint.maxWarnings,
-        requireConfig: config.preCommit.stylelint.requireConfig,
-        complexity: config.preCommit.stylelint.complexity,
-        governance: config.preCommit.stylelint.governance,
-        exceptions: config.exceptions,
+        maxWarnings: config.checks.stylelint.maxWarnings,
+        requireConfig: config.checks.stylelint.requireConfig,
+        complexity: config.checks.styleComplexity,
+        governance: config.checks.styleGovernance,
+        exceptions: config.repository.exceptions,
       })
     : skippedResult('quality.stylelint', 'Stylelint 已禁用'),
 });
 
 export const eslintGate = definePlatformGate({
   id: 'quality.eslint',
-  configKey: 'preCommit.eslint',
+  configKey: 'checks.eslint',
   featureName: 'eslint',
   featureOrder: 10,
   doctorOrder: 130,
@@ -113,17 +113,17 @@ export const eslintGate = definePlatformGate({
   supportsFix: true,
   inspectSetup: inspectEslintSetup,
   plan: ({ root, config, files, step }) => ({
-    enabled: config.preCommit.eslint.enabled,
-    files: matchingFiles(root, files, config.preCommit.eslint.pattern),
-    fix: step?.mutation === 'working-tree-fix' && config.preCommit.eslint.fix,
+    enabled: config.checks.eslint.enabled,
+    files: matchingFiles(root, files, config.checks.eslint.pattern),
+    fix: step?.mutation === 'working-tree-fix' && config.checks.eslint.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled
     ? runEslintFiles({
         root,
         files: plan.files,
         fix: plan.fix,
-        maxWarnings: config.preCommit.eslint.maxWarnings,
-        preset: config.preCommit.eslint.preset,
+        maxWarnings: config.checks.eslint.maxWarnings,
+        preset: config.checks.eslint.preset,
         descriptor: config.project,
       })
     : skippedResult('quality.eslint', 'ESLint 已禁用'),
@@ -131,7 +131,7 @@ export const eslintGate = definePlatformGate({
 
 export const prettierGate = definePlatformGate({
   id: 'quality.prettier',
-  configKey: 'preCommit.prettier',
+  configKey: 'checks.prettier',
   featureName: 'prettier',
   featureOrder: 20,
   doctorOrder: 170,
@@ -143,16 +143,16 @@ export const prettierGate = definePlatformGate({
   supportsFix: true,
   inspectSetup: inspectPrettierSetup,
   plan: ({ root, config, files, step }) => ({
-    enabled: config.preCommit.prettier.enabled,
-    files: matchingFiles(root, files, config.preCommit.prettier.pattern),
-    fix: step?.mutation === 'working-tree-fix' && config.preCommit.prettier.fix,
+    enabled: config.checks.prettier.enabled,
+    files: matchingFiles(root, files, config.checks.prettier.pattern),
+    fix: step?.mutation === 'working-tree-fix' && config.checks.prettier.fix,
   }),
   run: ({ root, config, plan }) => plan.enabled
     ? runPrettierFiles({
         root,
         files: plan.files,
         fix: plan.fix,
-        requireConfig: config.preCommit.prettier.requireConfig,
+        requireConfig: config.checks.prettier.requireConfig,
       })
     : skippedResult('quality.prettier', 'Prettier 已禁用'),
 });
@@ -187,7 +187,7 @@ function defineStyleProjectGate({
 
 export const styleComplexityGate = defineStyleProjectGate({
   id: 'quality.style-complexity',
-  configKey: 'preCommit.stylelint.complexity',
+  configKey: 'checks.styleComplexity',
   featureName: 'styleComplexity',
   featureOrder: 60,
   command: 'style-complexity',
@@ -195,14 +195,14 @@ export const styleComplexityGate = defineStyleProjectGate({
   run: ({ root, config, plan }) => runStyleComplexityProject({
     root,
     files: plan.files,
-    config: { ...config.preCommit.stylelint.complexity, enabled: true },
-    exceptions: config.exceptions,
+    config: { ...config.checks.styleComplexity, enabled: true },
+    exceptions: config.repository.exceptions,
   }),
 });
 
 export const styleGovernanceGate = defineStyleProjectGate({
   id: 'quality.style-governance',
-  configKey: 'preCommit.stylelint.governance',
+  configKey: 'checks.styleGovernance',
   featureName: 'styleGovernance',
   featureOrder: 70,
   command: 'style-governance',
@@ -210,7 +210,7 @@ export const styleGovernanceGate = defineStyleProjectGate({
   run: ({ root, config, plan }) => runStyleGovernanceProject({
     root,
     files: plan.files,
-    config: { ...config.preCommit.stylelint.governance, enabled: true },
-    exceptions: config.exceptions,
+    config: { ...config.checks.styleGovernance, enabled: true },
+    exceptions: config.repository.exceptions,
   }),
 });

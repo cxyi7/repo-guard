@@ -12,7 +12,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 合同驱动交付默认关闭。启用后，项目用树形功能登记表记录人工确认的功能归属，并用当前分支唯一的 `schemaVersion: 2` 多文件活动合同约束本地需求快照、资料计划、Git 历史修订、目标分支、Worktree、路径边界、执行清单、并行协调和发布证据：
 
@@ -55,7 +55,9 @@ npx repo-guard delivery-contract
 npx repo-guard delivery-evidence
 ```
 
-启用命令会同步安装五个项目级 Skill 到 `.agents/skills/`：功能登记、合同规划、合同执行、反馈闭环和交付证据。每个 Skill 使用标准 `SKILL.md` 入口，并按实际需要带 `agents/openai.yaml`、`references/` 和 `assets/`；`.repo-guard/managed-skills.json` 保存逐文件指纹。资产模板使用明确的 `<REQUIRED_*>` 和 `pending` 保持默认不可通过，必须换成当前仓库事实并由人工确认，不能把零哈希或虚构时间当成起始值。迁移、初始化和 `doctor --fix` 会安全升级，Doctor 会检查缺失或篡改；禁用时只删除仍与托管指纹一致的文件，拒绝覆盖或删除人工修改。
+启用命令会同步安装五个项目级 Skill 到 `.agents/skills/`：功能登记、合同规划、合同执行、反馈闭环和交付证据。每个 Skill 使用标准 `SKILL.md` 入口，并按实际需要带 `agents/openai.yaml`、`references/` 和 `assets/`；`.repo-guard/managed-skills.json` 使用 `schemaVersion: 2` 保存逐文件指纹。资产模板使用明确的 `<REQUIRED_*>` 和 `pending` 保持默认不可通过，必须换成当前仓库事实并由人工确认，不能把零哈希或虚构时间当成起始值。
+
+初始化和 `doctor --fix` 可以同步当前格式的托管文件，Doctor 会检查缺失或篡改；禁用时只删除仍与托管指纹一致的文件，拒绝覆盖或删除人工修改。已有旧版、未知版本或损坏的清单会被拒绝，不自动转换。配置启停、初始化、修复及 CI 安装会先只读检查相关托管格式，再执行写入；发现旧清单或旧规范时保留配置、规范与 Hook 原文件，由人工保存并确认后按当前格式重新接入。
 
 主合同与合同 id 子目录组成一份逻辑合同，分别保存需求快照、追踪关系、执行清单、正式发现和证据。接入后按以下分工完成规划、开发、验收与反馈；完整目录和字段集中在本页后半部分。
 
@@ -179,7 +181,7 @@ docs/delivery/
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "features": [
     {
       "id": "community-profile",
@@ -220,7 +222,7 @@ docs/delivery/
 
 | 字段 | 用途 | 可填值 | 约束与要求 |
 |---|---|---|---|
-| `schemaVersion` | 功能登记表格式版本 | 只能为 `1` | 与主合同的 schemaVersion 2 区分 |
+| `schemaVersion` | 功能登记表格式版本 | 只能为 `2` | 旧版本直接拒绝，不自动转换 |
 | `features` | 根功能集合 | 功能节点对象数组 | 每个节点必须提供下列固定字段，不接受未知字段 |
 | `id` | 功能的长期唯一身份 | 字母开头，后续可用字母、数字、点、下划线、连字符 | 全树唯一；合同 featureId 引用该值 |
 | `name`、`description` | 面向人的功能名称与业务说明 | 非空字符串 | 必填，不用内部 ID 代替业务介绍 |
@@ -242,7 +244,7 @@ docs/delivery/
 
 ```yaml
 ---
-schemaVersion: 2 # 格式版本，固定为 2；不能与功能登记表的版本 1 混用
+schemaVersion: 2 # 格式版本，固定为 2；功能登记表与合同包均只接受当前版本
 contractId: DC-20260906-001 # 绑定主合同 ID；字母开头，仅含字母、数字、点、下划线、连字符
 contractRevision: 1 # 主合同修订号，正整数；定义变更须在 Git 历史上一版基础上加 1
 featureId: community-library # 功能归属 ID；必须引用功能登记表中的真实节点
@@ -340,7 +342,7 @@ Gate 会从 Git 历史读取上一份合同定义。定义指纹变化时，`con
 
 ```yaml
 ---
-schemaVersion: 2 # 格式版本，固定为 2；不能与功能登记表的版本 1 混用
+schemaVersion: 2 # 格式版本，固定为 2；功能登记表与合同包均只接受当前版本
 documentType: requirements # 组成文件类型，本文件固定为 requirements
 contractId: DC-20260906-001 # 绑定主合同 ID；字母开头，仅含字母、数字、点、下划线、连字符
 revision: 1 # 需求修订号，正整数；与 rev-NNN 目录及 confirmation.revision 一致
@@ -406,7 +408,7 @@ blockingQuestions: [] # 未解决的阻塞问题数组；确认前须解决，�
 
 - [ ] `TEST-001` 列表和权限回归测试通过
   - 执行者：`gate`
-  - 门禁：`release.test`
+  - 门禁：`quality.unit-test`
   - 证据：`pending`
 
 - [ ] `HUMAN-ACCEPT-001` 人工最终验收通过
@@ -516,7 +518,7 @@ deliveryEvidence: # 最终交付证据索引对象；不自动生成或代填验
 
 ```yaml
 ---
-schemaVersion: 2 # 格式版本，固定为 2；不能与功能登记表的版本 1 混用
+schemaVersion: 2 # 格式版本，固定为 2；功能登记表与合同包均只接受当前版本
 runId: RUN-20260906-001 # 批次 ID，RUN-* 稳定标识；引用真实且受 Git 跟踪的批次文件
 generatedAt: "2026-09-06T17:30:00+08:00" # 本批生成时间，带时区 ISO 8601；不能复用过期批次时间
 contractId: DC-20260906-001 # 绑定主合同 ID；字母开头，仅含字母、数字、点、下划线、连字符
@@ -533,10 +535,10 @@ integrationBaseCommit: "<必须与 targetCommit 相同>" # 最终集成基线，
 subjectCommit: "<最终代码提交>" # 被验证和验收的最终代码提交，完整 40 位哈希；验收后改代码会使证据失效
 integrationAnalysis: null # 目标漂移分析对象；仅目标提交等于原始基线时可为 null，字段要求见下文
 gateResults: # 本轮完整门禁结果对象数组；不能只保留通过结论
-  - gateId: release.test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
+  - gateId: quality.unit-test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
     resultDigest: "sha256:<下方完整 GateResult 内容指纹>" # 结果或报告指纹；Gate 按八个稳定字段计算，执行报告按原始字节计算，均为 sha256: 加 64 位小写十六进制
     result: # 固定八字段的 GateResult 对象；不得附加 issues、durationMs 等字段
-      gateId: release.test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
+      gateId: quality.unit-test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
       status: passed # 门禁状态：passed / skipped / violation / configuration-error / execution-error / range-error；取本轮真实值
       summary: 测试通过 # 本轮门禁的中文结论摘要，不能手工将失败改成通过
       findings: [] # 本轮问题数组，无问题填 []；保留原始结构及全部问题
@@ -564,8 +566,8 @@ evidence: # 结构化证据对象数组；每项只能使用其 type 对应的�
     executionId: EXEC-UNIT-001 # execution 类型专用；引用本批 executionLog 中存在的 EXEC-*
   - id: EVD-GATE-001 # 执行日志 ID 用 EXEC-*，证据 ID 用 EVD-*；在对应集合中唯一
     type: gate-result # 证据类型：file / commit / execution / gate-result；四种形状不能混填
-    description: 本轮 release.test 的完整结果。 # 该证据证明什么，非空字符串；关联具体任务、测试或门禁
-    gateId: release.test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
+    description: 本轮 quality.unit-test 的完整结果。 # 该证据证明什么，非空字符串；关联具体任务、测试或门禁
+    gateId: quality.unit-test # 真实门禁 ID；结果内外一致，引用官方或已注册 project.* 门禁
     resultDigest: "sha256:<GateResult 内容指纹>" # 结果或报告指纹；Gate 按八个稳定字段计算，执行报告按原始字节计算，均为 sha256: 加 64 位小写十六进制
 ---
 

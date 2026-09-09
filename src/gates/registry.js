@@ -21,7 +21,7 @@ import { pathNamingGate } from './repository/path-naming-gate.js';
 import { imageAssetsGate } from './repository/image-assets-gate.js';
 import { unusedImageAssetsGate } from './repository/unused-image-assets-gate.js';
 import { repositoryPolicyGates } from './repository/repository-policy-gates.js';
-import { releaseReadinessGates } from './release/release-readiness-gates.js';
+import { deliveryEvidenceGate } from './release/delivery-evidence-gate.js';
 import { defineExternalGate } from './testing/external-gate.js';
 import { accessibilityTestGate, unitTestGate } from './testing/platform-test-gates.js';
 import { mutationTestGate } from './testing/mutation-test-platform-gate.js';
@@ -57,7 +57,7 @@ export const officialGates = Object.freeze([
   unusedImageAssetsGate,
   dynamicCodeGate,
   ...nativePolicyGates,
-  ...releaseReadinessGates,
+  deliveryEvidenceGate,
   ...platformGates,
 ]);
 
@@ -66,6 +66,6 @@ export const gateRegistry = createGateRegistry(officialGates);
 export function createProjectGateRegistry(config) {
   return createGateRegistry([
     ...officialGates,
-    ...config.externalGates.map(defineExternalGate),
+    ...config.ci.externalGates.map(defineExternalGate),
   ]);
 }

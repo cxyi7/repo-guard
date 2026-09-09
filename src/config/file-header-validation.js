@@ -27,9 +27,9 @@ function normalizeExtensions(value, label) {
   return normalized;
 }
 
-export function validateFileHeaderConfiguration(preCommitValue, configPath) {
-  const value = preCommitValue.fileHeader ?? {};
-  const label = `${configPath} preCommit.fileHeader`;
+export function validateFileHeaderConfiguration(checksValue, configPath) {
+  const value = checksValue.fileHeader ?? {};
+  const label = `${configPath} checks.fileHeader`;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw configValidationError(`${label} 必须是对象`);
   }

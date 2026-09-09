@@ -22,6 +22,7 @@ test('installs and removes the complete project-scoped delivery skill bundle', (
 
   const installed = syncDeliverySkills(root, true);
   assert.equal(installed.changed, true);
+  assert.equal(JSON.parse(readFileSync(path.join(root, '.repo-guard', 'managed-skills.json'), 'utf8')).schemaVersion, 2);
   assert.deepEqual(installed.skills, managedDeliverySkillNames);
   assert.deepEqual(inspectDeliverySkills(root, true).issues, []);
   for (const skillName of managedDeliverySkillNames) {
@@ -107,7 +108,7 @@ test('reports and refuses an invalid managed skill manifest in either feature st
   );
 
   writeFileSync(manifestPath, `${JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     feature: 'deliveryContract',
     repoGuardVersion: '1.23.0',
     skills: managedDeliverySkillNames,
@@ -120,4 +121,29 @@ test('reports and refuses an invalid managed skill manifest in either feature st
     () => syncDeliverySkills(root, false),
     (error) => error.code === 'delivery-skills/invalid-manifest',
   );
+});
+
+test('托管 Skill 清单仅接受版本 2，旧清单在同步和禁用时均拒绝且保留原文件', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'delivery-skills-version-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  syncDeliverySkills(root, true);
+  const manifestPath = path.join(root, '.repo-guard', 'managed-skills.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const snapshots = manifest.files.map(({ path: relativePath }) => {
+    const filePath = path.join(root, ...relativePath.split('/'));
+    return { filePath, bytes: readFileSync(filePath) };
+  });
+  for (const schemaVersion of [1, 3]) {
+    const original = `${JSON.stringify({ ...manifest, schemaVersion }, null, 2)}\n`;
+    writeFileSync(manifestPath, original, 'utf8');
+    for (const enabled of [true, false]) {
+      assert.ok(inspectDeliverySkills(root, enabled).issues.length > 0);
+      assert.throws(
+        () => syncDeliverySkills(root, enabled),
+        (error) => error.code === 'delivery-skills/invalid-manifest',
+      );
+      assert.equal(readFileSync(manifestPath, 'utf8'), original);
+      for (const { filePath, bytes } of snapshots) assert.deepEqual(readFileSync(filePath), bytes);
+    }
+  }
 });

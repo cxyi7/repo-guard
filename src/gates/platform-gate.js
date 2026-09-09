@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineGate } from '../core/capability/gate-definition.js';
 
-const CONFIG_VERSION = [1];
+const CONFIG_VERSION = [2];
 
 export function readyGateSetup(summary) {
   return { status: 'ready', summary };

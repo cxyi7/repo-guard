@@ -86,12 +86,34 @@ function createFixture({ buildEnabled = false, enabled = false, vue = true } = {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      build: { enabled: buildEnabled },
-      lighthouse: { enabled },
-      notification: { enabled: false },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    build: {
+      enabled: buildEnabled
+    },
+    lighthouse: {
+      enabled
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`,
   );
   return root;
 }
@@ -221,7 +243,7 @@ test('pre-push rejects uncommitted configuration that could disable committed ga
   const head = commitFixture(root);
   const configPath = path.join(root, 'repo-guard.config.json');
   const config = parseProjectFixture(readFileSync(configPath, 'utf8'));
-  config.lighthouse.enabled = false;
+  config.checks.lighthouse.enabled = false;
   writeFileSync(configPath, `${stringifyProjectFixture(config, null, 2)}\n`);
   const input = `refs/heads/main ${head} refs/heads/main ${'0'.repeat(40)}\n`;
 

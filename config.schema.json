@@ -115,7 +115,7 @@
         },
         "version": {
           "const": 2,
-          "description": "外部配置版本，旧版本需要显式迁移。"
+          "description": "项目配置只支持 version: 2；旧版本直接拒绝，不提供转换。"
         },
         "repository": {
           "type": "object",
@@ -597,7 +597,7 @@
         },
         "ci": {
           "type": "object",
-          "description": "Remote CI gate, report, and optional managed application-delivery settings. Gate execution remains read-only and renders structured console/JSON results; delivery jobs only invoke fixed project-owned npm scripts. GitLab integration is installed as a managed local include without replacing unrelated root pipeline content.",
+          "description": "质量 CI 的检查策略与结构化报告配置；门禁只读检查源码，不生成应用部署或流水线通知作业。应用构建产物、部署和流水线通知通过独立的 repo-guard.ops.json 配置。GitLab 质量模板作为托管 include 安装，保留无关的根流水线内容。",
           "additionalProperties": false,
           "properties": {
             "enabled": {
@@ -612,7 +612,7 @@
                 "release-ready"
               ],
               "default": "policy",
-              "description": "policy integrates with existing lint/test/build jobs; full also runs enabled project quality, test, architecture, and build gates; release-ready proves package release conditions without publishing or deploying."
+              "description": "policy 执行仓库策略检查；full 在此基础上执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 执行通用工程检查、适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
             },
             "reportPath": {
               "type": "string",
@@ -690,7 +690,7 @@
             "externalGates": {
               "type": "array",
               "default": [],
-              "description": "Project-owned read-only gates executed only through exact npm script names. They may run manually or at the fixed end of CI full or release-ready and must emit repo-guard-json-v1 reports under reports/.",
+              "description": "项目自有只读检查，仅通过精确 npm 脚本名执行；可手动运行或追加至 CI full、release-ready 的固定末尾，必须在 reports/ 下生成 schemaVersion 为 2 的 repo-guard-json-v2 报告，不支持旧协议。",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -743,7 +743,7 @@
                     ],
                     "properties": {
                       "format": {
-                        "const": "repo-guard-json-v1"
+                        "const": "repo-guard-json-v2"
                       },
                       "path": {
                         "type": "string",
@@ -867,7 +867,7 @@
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "Enforce selector-max-compound-selectors and max-nesting-depth on staged style files. New projects with a ready Stylelint setup enable this; migrated projects stay disabled."
+                  "description": "对暂存样式执行 selector-max-compound-selectors 和 max-nesting-depth；初始化启用 Stylelint 时同时启用，可按需调整。"
                 },
                 "maxCompoundSelectors": {
                   "type": "integer",
@@ -891,7 +891,7 @@
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "Enforce selector specificity, ID, !important, and unexpected global style rules. New projects with a ready Stylelint setup enable this; migrated projects stay disabled."
+                  "description": "约束选择器权重、ID、!important 和非预期全局样式；初始化启用 Stylelint 时同时启用，可按需调整。"
                 },
                 "maxSpecificity": {
                   "type": "string",
@@ -3063,7 +3063,7 @@
         },
         "version": {
           "const": 2,
-          "description": "外部配置版本，旧版本需要显式迁移。"
+          "description": "项目配置只支持 version: 2；旧版本直接拒绝，不提供转换。"
         },
         "repository": {
           "type": "object",
@@ -3545,7 +3545,7 @@
         },
         "ci": {
           "type": "object",
-          "description": "Remote CI gate, report, and optional managed application-delivery settings. Gate execution remains read-only and renders structured console/JSON results; delivery jobs only invoke fixed project-owned npm scripts. GitLab integration is installed as a managed local include without replacing unrelated root pipeline content.",
+          "description": "质量 CI 的检查策略与结构化报告配置；门禁只读检查源码，不生成应用部署或流水线通知作业。应用构建产物、部署和流水线通知通过独立的 repo-guard.ops.json 配置。GitLab 质量模板作为托管 include 安装，保留无关的根流水线内容。",
           "additionalProperties": false,
           "properties": {
             "enabled": {
@@ -3560,7 +3560,7 @@
                 "release-ready"
               ],
               "default": "policy",
-              "description": "policy integrates with existing lint/test/build jobs; full also runs enabled project quality, test, architecture, and build gates; release-ready proves package release conditions without publishing or deploying."
+              "description": "policy 执行仓库策略检查；full 在此基础上执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 执行通用工程检查、适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
             },
             "reportPath": {
               "type": "string",
@@ -3638,7 +3638,7 @@
             "externalGates": {
               "type": "array",
               "default": [],
-              "description": "Project-owned read-only gates executed only through exact npm script names. They may run manually or at the fixed end of CI full or release-ready and must emit repo-guard-json-v1 reports under reports/.",
+              "description": "项目自有只读检查，仅通过精确 npm 脚本名执行；可手动运行或追加至 CI full、release-ready 的固定末尾，必须在 reports/ 下生成 schemaVersion 为 2 的 repo-guard-json-v2 报告，不支持旧协议。",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -3691,7 +3691,7 @@
                     ],
                     "properties": {
                       "format": {
-                        "const": "repo-guard-json-v1"
+                        "const": "repo-guard-json-v2"
                       },
                       "path": {
                         "type": "string",

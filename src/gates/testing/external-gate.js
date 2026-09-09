@@ -39,7 +39,7 @@ function localizedExternalText(value, fallback, diagnostics, label, level = 'inf
 
 function externalReportError(code, message, options = {}) {
   return executionError(`external-gate/${code}`, message, {
-    expected: '外部门禁生成符合 repo-guard-json-v1 契约且与进程退出状态一致的报告。',
+    expected: '外部门禁生成符合 repo-guard-json-v2 契约且与进程退出状态一致的报告。',
     remediation: {
       goal: '修复外部门禁脚本或报告生成器，使报告完整、最新且可验证',
       steps: ['根据错误码和消息修复报告字段、退出码或 artifact 输出'],
@@ -149,7 +149,7 @@ function validateReport(config, raw, root, startedAt, execution) {
   for (const field of ['schemaVersion', 'gateId', 'status', 'summary', 'findings', 'metrics', 'artifacts']) {
     if (!Object.hasOwn(report, field)) throw externalReportError('missing-field', `外部门禁 ${config.id} 的报告缺少 ${field}`);
   }
-  if (report.schemaVersion !== 1) throw externalReportError('unsupported-schema', `外部门禁 ${config.id} 要求报告的 schemaVersion 为 1`);
+  if (report.schemaVersion !== 2) throw externalReportError('unsupported-schema', `外部门禁 ${config.id} 仅接受 schemaVersion 为 2 的报告，不转换旧格式`);
   if (report.gateId !== config.id) throw externalReportError('gate-id-mismatch', `外部门禁报告 gateId 必须为 ${config.id}`);
   if (!['passed', 'violation'].includes(report.status)) {
     throw externalReportError('invalid-status', `外部门禁 ${config.id} 报告的 status 必须为 passed 或 violation`);
@@ -285,7 +285,7 @@ function validateReport(config, raw, root, startedAt, execution) {
     findings,
     metrics: report.metrics,
     artifacts: [
-      { path: config.report.path, type: 'repo-guard-json-v1', description: '外部门禁报告' },
+      { path: config.report.path, type: 'repo-guard-json-v2', description: '外部门禁报告' },
       ...artifacts,
     ],
     durationMs: Date.now() - startedAt,
@@ -298,19 +298,19 @@ function readPackage(root) {
 }
 
 function runtimeExternalGateConfig(projectConfig, fallback) {
-  return projectConfig.externalGates.find(({ id }) => id === fallback.id) ?? fallback;
+  return projectConfig.ci.externalGates.find(({ id }) => id === fallback.id) ?? fallback;
 }
 
 export function defineExternalGate(config) {
   return defineGate({
     id: config.id,
-    configKey: `externalGates.${config.id}`,
-    configVersions: [1],
+    configKey: `ci.externalGates.${config.id}`,
+    configVersions: [2],
     environments: config.environments,
     mutation: 'read-only',
     defaultTimeoutMs: config.timeoutMs,
     requiredScripts: [config.script],
-    artifactTypes: ['repo-guard-json-v1'],
+    artifactTypes: ['repo-guard-json-v2'],
     supportsCancellation: true,
     inspectSetup({ root, config: projectConfig, environment }) {
       const runtimeConfig = runtimeExternalGateConfig(projectConfig, config);

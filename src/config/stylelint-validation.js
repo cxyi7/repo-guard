@@ -9,10 +9,10 @@ import {
   normalizePatternList,
 } from './validation-primitives.js';
 
-function validateStylelintValue(preCommitValue, configPath) {
-  const stylelintValue = preCommitValue.stylelint ?? {};
+function validateStylelintValue(checksValue, configPath) {
+  const stylelintValue = checksValue.stylelint ?? {};
   if (!stylelintValue || typeof stylelintValue !== 'object' || Array.isArray(stylelintValue)) {
-    throw configValidationError(`${configPath} preCommit.stylelint 必须是对象`);
+    throw configValidationError(`${configPath} checks.stylelint 必须是对象`);
   }
   assertKnownProperties(
     stylelintValue,
@@ -25,31 +25,31 @@ function validateStylelintValue(preCommitValue, configPath) {
       'complexity',
       'governance',
     ]),
-    `${configPath} preCommit.stylelint`,
+    `${configPath} checks.stylelint`,
   );
   if (stylelintValue.enabled != null && typeof stylelintValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.stylelint.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.stylelint.enabled 必须是布尔值`);
   }
   if (
     stylelintValue.pattern != null
     && (typeof stylelintValue.pattern !== 'string' || !stylelintValue.pattern.trim())
   ) {
-    throw configValidationError(`${configPath} preCommit.stylelint.pattern 必须是非空字符串`);
+    throw configValidationError(`${configPath} checks.stylelint.pattern 必须是非空字符串`);
   }
   if (stylelintValue.fix != null && typeof stylelintValue.fix !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.stylelint.fix 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.stylelint.fix 必须是布尔值`);
   }
   if (
     stylelintValue.maxWarnings != null
     && (!Number.isInteger(stylelintValue.maxWarnings) || stylelintValue.maxWarnings < 0)
   ) {
-    throw configValidationError(`${configPath} preCommit.stylelint.maxWarnings 必须是非负整数`);
+    throw configValidationError(`${configPath} checks.stylelint.maxWarnings 必须是非负整数`);
   }
   if (
     stylelintValue.requireConfig != null
     && typeof stylelintValue.requireConfig !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} preCommit.stylelint.requireConfig 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.stylelint.requireConfig 必须是布尔值`);
   }
   return stylelintValue;
 }
@@ -58,30 +58,30 @@ function validateStyleComplexityConfiguration(stylelintValue, stylelintEnabled, 
   const styleComplexityValue = stylelintValue.complexity ?? {};
   if (!styleComplexityValue || typeof styleComplexityValue !== 'object'
     || Array.isArray(styleComplexityValue)) {
-    throw configValidationError(`${configPath} preCommit.stylelint.complexity 必须是对象`);
+    throw configValidationError(`${configPath} checks.styleComplexity 必须是对象`);
   }
   assertKnownProperties(
     styleComplexityValue,
     new Set(['enabled', 'maxCompoundSelectors', 'maxNestingDepth']),
-    `${configPath} preCommit.stylelint.complexity`,
+    `${configPath} checks.styleComplexity`,
   );
   if (styleComplexityValue.enabled != null
     && typeof styleComplexityValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.stylelint.complexity.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.styleComplexity.enabled 必须是布尔值`);
   }
   for (const property of ['maxCompoundSelectors', 'maxNestingDepth']) {
     if (styleComplexityValue[property] != null
       && (!Number.isInteger(styleComplexityValue[property])
         || styleComplexityValue[property] < 0)) {
       throw configValidationError(
-        `${configPath} preCommit.stylelint.complexity.${property} 必须是非负整数`,
+        `${configPath} checks.styleComplexity.${property} 必须是非负整数`,
       );
     }
   }
   const enabled = styleComplexityValue.enabled ?? DEFAULT_STYLE_COMPLEXITY_CONFIG.enabled;
   if (enabled && !stylelintEnabled) {
     throw configValidationError(
-      `${configPath} preCommit.stylelint.complexity.enabled 要求启用 preCommit.stylelint.enabled`,
+      `${configPath} checks.styleComplexity.enabled 要求启用 checks.stylelint.enabled`,
     );
   }
   return {
@@ -97,7 +97,7 @@ function validateStyleGovernanceValue(stylelintValue, configPath) {
   const styleGovernanceValue = stylelintValue.governance ?? {};
   if (!styleGovernanceValue || typeof styleGovernanceValue !== 'object'
     || Array.isArray(styleGovernanceValue)) {
-    throw configValidationError(`${configPath} preCommit.stylelint.governance 必须是对象`);
+    throw configValidationError(`${configPath} checks.styleGovernance 必须是对象`);
   }
   assertKnownProperties(
     styleGovernanceValue,
@@ -108,36 +108,36 @@ function validateStyleGovernanceValue(stylelintValue, configPath) {
       'disallowImportant',
       'allowedGlobalStylePatterns',
     ]),
-    `${configPath} preCommit.stylelint.governance`,
+    `${configPath} checks.styleGovernance`,
   );
   if (styleGovernanceValue.enabled != null
     && typeof styleGovernanceValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} preCommit.stylelint.governance.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.styleGovernance.enabled 必须是布尔值`);
   }
   if (styleGovernanceValue.maxSpecificity != null
     && (typeof styleGovernanceValue.maxSpecificity !== 'string'
       || !/^\d+,\d+,\d+$/.test(styleGovernanceValue.maxSpecificity.trim()))) {
     throw configValidationError(
-      `${configPath} preCommit.stylelint.governance.maxSpecificity 必须使用 "id,class,type" 格式，例如 "0,3,0"`,
+      `${configPath} checks.styleGovernance.maxSpecificity 必须使用 "id,class,type" 格式，例如 "0,3,0"`,
     );
   }
   if (styleGovernanceValue.maxIdSelectors != null
     && (!Number.isInteger(styleGovernanceValue.maxIdSelectors)
       || styleGovernanceValue.maxIdSelectors < 0)) {
     throw configValidationError(
-      `${configPath} preCommit.stylelint.governance.maxIdSelectors 必须是非负整数`,
+      `${configPath} checks.styleGovernance.maxIdSelectors 必须是非负整数`,
     );
   }
   if (styleGovernanceValue.disallowImportant != null
     && typeof styleGovernanceValue.disallowImportant !== 'boolean') {
     throw configValidationError(
-      `${configPath} preCommit.stylelint.governance.disallowImportant 必须是布尔值`,
+      `${configPath} checks.styleGovernance.disallowImportant 必须是布尔值`,
     );
   }
   const allowedGlobalStylePatterns = normalizePatternList(
     styleGovernanceValue.allowedGlobalStylePatterns
       ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.allowedGlobalStylePatterns,
-    `${configPath} preCommit.stylelint.governance.allowedGlobalStylePatterns`,
+    `${configPath} checks.styleGovernance.allowedGlobalStylePatterns`,
   );
   return { styleGovernanceValue, allowedGlobalStylePatterns };
 }
@@ -150,7 +150,7 @@ function validateStyleGovernanceConfiguration(stylelintValue, stylelintEnabled, 
   const enabled = styleGovernanceValue.enabled ?? DEFAULT_STYLE_GOVERNANCE_CONFIG.enabled;
   if (enabled && !stylelintEnabled) {
     throw configValidationError(
-      `${configPath} preCommit.stylelint.governance.enabled 要求启用 preCommit.stylelint.enabled`,
+      `${configPath} checks.styleGovernance.enabled 要求启用 checks.stylelint.enabled`,
     );
   }
   return {
@@ -165,8 +165,8 @@ function validateStyleGovernanceConfiguration(stylelintValue, stylelintEnabled, 
   };
 }
 
-export function validateStylelintConfiguration(preCommitValue, configPath) {
-  const stylelintValue = validateStylelintValue(preCommitValue, configPath);
+export function validateStylelintConfiguration(checksValue, configPath) {
+  const stylelintValue = validateStylelintValue(checksValue, configPath);
   const enabled = stylelintValue.enabled ?? DEFAULT_STYLELINT_CONFIG.enabled;
   const complexity = validateStyleComplexityConfiguration(
     stylelintValue,

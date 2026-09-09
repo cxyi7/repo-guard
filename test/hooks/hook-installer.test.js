@@ -92,18 +92,14 @@ test('skips hook installation when the CI environment requests it', (context) =>
   assert.equal(existsSync(path.join(root, '.githooks')), false);
 });
 
-test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
+test('当前 v5 Hook 可重复安装并绑定最新执行入口', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  mkdirSync(path.join(root, '.githooks'), { recursive: true });
-  writeFileSync(
-    path.join(root, '.githooks', 'pre-commit'),
-    '#!/bin/sh\n# repo-guard-managed:v1\nexec node old-cli gate\n',
-  );
-
   installHooks({ cwd: root });
   const hook = readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8');
+  installHooks({ cwd: root });
+  assert.equal(readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'), hook);
 
   assert.equal(isManagedHook(hook), true);
   assert.equal(isCurrentManagedHook(hook), true);
@@ -112,10 +108,17 @@ test('upgrades managed v1 hooks to the v4 orchestrator', (context) => {
   assert.match(hook, /repo-guard-managed:v5/);
   assert.match(hook, /repo_guard_cli" pre-commit/);
   assert.doesNotMatch(hook, /repo_guard_cli" gate/);
-  assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /coverage\//);
+  assert.match(
+    readFileSync(path.join(root, '.gitignore'), 'utf8'),
+    /coverage\//,
+  );
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8'),
     /repo_guard_cli" pre-push "\$@"/,
+  );
+  assert.match(
+    readFileSync(path.join(root, '.githooks', 'post-commit'), 'utf8'),
+    /hook-message success/,
   );
 });
 
@@ -123,7 +126,7 @@ test('ignores the configured coverage report directory', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const config = createStarterConfig();
-  config.unitTest.coverage.reportsDirectory = 'reports/coverage';
+  config.checks.coverage.reportsDirectory = 'reports/coverage';
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(config, null, 2)}\n`,
@@ -140,18 +143,25 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const packagePath = path.join(root, 'package.json');
-  writeFileSync(packagePath, `${JSON.stringify({
-    name: 'fixture',
-    version: '1.0.0',
-    scripts: {
-      'build:mp-weixin': 'vite build --mode mp-weixin',
-      'guard:build:h5': 'custom-command',
-    },
-  }, null, 2)}\n`);
+  writeFileSync(
+    packagePath,
+    `${JSON.stringify(
+      {
+        name: 'fixture',
+        version: '1.0.0',
+        scripts: {
+          'build:mp-weixin': 'vite build --mode mp-weixin',
+          'guard:build:h5': 'custom-command',
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   const config = createStarterConfig();
-  config.mutationTest.enabled = true;
-  config.mutationTest.reportsDirectory = 'reports/mutation-custom';
-  config.mutationTest.guardedBuilds = [
+  config.checks.mutationTest.enabled = true;
+  config.checks.mutationTest.reportsDirectory = 'reports/mutation-custom';
+  config.checks.mutationTest.guardedBuilds = [
     {
       script: 'build:mp-weixin',
       packageScript: 'guard:build:mp-weixin',
@@ -178,12 +188,18 @@ test('init adds guarded build aliases and mutation reports to the managed ignore
     'repo-guard enable commitMessage',
   );
   assert.equal(packageJson.scripts['guard:dead-code'], 'repo-guard dead-code');
-  assert.equal(packageJson.scripts['guard:image-assets'], 'repo-guard image-assets');
+  assert.equal(
+    packageJson.scripts['guard:image-assets'],
+    'repo-guard image-assets',
+  );
   assert.equal(
     packageJson.scripts['guard:unused-image-assets'],
     'repo-guard unused-image-assets',
   );
-  assert.equal(packageJson.scripts['guard:image-optimize'], 'repo-guard image-optimize');
+  assert.equal(
+    packageJson.scripts['guard:image-optimize'],
+    'repo-guard image-optimize',
+  );
   assert.equal(
     packageJson.scripts['guard:dead-code-baseline-init'],
     'repo-guard dead-code-baseline init',
@@ -221,10 +237,7 @@ test('refuses to overwrite a non-managed hook', (context) => {
     '#!/bin/sh\necho custom\n',
   );
 
-  assert.throws(
-    () => installHooks({ cwd: root }),
-    /拒绝覆盖非托管 Git Hook/,
-  );
+  assert.throws(() => installHooks({ cwd: root }), /拒绝覆盖非托管 Git Hook/);
 });
 
 test('does not trust a managed marker embedded in custom hook text', (context) => {
@@ -240,57 +253,42 @@ test('does not trust a managed marker embedded in custom hook text', (context) =
   writeFileSync(path.join(root, '.githooks', 'pre-commit'), custom);
 
   assert.equal(isManagedHook(custom), false);
-  assert.throws(
-    () => installHooks({ cwd: root }),
-    /拒绝覆盖非托管 Git Hook/,
-  );
-  assert.equal(readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'), custom);
-});
-
-test('recognizes and upgrades managed v2 hooks', (context) => {
-  const root = createRepository();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  mkdirSync(path.join(root, '.githooks'), { recursive: true });
-  writeFileSync(
-    path.join(root, '.githooks', 'pre-commit'),
-    '#!/bin/sh\n# repo-guard-managed:v2\nexec node old-cli pre-commit\n',
-  );
-
-  installHooks({ cwd: root });
-  assert.match(
+  assert.throws(() => installHooks({ cwd: root }), /拒绝覆盖非托管 Git Hook/);
+  assert.equal(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
-    /repo-guard-managed:v5/,
+    custom,
   );
 });
 
-test('recognizes and upgrades managed v3 hooks', (context) => {
+test('旧版本、未知、重复和混合标记 Hook 均拒绝，全部原文件保持不变', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  mkdirSync(path.join(root, '.githooks'), { recursive: true });
-  writeFileSync(
-    path.join(root, '.githooks', 'pre-push'),
-    '#!/bin/sh\n# repo-guard-managed:v3\nexec node old-cli pre-push\n',
-  );
-
-  installHooks({ cwd: root });
-  const hook = readFileSync(path.join(root, '.githooks', 'pre-push'), 'utf8');
-  assert.match(hook, /repo-guard-managed:v5/);
-  assert.match(hook, /pre-push "\$@"/);
-});
-
-test('升级 v4 提交后 Hook 并连接真实成功入口', (context) => {
-  const root = createRepository();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(path.join(root, '.githooks'), { recursive: true });
-  writeFileSync(path.join(root, '.githooks', 'post-commit'),
-    '#!/bin/sh\n# repo-guard-managed:v4\nexec node old-cli hook-message cleanup\n');
-  installHooks({ cwd: root });
-  const hook = readFileSync(path.join(root, '.githooks', 'post-commit'), 'utf8');
-  assert.match(hook, /repo-guard-managed:v5/);
-  assert.match(hook, /hook-message success/);
-  assert.doesNotMatch(hook, /hook-message cleanup/);
+  const hooksRoot = path.join(root, '.githooks');
+  mkdirSync(hooksRoot);
+  const originalPackage = readFileSync(path.join(root, 'package.json'), 'utf8');
+  const originalGitConfig = readFileSync(path.join(root, '.git', 'config'), 'utf8');
+  const currentHook = '#!/bin/sh\n# repo-guard-managed:v5\nexec node current-cli pre-commit\n';
+  writeFileSync(path.join(hooksRoot, 'pre-commit'), currentHook);
+  const markerCases = [
+    ...[1, 2, 3, 4, 6].map((version) => `# repo-guard-managed:v${version}`),
+    '# repo-guard-managed:v5\n# repo-guard-managed:v1',
+    '# repo-guard-managed:v1\n# repo-guard-managed:v5',
+    '# repo-guard-managed:v5\n# repo-guard-managed:v5',
+  ];
+  for (const marker of markerCases) {
+    const content = `#!/bin/sh\n${marker}\nexec node previous-cli post-commit\n`;
+    writeFileSync(path.join(hooksRoot, 'post-commit'), content);
+    assert.equal(isManagedHook(content), false);
+    assert.equal(isCurrentManagedHook(content), false);
+    assert.throws(() => installHooks({ cwd: root }), { code: 'hooks/non-managed-hook' });
+    assert.equal(readFileSync(path.join(hooksRoot, 'post-commit'), 'utf8'), content);
+    assert.equal(readFileSync(path.join(hooksRoot, 'pre-commit'), 'utf8'), currentHook);
+    assert.equal(readFileSync(path.join(root, 'package.json'), 'utf8'), originalPackage);
+    assert.equal(readFileSync(path.join(root, '.git', 'config'), 'utf8'), originalGitConfig);
+    for (const generated of ['.gitattributes', '.gitignore', '.env.config']) {
+      assert.equal(existsSync(path.join(root, generated)), false);
+    }
+  }
 });
 
 test('preflights every hook before upgrading any managed file', (context) => {
@@ -298,17 +296,15 @@ test('preflights every hook before upgrading any managed file', (context) => {
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   mkdirSync(path.join(root, '.githooks'), { recursive: true });
-  const legacyHook = '#!/bin/sh\n# repo-guard-managed:v1\nexec node old-cli gate\n';
+  const legacyHook =
+    '#!/bin/sh\n# repo-guard-managed:v1\nexec node old-cli gate\n';
   writeFileSync(path.join(root, '.githooks', 'pre-commit'), legacyHook);
   writeFileSync(
     path.join(root, '.githooks', 'prepare-commit-msg'),
     '#!/bin/sh\necho custom\n',
   );
 
-  assert.throws(
-    () => installHooks({ cwd: root }),
-    /拒绝覆盖非托管 Git Hook/,
-  );
+  assert.throws(() => installHooks({ cwd: root }), /拒绝覆盖非托管 Git Hook/);
   assert.equal(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
     legacyHook,

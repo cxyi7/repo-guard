@@ -385,9 +385,15 @@ test('gate returns violation with error severity when enabled', () => {
     mkdirSync(path.dirname(absolute), { recursive: true });
     writeFileSync(absolute, vue('const timer = setInterval(refresh, 1000);'), 'utf8');
     const config = {
-      preCommit: { asyncResourceCleanup: CONFIG },
-      exceptions: { entries: [] },
-    };
+  checks: {
+    asyncResourceCleanup: CONFIG
+  },
+  repository: {
+    exceptions: {
+      entries: []
+    }
+  }
+};
     const plan = vueAsyncResourceCleanupGate.plan({
       root,
       config,
@@ -410,9 +416,15 @@ test('gate returns a structured execution error for invalid source syntax', () =
     mkdirSync(path.dirname(absolute), { recursive: true });
     writeFileSync(absolute, vue('const = ;'), 'utf8');
     const config = {
-      preCommit: { asyncResourceCleanup: CONFIG },
-      exceptions: { entries: [] },
-    };
+  checks: {
+    asyncResourceCleanup: CONFIG
+  },
+  repository: {
+    exceptions: {
+      entries: []
+    }
+  }
+};
     const plan = vueAsyncResourceCleanupGate.plan({
       root,
       config,

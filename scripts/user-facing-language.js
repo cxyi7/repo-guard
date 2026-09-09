@@ -415,7 +415,7 @@ export function createLanguageDebtBaseline(candidates) {
     counts.set(candidate.fingerprint, (counts.get(candidate.fingerprint) ?? 0) + 1);
   }
   return Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: 2,
     debtCount: candidates.length,
     entries: Object.freeze(Object.fromEntries(
       [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)),
@@ -424,9 +424,9 @@ export function createLanguageDebtBaseline(candidates) {
 }
 
 export function compareLanguageDebt(candidates, baseline) {
-  if (baseline?.schemaVersion !== 1 || baseline.entries == null
+  if (baseline?.schemaVersion !== 2 || baseline.entries == null
     || typeof baseline.entries !== 'object' || Array.isArray(baseline.entries)) {
-    throw new TypeError('中文文案迁移基线格式无效。');
+    throw new TypeError('中文文案基线格式无效，仅支持 schemaVersion: 2。');
   }
   const allowed = new Map(Object.entries(baseline.entries));
   if ([...allowed.values()].some((count) => !Number.isInteger(count) || count < 1)) {

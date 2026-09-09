@@ -4,7 +4,7 @@
 
 让开发者和 AI 在每次提交、推送时执行同一套团队检查。一个 Git 仓库安装一组 Hook，各应用使用自己的工程配置与工具。
 
-## 安装与升级
+## 安装与重新接入
 
 先按[前后端与多应用配置](project-workspace.md)声明项目，在仓库根安装 repo-guard 后执行：
 
@@ -15,7 +15,9 @@ npx repo-guard doctor
 
 首次接入的 `init` 也会安装 Hook；修改配置后可使用 `doctor --fix` 同步 Hook、规范与辅助脚本。多应用仍由仓库根的 npm 入口启动，不需要给每个前端或后端安装一组 Hook。
 
-安装器将 `core.hooksPath` 设置为 `.githooks`。当前 marker 为 `repo-guard-managed:v5`，升级兼容已知的 v1～v4 marker，但只生成 v5。非托管文件、其他 Hook 路径会触发冲突，团队已有 Hook 需要先明确如何合并。
+安装器将 `core.hooksPath` 设置为 `.githooks`，只接受并生成当前 `repo-guard-managed:v5` marker。旧版本、未知、重复、混合标记和非托管文件都会触发冲突；安装器先检查全部 Hook，任一冲突都会在写入前停止，不自动升级或覆盖。其他 Hook 路径也会触发冲突；团队应先保留原文件，人工确认职责与差异后按当前入口重新接入。
+
+安装前也会只读校验已有 Skill 清单和相关 `AGENTS.md` 标记，旧格式不会导致 Hook 已更新而规范同步失败。`init` 在创建主配置前复用同一组检查；`doctor --fix` 在修复任何受管文件前检查，原文件均保留。
 
 | Hook | 职责 |
 |---|---|

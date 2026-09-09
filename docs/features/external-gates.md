@@ -8,9 +8,11 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
-消费项目可以通过严格的 npm script 和 `repo-guard-json-v1` 报告接入项目自有检查：
+消费项目可以通过严格的 npm script 和 `repo-guard-json-v2` 报告接入项目自有检查：
+
+配置的 `report.format` 仅接受 `repo-guard-json-v2`，脚本报告必须包含 `schemaVersion: 2`。旧协议名称和 `schemaVersion: 1` 都会被拒绝，不自动转换；请更新项目报告生成器并重新执行检查。完整字段契约见 [外部门禁报告 Schema](../../external-report.schema.json)。
 
 ```json
 {
@@ -27,7 +29,7 @@
         "script": "check:engineering-review",
         "timeoutMs": 120000,
         "report": {
-          "format": "repo-guard-json-v1",
+          "format": "repo-guard-json-v2",
           "path": "reports/engineering-review.json"
         }
       }
@@ -47,7 +49,7 @@
 | `ci.externalGates[].environments` | 允许执行的入口；manual 为手动，ci-full 为完整 CI，release-ready 为发布准备 | 数组；每项可选 `"manual"`、`"ci-full"`、`"release-ready"`<br>本对象内必填，无自动代填值 | 至少 1 项；元素不可重复；CI 仅在受信任 GitLab 受保护分支调度；Axios/k6 runner 进一步只允许 manual。 |
 | `ci.externalGates[].script` | 项目 package.json 中的精确脚本名，不是 shell 命令 | 字符串<br>本对象内必填，无自动代填值 | 仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
 | `ci.externalGates[].timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>本对象内必填，无自动代填值 | ≥ 1000；≤ 1800000 |
-| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v1"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v2"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `ci.externalGates[].report.path` | 本轮新生成的外部门禁 JSON 报告路径 | 字符串<br>本对象内必填，无自动代填值 | 仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名，以 .json 结尾；必须在 reports/ 内、未跟踪、无符号链接、每轮新生成；命名不能使用平台保留名。 |
 
 <!-- config-fields:end -->

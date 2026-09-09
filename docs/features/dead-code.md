@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 无效代码门禁默认关闭，使用消费项目自己安装的 Knip 6.x 和 `knip.*` 配置；repo-guard 不内置业务入口、不替项目猜测工作区边界，也不会回退到自身的开发依赖。
 
@@ -84,6 +84,8 @@ npm run guard:dead-code-baseline-prune
 git diff -- .repo-guard/knip-baseline.json
 git add .repo-guard/knip-baseline.json
 ```
+
+基线只生成并接受 `schemaVersion: 2`。版本 1、缺少版本或其他版本都会被拒绝；`prune` 不会自动转换旧文件。已有旧基线需重新评审历史债务并按当前格式登记，不能只改版本号冒充完成复核。
 
 `init` 拒绝覆盖现有文件；`prune` 拒绝接纳任何新增问题。pre-push 和 CI full / release-ready 还会把当前基线与 Git 基准提交比较，阻止通过手工修改、重新生成或增加计数扩大历史债务；纯文件重命名会按 Git 重命名关系映射，不会制造新债务。基线必须位于仓库内、不得经过符号链接、必须由 Git 跟踪，`issueTypes` 变化后需要先清理真实问题并重新评审接入方案，不能用重建基线绕过检查。
 

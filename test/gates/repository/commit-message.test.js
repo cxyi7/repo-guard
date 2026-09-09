@@ -70,8 +70,8 @@ test('真实 Git 提交成功才显示庆祝状态，提交信息失败保持 HE
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const config = createStarterConfig();
-  config.commitAnimation.enabled = true;
-  config.commitMessage.enabled = true;
+  config.reporting.commitAnimation.enabled = true;
+  config.repository.commitMessage.enabled = true;
   writeFileSync(path.join(root, 'repo-guard.config.json'), stringifyProjectFixture(config));
   const hooks = path.join(root, '.githooks');
   mkdirSync(hooks);
@@ -103,7 +103,7 @@ test('空仓库调用成功入口不会误报已创建提交', context => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const config = createStarterConfig();
-  config.commitAnimation.enabled = true;
+  config.reporting.commitAnimation.enabled = true;
   writeFileSync(path.join(root, 'repo-guard.config.json'), stringifyProjectFixture(config));
   const result = spawnSync(process.execPath, [path.resolve('bin/repo-guard.js'), 'hook-message', 'success'], {
     cwd: root, encoding: 'utf8', windowsHide: true,
@@ -292,7 +292,7 @@ test('release-ready compares package versions from the Git base and head instead
   writeFileSync(path.join(root, 'package.json'), '{"name":"release-fixture","version":"2.0.0"}\n');
   const blocked = commitMessageGate.run({
     root,
-    config: { commitMessage: policy() },
+    config: { version: 2, repository: { commitMessage: policy() } },
     environment: 'release-ready',
     plan: { enabled: true, revision: { base, head: breakingHead } },
   });
@@ -306,7 +306,7 @@ test('release-ready compares package versions from the Git base and head instead
   const releaseHead = git(root, ['rev-parse', 'HEAD']);
   const passed = commitMessageGate.run({
     root,
-    config: { commitMessage: policy() },
+    config: { version: 2, repository: { commitMessage: policy() } },
     environment: 'release-ready',
     plan: { enabled: true, revision: { base, head: releaseHead } },
   });
@@ -321,7 +321,7 @@ test('commit-msg validates the human message before finalizing the automatic fil
   git(root, ['add', '--', 'second.txt']);
 
   const config = createStarterConfig();
-  config.commitMessage.enabled = true;
+  config.repository.commitMessage.enabled = true;
   writeFileSync(path.join(root, 'repo-guard.config.json'), `${stringifyProjectFixture(config, null, 2)}\n`);
   const messageFile = path.join(root, '.git', 'COMMIT_EDITMSG');
   writeFileSync(messageFile, 'invalid title\n');

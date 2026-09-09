@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import {
   readFileSync,
   readdirSync,
-  statSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -15,21 +14,42 @@ import { resolveGitPath } from '../../git/repository.js';
 
 export const PRE_COMMIT_LOCK_FILE = 'repo-guard-pre-commit.lock';
 
-const LOCK_VERSION = 1;
-const LOCK_INITIALIZATION_GRACE_MS = 5_000;
+const LOCK_VERSION = 2;
 
 function isMissingFileError(error) {
   return error?.code === 'ENOENT';
 }
 
 function processIsActive(pid) {
-  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    return error?.code === 'EPERM';
+    if (error?.code === 'ESRCH') return false;
+    if (error?.code === 'EPERM') return true;
+    throw executionError(
+      'pre-commit/lock-owner-inspection-failed',
+      `无法确认 pre-commit 锁持有进程是否已退出，已保留锁并停止执行（PID ${pid}）。`,
+      { cause: error, expected: '仅在确认持有进程已退出后回收当前格式的锁。' },
+    );
   }
+}
+
+function invalidLockMetadataError(lockPath) {
+  return executionError(
+    'pre-commit/invalid-lock-metadata',
+    `pre-commit 生命周期锁元数据尚未写完或已损坏，已停止执行并保留该锁：${lockPath}`,
+    {
+      details: { location: { path: lockPath } },
+      expected: '锁必须包含当前版本、正整数 PID 和非空所有权令牌；不按文件时间回收无法识别的锁。',
+      remediation: {
+        goal: '确认锁的写入与持有进程状态后重新提交。',
+        steps: ['等待正在初始化的提交进程完成后重试。', '若仍无法识别，等待相关进程退出，再由人工核对并处理遗留锁。'],
+        constraints: ['不得删除仍由活动进程持有的锁，也不得伪造元数据绕过互斥。'],
+        verification: ['重新提交，不再出现 pre-commit/invalid-lock-metadata。'],
+      },
+    },
+  );
 }
 
 function readLockMetadata(lockPath) {
@@ -45,33 +65,36 @@ function readLockMetadata(lockPath) {
     );
   }
 
+  let metadata;
   try {
-    const metadata = JSON.parse(source);
-    if (
-      metadata?.version === LOCK_VERSION
-      && Number.isSafeInteger(metadata.pid)
-      && typeof metadata.token === 'string'
-      && metadata.token.length > 0
-    ) {
-      return metadata;
-    }
+    metadata = JSON.parse(source);
   } catch {
-    // 进程可能在锁文件创建后、元数据写完前退出；该文件按失效锁处理。
+    throw invalidLockMetadataError(lockPath);
   }
-  return null;
-}
-
-function lockIsInitializing(lockPath) {
-  try {
-    return Date.now() - statSync(lockPath).mtimeMs < LOCK_INITIALIZATION_GRACE_MS;
-  } catch (error) {
-    if (isMissingFileError(error)) return false;
+  if (metadata?.version !== LOCK_VERSION) {
     throw executionError(
-      'pre-commit/lock-inspection-failed',
-      `无法检查 pre-commit 生命周期锁状态：${lockPath}`,
-      { cause: error },
+      'pre-commit/unsupported-lock-version',
+      `pre-commit 生命周期锁不是当前版本 ${LOCK_VERSION}，已停止执行并保留该锁：${lockPath}`,
+      {
+        expected: '只读取当前锁格式；不将旧版或未知版本的锁视为失效锁。',
+        remediation: {
+          goal: '确认锁的归属与进程状态后重新提交。',
+          steps: ['等待相关提交进程退出，再由人工核对并处理遗留锁。'],
+          constraints: ['不得删除仍由活动进程持有的锁，也不得改写锁版本绕过互斥。'],
+          verification: ['重新提交，不再出现 pre-commit/unsupported-lock-version。'],
+        },
+      },
     );
   }
+  if (
+    !Number.isSafeInteger(metadata.pid)
+    || metadata.pid <= 0
+    || typeof metadata.token !== 'string'
+    || metadata.token.trim().length === 0
+  ) {
+    throw invalidLockMetadataError(lockPath);
+  }
+  return metadata;
 }
 
 function listLockPaths(lockBasePath) {
@@ -157,12 +180,6 @@ function inspectOtherLocks(lockBasePath, ownedPath) {
     const metadata = readLockMetadata(lockPath);
     if (metadata && processIsActive(metadata.pid)) {
       throw activeLockError(lockPath, metadata);
-    }
-    if (metadata === null && lockIsInitializing(lockPath)) {
-      throw executionError(
-        'pre-commit/lock-initializing',
-        `另一个 pre-commit 正在初始化生命周期锁，本次执行已在修改 Git 前停止：${lockPath}`,
-      );
     }
     if (metadata !== undefined) removeStaleLock(lockPath);
   }

@@ -40,7 +40,7 @@ function externalReport(gateId, reports, execution) {
   const passed = findings.length === 0;
   const metrics = summarizeApiPerformanceExecution(execution);
   return Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: 2,
     gateId,
     status: passed ? 'passed' : 'violation',
     summary: passed

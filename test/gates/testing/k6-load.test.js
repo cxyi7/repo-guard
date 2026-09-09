@@ -1,4 +1,5 @@
 import { stringifyProjectFixture } from '../../helpers/project-config.js';
+import { assertExternalReportSchema } from '../../helpers/external-report.js';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -28,24 +29,53 @@ function git(root, args) {
 
 function projectConfig(environments = ['manual']) {
   return {
-    version: 1,
-    notification: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    eslint: {
+      enabled: false
+    },
+    prettier: {
+      enabled: false
+    },
+    maxFileLines: {
+      enabled: false
+    }
+  },
+  repository: {
+    dependencyPolicy: {
+      enabled: false
+    },
+    rules: [{
+      pattern: 'src/**',
+      category: '源码',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  },
+  ci: {
     externalGates: [{
       id: 'project.k6-load',
       enabled: true,
       environments,
       script: 'guard:k6',
       timeoutMs: 300000,
-      report: { format: 'repo-guard-json-v1', path: REPORT_FILE },
-    }],
-    dependencyPolicy: { enabled: false },
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      maxFileLines: { enabled: false },
-    },
-    rules: [{ pattern: 'src/**', category: '源码', level: 'audit' }],
-  };
+      report: {
+        format: 'repo-guard-json-v2',
+        path: REPORT_FILE
+      }
+    }]
+  }
+};
 }
 
 function loadConfig({
@@ -223,6 +253,7 @@ test('runs a controlled local k6 process and writes raw, Chinese HTML, and gate 
   const report = await executeFixture(fixture);
 
   assert.equal(report.status, 'passed');
+  assertExternalReportSchema(report);
   assert.equal(report.metrics.httpRequests, 100);
   assert.equal(report.metrics.requestsPerSecond, 10);
   assert.deepEqual(report.artifacts.map(({ path: artifactPath }) => artifactPath), [

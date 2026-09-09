@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineGate } from '../core/capability/gate-definition.js';
 import { findingFromPolicy, passedResult, violationResult } from './native-result.js';
 
-const CONFIG_VERSION = [1];
+const CONFIG_VERSION = [2];
 
 function projectFiles(context) {
   return context.files.map((file) => {
@@ -42,7 +42,7 @@ export function defineVuePolicyGate({
     inspectSetup: () => ({ status: 'ready', summary: `${summary}（硬性要求，规则=${rule}）` }),
     plan: (context) => ({ files: projectFiles(context) }),
     run({ root, config, plan }) {
-      const result = inspect({ root, files: plan.files, exceptions: config.exceptions });
+      const result = inspect({ root, files: plan.files, exceptions: config.repository.exceptions });
       const metrics = {
         checkedFiles: result.checkedCount,
         approvedExceptions: result.approved.length,

@@ -28,17 +28,24 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     try {
       cleanupCommitMessage(root);
       const config = loadConfig(root, { repositoryOnly: true });
-      if (!config.commitAnimation.enabled) return 0;
+      if (!config.reporting.commitAnimation.enabled) return 0;
       const committed = runGit(['log', '-1', '--format=%P%n%s'], { allowFailure: true, cwd: root });
       if (committed.status !== 0) return 0;
       const [parentLine = '', ...subject] = committed.stdout.split(/\r?\n/);
       const parents = parentLine.trim().split(/\s+/).filter(Boolean);
       const message = subject.join('\n').trim();
-      return createCommitAnimation(config.commitAnimation).celebrate(message, { parents }).then(() => {
+      return createCommitAnimation(config.reporting.commitAnimation).celebrate(message, { parents }).then(() => {
         writeConsoleMessage('提交成功，Git 已创建提交。');
         return 0;
       }).catch(() => 0);
-    } catch { return 0; }
+    } catch (error) {
+      if (error?.code === 'commit-message/unsupported-state-version') {
+        try {
+          writeConsoleMessage(`警告：Git 提交已完成，但临时状态清理已拒绝 [${error.code}]：${error.message}`, 'stderr');
+        } catch { /* 终端输出异常不影响已经创建的提交。 */ }
+      }
+      return 0;
+    }
   }
 
   if (!messageFile) {
@@ -51,7 +58,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     return 0;
   }
   if (mode === 'finalize') {
-    if (config.commitMessage.enabled) {
+    if (config.repository.commitMessage.enabled) {
       const candidate = readPreparedCommitMessage(root, messageFile);
       const result = createCommitMessageResult({
         records: [{
@@ -60,7 +67,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
           parents: collectPendingCommitParents(root),
           commentCharacter: gitValue(['config', '--get', 'core.commentChar'], '#', root),
         }],
-        config: config.commitMessage,
+        config: config.repository.commitMessage,
         environment: 'local',
       });
       if (result.status !== 'passed') {

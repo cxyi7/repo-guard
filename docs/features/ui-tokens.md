@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 UI Token 门禁默认关闭。项目必须先在 `repo-guard.config.json` 中声明实际使用的适配器，再执行 `npx repo-guard enable uiTokens`；repo-guard 不会根据文件扩展名猜测语言。当前版本只支持 `sass` 和 `unocss`，可以只启用其中一个，也可以同时启用：
 
@@ -86,12 +86,12 @@ UI Token 门禁默认关闭。项目必须先在 `repo-guard.config.json` 中声
 npx repo-guard enable uiTokens
 ```
 
-项目需要用自己的设计系统生成脚本提交 `ui-tokens.manifest.json`。定义源可以是 Sass、JSON、TypeScript 或其他语言；repo-guard 不执行定义源，而是只读取归一化后的 Token 类别与适配器别名。下面的 SHA-256 是格式占位，实际值必须由生成脚本按来源文件原始字节计算并写入：
+项目需要用自己的设计系统生成脚本提交 `ui-tokens.manifest.json`，生成器必须输出 `version: 2`。读取端和 Schema 均拒绝旧版本，不自动转换或改写旧文件；请更新项目生成脚本并重新生成清单。定义源可以是 Sass、JSON、TypeScript 或其他语言；repo-guard 不执行定义源，而是只读取归一化后的 Token 类别与适配器别名。下面的 SHA-256 是格式占位，实际值必须由生成脚本按来源文件原始字节计算并写入：
 
 ```json
 {
   "$schema": "./node_modules/@cxyi7/repo-guard/ui-token-manifest.schema.json",
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "path": "src/styles/tokens.scss",
@@ -142,7 +142,7 @@ npx repo-guard enable uiTokens
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `version` | UI Token Manifest 格式版本 | 只能为 `1`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `version` | UI Token Manifest 格式版本 | 只能为 `2`<br>本对象内必填，无自动代填值 | 只接受列出的值；拒绝旧版本，不自动转换 |
 | `sources` | Token 定义源及 UnoCSS 配置文件的指纹列表 | 对象数组；对象字段见后续行<br>本对象内必填，无自动代填值 | 至少 1 项；来源必须受 Git 跟踪；Manifest 不得引用自身，修改来源后需重新生成真实指纹。 |
 | `sources[].path` | 实际 Token 来源或 UnoCSS 配置文件的仓库相对路径 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符；不能只包含空白；来源必须受 Git 跟踪；Manifest 不得引用自身，修改来源后需重新生成真实指纹。 |
 | `sources[].sha256` | 来源文件原始字节的小写 SHA-256 | 字符串<br>本对象内必填，无自动代填值 | 64 位小写十六进制 SHA-256，必须从真实文件字节计算；来源必须受 Git 跟踪；Manifest 不得引用自身，修改来源后需重新生成真实指纹。 |

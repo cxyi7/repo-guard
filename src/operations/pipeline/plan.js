@@ -52,11 +52,12 @@ function projectPlan(repositoryRoot, id, unit, projects) {
 
 export function planOperationsPipeline(repositoryRoot, operations, projectDeclarations = []) {
   const config = validateOperationsConfig(operations);
-  if (!config.enabled) return { enabled: false, provider: config.provider, projects: [] };
+  if (!config.enabled) return { enabled: false, provider: config.provider, notifications: config.notifications, projects: [] };
   const projects = normalizedProjects(projectDeclarations);
   return {
     enabled: true,
     provider: config.provider,
+    notifications: config.notifications,
     projects: Object.entries(config.projects).filter(([, unit]) => unit.enabled)
       .map(([id, unit]) => projectPlan(repositoryRoot, id, unit, projects)),
   };

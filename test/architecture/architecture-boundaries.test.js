@@ -1404,8 +1404,8 @@ test('keeps managed Hook installation in setup orchestration without a root help
   assert.match(installerSource, /export function installHooks/);
   assert.match(installerSource, /export function isManagedHook/);
   assert.match(installerSource, /export function isCurrentManagedHook/);
-  assert.match(installerSource, /# repo-guard-managed:v4/);
-  assert.match(installerSource, /# repo-guard-managed:v1/);
+  assert.match(installerSource, /# repo-guard-managed:v5/);
+  assert.doesNotMatch(installerSource, /LEGACY_MANAGED_MARKERS|# repo-guard-managed:v[1-4]/);
   assert.match(installerSource, /\.\/git-attributes\.js/);
   assert.match(installerSource, /\.\/lighthouse-ignore\.js/);
   assert.doesNotMatch(installerSource, /from ['"][^'"]*integrations\//);
@@ -1427,9 +1427,9 @@ test('keeps project configuration lifecycle in setup orchestration without a roo
     configManagementSource,
     /export function createStarterConfig/,
   );
-  assert.match(
+  assert.doesNotMatch(
     configManagementSource,
-    /export function migrateProjectConfig/,
+    /migrateProjectConfig/,
   );
   assert.match(
     configManagementSource,
@@ -1452,7 +1452,7 @@ test('keeps managed GitLab CI files in operations with a configuration-only setu
   const gitLabCiSource = readFileSync(gitLabCiPath, 'utf8');
   assert.match(gitLabCiSource, /export function inspectGitLabCi/);
   assert.match(gitLabCiSource, /export function installGitLabCiFiles/);
-  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v2/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v3/);
   assert.doesNotMatch(gitLabCiSource, /# repo-guard-gitlab-template:v1/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:start/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:end/);
@@ -1796,7 +1796,7 @@ test('separates GitLab notification policy, release delivery, package facts, and
     SOURCE_ROOT,
     'operations',
     'gitlab',
-    'gitlab-managed-pipeline.js',
+    'renderer.js',
   );
   for (const target of [packageFactPath, policyPath, gatePath, pipelinePath]) {
     assert.equal(existsSync(target), true, target);
@@ -1815,9 +1815,10 @@ test('separates GitLab notification policy, release delivery, package facts, and
   assert.match(gateSource, /integrations\/wecom\/notification\.js/);
   assert.match(gateSource, /policies\/gitlab-ci-notification\.js/);
   assert.doesNotMatch(gateSource, /orchestration\//);
-  assert.match(pipelineSource, /core\/project\/repo-guard-package\.js/);
+  assert.match(pipelineSource, /export function renderOperationsGitLabPipeline/);
+  assert.doesNotMatch(pipelineSource, /ci\.pipeline/);
   assert.doesNotMatch(pipelineSource, /integrations\/wecom|sendWecomNotification/);
-  assert.match(cliSource, /gates\/release\/gitlab-ci-notification\.js/);
+  assert.match(cliSource, /operations\/notifications\/gitlab-ci-notification\.js/);
   assert.doesNotMatch(cliSource, /integrations\/wecom|sendWecomNotification/);
 });
 
@@ -2045,7 +2046,7 @@ test('keeps configuration lifecycle commands in CLI orchestration without a comm
   const cliConfigurationSource = readFileSync(CLI_CONFIGURATION_PATH, 'utf8');
 
   assert.match(cliRunnerSource, /from ['"]\.\/configuration\.js['"]/);
-  assert.match(cliConfigurationSource, /export function runMigrate/);
+  assert.doesNotMatch(cliConfigurationSource, /runMigrate/);
   assert.match(cliConfigurationSource, /export function runEnable/);
   assert.match(cliConfigurationSource, /export function runDisable/);
   assert.match(cliConfigurationSource, /from ['"]\.\.\/setup\/config-management\.js['"]/);
@@ -2235,7 +2236,7 @@ test('enforces Chinese user-facing text as a non-growing repository contract', (
   assert.doesNotMatch(checkerSource, /writeFileSync|write-initial-baseline/);
   assert.match(prunerSource, /pruneLanguageDebtBaseline/);
   assert.doesNotMatch(prunerSource, /createLanguageDebtBaseline/);
-  assert.equal(baseline.schemaVersion, 1);
+  assert.equal(baseline.schemaVersion, 2);
   assert.equal(baseline.debtCount, 0);
 });
 
@@ -2256,7 +2257,7 @@ test('separates Git file-header facts, pure policy, and pre-commit mutation owne
     'quality-runner.js',
   );
   const preCommitValidationSource = readFileSync(
-    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    path.join(SOURCE_ROOT, 'config', 'checks-validation.js'),
     'utf8',
   );
   const gitHistorySource = readFileSync(gitHistoryPath, 'utf8');
@@ -2292,7 +2293,7 @@ test('separates function-documentation validation, policy, and staged mutation o
     'quality-runner.js',
   );
   const preCommitValidationSource = readFileSync(
-    path.join(SOURCE_ROOT, 'config', 'pre-commit-validation.js'),
+    path.join(SOURCE_ROOT, 'config', 'checks-validation.js'),
     'utf8',
   );
   const policySource = readFileSync(policyPath, 'utf8');

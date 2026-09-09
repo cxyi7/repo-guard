@@ -47,7 +47,11 @@ test('shares one immutable environment and mutation contract across Gate plannin
     'ci-full',
     'release-ready',
   ]);
-  assert.deepEqual(CI_GATE_ENVIRONMENTS, ['ci-policy', 'ci-full', 'release-ready']);
+  assert.deepEqual(CI_GATE_ENVIRONMENTS, [
+    'ci-policy',
+    'ci-full',
+    'release-ready',
+  ]);
   assert.deepEqual(GATE_MUTATIONS, [
     'read-only',
     'working-tree-fix',
@@ -66,7 +70,7 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
     configKey: null,
     featureName: null,
     featureOrder: null,
-    configVersions: [1],
+    configVersions: [2],
     environments,
     mutation: 'read-only',
     allowedMutations: ['read-only'],
@@ -86,9 +90,11 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
     requiredEnvironment: [],
     requiredSecrets: [],
     artifactTypes: [],
-    ciScopes: environments.some((environment) => (
-      ['ci-policy', 'ci-full', 'release-ready'].includes(environment)
-    )) ? ['all-files'] : [],
+    ciScopes: environments.some((environment) =>
+      ['ci-policy', 'ci-full', 'release-ready'].includes(environment),
+    )
+      ? ['all-files']
+      : [],
     supportsFix: false,
     supportsCancellation: false,
     ...overrides,
@@ -96,19 +102,23 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
 }
 
 const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
-  reviewedGateDescriptor('quality.vue-async-resource-cleanup', POLICY_ENVIRONMENTS, {
-    configKey: 'preCommit.asyncResourceCleanup',
-    featureName: 'asyncResourceCleanup',
-    featureOrder: 35,
-    manualCommand: 'async-resource-cleanup',
-    manualOrder: 75,
-    doctorOrder: 75,
-    packageScript: 'guard:async-resource-cleanup',
-    rules: ['vue/require-async-resource-cleanup'],
-    ciScopes: ['all-files', 'changed-files'],
-  }),
+  reviewedGateDescriptor(
+    'quality.vue-async-resource-cleanup',
+    POLICY_ENVIRONMENTS,
+    {
+      configKey: 'checks.asyncResourceCleanup',
+      featureName: 'asyncResourceCleanup',
+      featureOrder: 35,
+      manualCommand: 'async-resource-cleanup',
+      manualOrder: 75,
+      doctorOrder: 75,
+      packageScript: 'guard:async-resource-cleanup',
+      rules: ['vue/require-async-resource-cleanup'],
+      ciScopes: ['all-files', 'changed-files'],
+    },
+  ),
   reviewedGateDescriptor('quality.ui-tokens', POLICY_ENVIRONMENTS, {
-    configKey: 'uiTokens',
+    configKey: 'checks.uiTokens',
     featureName: 'uiTokens',
     featureOrder: 39,
     manualCommand: 'ui-tokens',
@@ -128,7 +138,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor('repository.path-naming', POLICY_ENVIRONMENTS, {
-    configKey: 'preCommit.pathNaming',
+    configKey: 'checks.pathNaming',
     featureName: 'pathNaming',
     featureOrder: 38,
     manualCommand: 'path-naming',
@@ -139,7 +149,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     ciScopes: ['all-files'],
   }),
   reviewedGateDescriptor('repository.image-assets', POLICY_ENVIRONMENTS, {
-    configKey: 'imageAssets',
+    configKey: 'checks.imageAssets',
     featureName: 'imageAssets',
     featureOrder: 42,
     manualCommand: 'image-assets',
@@ -163,7 +173,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     'repository.unused-image-assets',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],
     {
-      configKey: 'imageAssets.unused',
+      configKey: 'checks.unusedImageAssets',
       featureName: 'unusedImageAssets',
       featureOrder: 43,
       manualCommand: 'unused-image-assets',
@@ -218,7 +228,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     'repository.structured-exceptions',
     ['manual', 'ci-policy', 'ci-full', 'release-ready'],
     {
-      configKey: 'exceptions',
+      configKey: 'repository.exceptions',
       defaultTimeoutMs: 30000,
       manualCommand: 'exceptions',
       manualOrder: 10,
@@ -234,7 +244,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     'repository.commit-message',
     ['pre-push', 'ci-policy', 'ci-full', 'release-ready'],
     {
-      configKey: 'commitMessage',
+      configKey: 'repository.commitMessage',
       featureName: 'commitMessage',
       featureOrder: 70,
       defaultTimeoutMs: 30000,
@@ -259,7 +269,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     },
   ),
   reviewedGateDescriptor('dependencies.policy', POLICY_ENVIRONMENTS, {
-    configKey: 'dependencyPolicy',
+    configKey: 'repository.dependencyPolicy',
     featureName: 'dependencies',
     featureOrder: 80,
     manualCommand: 'dependencies',
@@ -268,7 +278,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     packageScript: 'guard:dependencies',
   }),
   reviewedGateDescriptor('repository.file-placement', POLICY_ENVIRONMENTS, {
-    configKey: 'preCommit.filePlacement',
+    configKey: 'checks.filePlacement',
     featureName: 'filePlacement',
     featureOrder: 40,
     manualCommand: 'file-placement',
@@ -277,7 +287,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     packageScript: 'guard:file-placement',
   }),
   reviewedGateDescriptor('repository.code-placement', POLICY_ENVIRONMENTS, {
-    configKey: 'codePlacement',
+    configKey: 'repository.codePlacement',
     featureName: 'codePlacement',
     featureOrder: 45,
     manualCommand: 'code-placement',
@@ -285,15 +295,19 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     doctorOrder: 155,
     packageScript: 'guard:code-placement',
   }),
-  reviewedGateDescriptor('repository.maximum-file-lines', CI_POLICY_ENVIRONMENTS, {
-    configKey: 'preCommit.maxFileLines',
-    featureName: 'maxFileLines',
-    featureOrder: 50,
-    doctorOrder: 140,
-    ciScopes: ['all-files', 'changed-files'],
-  }),
+  reviewedGateDescriptor(
+    'repository.maximum-file-lines',
+    CI_POLICY_ENVIRONMENTS,
+    {
+      configKey: 'checks.maxFileLines',
+      featureName: 'maxFileLines',
+      featureOrder: 50,
+      doctorOrder: 140,
+      ciScopes: ['all-files', 'changed-files'],
+    },
+  ),
   reviewedGateDescriptor('repository.delivery-contract', POLICY_ENVIRONMENTS, {
-    configKey: 'deliveryContract',
+    configKey: 'repository.deliveryContract',
     featureName: 'deliveryContract',
     featureOrder: 85,
     manualCommand: 'delivery-contract',
@@ -314,91 +328,94 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     mutation: 'external-write',
     allowedMutations: ['external-write', 'read-only'],
   }),
-  reviewedGateDescriptor('release.check', ['release-ready'], {
-    defaultTimeoutMs: 300000,
-    requiredScripts: ['check'],
-    supportsCancellation: true,
-  }),
-  reviewedGateDescriptor('release.test', ['release-ready'], {
-    defaultTimeoutMs: 900000,
-    requiredScripts: ['test'],
-    supportsCancellation: true,
-  }),
-  reviewedGateDescriptor('release.package', ['release-ready'], {
-    defaultTimeoutMs: 300000,
-    requires: ['release.check', 'release.test'],
-    after: ['quality.build'],
-    artifactTypes: ['npm-package-manifest'],
-    supportsCancellation: true,
-  }),
-  reviewedGateDescriptor('release.delivery-evidence', ['manual', 'release-ready'], {
-    after: ['release.package'],
-    manualCommand: 'delivery-evidence',
-    manualOrder: 28,
-    packageScript: 'guard:delivery-evidence',
-    rules: [
-      'delivery-evidence/obligations',
-      'delivery-evidence/human-acceptance',
-      'delivery-evidence/findings',
-      'delivery-evidence/digests',
-      'delivery-evidence/evidence-run',
-      'delivery-evidence/gate-result-content',
-      'delivery-evidence/integration-analysis',
-    ],
-    artifactTypes: ['delivery-evidence'],
-  }),
-  reviewedGateDescriptor('quality.stylelint', ['pre-commit', 'ci-full', 'release-ready'], {
-    configKey: 'preCommit.stylelint',
-    featureName: 'stylelint',
-    featureOrder: 30,
-    mutation: 'working-tree-fix',
-    allowedMutations: ['working-tree-fix', 'read-only'],
-    before: ['quality.eslint'],
-    requiredTools: ['stylelint'],
-    supportsFix: true,
-    doctorOrder: 160,
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('quality.eslint', ['pre-commit', 'ci-full', 'release-ready'], {
-    configKey: 'preCommit.eslint',
-    featureName: 'eslint',
-    featureOrder: 10,
-    mutation: 'working-tree-fix',
-    allowedMutations: ['working-tree-fix', 'read-only'],
-    before: ['quality.prettier'],
-    requiredTools: ['eslint'],
-    supportsFix: true,
-    doctorOrder: 130,
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('quality.prettier', ['pre-commit', 'ci-full', 'release-ready'], {
-    configKey: 'preCommit.prettier',
-    featureName: 'prettier',
-    featureOrder: 20,
-    mutation: 'working-tree-fix',
-    allowedMutations: ['working-tree-fix', 'read-only'],
-    requiredTools: ['prettier'],
-    supportsFix: true,
-    doctorOrder: 170,
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('quality.typecheck', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
-    configKey: 'typeCheck',
-    featureName: 'typeCheck',
-    featureOrder: 130,
-    defaultTimeoutMs: 180000,
-    manualCommand: 'typecheck',
-    manualOrder: 50,
-    doctorOrder: 40,
-    packageScript: 'guard:typecheck',
-    requiredScripts: ['config:typeCheck.script'],
-    supportsCancellation: true,
-  }),
+  reviewedGateDescriptor(
+    'release.delivery-evidence',
+    ['manual', 'release-ready'],
+    {
+      after: ['quality.build', 'quality.lighthouse'],
+      manualCommand: 'delivery-evidence',
+      manualOrder: 28,
+      packageScript: 'guard:delivery-evidence',
+      rules: [
+        'delivery-evidence/obligations',
+        'delivery-evidence/human-acceptance',
+        'delivery-evidence/findings',
+        'delivery-evidence/digests',
+        'delivery-evidence/evidence-run',
+        'delivery-evidence/gate-result-content',
+        'delivery-evidence/integration-analysis',
+      ],
+      artifactTypes: ['delivery-evidence'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.stylelint',
+    ['pre-commit', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.stylelint',
+      featureName: 'stylelint',
+      featureOrder: 30,
+      mutation: 'working-tree-fix',
+      allowedMutations: ['working-tree-fix', 'read-only'],
+      before: ['quality.eslint'],
+      requiredTools: ['stylelint'],
+      supportsFix: true,
+      doctorOrder: 160,
+      ciScopes: ['all-files', 'changed-files'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.eslint',
+    ['pre-commit', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.eslint',
+      featureName: 'eslint',
+      featureOrder: 10,
+      mutation: 'working-tree-fix',
+      allowedMutations: ['working-tree-fix', 'read-only'],
+      before: ['quality.prettier'],
+      requiredTools: ['eslint'],
+      supportsFix: true,
+      doctorOrder: 130,
+      ciScopes: ['all-files', 'changed-files'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.prettier',
+    ['pre-commit', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.prettier',
+      featureName: 'prettier',
+      featureOrder: 20,
+      mutation: 'working-tree-fix',
+      allowedMutations: ['working-tree-fix', 'read-only'],
+      requiredTools: ['prettier'],
+      supportsFix: true,
+      doctorOrder: 170,
+      ciScopes: ['all-files', 'changed-files'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.typecheck',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.typeCheck',
+      featureName: 'typeCheck',
+      featureOrder: 130,
+      defaultTimeoutMs: 180000,
+      manualCommand: 'typecheck',
+      manualOrder: 50,
+      doctorOrder: 40,
+      packageScript: 'guard:typecheck',
+      requiredScripts: ['config:checks.typeCheck.script'],
+      supportsCancellation: true,
+    },
+  ),
   reviewedGateDescriptor(
     'quality.unit-test',
     ['manual', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'],
     {
-      configKey: 'unitTest',
+      configKey: 'checks.unitTest',
       featureName: 'unitTest',
       featureOrder: 140,
       manualCommand: 'unit-test',
@@ -406,13 +423,13 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       doctorOrder: 50,
       packageScript: 'guard:unit-test',
       requiredTools: ['vitest'],
-      requiredScripts: ['config:unitTest.script'],
+      requiredScripts: ['config:checks.unitTest.script'],
       artifactTypes: ['coverage-report'],
       supportsCancellation: true,
     },
   ),
   reviewedGateDescriptor('quality.mutation-test', ['manual'], {
-    configKey: 'mutationTest',
+    configKey: 'checks.mutationTest',
     featureName: 'mutationTest',
     featureOrder: 145,
     defaultTimeoutMs: 1800000,
@@ -432,7 +449,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     'quality.accessibility-test',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],
     {
-      configKey: 'accessibilityTest',
+      configKey: 'checks.accessibilityTest',
       featureName: 'accessibilityTest',
       featureOrder: 100,
       defaultTimeoutMs: 180000,
@@ -440,37 +457,45 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       manualOrder: 120,
       doctorOrder: 60,
       packageScript: 'guard:accessibility-test',
-      requiredScripts: ['config:accessibilityTest.script'],
+      requiredScripts: ['config:checks.accessibilityTest.script'],
       supportsCancellation: true,
     },
   ),
-  reviewedGateDescriptor('quality.architecture', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
-    configKey: 'architecture',
-    featureName: 'architecture',
-    featureOrder: 90,
-    manualCommand: 'architecture',
-    manualOrder: 40,
-    doctorOrder: 20,
-    packageScript: 'guard:architecture',
-    requiredTools: ['dependency-cruiser'],
-  }),
-  reviewedGateDescriptor('quality.dead-code', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
-    configKey: 'deadCode',
-    featureName: 'deadCode',
-    featureOrder: 100,
-    defaultTimeoutMs: 180000,
-    manualCommand: 'dead-code',
-    manualOrder: 45,
-    doctorOrder: 25,
-    packageScript: 'guard:dead-code',
-    requiredTools: ['knip'],
-    supportsCancellation: true,
-  }),
+  reviewedGateDescriptor(
+    'quality.architecture',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.architecture',
+      featureName: 'architecture',
+      featureOrder: 90,
+      manualCommand: 'architecture',
+      manualOrder: 40,
+      doctorOrder: 20,
+      packageScript: 'guard:architecture',
+      requiredTools: ['dependency-cruiser'],
+    },
+  ),
+  reviewedGateDescriptor(
+    'quality.dead-code',
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
+    {
+      configKey: 'checks.deadCode',
+      featureName: 'deadCode',
+      featureOrder: 100,
+      defaultTimeoutMs: 180000,
+      manualCommand: 'dead-code',
+      manualOrder: 45,
+      doctorOrder: 25,
+      packageScript: 'guard:dead-code',
+      requiredTools: ['knip'],
+      supportsCancellation: true,
+    },
+  ),
   reviewedGateDescriptor(
     'quality.build',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],
     {
-      configKey: 'build',
+      configKey: 'checks.build',
       featureName: 'build',
       featureOrder: 110,
       defaultTimeoutMs: 300000,
@@ -478,26 +503,30 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       manualOrder: 30,
       doctorOrder: 10,
       packageScript: 'guard:build',
-      requiredScripts: ['config:build.script'],
+      requiredScripts: ['config:checks.build.script'],
       artifactTypes: ['build-output'],
       supportsCancellation: true,
     },
   ),
-  reviewedGateDescriptor('quality.lighthouse', ['manual', 'pre-push', 'release-ready'], {
-    configKey: 'lighthouse',
-    featureName: 'lighthouse',
-    featureOrder: 120,
-    defaultTimeoutMs: 300000,
-    manualCommand: 'lighthouse',
-    manualOptions: ['--skip-build'],
-    manualOrder: 160,
-    doctorOrder: 30,
-    packageScript: 'guard:lighthouse',
-    requiredTools: ['@lhci/cli'],
-    artifactTypes: ['lighthouse-report'],
-  }),
+  reviewedGateDescriptor(
+    'quality.lighthouse',
+    ['manual', 'pre-push', 'release-ready'],
+    {
+      configKey: 'checks.lighthouse',
+      featureName: 'lighthouse',
+      featureOrder: 120,
+      defaultTimeoutMs: 300000,
+      manualCommand: 'lighthouse',
+      manualOptions: ['--skip-build'],
+      manualOrder: 160,
+      doctorOrder: 30,
+      packageScript: 'guard:lighthouse',
+      requiredTools: ['@lhci/cli'],
+      artifactTypes: ['lighthouse-report'],
+    },
+  ),
   reviewedGateDescriptor('quality.style-complexity', ['manual'], {
-    configKey: 'preCommit.stylelint.complexity',
+    configKey: 'checks.styleComplexity',
     featureName: 'styleComplexity',
     featureOrder: 60,
     manualCommand: 'style-complexity',
@@ -506,7 +535,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     requiredTools: ['stylelint'],
   }),
   reviewedGateDescriptor('quality.style-governance', ['manual'], {
-    configKey: 'preCommit.stylelint.governance',
+    configKey: 'checks.styleGovernance',
     featureName: 'styleGovernance',
     featureOrder: 70,
     manualCommand: 'style-governance',
@@ -517,8 +546,9 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
 ]);
 
 function officialGateDescriptor(gateDefinition) {
-  const metadataEntries = Object.entries(gateDefinition)
-    .filter(([, value]) => typeof value !== 'function');
+  const metadataEntries = Object.entries(gateDefinition).filter(
+    ([, value]) => typeof value !== 'function',
+  );
   assert.deepEqual(
     metadataEntries.map(([field]) => field),
     Object.keys(REVIEWED_OFFICIAL_GATE_DESCRIPTORS[0]),
@@ -557,9 +587,10 @@ test('defines immutable gate metadata and exposes the dynamic-code vertical slic
   assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
   assert.equal(gateRegistry.ci.includes(dynamicCode), true);
   assert.deepEqual(dynamicCode.ciScopes, ['all-files', 'changed-files']);
-  assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 1 } }), {
+  assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 2 } }), {
     status: 'ready',
-    summary: '动态代码暂存门禁（硬性要求，规则=security/no-eval+security/no-function-constructor）',
+    summary:
+      '动态代码暂存门禁（硬性要求，规则=security/no-eval+security/no-function-constructor）',
     rules: dynamicCode.rules,
   });
 });
@@ -572,7 +603,10 @@ test('keeps every official Gate capability descriptor on the reviewed contract',
 });
 
 test('keeps a supplied file scope immutable without letting the gate own console output', () => {
-  const sourceFile = { absolute: 'C:/repo/src/example.js', relative: 'src/example.js' };
+  const sourceFile = {
+    absolute: 'C:/repo/src/example.js',
+    relative: 'src/example.js',
+  };
   const plan = dynamicCodeGate.plan({ root: 'C:/repo', files: [sourceFile] });
 
   assert.equal(Object.isFrozen(plan), true);
@@ -586,7 +620,15 @@ test('keeps a supplied file scope immutable without letting the gate own console
     /要求明确的文件范围/,
   );
   assert.throws(
-    () => dynamicCodeGate.run({ root: 'C:/repo', config: { exceptions: [] } }),
+    () =>
+      dynamicCodeGate.run({
+        root: 'C:/repo',
+        config: {
+          repository: {
+            exceptions: [],
+          },
+        },
+      }),
     /要求执行计划/,
   );
 });
@@ -598,20 +640,21 @@ test('enforces the migrated gate dependency boundary', () => {
   );
 
   assert.doesNotMatch(source, /from ['"].*renderer\.js['"]/);
-  assert.doesNotMatch(source, /collectProjectFiles|collectStagedChanges|runGit/);
+  assert.doesNotMatch(
+    source,
+    /collectProjectFiles|collectStagedChanges|runGit/,
+  );
   assert.doesNotMatch(source, /\bconsole\.|process\.exit(?:Code)?/);
 });
 
 test('rejects duplicate identities, duplicate commands, and missing dependencies', () => {
+  assert.throws(() => createGateRegistry([gate(), gate()]), /门禁 id 重复/);
   assert.throws(
-    () => createGateRegistry([gate(), gate()]),
-    /门禁 id 重复/,
-  );
-  assert.throws(
-    () => createGateRegistry([
-      gate({ id: 'first', manualCommand: 'example', manualOrder: 1 }),
-      gate({ id: 'second', manualCommand: 'example', manualOrder: 2 }),
-    ]),
+    () =>
+      createGateRegistry([
+        gate({ id: 'first', manualCommand: 'example', manualOrder: 1 }),
+        gate({ id: 'second', manualCommand: 'example', manualOrder: 2 }),
+      ]),
     /门禁手动命令重复/,
   );
   assert.throws(
@@ -619,10 +662,11 @@ test('rejects duplicate identities, duplicate commands, and missing dependencies
     /requires 指向未知门禁/,
   );
   assert.throws(
-    () => createGateRegistry([
-      gate({ id: 'first', requires: ['second'] }),
-      gate({ id: 'second', requires: ['first'] }),
-    ]),
+    () =>
+      createGateRegistry([
+        gate({ id: 'first', requires: ['second'] }),
+        gate({ id: 'second', requires: ['first'] }),
+      ]),
     /门禁依赖环/,
   );
 });
@@ -631,7 +675,8 @@ test('validates gate lifecycle, mutation, timeout, and handlers', () => {
   assert.throws(() => gate({ environments: ['runtime'] }), /包含不支持的值/);
   assert.throws(() => gate({ mutation: 'network' }), /门禁 mutation/);
   assert.throws(
-    () => gate({ mutation: 'working-tree-fix', allowedMutations: ['read-only'] }),
+    () =>
+      gate({ mutation: 'working-tree-fix', allowedMutations: ['read-only'] }),
     /必须包含其最高变更级别/,
   );
   assert.throws(() => gate({ defaultTimeoutMs: 0 }), /正整数/);
@@ -671,11 +716,13 @@ test('records existing tool-backed capability prerequisites and side effects in 
   const typecheck = gateRegistry.get('quality.typecheck');
   assert.equal(typecheck.defaultTimeoutMs, 180000);
   assert.equal(typecheck.mutation, 'read-only');
-  assert.deepEqual(typecheck.requiredScripts, ['config:typeCheck.script']);
+  assert.deepEqual(typecheck.requiredScripts, [
+    'config:checks.typeCheck.script',
+  ]);
 
   const unitTest = gateRegistry.get('quality.unit-test');
   assert.deepEqual(unitTest.requiredTools, ['vitest']);
-  assert.deepEqual(unitTest.requiredScripts, ['config:unitTest.script']);
+  assert.deepEqual(unitTest.requiredScripts, ['config:checks.unitTest.script']);
   assert.deepEqual(unitTest.artifactTypes, ['coverage-report']);
 
   const lighthouse = gateRegistry.get('quality.lighthouse');
@@ -686,16 +733,33 @@ test('records existing tool-backed capability prerequisites and side effects in 
 
 test('keeps staged quality file applicability in each Gate plan', () => {
   const config = {
-    preCommit: {
-      stylelint: { enabled: true, pattern: '**/*.{css,vue}', fix: true },
-      eslint: { enabled: true, pattern: '**/*.{js,vue}', fix: true },
-      prettier: { enabled: true, pattern: '**/*.vue', fix: true },
+    checks: {
+      stylelint: {
+        enabled: true,
+        pattern: '**/*.{css,vue}',
+        fix: true,
+      },
+      eslint: {
+        enabled: true,
+        pattern: '**/*.{js,vue}',
+        fix: true,
+      },
+      prettier: {
+        enabled: true,
+        pattern: '**/*.vue',
+        fix: true,
+      },
     },
   };
   const context = {
     root: 'C:/project',
     config,
-    files: ['src/pages/app.js', 'src/styles/app.css', 'src/components/App.vue', 'test/app.ts'],
+    files: [
+      'src/pages/app.js',
+      'src/styles/app.css',
+      'src/components/App.vue',
+      'test/app.ts',
+    ],
     step: { mutation: 'read-only' },
   };
 

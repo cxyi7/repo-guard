@@ -36,19 +36,31 @@ function createFixture() {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      preCommit: {
-        stylelint: {
-          enabled: true,
-          complexity: {
-            enabled: false,
-            maxCompoundSelectors: 2,
-            maxNestingDepth: 2,
-          },
-        },
-      },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    stylelint: {
+      enabled: true
+    },
+    styleComplexity: {
+      enabled: false,
+      maxCompoundSelectors: 2,
+      maxNestingDepth: 2
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  }
+}, null, 2)}\n`,
   );
   writeFileSync(
     path.join(root, 'style.css'),

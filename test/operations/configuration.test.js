@@ -19,6 +19,7 @@ function fixture(context) {
 test('缺失配置时运维保持关闭，重复归一化保持一致', (context) => {
   const config = loadOperationsConfig(fixture(context));
   assert.equal(config.enabled, false);
+  assert.equal(config.notifications.enabled, false);
   assert.deepEqual(validateOperationsConfig(config), config);
   const disabled = validateOperationsConfig({ version: 2, projects: { api: { enabled: false } } });
   assert.deepEqual(validateOperationsConfig(disabled), disabled);
@@ -29,6 +30,10 @@ test('拒绝未知字段、隐式开启和不受支持的运维平台', () => {
   assert.throws(() => validateOperationsConfig({ version: 2, enabled: 'true' }), /布尔值/);
   assert.throws(() => validateOperationsConfig({ version: 2, provider: 'github' }), /gitlab/);
   assert.throws(() => validateOperationsConfig({ version: 2, projects: { api: { allow_failure: true } } }), /未知字段/);
+  assert.throws(() => validateOperationsConfig({ version: 2, notifications: true }), /必须是对象/);
+  assert.throws(() => validateOperationsConfig({ version: 2, notifications: { enabled: 'true' } }), /布尔值/);
+  assert.throws(() => validateOperationsConfig({ version: 2, notifications: { webhook: 'secret' } }), /未知字段/);
+  assert.equal(validateOperationsConfig({ version: 2, notifications: { enabled: true } }).notifications.enabled, true);
 });
 
 test('拒绝越界产物、命令注入、通配分支和弱化质量档位', () => {

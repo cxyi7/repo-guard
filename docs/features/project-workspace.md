@@ -34,7 +34,7 @@ npx repo-guard doctor
 
 | 字段 | 说明与约束 |
 |---|---|
-| `version` | 必须为数字 `2`；旧配置先显式迁移 |
+| `version` | 必须为数字 `2`；其他版本直接拒绝，需按当前结构重新建立配置，不提供转换 |
 | `project.id` | 应用唯一标识，小写字母开头，使用小写字母、数字和单个连字符，例如 `api`、`admin-web` |
 | `project.role` | `frontend` 或 `backend`，必须与预设匹配 |
 | `project.stack` | 当前可执行值为 `node`；`java` 已预留但会明确报告尚未支持 |
@@ -109,7 +109,7 @@ repo/
 }
 ```
 
-后端子配置使用本页首个 Node 示例，但不添加 `repository`、`reporting` 和 `ci` 公共区块。手动创建好配置后，在仓库根执行 `repo-guard init` 同步 Hook 和规范。
+后端子配置使用本页首个 Node 示例，但不添加 `repository`、`reporting` 和 `ci` 公共区块。子应用的编辑器 Schema 使用 `project.schema.json`，它只允许 `$schema`、`version`、`project` 和 `checks`；根配置使用 `config.schema.json`。手动创建好配置后，在仓库根执行 `repo-guard init` 同步 Hook 和规范。
 
 ```bash
 # 应用检查与开关明确选择目标

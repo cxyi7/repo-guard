@@ -23,11 +23,8 @@ import {
   inspectGitLabCi,
   installGitLabCi,
 } from '../../src/orchestration/setup/gitlab-ci.js';
-import { renderManagedPipelineRoot } from '../../src/orchestration/setup/gitlab-managed-pipeline.js';
-import { installGitLabCiFiles } from '../../src/operations/gitlab/gitlab-ci.js';
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
-const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 mkdirSync(TEST_ROOT, { recursive: true });
 
 async function runCiGate(options) {
@@ -41,48 +38,94 @@ function git(root, args) {
   return result.stdout.trim();
 }
 
-function yamlJob(content, name) {
-  const match = new RegExp(
-    `^${name}:\\n[\\s\\S]*?(?=^[A-Za-z0-9_]+:\\n|^# repo-guard-gitlab:end)`,
-    'm',
-  ).exec(content);
-  assert.ok(match, `缺少 GitLab CI 受管 Job：${name}`);
-  return match[0];
-}
-
 function config(extra = {}) {
   return validateConfig({
-    version: 1,
-    notification: { enabled: false },
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
+    },
+    checks: {
+      filePlacement: {
+        enabled: false,
+      },
+      maxFileLines: {
+        enabled: false,
+      },
+      eslint: {
+        enabled: false,
+      },
+      prettier: {
+        enabled: false,
+      },
+      stylelint: {
+        enabled: false,
+      },
+    },
+    repository: {
+      dependencyPolicy: {
+        enabled: false,
+        requireLockfile: false,
+      },
+      rules: [
+        {
+          pattern: 'src/**',
+          category: 'Source',
+          level: 'audit',
+        },
+      ],
+    },
+    reporting: {
+      notification: {
+        enabled: false,
+      },
+    },
     ci: {
       enabled: true,
       profile: 'policy',
       reportPath: 'reports/repo-guard.json',
-      protectedFiles: { action: 'report' },
+      protectedFiles: {
+        action: 'report',
+      },
     },
-    dependencyPolicy: { enabled: false, requireLockfile: false },
-    preCommit: {
-      filePlacement: { enabled: false },
-      maxFileLines: { enabled: false },
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      stylelint: { enabled: false },
-    },
-    rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
     ...extra,
   });
 }
 
 function sparseCiConfig() {
   return {
-    version: 1,
-    dependencyPolicy: { enabled: false },
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      maxFileLines: { enabled: false },
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
     },
-    rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
+    checks: {
+      eslint: {
+        enabled: false,
+      },
+      prettier: {
+        enabled: false,
+      },
+      maxFileLines: {
+        enabled: false,
+      },
+    },
+    repository: {
+      dependencyPolicy: {
+        enabled: false,
+      },
+      rules: [
+        {
+          pattern: 'src/**',
+          category: 'Source',
+          level: 'audit',
+        },
+      ],
+    },
   };
 }
 
@@ -104,7 +147,10 @@ function repository() {
   git(root, ['config', 'user.email', 'test@example.com']);
   git(root, ['config', 'user.name', 'Test']);
   mkdirSync(path.join(root, 'src'));
-  writeFileSync(path.join(root, 'src', 'safe.js'), 'export const safe = true;\n');
+  writeFileSync(
+    path.join(root, 'src', 'safe.js'),
+    'export const safe = true;\n',
+  );
   writeFileSync(
     path.join(root, 'package.json'),
     '{"name":"fixture","version":"1.0.0","devDependencies":{"@cxyi7/repo-guard":"0.15.0"}}\n',
@@ -116,7 +162,10 @@ function repository() {
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'base']);
   const base = git(root, ['rev-parse', 'HEAD']);
-  writeFileSync(path.join(root, 'src', 'next.js'), 'export const next = true;\n');
+  writeFileSync(
+    path.join(root, 'src', 'next.js'),
+    'export const next = true;\n',
+  );
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'next']);
   return { root, base, head: git(root, ['rev-parse', 'HEAD']) };
@@ -127,10 +176,16 @@ test('resolves explicit and GitLab CI change ranges without requiring a clean ch
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(path.join(fixture.root, 'local.txt'), 'untracked');
 
-  const explicit = resolveCiRange(fixture.root, { base: fixture.base, head: fixture.head });
+  const explicit = resolveCiRange(fixture.root, {
+    base: fixture.base,
+    head: fixture.head,
+  });
   assert.equal(explicit.base, fixture.base);
   assert.equal(explicit.head, fixture.head);
-  assert.deepEqual(explicit.changes.map(({ path: file }) => file), ['src/next.js']);
+  assert.deepEqual(
+    explicit.changes.map(({ path: file }) => file),
+    ['src/next.js'],
+  );
 
   const gitlab = resolveCiRange(fixture.root, {
     env: {
@@ -141,9 +196,10 @@ test('resolves explicit and GitLab CI change ranges without requiring a clean ch
   });
   assert.equal(gitlab.base, fixture.base);
   assert.throws(
-    () => resolveCiRange(fixture.root, {
-      env: { GITLAB_CI: 'true', CI_COMMIT_SHA: fixture.head },
-    }),
+    () =>
+      resolveCiRange(fixture.root, {
+        env: { GITLAB_CI: 'true', CI_COMMIT_SHA: fixture.head },
+      }),
     /CI 基准版本不可用/,
   );
 });
@@ -151,45 +207,59 @@ test('resolves explicit and GitLab CI change ranges without requiring a clean ch
 test('runs a read-only policy profile and always writes structured JSON', async (context) => {
   const fixture = repository();
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  const before = readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8');
-
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: config(),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 0);
-  const report = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
+  const before = readFileSync(
+    path.join(fixture.root, 'src', 'next.js'),
     'utf8',
-  ));
+  );
+
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: config(),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
+    }),
+    0,
+  );
+  const report = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   assert.equal(report.status, 'passed');
+  assert.equal(report.version, 2);
   assert.equal(report.profile, 'policy');
   assert.equal(report.protectedFiles.length, 1);
-  assert.deepEqual(report.steps.map(({ name, status }) => ({ name, status })), [
-    { name: 'repository.structured-exceptions', status: 'passed' },
-    { name: 'repository.agent-policy', status: 'passed' },
-    { name: 'repository.commit-message', status: 'skipped' },
-    { name: 'async-resource-cleanup', status: 'skipped' },
-    { name: 'path-naming', status: 'skipped' },
-    { name: 'ui-tokens', status: 'skipped' },
-    { name: 'dynamic-code', status: 'passed' },
-    { name: 'security.vue-unsafe-html', status: 'passed' },
-    { name: 'security.vue-target-blank', status: 'passed' },
-    { name: 'accessibility.vue-form-label', status: 'passed' },
-    { name: 'accessibility.vue-image-alt', status: 'passed' },
-    { name: 'dependencies.policy', status: 'skipped' },
+  assert.deepEqual(
+    report.steps.map(({ name, status }) => ({ name, status })),
+    [
+      { name: 'repository.structured-exceptions', status: 'passed' },
+      { name: 'repository.agent-policy', status: 'passed' },
+      { name: 'repository.commit-message', status: 'skipped' },
+      { name: 'async-resource-cleanup', status: 'skipped' },
+      { name: 'path-naming', status: 'skipped' },
+      { name: 'ui-tokens', status: 'skipped' },
+      { name: 'dynamic-code', status: 'passed' },
+      { name: 'security.vue-unsafe-html', status: 'passed' },
+      { name: 'security.vue-target-blank', status: 'passed' },
+      { name: 'accessibility.vue-form-label', status: 'passed' },
+      { name: 'accessibility.vue-image-alt', status: 'passed' },
+      { name: 'dependencies.policy', status: 'skipped' },
       { name: 'repository.file-placement', status: 'skipped' },
       { name: 'repository.image-assets', status: 'skipped' },
       { name: 'repository.code-placement', status: 'skipped' },
-    { name: 'repository.maximum-file-lines', status: 'skipped' },
-    { name: 'repository.delivery-contract', status: 'skipped' },
-    { name: 'unit-test-policy', status: 'skipped' },
-    { name: 'protected-files', status: 'passed' },
-  ]);
-  assert.equal(report.steps.every((step) => !('diagnostics' in step)), true);
-  const dynamicCodeStep = report.steps.find(({ name }) => name === 'dynamic-code');
+      { name: 'repository.maximum-file-lines', status: 'skipped' },
+      { name: 'repository.delivery-contract', status: 'skipped' },
+      { name: 'unit-test-policy', status: 'skipped' },
+      { name: 'protected-files', status: 'passed' },
+    ],
+  );
+  assert.equal(
+    report.steps.every((step) => !('diagnostics' in step)),
+    true,
+  );
+  const dynamicCodeStep = report.steps.find(
+    ({ name }) => name === 'dynamic-code',
+  );
   assert.equal(dynamicCodeStep.exitCode, 0);
   assert.deepEqual(dynamicCodeStep.gateResult, {
     schemaVersion: 2,
@@ -207,26 +277,34 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     diagnostics: dynamicCodeStep.gateResult.diagnostics,
     durationMs: dynamicCodeStep.gateResult.durationMs,
   });
-  assert.equal(readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8'), before);
+  assert.equal(
+    readFileSync(path.join(fixture.root, 'src', 'next.js'), 'utf8'),
+    before,
+  );
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: config({
-      ci: {
-        enabled: true,
-        profile: 'policy',
-        reportPath: 'reports/failed.json',
-        protectedFiles: { action: 'fail' },
-      },
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: config({
+        ci: {
+          enabled: true,
+          profile: 'policy',
+          reportPath: 'reports/failed.json',
+          protectedFiles: { action: 'fail' },
+        },
+      }),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
     }),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 2);
-  assert.equal(JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'failed.json'),
-    'utf8',
-  )).status, 'failed');
+    2,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(path.join(fixture.root, 'reports', 'failed.json'), 'utf8'),
+    ).status,
+    'failed',
+  );
 });
 
 test('CI enforce 模式启用并阻断异步资源清理错误', async (context) => {
@@ -243,18 +321,25 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
   const enforceConfig = configWithCiGatePolicy('reports/async-enforce.json', {
     'quality.vue-async-resource-cleanup': { mode: 'enforce' },
   });
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: enforceConfig,
-    base: fixture.base,
-    head,
-    env: {},
-  }), 2);
-  const enforceReport = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'async-enforce.json'),
-    'utf8',
-  ));
-  const enforceStep = enforceReport.steps.find(({ name }) => name === 'async-resource-cleanup');
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: enforceConfig,
+      base: fixture.base,
+      head,
+      env: {},
+    }),
+    2,
+  );
+  const enforceReport = JSON.parse(
+    readFileSync(
+      path.join(fixture.root, 'reports', 'async-enforce.json'),
+      'utf8',
+    ),
+  );
+  const enforceStep = enforceReport.steps.find(
+    ({ name }) => name === 'async-resource-cleanup',
+  );
   assert.equal(enforceStep.status, 'failed');
   assert.equal(enforceStep.gateResult.status, 'violation');
   assert.equal(enforceStep.gateResult.findings[0].severity, 'error');
@@ -262,17 +347,22 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
   const reportConfig = configWithCiGatePolicy('reports/async-report.json', {
     'quality.vue-async-resource-cleanup': { mode: 'report' },
   });
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: reportConfig,
-    base: fixture.base,
-    head,
-    env: {},
-  }), 0);
-  const report = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'async-report.json'),
-    'utf8',
-  ));
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: reportConfig,
+      base: fixture.base,
+      head,
+      env: {},
+    }),
+    0,
+  );
+  const report = JSON.parse(
+    readFileSync(
+      path.join(fixture.root, 'reports', 'async-report.json'),
+      'utf8',
+    ),
+  );
   assert.equal(
     report.steps.find(({ name }) => name === 'async-resource-cleanup').status,
     'failed',
@@ -289,21 +379,29 @@ test('CI enforce 模式启用并阻断全项目路径命名错误', async (conte
   git(fixture.root, ['add', '.']);
   git(fixture.root, ['commit', '-m', 'add invalid path']);
   const head = git(fixture.root, ['rev-parse', 'HEAD']);
-  const enforceConfig = configWithCiGatePolicy('reports/path-naming-enforce.json', {
-    'repository.path-naming': { mode: 'enforce' },
-  });
+  const enforceConfig = configWithCiGatePolicy(
+    'reports/path-naming-enforce.json',
+    {
+      'repository.path-naming': { mode: 'enforce' },
+    },
+  );
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: enforceConfig,
-    base: fixture.base,
-    head,
-    env: {},
-  }), 2);
-  const report = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'path-naming-enforce.json'),
-    'utf8',
-  ));
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: enforceConfig,
+      base: fixture.base,
+      head,
+      env: {},
+    }),
+    2,
+  );
+  const report = JSON.parse(
+    readFileSync(
+      path.join(fixture.root, 'reports', 'path-naming-enforce.json'),
+      'utf8',
+    ),
+  );
   const step = report.steps.find(({ name }) => name === 'path-naming');
   assert.equal(step.status, 'failed');
   assert.equal(step.gateResult.status, 'violation');
@@ -319,22 +417,27 @@ test('writes native dynamic-code findings with the unified CI exit contract', as
     'export const unsafe = (payload) => eval(payload);\n',
   );
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: config(),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 2);
-  const report = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  ));
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: config(),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
+    }),
+    2,
+  );
+  const report = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   const step = report.steps.find(({ name }) => name === 'dynamic-code');
-  assert.deepEqual({ status: step.status, exitCode: step.exitCode }, {
-    status: 'failed',
-    exitCode: 2,
-  });
+  assert.deepEqual(
+    { status: step.status, exitCode: step.exitCode },
+    {
+      status: 'failed',
+      exitCode: 2,
+    },
+  );
   assert.equal(step.gateResult.status, 'violation');
   assert.equal(step.gateResult.findings[0].ruleId, 'security/no-eval');
   assert.deepEqual(step.gateResult.metrics, {
@@ -353,20 +456,43 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
   );
 
   const cases = [
-    { mode: 'off', exitCode: 0, reportPath: 'reports/off.json', status: 'passed', step: 'skipped' },
-    { mode: 'report', exitCode: 0, reportPath: 'reports/report.json', status: 'passed', step: 'failed' },
-    { mode: 'enforce', exitCode: 2, reportPath: 'reports/enforce.json', status: 'failed', step: 'failed' },
+    {
+      mode: 'off',
+      exitCode: 0,
+      reportPath: 'reports/off.json',
+      status: 'passed',
+      step: 'skipped',
+    },
+    {
+      mode: 'report',
+      exitCode: 0,
+      reportPath: 'reports/report.json',
+      status: 'passed',
+      step: 'failed',
+    },
+    {
+      mode: 'enforce',
+      exitCode: 2,
+      reportPath: 'reports/enforce.json',
+      status: 'failed',
+      step: 'failed',
+    },
   ];
   for (const item of cases) {
     const policy = { 'security.dynamic-code': { mode: item.mode } };
-    assert.equal(await runCiGate({
-      root: fixture.root,
-      config: configWithCiGatePolicy(item.reportPath, policy),
-      base: fixture.base,
-      head: fixture.head,
-      env: {},
-    }), item.exitCode);
-    const report = JSON.parse(readFileSync(path.join(fixture.root, item.reportPath), 'utf8'));
+    assert.equal(
+      await runCiGate({
+        root: fixture.root,
+        config: configWithCiGatePolicy(item.reportPath, policy),
+        base: fixture.base,
+        head: fixture.head,
+        env: {},
+      }),
+      item.exitCode,
+    );
+    const report = JSON.parse(
+      readFileSync(path.join(fixture.root, item.reportPath), 'utf8'),
+    );
     const step = report.steps.find(({ name }) => name === 'dynamic-code');
     assert.equal(report.status, item.status);
     assert.equal(step.status, item.step);
@@ -378,20 +504,24 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
   }
 
   const changedReportPath = 'reports/changed-files.json';
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: configWithCiGatePolicy(changedReportPath, {
-      'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: configWithCiGatePolicy(changedReportPath, {
+        'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+      }),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
     }),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 0);
-  const changedReport = JSON.parse(readFileSync(
-    path.join(fixture.root, changedReportPath),
-    'utf8',
-  ));
-  const changedStep = changedReport.steps.find(({ name }) => name === 'dynamic-code');
+    0,
+  );
+  const changedReport = JSON.parse(
+    readFileSync(path.join(fixture.root, changedReportPath), 'utf8'),
+  );
+  const changedStep = changedReport.steps.find(
+    ({ name }) => name === 'dynamic-code',
+  );
   assert.equal(changedStep.status, 'passed');
   assert.deepEqual(changedStep.gatePolicy, {
     mode: 'enforce',
@@ -405,16 +535,21 @@ test('rejects CI Gate policy ids that are absent from the project Registry', asy
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   const reportPath = 'reports/invalid-gate-policy.json';
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: configWithCiGatePolicy(reportPath, {
-      'quality.not-installed': { mode: 'off' },
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: configWithCiGatePolicy(reportPath, {
+        'quality.not-installed': { mode: 'off' },
+      }),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
     }),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 1);
-  const report = JSON.parse(readFileSync(path.join(fixture.root, reportPath), 'utf8'));
+    1,
+  );
+  const report = JSON.parse(
+    readFileSync(path.join(fixture.root, reportPath), 'utf8'),
+  );
   assert.equal(report.status, 'configuration-error');
   assert.match(report.gateResult.summary, /未知或非 CI 门禁/);
 });
@@ -424,17 +559,19 @@ test('keeps dynamic-code execution errors distinct from policy violations', asyn
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
   writeFileSync(path.join(fixture.root, 'src', 'invalid.js'), 'const = ;\n');
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: config(),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 1);
-  const report = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  ));
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: config(),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
+    }),
+    1,
+  );
+  const report = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   const step = report.steps.find(({ name }) => name === 'dynamic-code');
   assert.equal(step.status, 'error');
   assert.equal(step.exitCode, 1);
@@ -445,7 +582,8 @@ test('keeps dynamic-code execution errors distinct from policy violations', asyn
 test('installs a managed GitLab include and preserves existing pipeline jobs', async (context) => {
   const fixture = repository();
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  const rootCi = 'stages:\n  - verify\n\nexisting_job:\n  stage: verify\n  script:\n    - echo existing\n';
+  const rootCi =
+    'stages:\n  - verify\n\nexisting_job:\n  stage: verify\n  script:\n    - echo existing\n';
   writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), rootCi);
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
@@ -454,24 +592,30 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
 
   const result = installGitLabCi(fixture.root, { profile: 'policy' });
   assert.equal(result.integrated, true);
-  const installedRoot = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
+  const installedRoot = readFileSync(
+    path.join(fixture.root, '.gitlab-ci.yml'),
+    'utf8',
+  );
   assert.match(installedRoot, /existing_job:/);
   assert.match(installedRoot, /local: \/\.gitlab\/ci\/repo-guard\.yml/);
   assert.match(installedRoot, /extends: \.repo_guard_policy/);
   assert.match(installedRoot, /stage: verify/);
-  const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
-  assert.match(template, /repo-guard-gitlab-template:v2/);
+  const template = readFileSync(
+    path.join(fixture.root, GITLAB_TEMPLATE_FILE),
+    'utf8',
+  );
+  assert.match(template, /repo-guard-gitlab-template:v3/);
   assert.match(template, /npx --no-install repo-guard ci --profile policy/);
-  assert.match(template, /npx --no-install repo-guard ci --profile release-ready/);
+  assert.match(
+    template,
+    /npx --no-install repo-guard ci --profile release-ready/,
+  );
   assert.match(template, /node:22\.23\.2/);
   assert.match(template, /GIT_DEPTH: "0"/);
   assert.match(template, /REPO_GUARD_SKIP_HOOKS: "1"/);
   assert.match(template, /- reports\//);
   const installedConfig = loadConfig(fixture.root, { repositoryOnly: true });
-  assert.deepEqual(inspectGitLabCi(
-    fixture.root,
-    installedConfig,
-  ).problems, []);
+  assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
   syncAgentPolicies(fixture.root, installedConfig);
   assert.equal(await runDoctor(fixture.root, { ci: true }), 0);
 
@@ -492,7 +636,10 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
 test('v2 质量安装不消费独立运维配置，也不生成部署或改写人工作业', (context) => {
   const fixture = repository();
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  writeFileSync(path.join(fixture.root, 'repo-guard.config.json'), stringifyProjectFixture(sparseCiConfig()));
+  writeFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    stringifyProjectFixture(sparseCiConfig()),
+  );
   const operations = JSON.stringify({
     version: 2,
     enabled: true,
@@ -506,147 +653,27 @@ test('v2 质量安装不消费独立运维配置，也不生成部署或改写�
     },
   });
   writeFileSync(path.join(fixture.root, 'repo-guard.ops.json'), operations);
-  const existing = 'stages: [test, build, deploy]\nrepo_guard_verify:\n  stage: build\n  script:\n    - npm run verify\n';
+  const existing =
+    'stages: [test, build, deploy]\nrepo_guard_verify:\n  stage: build\n  script:\n    - npm run verify\n';
   writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), existing);
 
   const installed = installGitLabCi(fixture.root, { profile: 'full' });
-  assert.equal(installed.pipelineEnabled, false);
+  assert.equal(Object.hasOwn(installed, 'pipelineEnabled'), false);
   assert.equal(installed.integrated, true);
   const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
   assert.ok(root.startsWith(existing));
-  assert.doesNotMatch(root, /repo_guard_deploy|repo_guard_notify|npm run deploy/);
-  assert.equal(existsSync(path.join(fixture.root, '.gitlab/ci/repo-guard-operations.yml')), false);
-  assert.equal(readFileSync(path.join(fixture.root, 'repo-guard.ops.json'), 'utf8'), operations);
-});
-
-test('内部历史发布适配保留通知与快速发布的渲染契约', (context) => {
-  const fixture = repository();
-  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  const manifestPath = path.join(fixture.root, 'package.json');
-  const manifest = {
-    ...JSON.parse(readFileSync(manifestPath, 'utf8')),
-    scripts: {
-      'ci:verify': 'node verify.js',
-      'ci:deploy:test': 'node deploy.js test',
-      'ci:deploy:production': 'node deploy.js production',
-      'ci:deploy:quick': 'node deploy.js quick',
-    },
-  };
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  writeFileSync(
-    path.join(fixture.root, '.gitlab-ci.yml'),
-    'stages:\n  - build\n  - deploy\n\nexisting_job:\n  stage: build\n  script:\n    - echo existing\n',
-  );
-  const legacyConfig = validateConfig({
-    ...sparseCiConfig(),
-    ci: {
-      enabled: true,
-      profile: 'full',
-      pipeline: {
-        enabled: true,
-        testBranches: ['dev', 'future/*'],
-        productionBranches: ['publish'],
-        runnerTags: ['docker'],
-        deployImage: 'registry.example.com:5050/ci/node-docker:22',
-        legacyPeerDeps: true,
-        quickDeploy: true,
-        notifications: true,
-      },
-    },
-  });
-
-  const installed = installGitLabCiFiles(fixture.root, legacyConfig, { profile: 'full' });
-  assert.equal(installed.pipelineEnabled, true);
-  assert.equal(installed.stage, '.pre');
-  const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
-  const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
-  assert.match(template, /\.repo_guard_pipeline_legacy_peer_deps_base:/);
-  assert.match(template, /npm ci --legacy-peer-deps/);
-  assert.match(template, /GIT_DEPTH: "0"/);
-  assert.match(root, /repo_guard:[\s\S]*stage: \.pre/);
-  assert.match(root, /repo_guard_verify:/);
-  assert.match(root, /npm run ci:verify/);
-  assert.match(root, /repo_guard_deploy_test:/);
-  assert.match(root, /image: registry\.example\.com:5050\/ci\/node-docker:22/);
-  assert.match(root, /\$CI_COMMIT_BRANCH == "dev"/);
-  assert.match(root, /\$CI_COMMIT_BRANCH =~ \/\^future\\\/\.\*\$\//);
-  assert.match(root, /repo_guard_deploy_production:[\s\S]*npm run ci:deploy:production/);
-  assert.match(root, /repo_guard_deploy_quick:[\s\S]*allow_failure: true/);
-  assert.doesNotMatch(root, /npm run ci:notify|npx --yes|--package=@cxyi7\/repo-guard/);
-  const managedJobNames = [
-    'repo_guard',
-    'repo_guard_verify',
-    'repo_guard_deploy_test',
-    'repo_guard_deploy_production',
-    'repo_guard_deploy_quick',
-    'repo_guard_notify_success',
-    'repo_guard_notify_failure',
-  ];
-  for (const jobName of managedJobNames) {
-    const job = yamlJob(root, jobName);
-    assert.ok(job.includes(`https://registry.npmjs.org/@cxyi7/repo-guard/-/repo-guard-${PACKAGE_VERSION}.tgz`), `${jobName} 必须使用当前版本的通知工具`);
-    assert.match(job, /after_script:/);
-    assert.match(job, /CI_JOB_STATUS" = "canceled"/);
-    assert.match(job, /--status canceled/);
-  }
-  assert.match(yamlJob(root, 'repo_guard'), /interruptible: true/);
-  assert.match(yamlJob(root, 'repo_guard_verify'), /interruptible: true/);
-  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_test'), /interruptible: true/);
-  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_production'), /interruptible: true/);
-  assert.doesNotMatch(yamlJob(root, 'repo_guard_deploy_quick'), /interruptible: true/);
-  assert.ok(
-    root.includes(`npm install --ignore-scripts --no-save --package-lock=false --audit=false --fund=false --prefix "$CI_BUILDS_DIR/.repo-guard-notify-$CI_PROJECT_ID-$CI_PIPELINE_ID-$CI_JOB_ID" https://registry.npmjs.org/@cxyi7/repo-guard/-/repo-guard-${PACKAGE_VERSION}.tgz`),
-  );
-  assert.match(
+  assert.doesNotMatch(
     root,
-    /REPO_GUARD_PIPELINE_NOTIFICATION=true node "\$CI_BUILDS_DIR\/.repo-guard-notify-\$CI_PROJECT_ID-\$CI_PIPELINE_ID-\$CI_JOB_ID\/node_modules\/@cxyi7\/repo-guard\/bin\/repo-guard\.js" ci-notify --status canceled/,
+    /repo_guard_deploy|repo_guard_notify|npm run deploy/,
   );
-  assert.match(
-    root,
-    /repo_guard_notify_success:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard\.js" ci-notify --status success[\s\S]*?when: on_success[\s\S]*?allow_failure: true/,
+  assert.equal(
+    existsSync(path.join(fixture.root, '.gitlab/ci/repo-guard-operations.yml')),
+    false,
   );
-  assert.match(
-    root,
-    /repo_guard_notify_failure:[\s\S]*?stage: \.post[\s\S]*?before_script: \[\][\s\S]*?repo-guard\.js" ci-notify --status failed[\s\S]*?when: on_failure[\s\S]*?allow_failure: true/,
+  assert.equal(
+    readFileSync(path.join(fixture.root, 'repo-guard.ops.json'), 'utf8'),
+    operations,
   );
-  assert.match(root, /repo_guard:[\s\S]*- if: '\$CI_COMMIT_BRANCH'/);
-  const installedConfig = legacyConfig;
-  assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
-
-  assert.equal(Object.hasOwn(manifest.scripts, 'ci:notify'), false);
-  assert.throws(
-    () => installGitLabCiFiles(fixture.root, legacyConfig, { profile: 'full', stage: 'build' }),
-    /固定使用 \.pre 阶段/,
-  );
-});
-
-test('does not add cancellation behavior when managed notifications are disabled', () => {
-  const pipeline = validateConfig({
-    ...sparseCiConfig(),
-    ci: { pipeline: { enabled: true, notifications: false } },
-  }).ci.pipeline;
-  const rendered = renderManagedPipelineRoot(pipeline);
-  const content = `${rendered.gateOverrides}${rendered.jobs}`;
-
-  assert.doesNotMatch(content, /after_script:|interruptible: true|repo_guard_notify_/);
-});
-
-test('内部历史发布适配仍拒绝缺少必需脚本且不改写人工流水线', (context) => {
-  const fixture = repository();
-  context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  const original = 'stages: [build, deploy]\n';
-  writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), original);
-  const legacyConfig = validateConfig({
-    ...sparseCiConfig(),
-    ci: { pipeline: { enabled: true, quickDeploy: true, notifications: true } },
-  });
-
-  assert.throws(
-    () => installGitLabCiFiles(fixture.root, legacyConfig),
-    /ci:verify.*ci:deploy:test.*ci:deploy:production.*ci:deploy:quick/,
-  );
-  assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
-  assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), false);
 });
 
 test('installs the release-ready GitLab profile without embedding publish or deploy', (context) => {
@@ -659,7 +686,10 @@ test('installs the release-ready GitLab profile without embedding publish or dep
   const installed = installGitLabCi(fixture.root, { profile: 'release-ready' });
   assert.equal(installed.integrated, true);
   const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
-  const template = readFileSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE), 'utf8');
+  const template = readFileSync(
+    path.join(fixture.root, GITLAB_TEMPLATE_FILE),
+    'utf8',
+  );
   assert.match(root, /extends: \.repo_guard_release_ready/);
   assert.match(template, /repo-guard ci --profile release-ready/);
   assert.doesNotMatch(template, /npm publish|\bdeploy\b/);
@@ -681,47 +711,11 @@ test('generates the GitLab template but does not rewrite complex existing includ
   const result = installGitLabCi(fixture.root, { profile: 'full' });
   assert.equal(result.integrated, false);
   assert.match(result.conflict, /已定义 include/);
-  assert.equal(readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'), original);
+  assert.equal(
+    readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8'),
+    original,
+  );
   assert.equal(existsSync(path.join(fixture.root, GITLAB_TEMPLATE_FILE)), true);
-});
-
-test('质量入口保留人工作业，内部历史发布适配拒绝同名发布作业冲突', (context) => {
-  const gateOnly = repository();
-  const managedDelivery = repository();
-  context.after(() => {
-    rmSync(gateOnly.root, { recursive: true, force: true });
-    rmSync(managedDelivery.root, { recursive: true, force: true });
-  });
-  const existingJob = 'repo_guard_verify:\n  stage: build\n  script:\n    - npm run verify\n';
-  writeFileSync(path.join(gateOnly.root, '.gitlab-ci.yml'), existingJob);
-  writeFileSync(
-    path.join(gateOnly.root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture(sparseCiConfig(), null, 2)}\n`,
-  );
-  assert.equal(installGitLabCi(gateOnly.root).integrated, true);
-  assert.match(readFileSync(path.join(gateOnly.root, '.gitlab-ci.yml'), 'utf8'), /repo_guard_verify:/);
-
-  const manifestPath = path.join(managedDelivery.root, 'package.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  writeFileSync(manifestPath, `${JSON.stringify({
-    ...manifest,
-    scripts: {
-      'ci:verify': 'node verify.js',
-      'ci:deploy:test': 'node deploy.js test',
-      'ci:deploy:production': 'node deploy.js production',
-    },
-  }, null, 2)}\n`);
-  writeFileSync(
-    path.join(managedDelivery.root, '.gitlab-ci.yml'),
-    `stages: [build, deploy]\n${existingJob}`,
-  );
-  const legacyConfig = validateConfig({
-    ...sparseCiConfig(),
-    ci: { pipeline: { enabled: true } },
-  });
-  const result = installGitLabCiFiles(managedDelivery.root, legacyConfig);
-  assert.equal(result.integrated, false);
-  assert.match(result.conflict, /保留作业 repo_guard_verify/);
 });
 
 test('exposes install-ci and ci through the package CLI', (context) => {
@@ -732,31 +726,34 @@ test('exposes install-ci and ci through the package CLI', (context) => {
     `${stringifyProjectFixture(sparseCiConfig(), null, 2)}\n`,
   );
   const cli = path.join(process.cwd(), 'bin', 'repo-guard.js');
-  const install = spawnSync(process.execPath, [
-    cli,
-    'install-ci',
-    '--provider',
-    'gitlab',
-    '--profile',
-    'policy',
-  ], { cwd: fixture.root, encoding: 'utf8' });
+  const install = spawnSync(
+    process.execPath,
+    [cli, 'install-ci', '--provider', 'gitlab', '--profile', 'policy'],
+    { cwd: fixture.root, encoding: 'utf8' },
+  );
   assert.equal(install.status, 0, install.stderr);
 
-  const run = spawnSync(process.execPath, [
-    cli,
-    'ci',
-    '--base',
-    fixture.base,
-    '--head',
-    fixture.head,
-    '--report-json',
-    'reports/cli.json',
-  ], { cwd: fixture.root, encoding: 'utf8' });
+  const run = spawnSync(
+    process.execPath,
+    [
+      cli,
+      'ci',
+      '--base',
+      fixture.base,
+      '--head',
+      fixture.head,
+      '--report-json',
+      'reports/cli.json',
+    ],
+    { cwd: fixture.root, encoding: 'utf8' },
+  );
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-  assert.equal(JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'cli.json'),
-    'utf8',
-  )).status, 'passed');
+  assert.equal(
+    JSON.parse(
+      readFileSync(path.join(fixture.root, 'reports', 'cli.json'), 'utf8'),
+    ).status,
+    'passed',
+  );
 });
 
 test('doctor detects attempts to weaken the managed GitLab job', (context) => {
@@ -788,23 +785,45 @@ test('rejects report paths that could modify project files', async (context) => 
   const before = readFileSync(manifestPath, 'utf8');
   writeFileSync(
     path.join(fixture.root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-      version: 1,
-      ci: { enabled: true },
-      rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
-    }, null, 2)}\n`,
+    `${stringifyProjectFixture(
+      {
+        version: 2,
+        project: {
+          id: 'web',
+          role: 'frontend',
+          stack: 'node',
+          preset: 'vue-javascript',
+        },
+        repository: {
+          rules: [
+            {
+              pattern: 'src/**',
+              category: 'Source',
+              level: 'audit',
+            },
+          ],
+        },
+        ci: {
+          enabled: true,
+        },
+      },
+      null,
+      2,
+    )}\n`,
   );
 
-  assert.equal(await runCiCommand(fixture.root, {
-    base: fixture.base,
-    head: fixture.head,
-    reportPath: 'package.json',
-  }), 1);
+  assert.equal(
+    await runCiCommand(fixture.root, {
+      base: fixture.base,
+      head: fixture.head,
+      reportPath: 'package.json',
+    }),
+    1,
+  );
   assert.equal(readFileSync(manifestPath, 'utf8'), before);
-  const invalidConfigReport = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  ));
+  const invalidConfigReport = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   assert.equal(invalidConfigReport.status, 'configuration-error');
   assert.equal(invalidConfigReport.gateResult.schemaVersion, 2);
   assert.equal(invalidConfigReport.gateResult.issues[0].kind, 'configuration');
@@ -823,43 +842,58 @@ test('rejects report paths that could modify project files', async (context) => 
     }),
     /不得覆盖已跟踪文件/,
   );
-  assert.equal(readFileSync(path.join(fixture.root, 'reports', 'tracked.json'), 'utf8'), '{}\n');
+  assert.equal(
+    readFileSync(path.join(fixture.root, 'reports', 'tracked.json'), 'utf8'),
+    '{}\n',
+  );
 
-  assert.equal(await runCiCommand(fixture.root, {
-    base: fixture.base,
-    head: fixture.head,
-    reportPath: 'reports/tracked.json',
-  }), 1);
-  assert.equal(JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  )).status, 'execution-error');
+  assert.equal(
+    await runCiCommand(fixture.root, {
+      base: fixture.base,
+      head: fixture.head,
+      reportPath: 'reports/tracked.json',
+    }),
+    1,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(
+        path.join(fixture.root, 'reports', 'repo-guard.json'),
+        'utf8',
+      ),
+    ).status,
+    'execution-error',
+  );
 });
 
 test('writes JSON for invalid configuration and disabled CI', async (context) => {
   const fixture = repository();
   context.after(() => rmSync(fixture.root, { recursive: true, force: true }));
-  writeFileSync(path.join(fixture.root, 'repo-guard.config.json'), '{ invalid json\n');
+  writeFileSync(
+    path.join(fixture.root, 'repo-guard.config.json'),
+    '{ invalid json\n',
+  );
   assert.equal(await runCiCommand(fixture.root), 1);
-  const invalidConfigReport = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  ));
+  const invalidConfigReport = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   assert.equal(invalidConfigReport.status, 'configuration-error');
   assert.equal(invalidConfigReport.gateResult.schemaVersion, 2);
   assert.equal(invalidConfigReport.gateResult.issues[0].kind, 'configuration');
 
-  assert.equal(await runCiGate({
-    root: fixture.root,
-    config: config({ ci: { enabled: false } }),
-    base: fixture.base,
-    head: fixture.head,
-    env: {},
-  }), 1);
-  const disabledReport = JSON.parse(readFileSync(
-    path.join(fixture.root, 'reports', 'repo-guard.json'),
-    'utf8',
-  ));
+  assert.equal(
+    await runCiGate({
+      root: fixture.root,
+      config: config({ ci: { enabled: false } }),
+      base: fixture.base,
+      head: fixture.head,
+      env: {},
+    }),
+    1,
+  );
+  const disabledReport = JSON.parse(
+    readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
+  );
   assert.equal(disabledReport.status, 'configuration-error');
   assert.equal(disabledReport.gateResult.issues[0].code, 'ci/disabled');
 });
@@ -874,13 +908,34 @@ test('supports simple inline stages and defers ambiguous YAML to manual integrat
   for (const fixture of [inline, ambiguous]) {
     writeFileSync(
       path.join(fixture.root, 'repo-guard.config.json'),
-      `${stringifyProjectFixture({
-        version: 1,
-        rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
-      }, null, 2)}\n`,
+      `${stringifyProjectFixture(
+        {
+          version: 2,
+          project: {
+            id: 'web',
+            role: 'frontend',
+            stack: 'node',
+            preset: 'vue-javascript',
+          },
+          repository: {
+            rules: [
+              {
+                pattern: 'src/**',
+                category: 'Source',
+                level: 'audit',
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      )}\n`,
     );
   }
-  writeFileSync(path.join(inline.root, '.gitlab-ci.yml'), 'stages: [build, "verify", deploy]\n');
+  writeFileSync(
+    path.join(inline.root, '.gitlab-ci.yml'),
+    'stages: [build, "verify", deploy]\n',
+  );
   const installed = installGitLabCi(inline.root);
   assert.equal(installed.integrated, true);
   assert.equal(installed.stage, 'verify');
@@ -890,7 +945,10 @@ test('supports simple inline stages and defers ambiguous YAML to manual integrat
   const deferred = installGitLabCi(ambiguous.root);
   assert.equal(deferred.integrated, false);
   assert.match(deferred.conflict, /不支持的 YAML 语法/);
-  assert.equal(readFileSync(path.join(ambiguous.root, '.gitlab-ci.yml'), 'utf8'), original);
+  assert.equal(
+    readFileSync(path.join(ambiguous.root, '.gitlab-ci.yml'), 'utf8'),
+    original,
+  );
   assert.match(deferred.manualSnippet, /stage: <existing-stage>/);
   assert.throws(
     () => installGitLabCi(inline.root, { stage: 'release' }),
@@ -908,10 +966,28 @@ test('requires the current managed marker and detects any template modification'
   for (const fixture of [foreign, modified]) {
     writeFileSync(
       path.join(fixture.root, 'repo-guard.config.json'),
-      `${stringifyProjectFixture({
-        version: 1,
-        rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
-      }, null, 2)}\n`,
+      `${stringifyProjectFixture(
+        {
+          version: 2,
+          project: {
+            id: 'web',
+            role: 'frontend',
+            stack: 'node',
+            preset: 'vue-javascript',
+          },
+          repository: {
+            rules: [
+              {
+                pattern: 'src/**',
+                category: 'Source',
+                level: 'audit',
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      )}\n`,
     );
   }
   mkdirSync(path.join(foreign.root, '.gitlab', 'ci'), { recursive: true });
@@ -925,10 +1001,15 @@ test('requires the current managed marker and detects any template modification'
   const templatePath = path.join(modified.root, GITLAB_TEMPLATE_FILE);
   writeFileSync(
     templatePath,
-    readFileSync(templatePath, 'utf8').replace('    - npm ci', '    # - npm ci'),
+    readFileSync(templatePath, 'utf8').replace(
+      '    - npm ci',
+      '    # - npm ci',
+    ),
   );
   const installedConfig = loadConfig(modified.root, { repositoryOnly: true });
-  assert.ok(inspectGitLabCi(modified.root, installedConfig).problems.some(
-    (problem) => problem.includes('已被修改或过期'),
-  ));
+  assert.ok(
+    inspectGitLabCi(modified.root, installedConfig).problems.some((problem) =>
+      problem.includes('已被修改或过期'),
+    ),
+  );
 });

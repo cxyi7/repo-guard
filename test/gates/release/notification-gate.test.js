@@ -27,10 +27,24 @@ function createRepository(notification) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      notification,
-      rules: [{ pattern: 'sample.js', category: 'Sample', level: 'notify' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
+    rules: [{
+      pattern: 'sample.js',
+      category: 'Sample',
+      level: 'notify'
+    }]
+  },
+  reporting: {
+    notification
+  }
+}, null, 2)}\n`,
   );
   git(root, ['add', 'sample.js']);
   return root;

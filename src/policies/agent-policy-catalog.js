@@ -50,7 +50,7 @@ const entries = [
   entry({
     id: 'project-identity',
     groupId: 'repository-governance-policy',
-    when: ({ config }) => config.configVersion === 2 && config.project != null,
+    when: ({ config }) => config.project != null,
     lines: ({ config }) => [
       `- 本应用标识为 ${code(config.project.id)}，角色为${config.project.role === 'backend' ? '后端' : '前端'}，技术栈为 ${code(config.project.stack)}，预设为 ${code(config.project.preset)}；必须遵循显式配置，不得根据依赖自动改变身份。`,
       '- 检查范围为通用工程质量与团队规则；repo-guard 不判断具体业务正确性、接口输入输出或身份权限。',
@@ -60,7 +60,7 @@ const entries = [
     id: 'commit-animation',
     groupId: 'repository-governance-policy',
     features: ['commitAnimation'],
-    when: enabled('commitAnimation'),
+    when: enabled('reporting.commitAnimation'),
     lines: () => [
       '- 提交动画仅显示检查状态，不能替代门禁；完整失败诊断必须保留，成功庆祝只能发生在 Git 创建提交后。',
     ],
@@ -71,8 +71,8 @@ const entries = [
     gates: ['repository.structured-exceptions'],
     when: () => true,
     lines: ({ config }) => [
-      '- 规则例外只能登记在 `repo-guard.config.json#exceptions.entries`；禁止用散落注释、普通 ignore 或关闭规则替代。',
-      `- 例外最长有效 ${config.exceptions.maxDays} 天，并在到期前 ${config.exceptions.warningDays} 天预警；AI 不得自行新增、延期或改写审批信息。`,
+      '- 规则例外只能登记在 `repo-guard.config.json#repository.exceptions.entries`；禁止用散落注释、普通 ignore 或关闭规则替代。',
+      `- 例外最长有效 ${config.repository.exceptions.maxDays} 天，并在到期前 ${config.repository.exceptions.warningDays} 天预警；AI 不得自行新增、延期或改写审批信息。`,
     ],
   }),
   entry({
@@ -81,7 +81,7 @@ const entries = [
     gates: ['repository.protected-files'],
     when: () => true,
     lines: () => [
-      '- 修改受保护文件前必须核对 `rules` 与 `exclusions`；不得绕过阻断，通知型变更必须保留门禁证据。',
+      '- 修改受保护文件前必须核对 `repository.rules` 与 `repository.exclusions`；不得绕过阻断，通知型变更必须保留门禁证据。',
     ],
   }),
   entry({
@@ -89,13 +89,13 @@ const entries = [
     groupId: 'repository-governance-policy',
     gates: ['repository.delivery-contract', 'release.delivery-evidence'],
     features: ['deliveryContract'],
-    when: enabled('deliveryContract'),
+    when: enabled('repository.deliveryContract'),
     lines: ({ config }) => [
-      `- 开发前必须在 ${code(config.deliveryContract.registryPath)} 由人工确认功能归属，并在 ${code(config.deliveryContract.contractsDirectory)} 保存当前分支唯一的活动 Markdown 交付合同；合同类型不得根据 Git commit type 自动推断。`,
+      `- 开发前必须在 ${code(config.repository.deliveryContract.registryPath)} 由人工确认功能归属，并在 ${code(config.repository.deliveryContract.contractsDirectory)} 保存当前分支唯一的活动 Markdown 交付合同；合同类型不得根据 Git commit type 自动推断。`,
       '- 启用交付合同时使用 `.agents/skills/` 下由 repo-guard 托管的五个流程 Skill：功能登记、合同规划、合同执行、反馈闭环和交付证据；Skill 指导 AI，repo-guard Gate 仍是确定性校验来源。',
       '- 交付合同使用 `schemaVersion: 2` 多文件合同包；主合同只保存控制信息，requirements、traceability、obligations 和每个 `FND-*` 分别保存在合同子目录的组成文件中。',
       '- AI 负责提出 Spec、Design、Tasks、Examples、Visuals、变更边界和证据计划；人工负责确认功能归属、合同定义、资料省略理由与最终验收，AI 不得代填或勾选 HUMAN-* 事项。',
-      `- 需求事实只接受受 Git 跟踪的本地下载文件或截图；合同变更范围默认拒绝，forbiddenPaths 优先于 allowedPaths。受合同约束的业务范围为 ${list(config.deliveryContract.requiredFor)}，排除 ${list(config.deliveryContract.exclude)}。合同定义变化必须连续提升修订并重新人工确认，不得删除历史义务、正式发现或需求修订快照。`,
+      `- 需求事实只接受受 Git 跟踪的本地下载文件或截图；合同变更范围默认拒绝，forbiddenPaths 优先于 allowedPaths。受合同约束的业务范围为 ${list(config.repository.deliveryContract.requiredFor)}，排除 ${list(config.repository.deliveryContract.exclude)}。合同定义变化必须连续提升修订并重新人工确认，不得删除历史义务、正式发现或需求修订快照。`,
       '- 已宣称完成后发现的问题必须登记为 FND-*，重新打开关联任务，保留部署提交、执行日志和人工复测，并完成测试、合同、设计、任务模板与 Gate 的反向升级决定；实现缺陷必须用同一回归测试形成红—绿证明。清单证据必须解析到受 Git 跟踪的 Evidence Run，发布前由 release.delivery-evidence 复核完整的本轮 GateResult、最新目标分支、集成影响分析和人工验收。',
     ],
   }),
@@ -104,30 +104,30 @@ const entries = [
     groupId: 'repository-governance-policy',
     gates: ['repository.commit-message'],
     features: ['commitMessage'],
-    when: enabled('commitMessage'),
+    when: enabled('repository.commitMessage'),
     lines: ({ config }) => [
-      `- 提交信息必须符合 Conventional Commit；允许类型为 ${list(config.commitMessage.types)}，标题最长 ${config.commitMessage.headerMaxLength} 个字符。`,
-      `- scope ${config.commitMessage.requireScope ? '为必填项' : '可选'}；允许值为 ${list(config.commitMessage.allowedScopes)}。fixup!/squash! 在本地${config.commitMessage.fixup.allowLocal ? '允许' : '禁止'}、pre-push 阶段${config.commitMessage.fixup.allowPush ? '允许' : '禁止'}、CI 阶段${config.commitMessage.fixup.allowCi ? '允许' : '禁止'}；最终合并历史必须按项目流程完成整理。`,
+      `- 提交信息必须符合 Conventional Commit；允许类型为 ${list(config.repository.commitMessage.types)}，标题最长 ${config.repository.commitMessage.headerMaxLength} 个字符。`,
+      `- scope ${config.repository.commitMessage.requireScope ? '为必填项' : '可选'}；允许值为 ${list(config.repository.commitMessage.allowedScopes)}。fixup!/squash! 在本地${config.repository.commitMessage.fixup.allowLocal ? '允许' : '禁止'}、pre-push 阶段${config.repository.commitMessage.fixup.allowPush ? '允许' : '禁止'}、CI 阶段${config.repository.commitMessage.fixup.allowCi ? '允许' : '禁止'}；最终合并历史必须按项目流程完成整理。`,
     ],
   }),
   entry({
     id: 'file-header',
     groupId: 'repository-governance-policy',
     features: ['fileHeader'],
-    when: enabled('preCommit.fileHeader'),
+    when: enabled('checks.fileHeader'),
     lines: ({ config }) => [
-      `- 文件头由 repo-guard 依据 Git 记录维护；适用扩展名为 ${list(config.preCommit.fileHeader.extensions)}，不得手工伪造作者或时间。`,
-      `- 文件头包含范围为 ${list(config.preCommit.fileHeader.include)}，排除范围为 ${list(config.preCommit.fileHeader.exclude)}。`,
+      `- 文件头由 repo-guard 依据 Git 记录维护；适用扩展名为 ${list(config.checks.fileHeader.extensions)}，不得手工伪造作者或时间。`,
+      `- 文件头包含范围为 ${list(config.checks.fileHeader.include)}，排除范围为 ${list(config.checks.fileHeader.exclude)}。`,
     ],
   }),
   entry({
     id: 'function-docs',
     groupId: 'repository-governance-policy',
     features: ['functionDocs'],
-    when: enabled('preCommit.functionDocs'),
+    when: enabled('checks.functionDocs'),
     lines: ({ config }) => [
-      `- 函数文档适用于 ${list(config.preCommit.functionDocs.extensions)}；新增或删除参数、返回值及异常路径时同步 @param、@returns、@throws，保留人工 @Description。`,
-      `- 函数文档包含范围为 ${list(config.preCommit.functionDocs.include)}，排除范围为 ${list(config.preCommit.functionDocs.exclude)}；TypeScript JSDoc 不重复声明类型。`,
+      `- 函数文档适用于 ${list(config.checks.functionDocs.extensions)}；新增或删除参数、返回值及异常路径时同步 @param、@returns、@throws，保留人工 @Description。`,
+      `- 函数文档包含范围为 ${list(config.checks.functionDocs.include)}，排除范围为 ${list(config.checks.functionDocs.exclude)}；TypeScript JSDoc 不重复声明类型。`,
     ],
   }),
   entry({
@@ -135,9 +135,9 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.eslint'],
     features: ['eslint'],
-    when: enabled('preCommit.eslint'),
+    when: enabled('checks.eslint'),
     lines: ({ config }) => [
-      `- ESLint 使用消费项目自身的安装和配置，仅处理暂存范围 ${code(config.preCommit.eslint.pattern)}，并以最多 ${config.preCommit.eslint.maxWarnings} 条 warning 为通过条件。`,
+      `- ESLint 使用消费项目自身的安装和配置，仅处理暂存范围 ${code(config.checks.eslint.pattern)}，并以最多 ${config.checks.eslint.maxWarnings} 条 warning 为通过条件。`,
     ],
   }),
   entry({
@@ -145,9 +145,9 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.prettier'],
     features: ['prettier'],
-    when: enabled('preCommit.prettier'),
+    when: enabled('checks.prettier'),
     lines: ({ config }) => [
-      `- Prettier 使用消费项目自身的安装和配置，仅格式化暂存范围 ${code(config.preCommit.prettier.pattern)}。`,
+      `- Prettier 使用消费项目自身的安装和配置，仅格式化暂存范围 ${code(config.checks.prettier.pattern)}。`,
     ],
   }),
   entry({
@@ -155,9 +155,9 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.stylelint'],
     features: ['stylelint'],
-    when: enabled('preCommit.stylelint'),
+    when: enabled('checks.stylelint'),
     lines: ({ config }) => [
-      `- Stylelint 使用消费项目自身的安装和配置，仅处理暂存范围 ${code(config.preCommit.stylelint.pattern)}，并以最多 ${config.preCommit.stylelint.maxWarnings} 条 warning 为通过条件。`,
+      `- Stylelint 使用消费项目自身的安装和配置，仅处理暂存范围 ${code(config.checks.stylelint.pattern)}，并以最多 ${config.checks.stylelint.maxWarnings} 条 warning 为通过条件。`,
       '- Vue 样式语言必须与 `<style lang>` 一致，不得把预处理器语法按普通 CSS 校验。',
     ],
   }),
@@ -166,9 +166,9 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.style-complexity'],
     features: ['styleComplexity'],
-    when: enabled('preCommit.stylelint.complexity'),
+    when: enabled('checks.styleComplexity'),
     lines: ({ config }) => [
-      `- 样式选择器最多包含 ${config.preCommit.stylelint.complexity.maxCompoundSelectors} 个复合段，嵌套深度最多为 ${config.preCommit.stylelint.complexity.maxNestingDepth}；不得用 disable 注释绕过。`,
+      `- 样式选择器最多包含 ${config.checks.styleComplexity.maxCompoundSelectors} 个复合段，嵌套深度最多为 ${config.checks.styleComplexity.maxNestingDepth}；不得用 disable 注释绕过。`,
     ],
   }),
   entry({
@@ -176,9 +176,9 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.style-governance'],
     features: ['styleGovernance'],
-    when: enabled('preCommit.stylelint.governance'),
+    when: enabled('checks.styleGovernance'),
     lines: ({ config }) => [
-      `- 样式优先级不得高于 ${code(config.preCommit.stylelint.governance.maxSpecificity)}，ID 选择器最多 ${config.preCommit.stylelint.governance.maxIdSelectors} 个，${config.preCommit.stylelint.governance.disallowImportant ? '禁止' : '按项目配置控制'} !important。`,
+      `- 样式优先级不得高于 ${code(config.checks.styleGovernance.maxSpecificity)}，ID 选择器最多 ${config.checks.styleGovernance.maxIdSelectors} 个，${config.checks.styleGovernance.disallowImportant ? '禁止' : '按项目配置控制'} !important。`,
     ],
   }),
   entry({
@@ -186,16 +186,16 @@ const entries = [
     groupId: 'staged-quality-policy',
     gates: ['quality.ui-tokens'],
     features: ['uiTokens'],
-    when: enabled('uiTokens'),
+    when: enabled('checks.uiTokens'),
     lines: ({ config }) => {
-      const adapters = Object.entries(config.uiTokens.adapters)
+      const adapters = Object.entries(config.checks.uiTokens.adapters)
         .filter(([, adapter]) => adapter.enabled)
         .map(([name]) => name);
       return [
-        `- UI Token 门禁启用 ${list(adapters)} 适配器；检查范围为 ${list(config.uiTokens.include)}，排除 ${list(config.uiTokens.exclude)}。`,
-        `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
-        `- Sass 只检查 .scss、.sass 和 Vue 中显式声明的 Sass style，必须使用 Manifest 中完整且类别匹配的别名，图标尺寸只在 ${list(config.uiTokens.icon.sassSelectors)} 选择器中检查；UnoCSS 的 class、Attributify、variant group、shortcut 与断点展开后都必须可静态证明，禁止任意值、不可枚举动态 class、项目自定义 rules 及其他样式生成扩展。`,
-        `- ${code(config.uiTokens.manifestFile)} 不得自引用；UnoCSS theme.breakpoints 与静态 shortcut 必须和 Manifest 双向一致，Manifest、来源文件或已启用配置不得从提交快照中被直接删除。`,
+        `- UI Token 门禁启用 ${list(adapters)} 适配器；检查范围为 ${list(config.checks.uiTokens.include)}，排除 ${list(config.checks.uiTokens.exclude)}。`,
+        `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.checks.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
+        `- Sass 只检查 .scss、.sass 和 Vue 中显式声明的 Sass style，必须使用 Manifest 中完整且类别匹配的别名，图标尺寸只在 ${list(config.checks.uiTokens.icon.sassSelectors)} 选择器中检查；UnoCSS 的 class、Attributify、variant group、shortcut 与断点展开后都必须可静态证明，禁止任意值、不可枚举动态 class、项目自定义 rules 及其他样式生成扩展。`,
+        `- ${code(config.checks.uiTokens.manifestFile)} 不得自引用；UnoCSS theme.breakpoints 与静态 shortcut 必须和 Manifest 双向一致，Manifest、来源文件或已启用配置不得从提交快照中被直接删除。`,
       ];
     },
   }),
@@ -213,10 +213,10 @@ const entries = [
     groupId: 'source-safety-policy',
     gates: ['quality.vue-async-resource-cleanup'],
     features: ['asyncResourceCleanup'],
-    when: enabled('preCommit.asyncResourceCleanup'),
+    when: enabled('checks.asyncResourceCleanup'),
     lines: ({ config }) => [
-      `- Vue 与 composable 中创建的定时器、事件监听、WebSocket、Observer、订阅和请求必须在同一作用域形成可验证的释放闭环；长任务阈值为 ${config.preCommit.asyncResourceCleanup.timeoutThresholdMs}ms。`,
-      `- 异步资源检查包含 ${list(config.preCommit.asyncResourceCleanup.include)}，排除 ${list(config.preCommit.asyncResourceCleanup.exclude)}；请求函数为 ${list(config.preCommit.asyncResourceCleanup.requestFunctions)}。`,
+      `- Vue 与 composable 中创建的定时器、事件监听、WebSocket、Observer、订阅和请求必须在同一作用域形成可验证的释放闭环；长任务阈值为 ${config.checks.asyncResourceCleanup.timeoutThresholdMs}ms。`,
+      `- 异步资源检查包含 ${list(config.checks.asyncResourceCleanup.include)}，排除 ${list(config.checks.asyncResourceCleanup.exclude)}；请求函数为 ${list(config.checks.asyncResourceCleanup.requestFunctions)}。`,
     ],
   }),
   entry({
@@ -245,36 +245,36 @@ const entries = [
   entry({
     id: 'path-naming', groupId: 'repository-structure-policy',
     gates: ['repository.path-naming'], features: ['pathNaming'],
-    when: enabled('preCommit.pathNaming'),
+    when: enabled('checks.pathNaming'),
     lines: ({ config }) => [
-      `- 目录和文件名统一使用 ${code(config.preCommit.pathNaming.convention)}；包含 ${list(config.preCommit.pathNaming.include)}，排除 ${list(config.preCommit.pathNaming.exclude)}，同一项目不得混用命名风格。`,
+      `- 目录和文件名统一使用 ${code(config.checks.pathNaming.convention)}；包含 ${list(config.checks.pathNaming.include)}，排除 ${list(config.checks.pathNaming.exclude)}，同一项目不得混用命名风格。`,
     ],
   }),
   entry({
     id: 'image-assets', groupId: 'repository-structure-policy',
     gates: ['repository.image-assets', 'repository.unused-image-assets'],
     features: ['imageAssets', 'unusedImageAssets'],
-    when: ({ config }) => config.imageAssets.enabled || config.imageAssets.unused.enabled,
+    when: ({ config }) => config.checks.imageAssets.enabled || config.checks.unusedImageAssets.enabled,
     lines: ({ config }) => {
       const requirements = [
-        config.imageAssets.naming.enabled
-          ? `${code(config.imageAssets.naming.convention)} 命名`
+        config.checks.imageAssets.naming.enabled
+          ? `${code(config.checks.imageAssets.naming.convention)} 命名`
           : null,
         '扩展名与真实格式一致',
-        config.imageAssets.duplicates.exact !== 'off' ? '精确重复内容' : null,
-        config.imageAssets.duplicates.pixel !== 'off' ? '像素重复内容' : null,
-        config.imageAssets.compression.enabled ? '压缩收益阈值' : null,
-        config.imageAssets.compression.enabled
-          && config.imageAssets.compression.conversion.enabled
+        config.checks.imageAssets.duplicates.exact !== 'off' ? '精确重复内容' : null,
+        config.checks.imageAssets.duplicates.pixel !== 'off' ? '像素重复内容' : null,
+        config.checks.imageAssets.compression.enabled ? '压缩收益阈值' : null,
+        config.checks.imageAssets.compression.enabled
+          && config.checks.imageAssets.compression.conversion.enabled
           ? 'WebP 转换策略'
           : null,
       ].filter(Boolean).join('、');
       return [
-        ...(config.imageAssets.enabled ? [
-          `- 图片资源必须遵守${requirements}；包含 ${list(config.imageAssets.include)}，排除 ${list(config.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
+        ...(config.checks.imageAssets.enabled ? [
+          `- 图片资源必须遵守${requirements}；包含 ${list(config.checks.imageAssets.include)}，排除 ${list(config.checks.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
         ] : []),
-        ...(config.imageAssets.unused.enabled ? [
-          `- 无效图片资源按 ${code(config.imageAssets.enforcement)} 模式治理；静态引用源码包含 ${list(config.imageAssets.unused.sourceInclude)}，排除 ${list(config.imageAssets.unused.sourceExclude)}。动态路径必须使用带原因且同时匹配真实源码和图片的 ${code('imageAssets.unused.dynamicReferences')} 声明；不得使用整个仓库通配或未经确认自动删除图片。`,
+        ...(config.checks.unusedImageAssets.enabled ? [
+          `- 无效图片资源按 ${code(config.checks.imageAssets.enforcement)} 模式治理；静态引用源码包含 ${list(config.checks.unusedImageAssets.sourceInclude)}，排除 ${list(config.checks.unusedImageAssets.sourceExclude)}。动态路径必须使用带原因且同时匹配真实源码和图片的 ${code('checks.unusedImageAssets.dynamicReferences')} 声明；不得使用整个仓库通配或未经确认自动删除图片。`,
         ] : []),
       ];
     },
@@ -282,107 +282,107 @@ const entries = [
   entry({
     id: 'file-placement', groupId: 'repository-structure-policy',
     gates: ['repository.file-placement'], features: ['filePlacement'],
-    when: enabled('preCommit.filePlacement'),
+    when: enabled('checks.filePlacement'),
     lines: ({ config }) => [
-      `- 新增或变更文件必须符合 ${config.preCommit.filePlacement.rules.length} 条文件归类规则（模式 ${code(config.preCommit.filePlacement.mode)}）；不得通过扩大例外绕过目标目录。`,
+      `- 新增或变更文件必须符合 ${config.checks.filePlacement.rules.length} 条文件归类规则（模式 ${code(config.checks.filePlacement.mode)}）；不得通过扩大例外绕过目标目录。`,
     ],
   }),
   entry({
     id: 'code-placement', groupId: 'repository-structure-policy',
     gates: ['repository.code-placement'], features: ['codePlacement'],
-    when: enabled('codePlacement'),
+    when: enabled('repository.codePlacement'),
     lines: ({ config }) => [
-      `- 代码片段必须符合 ${config.codePlacement.rules.length} 条代码归位规则；托管说明只公开规则边界，不复制受保护的匹配内容。`,
+      `- 代码片段必须符合 ${config.repository.codePlacement.rules.length} 条代码归位规则；托管说明只公开规则边界，不复制受保护的匹配内容。`,
     ],
   }),
   entry({
     id: 'maximum-file-lines', groupId: 'repository-structure-policy',
     gates: ['repository.maximum-file-lines'], features: ['maxFileLines'],
-    when: enabled('preCommit.maxFileLines'),
+    when: enabled('checks.maxFileLines'),
     lines: ({ config }) => [
-      `- 文件行数按 ${code(config.preCommit.maxFileLines.mode)} 模式执行，达到上限 ${Math.round(config.preCommit.maxFileLines.warnAt * 100)}% 时预警；规则为 ${config.preCommit.maxFileLines.rules.map(({ pattern, maxLines }) => `${code(pattern)}≤${maxLines}`).join('、')}。`,
+      `- 文件行数按 ${code(config.checks.maxFileLines.mode)} 模式执行，达到上限 ${Math.round(config.checks.maxFileLines.warnAt * 100)}% 时预警；规则为 ${config.checks.maxFileLines.rules.map(({ pattern, maxLines }) => `${code(pattern)}≤${maxLines}`).join('、')}。`,
     ],
   }),
   entry({
     id: 'dependency-policy', groupId: 'dependency-health-policy',
     gates: ['dependencies.policy'], features: ['dependencies'],
-    when: enabled('dependencyPolicy'),
+    when: enabled('repository.dependencyPolicy'),
     lines: ({ config }) => [
-      `- 依赖必须遵守精确版本、批准协议和锁文件同步策略；允许协议为 ${list(config.dependencyPolicy.allowedProtocols)}，${config.dependencyPolicy.requireLockfile ? '必须提交同步锁文件' : '按项目配置维护锁文件'}。`,
+      `- 依赖必须遵守精确版本、批准协议和锁文件同步策略；允许协议为 ${list(config.repository.dependencyPolicy.allowedProtocols)}，${config.repository.dependencyPolicy.requireLockfile ? '必须提交同步锁文件' : '按项目配置维护锁文件'}。`,
     ],
   }),
   entry({
     id: 'architecture', groupId: 'dependency-health-policy',
     gates: ['quality.architecture'], features: ['architecture'],
-    when: enabled('architecture'),
+    when: enabled('checks.architecture'),
     lines: ({ config }) => [
-      `- 修改模块依赖后必须运行 ${code('repo-guard architecture')}；扫描路径为 ${list(config.architecture.sourcePaths)}，不得降低 severity、扩大 exclude 或缩小扫描范围绕过。`,
-      `- 生效的架构规则为 ${list(config.architecture.rules.filter(({ severity }) => severity !== 'ignore').map(({ name }) => name))}。`,
+      `- 修改模块依赖后必须运行 ${code('repo-guard architecture')}；扫描路径为 ${list(config.checks.architecture.sourcePaths)}，不得降低 severity、扩大 exclude 或缩小扫描范围绕过。`,
+      `- 生效的架构规则为 ${list(config.checks.architecture.rules.filter(({ severity }) => severity !== 'ignore').map(({ name }) => name))}。`,
     ],
   }),
   entry({
     id: 'dead-code', groupId: 'dependency-health-policy',
     gates: ['quality.dead-code'], features: ['deadCode'], capabilities: ['dead-code-baseline'],
-    when: enabled('deadCode'),
+    when: enabled('checks.deadCode'),
     lines: ({ config }) => [
-      `- Knip 无效代码检查使用 ${code(config.deadCode.mode)} 模式，问题类型为 ${list(config.deadCode.issueTypes)}；基线文件为 ${code(config.deadCode.baselineFile)}。`,
+      `- Knip 无效代码检查使用 ${code(config.checks.deadCode.mode)} 模式，问题类型为 ${list(config.checks.deadCode.issueTypes)}；基线文件为 ${code(config.checks.deadCode.baselineFile)}。`,
       '- baseline 模式只允许阻止新增债务；基线只能通过确认后的专用命令收缩或更新，不得手工删除问题掩盖结果。',
     ],
   }),
   entry({
     id: 'typecheck', groupId: 'testing-policy',
     gates: ['quality.typecheck'], features: ['typeCheck'],
-    when: enabled('typeCheck'),
-    lines: ({ config }) => [`- TypeScript 类型检查使用 npm 脚本 ${code(config.typeCheck.script)}，只在显式、pre-push 或 CI full 阶段运行，不进入 pre-commit。`],
+    when: enabled('checks.typeCheck'),
+    lines: ({ config }) => [`- TypeScript 类型检查使用 npm 脚本 ${code(config.checks.typeCheck.script)}，只在显式、pre-push 或 CI full 阶段运行，不进入 pre-commit。`],
   }),
   entry({
     id: 'unit-test', groupId: 'testing-policy',
     gates: ['quality.unit-test'], features: ['unitTest'],
-    when: enabled('unitTest'),
+    when: enabled('checks.unitTest'),
     lines: ({ config }) => [
-      `- 单元测试使用 npm 脚本 ${code(config.unitTest.script)}；源码范围为 ${list(config.unitTest.sourcePatterns)}，测试变更要求为 ${code(config.unitTest.requireTests)}。`,
+      `- 单元测试使用 npm 脚本 ${code(config.checks.unitTest.script)}；源码范围为 ${list(config.checks.unitTest.sourcePatterns)}，测试变更要求为 ${code(config.checks.unitTest.requireTests)}。`,
       '- 工具函数覆盖正常值、边界值和非法值；Composable、Store、API、Vue 组件及 Bug 修复必须覆盖相应状态和回归路径，禁止空测试及 skip/only/todo 绕过。',
     ],
   }),
   entry({
     id: 'coverage', groupId: 'testing-policy', features: ['coverage'],
-    when: enabled('unitTest.coverage'),
+    when: enabled('checks.coverage'),
     lines: ({ config }) => {
-      const thresholds = config.unitTest.coverage.thresholds;
+      const thresholds = config.checks.coverage.thresholds;
       return [`- 覆盖率阈值（行/语句/函数/分支/变更行）为 ${thresholds.lines}%/${thresholds.statements}%/${thresholds.functions}%/${thresholds.branches}%/${thresholds.changedLines}%；不得降低阈值或扩大生产源码排除项绕过。`];
     },
   }),
   entry({
     id: 'component-interaction', groupId: 'testing-policy', features: ['componentInteraction'],
-    when: enabled('unitTest.componentInteraction'),
-    lines: ({ config }) => [`- Vue 组件交互测试范围为 ${list(config.unitTest.componentInteraction.componentPatterns)}；必须触发真实交互并断言交互后的 DOM、状态、emit 或依赖调用结果。`],
+    when: enabled('checks.componentInteraction'),
+    lines: ({ config }) => [`- Vue 组件交互测试范围为 ${list(config.checks.componentInteraction.componentPatterns)}；必须触发真实交互并断言交互后的 DOM、状态、emit 或依赖调用结果。`],
   }),
   entry({
     id: 'accessibility-test', groupId: 'testing-policy',
     gates: ['quality.accessibility-test'], features: ['accessibilityTest'],
-    when: enabled('accessibilityTest'),
+    when: enabled('checks.accessibilityTest'),
     lines: ({ config }) => [
-      `- axe 可访问性测试使用 npm 脚本 ${code(config.accessibilityTest.script)}，文件范围为 ${list(config.accessibilityTest.testPatterns)}；每个测试必须扫描真实 DOM 并断言零违规。`,
+      `- axe 可访问性测试使用 npm 脚本 ${code(config.checks.accessibilityTest.script)}，文件范围为 ${list(config.checks.accessibilityTest.testPatterns)}；每个测试必须扫描真实 DOM 并断言零违规。`,
     ],
   }),
   entry({
     id: 'mutation-test', groupId: 'testing-policy',
     gates: ['quality.mutation-test'], features: ['mutationTest'], capabilities: ['guarded-build'],
-    when: enabled('mutationTest'),
+    when: enabled('checks.mutationTest'),
     lines: ({ config }) => [
-      `- 变异测试使用 ${code(config.mutationTest.configFile)}，报告目录为 ${code(config.mutationTest.reportsDirectory)}；低于阈值时不得继续受保护构建。`,
-      `- 受保护构建映射为 ${config.mutationTest.guardedBuilds.length > 0 ? config.mutationTest.guardedBuilds.map(({ packageScript, script }) => `${code(packageScript)}→${code(script)}`).join('、') : '无'}。`,
+      `- 变异测试使用 ${code(config.checks.mutationTest.configFile)}，报告目录为 ${code(config.checks.mutationTest.reportsDirectory)}；低于阈值时不得继续受保护构建。`,
+      `- 受保护构建映射为 ${config.checks.mutationTest.guardedBuilds.length > 0 ? config.checks.mutationTest.guardedBuilds.map(({ packageScript, script }) => `${code(packageScript)}→${code(script)}`).join('、') : '无'}。`,
     ],
   }),
   entry({
     id: 'build', groupId: 'delivery-policy', gates: ['quality.build'], features: ['build'], capabilities: ['build-artifact-baseline'],
-    when: enabled('build'),
+    when: enabled('checks.build'),
     lines: ({ config }) => [
-      `- 构建门禁使用 npm 脚本 ${code(config.build.script)}，失败或超时必须阻断当前交付流程。`,
-      ...(config.build.artifactBudget.enabled ? [
-        `- 当前项目构建平台固定为 ${code(config.build.artifactBudget.platform)}，产物目录为 ${code(config.build.artifactBudget.outputDirectory)}；不得同时引入另一平台配置，不得保留旧产物或通过符号链接、跟踪产物、扩大预算绕过检查。`,
-        ...(config.build.artifactBudget.platform === 'pc' ? [
-          `- PC 产物按 ${code(config.build.artifactBudget.pc.analyzer)} 分析入口链、分块、压缩体积、source map 和异常文件；${config.build.artifactBudget.mode === 'baseline' ? '历史基线只允许通过专用 prune 命令收缩。' : '所有已配置工程预算按当前模式执行。'}`,
+      `- 构建门禁使用 npm 脚本 ${code(config.checks.build.script)}，失败或超时必须阻断当前交付流程。`,
+      ...(config.checks.build.artifactBudget.enabled ? [
+        `- 当前项目构建平台固定为 ${code(config.checks.build.artifactBudget.platform)}，产物目录为 ${code(config.checks.build.artifactBudget.outputDirectory)}；不得同时引入另一平台配置，不得保留旧产物或通过符号链接、跟踪产物、扩大预算绕过检查。`,
+        ...(config.checks.build.artifactBudget.platform === 'pc' ? [
+          `- PC 产物按 ${code(config.checks.build.artifactBudget.pc.analyzer)} 分析入口链、分块、压缩体积、source map 和异常文件；${config.checks.build.artifactBudget.mode === 'baseline' ? '历史基线只允许通过专用 prune 命令收缩。' : '所有已配置工程预算按当前模式执行。'}`,
         ] : [
           '- 微信小程序产物必须按 app.json 计算主包、每个分包、总包、单文件和 preloadRule；平台硬限制始终 error，禁止使用 report 或基线模式降级。',
         ]),
@@ -391,8 +391,8 @@ const entries = [
   }),
   entry({
     id: 'lighthouse', groupId: 'delivery-policy', gates: ['quality.lighthouse'], features: ['lighthouse'],
-    when: enabled('lighthouse'),
-    lines: ({ config }) => [`- Lighthouse 使用消费项目的 Chrome、路由、断言及 ${code(config.lighthouse.configFile ?? '自动发现的配置文件')}；不得进入 pre-commit，也不得隐式上传报告。`],
+    when: enabled('checks.lighthouse'),
+    lines: ({ config }) => [`- Lighthouse 使用消费项目的 Chrome、路由、断言及 ${code(config.checks.lighthouse.configFile ?? '自动发现的配置文件')}；不得进入 pre-commit，也不得隐式上传报告。`],
   }),
   entry({
     id: 'ci', groupId: 'delivery-policy', features: ['ci'],
@@ -401,13 +401,13 @@ const entries = [
   }),
   entry({
     id: 'notification', groupId: 'delivery-policy', features: ['notification'],
-    when: enabled('notification'),
+    when: enabled('reporting.notification'),
     lines: () => ['- 企业微信通知只从本地或 CI 环境读取凭据；成功、失败、取消和自动取消必须按相应工作流发送中文状态，不得把 webhook 写入仓库或 AGENTS.md。'],
   }),
   entry({
     id: 'external-gates', groupId: 'delivery-policy', capabilities: ['external-gates', 'api-performance', 'k6'],
-    when: ({ config }) => config.externalGates.some(({ enabled: gateEnabled }) => gateEnabled),
-    lines: ({ config, packageJson }) => config.externalGates
+    when: ({ config }) => config.ci.externalGates.some(({ enabled: gateEnabled }) => gateEnabled),
+    lines: ({ config, packageJson }) => config.ci.externalGates
       .filter(({ enabled: gateEnabled }) => gateEnabled)
       .map((gate) => {
         const command = packageJson.scripts?.[gate.script] ?? '';
@@ -419,14 +419,10 @@ const entries = [
   }),
   entry({
     id: 'release-readiness', groupId: 'delivery-policy',
-    gates: ['release.check', 'release.test', 'release.package'],
     when: () => true,
-    lines: ({ config }) => config.configVersion === 2 ? [
+    lines: () => [
       '- 交付前必须通过已配置的工程质量、测试与构建检查；缺少工具、脚本或配置必须修复，不得将执行失败改为通过。',
       '- 构建与部署计划由独立的 repo-guard.ops.json 维护；前后端可独立发布，工程质量检查不会自动执行部署。',
-    ] : [
-      '- 发布前必须依次通过 `npm run check`、`npm test` 和 `npm run pack:check`；一个独立审查功能对应一个版本，不得把下一功能混入已完成审查的版本。',
-      '- 版本号按影响选择 patch、minor 或 major；npm 发布必须使用官方 Web 登录与 2FA，且不得保存任何凭据。',
     ],
   }),
 ];
@@ -460,7 +456,6 @@ export function renderAgentPolicyGroups(context) {
 }
 
 function entryAppliesToProject(item, config) {
-  if (config.configVersion !== 2) return true;
   if (!config.project) {
     return ['commit-animation', 'structured-exceptions', 'protected-files', 'delivery-contract',
       'commit-message', 'pre-commit-order', 'code-placement', 'dependency-policy', 'ci',
@@ -474,15 +469,11 @@ function entryAppliesToProject(item, config) {
 function renderProjectEntry(item, context) {
   let lines = item.lines(context);
   const { config } = context;
-  if (config.configVersion !== 2) return lines;
   if (config.project?.role === 'backend') {
     lines = lines.filter((line) => !line.includes('Vue 样式语言必须'));
     if (item.id === 'unit-test') {
       lines = [lines[0], '- 测试必须覆盖团队要求的正常、边界、异常和回归路径；禁止空测试及 skip/only/todo 绕过。'];
     }
   }
-  return lines.map((line) => line
-    .replaceAll('repo-guard.config.json#exceptions.entries', 'repo-guard.config.json#repository.exceptions.entries')
-    .replaceAll('`rules` 与 `exclusions`', '`repository.rules` 与 `repository.exclusions`')
-    .replaceAll('`imageAssets.unused.dynamicReferences`', '`checks.unusedImageAssets.dynamicReferences`'));
+  return lines;
 }

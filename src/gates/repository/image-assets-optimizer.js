@@ -210,7 +210,7 @@ export async function executeImageOptimization({
   config: projectConfig,
 }) {
   const root = applicationRoot ?? findRepositoryRoot(cwd);
-  const config = (projectConfig ?? loadConfig(root)).imageAssets;
+  const config = (projectConfig ?? loadConfig(root)).checks.imageAssets;
   if (!config.enabled) {
     throw configurationError('image-optimize/feature-disabled', '图片资源治理尚未启用');
   }

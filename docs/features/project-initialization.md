@@ -27,7 +27,11 @@ npx repo-guard doctor
 
 上面的命令声明 Vue JavaScript 前端。Node 后端使用 `--role backend --stack node --preset node-javascript`，TypeScript 后端使用 `node-typescript`；`--project` 提供应用标识。四个字段必须明确填写且互相匹配。
 
-新配置采用 `version: 2`。已有 v1 配置须先按[迁移说明](configuration-migration.md)转换；init 不会自动覆盖旧格式。多应用仓库先手动登记根清单和子应用配置，再运行 init，同步一份根 Hook 与各应用规范，示例见[前后端与多应用配置](project-workspace.md)。
+项目配置只接受 `version: 2`。已有非 v2 配置会直接被拒绝并保留原文件，需按[配置管理与规则启停](configuration-management.md)重新建立 v2 配置；init 不转换或覆盖旧格式。多应用仓库先手动登记根清单和子应用配置，再运行 init，同步一份根 Hook 与各应用规范，示例见[前后端与多应用配置](project-workspace.md)。
+
+初始化会先只读检查已有 Skill 清单、相关 `AGENTS.md` 标记和全部目标 Hook。旧清单、旧规范或 Hook 冲突会在创建配置、同步规范和安装 Hook 前拒绝；即使首次接入尚无主配置，也不会留下半套初始化文件。缺失的托管文件和当前格式的待同步内容可正常生成或更新。
+
+初始化会先只读检查已有 Skill 清单、相关 `AGENTS.md` 标记和全部目标 Hook。旧清单、旧规范或 Hook 冲突会在创建配置、同步规范和安装 Hook 前拒绝；即使首次接入尚无主配置，也不会留下半套初始化文件。缺失的托管文件和当前格式的待同步内容可正常生成或更新。
 
 ## 完成接入的判断
 

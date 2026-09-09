@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { stringify } from 'yaml';
@@ -33,7 +39,10 @@ const SOURCE_PATH = `docs/delivery/contracts/${CONTRACT_ID}/requirements/rev-001
 mkdirSync(TEST_ROOT, { recursive: true });
 
 function git(root, argumentsList) {
-  const result = spawnSync('git', argumentsList, { cwd: root, encoding: 'utf8' });
+  const result = spawnSync('git', argumentsList, {
+    cwd: root,
+    encoding: 'utf8',
+  });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
 }
@@ -107,7 +116,7 @@ function obligationsBody({
 
 - [${mark}] \`TEST-001\` 回归测试通过
   - 执行者：\`gate\`
-  - 门禁：\`release.test\`
+  - 门禁：\`quality.unit-test\`
   - 证据：\`${gateEvidence}\`
 
 - [${mark}] \`HUMAN-ACCEPT-001\` 人工最终验收通过
@@ -120,7 +129,12 @@ function obligationsBody({
 `;
 }
 
-function contractData({ baseline, sourceDigest, bundleDigest, definitionDigest = `sha256:${'0'.repeat(64)}` }) {
+function contractData({
+  baseline,
+  sourceDigest,
+  bundleDigest,
+  definitionDigest = `sha256:${'0'.repeat(64)}`,
+}) {
   return {
     schemaVersion: 2,
     contractId: CONTRACT_ID,
@@ -157,25 +171,31 @@ function contractData({ baseline, sourceDigest, bundleDigest, definitionDigest =
         comment: '确认本地需求快照。',
         sourceBundleDigest: bundleDigest,
       },
-      sources: [{
-        id: 'SRC-001',
-        name: '原始需求',
-        acquisition: 'download',
-        originalUrl: 'https://example.com/requirement',
-        files: [{
-          path: SOURCE_PATH,
-          mediaType: 'text/plain',
-          digestAlgorithm: 'sha256-bytes-v1',
-          digest: sourceDigest,
-        }],
-      }],
+      sources: [
+        {
+          id: 'SRC-001',
+          name: '原始需求',
+          acquisition: 'download',
+          originalUrl: 'https://example.com/requirement',
+          files: [
+            {
+              path: SOURCE_PATH,
+              mediaType: 'text/plain',
+              digestAlgorithm: 'sha256-bytes-v1',
+              digest: sourceDigest,
+            },
+          ],
+        },
+      ],
       sourceBundleDigest: bundleDigest,
-      facts: [{
-        id: 'REQ-001',
-        summary: '测试功能可以执行。',
-        sourceId: 'SRC-001',
-        locator: '第 1 行',
-      }],
+      facts: [
+        {
+          id: 'REQ-001',
+          summary: '测试功能可以执行。',
+          sourceId: 'SRC-001',
+          locator: '第 1 行',
+        },
+      ],
       blockingQuestions: [],
     },
     artifactPlan: {
@@ -195,13 +215,15 @@ function contractData({ baseline, sourceDigest, bundleDigest, definitionDigest =
         comment: '确认资料计划。',
       },
     },
-    traceability: [{
-      factId: 'REQ-001',
-      design: ['DES-001'],
-      tasks: ['TASK-001'],
-      artifacts: [],
-      verification: ['TEST-001'],
-    }],
+    traceability: [
+      {
+        factId: 'REQ-001',
+        design: ['DES-001'],
+        tasks: ['TASK-001'],
+        artifacts: [],
+        verification: ['TEST-001'],
+      },
+    ],
     confirmation: {
       status: 'confirmed',
       confirmedAt: '2026-09-06T15:00:00+08:00',
@@ -242,35 +264,45 @@ function traceabilityDocument(data) {
 }
 
 function obligationsDocument(data, content) {
-  return markdown({
-    schemaVersion: 2,
-    documentType: 'obligations',
-    contractId: data.contractId,
-  }, content);
+  return markdown(
+    {
+      schemaVersion: 2,
+      documentType: 'obligations',
+      contractId: data.contractId,
+    },
+    content,
+  );
 }
 
 function findingDocument(data, findingContent) {
   const findingId = findingContent.match(/### `([^`]+)`/)?.[1];
   return {
-    content: markdown({
-      schemaVersion: 2,
-      documentType: 'finding',
-      contractId: data.contractId,
-      findingId,
-    }, `# 交付发现\n\n## 交付发现\n\n${findingContent}\n`),
+    content: markdown(
+      {
+        schemaVersion: 2,
+        documentType: 'finding',
+        contractId: data.contractId,
+        findingId,
+      },
+      `# 交付发现\n\n## 交付发现\n\n${findingContent}\n`,
+    ),
     path: `docs/delivery/contracts/${data.contractId}/findings/${findingId}.md`,
   };
 }
 
 function parsedForDigest(data, options) {
-  const main = parseDeliveryContractMarkdown(markdown(mainContractData(data), body(options)));
-  const obligations = parseDeliveryContractMarkdown(obligationsDocument(
-    data,
-    obligationsBody(options),
-  ));
-  const findings = options.findingContent && options.findingContent !== '暂无正式交付发现。'
-    ? parseDeliveryContractMarkdown(findingDocument(data, options.findingContent).content).findings
-    : [];
+  const main = parseDeliveryContractMarkdown(
+    markdown(mainContractData(data), body(options)),
+  );
+  const obligations = parseDeliveryContractMarkdown(
+    obligationsDocument(data, obligationsBody(options)),
+  );
+  const findings =
+    options.findingContent && options.findingContent !== '暂无正式交付发现。'
+      ? parseDeliveryContractMarkdown(
+          findingDocument(data, options.findingContent).content,
+        ).findings
+      : [];
   return {
     ...main,
     data,
@@ -287,19 +319,29 @@ function writeContractBundle(root, data, options) {
     `docs/delivery/contracts/${data.contractId}/${data.materials.requirements}`,
     markdown(requirementsDocument(data), '# 需求事实\n'),
   );
-  write(root, TRACEABILITY_PATH, markdown(traceabilityDocument(data), '# 追踪关系\n'));
-  write(root, OBLIGATIONS_PATH, obligationsDocument(data, obligationsBody(options)));
-  if (options.findingContent && options.findingContent !== '暂无正式交付发现。') {
+  write(
+    root,
+    TRACEABILITY_PATH,
+    markdown(traceabilityDocument(data), '# 追踪关系\n'),
+  );
+  write(
+    root,
+    OBLIGATIONS_PATH,
+    obligationsDocument(data, obligationsBody(options)),
+  );
+  if (
+    options.findingContent &&
+    options.findingContent !== '暂无正式交付发现。'
+  ) {
     const finding = findingDocument(data, options.findingContent);
     write(root, finding.path, finding.content);
   }
 }
 
-function writeAuxiliaryContractBundle(root, {
-  allowedPaths,
-  contractId,
-  findingContent = null,
-}) {
+function writeAuxiliaryContractBundle(
+  root,
+  { allowedPaths, contractId, findingContent = null },
+) {
   const contractRoot = `docs/delivery/contracts/${contractId}`;
   const data = {
     schemaVersion: 2,
@@ -327,29 +369,54 @@ function writeAuxiliaryContractBundle(root, {
     artifactPlan: {},
     confirmation: {},
   };
-  write(root, `docs/delivery/contracts/${contractId}.md`, markdown(data, '# 历史合同\n'));
-  write(root, `${contractRoot}/requirements/rev-001/requirements.md`, markdown({
-    schemaVersion: 2,
-    documentType: 'requirements',
-    contractId,
-    revision: 1,
-    confirmation: {},
-    sources: [],
-    sourceBundleDigest: `sha256:${'0'.repeat(64)}`,
-    facts: [],
-    blockingQuestions: [],
-  }, '# 历史需求\n'));
-  write(root, `${contractRoot}/traceability.md`, markdown({
-    schemaVersion: 2,
-    documentType: 'traceability',
-    contractId,
-    entries: [],
-  }, '# 历史追踪\n'));
-  write(root, `${contractRoot}/obligations.md`, markdown({
-    schemaVersion: 2,
-    documentType: 'obligations',
-    contractId,
-  }, '# 历史清单\n\n## 交付执行清单\n\n- [ ] `TASK-HISTORY-001` 历史任务\n'));
+  write(
+    root,
+    `docs/delivery/contracts/${contractId}.md`,
+    markdown(data, '# 历史合同\n'),
+  );
+  write(
+    root,
+    `${contractRoot}/requirements/rev-001/requirements.md`,
+    markdown(
+      {
+        schemaVersion: 2,
+        documentType: 'requirements',
+        contractId,
+        revision: 1,
+        confirmation: {},
+        sources: [],
+        sourceBundleDigest: `sha256:${'0'.repeat(64)}`,
+        facts: [],
+        blockingQuestions: [],
+      },
+      '# 历史需求\n',
+    ),
+  );
+  write(
+    root,
+    `${contractRoot}/traceability.md`,
+    markdown(
+      {
+        schemaVersion: 2,
+        documentType: 'traceability',
+        contractId,
+        entries: [],
+      },
+      '# 历史追踪\n',
+    ),
+  );
+  write(
+    root,
+    `${contractRoot}/obligations.md`,
+    markdown(
+      {
+        schemaVersion: 2,
+        documentType: 'obligations',
+        contractId,
+      },
+      '# 历史清单\n\n## 交付执行清单\n\n- [ ] `TASK-HISTORY-001` 历史任务\n',
+    ),
+  );
   if (findingContent) {
     const finding = findingDocument({ contractId }, findingContent);
     write(root, finding.path, finding.content);
@@ -358,34 +425,50 @@ function writeAuxiliaryContractBundle(root, {
 
 function featureRegistry() {
   return {
-    schemaVersion: 1,
-    features: [{
-      id: 'sample-feature',
-      name: '测试功能',
-      status: 'active',
-      confirmedAt: '2026-09-06T14:00:00+08:00',
-      confirmedBy: '产品负责人',
-      requirementSource: 'https://example.com/requirement',
-      uiSource: null,
-      description: '用于验证合同驱动交付。',
-      children: [],
-      deliveryContracts: [{ id: CONTRACT_ID, path: CONTRACT_PATH }],
-    }],
+    schemaVersion: 2,
+    features: [
+      {
+        id: 'sample-feature',
+        name: '测试功能',
+        status: 'active',
+        confirmedAt: '2026-09-06T14:00:00+08:00',
+        confirmedBy: '产品负责人',
+        requirementSource: 'https://example.com/requirement',
+        uiSource: null,
+        description: '用于验证合同驱动交付。',
+        children: [],
+        deliveryContracts: [{ id: CONTRACT_ID, path: CONTRACT_PATH }],
+      },
+    ],
   };
 }
 
 function projectConfig() {
   return validateConfig({
-    version: 1,
-    deliveryContract: {
-      enabled: true,
-      registryPath: 'docs/delivery/feature-registry.json',
-      contractsDirectory: 'docs/delivery/contracts',
-      requiredFor: ['**/*'],
-      exclude: ['reports/**'],
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
     },
-    rules: [{ pattern: '**/*', category: '测试文件', level: 'audit' }],
-  }).deliveryContract;
+    repository: {
+      deliveryContract: {
+        enabled: true,
+        registryPath: 'docs/delivery/feature-registry.json',
+        contractsDirectory: 'docs/delivery/contracts',
+        requiredFor: ['**/*'],
+        exclude: ['reports/**'],
+      },
+      rules: [
+        {
+          pattern: '**/*',
+          category: '测试文件',
+          level: 'audit',
+        },
+      ],
+    },
+  }).repository.deliveryContract;
 }
 
 function fixture(context) {
@@ -402,7 +485,9 @@ function fixture(context) {
   git(root, ['switch', '-c', 'feat/delivery-contract']);
   const source = Buffer.from('REQ-001: 测试功能可以执行。\n', 'utf8');
   const sourceDigest = sha256Digest(source);
-  const bundleDigest = calculateSourceBundleDigest([{ path: SOURCE_PATH, digest: sourceDigest }]);
+  const bundleDigest = calculateSourceBundleDigest([
+    { path: SOURCE_PATH, digest: sourceDigest },
+  ]);
   const data = contractData({ baseline, bundleDigest, sourceDigest });
   let parsed = parsedForDigest(data, {
     complete: false,
@@ -411,7 +496,11 @@ function fixture(context) {
   const definitionDigest = calculateDefinitionDigest(parsed);
   data.confirmation.definitionDigest = definitionDigest;
   write(root, SOURCE_PATH, source);
-  write(root, 'docs/delivery/feature-registry.json', `${JSON.stringify(featureRegistry(), null, 2)}\n`);
+  write(
+    root,
+    'docs/delivery/feature-registry.json',
+    `${JSON.stringify(featureRegistry(), null, 2)}\n`,
+  );
   writeContractBundle(root, data, { complete: false, definitionDigest });
   write(root, 'src/sample.js', 'export const sample = true;\n');
   git(root, ['add', '.']);
@@ -433,11 +522,14 @@ function commitCompletedEvidence({
   const subjectCommit = git(root, ['rev-parse', 'HEAD']);
   const taskCommit = implementationCommit ?? subjectCommit;
   const targetCommit = git(root, ['rev-parse', 'main']);
-  const targetChangedPaths = targetCommit === baseline
-    ? []
-    : git(root, ['diff', '--name-only', baseline, targetCommit]).split(/\r?\n/).filter(Boolean);
+  const targetChangedPaths =
+    targetCommit === baseline
+      ? []
+      : git(root, ['diff', '--name-only', baseline, targetCommit])
+          .split(/\r?\n/)
+          .filter(Boolean);
   const releaseTestResult = {
-    gateId: 'release.test',
+    gateId: 'quality.unit-test',
     status: 'passed',
     summary: '测试通过',
     findings: [],
@@ -463,26 +555,32 @@ function commitCompletedEvidence({
     targetCommit,
     integrationBaseCommit: targetCommit,
     subjectCommit,
-    integrationAnalysis: targetCommit === baseline ? null : {
-      fromCommit: baseline,
-      toCommit: targetCommit,
-      changedPaths: targetChangedPaths,
-      impact: 'none',
-      summary: '目标分支变化与当前合同定义无关，已在最新目标提交上重新验证。',
-      confirmation: {
-        status: 'confirmed',
-        confirmedAt: '2026-09-06T15:45:00+08:00',
-        confirmedBy: '产品负责人',
-        targetCommit,
-        contractRevision: data.contractRevision,
-        definitionDigest,
+    integrationAnalysis:
+      targetCommit === baseline
+        ? null
+        : {
+            fromCommit: baseline,
+            toCommit: targetCommit,
+            changedPaths: targetChangedPaths,
+            impact: 'none',
+            summary:
+              '目标分支变化与当前合同定义无关，已在最新目标提交上重新验证。',
+            confirmation: {
+              status: 'confirmed',
+              confirmedAt: '2026-09-06T15:45:00+08:00',
+              confirmedBy: '产品负责人',
+              targetCommit,
+              contractRevision: data.contractRevision,
+              definitionDigest,
+            },
+          },
+    gateResults: [
+      {
+        gateId: 'quality.unit-test',
+        resultDigest: gateResultDigest,
+        result: releaseTestResult,
       },
-    },
-    gateResults: [{
-      gateId: 'release.test',
-      resultDigest: gateResultDigest,
-      result: releaseTestResult,
-    }],
+    ],
     executionLog,
     evidence: [
       {
@@ -496,14 +594,16 @@ function commitCompletedEvidence({
         id: 'EVD-GATE-001',
         type: 'gate-result',
         description: '本轮测试 GateResult。',
-        gateId: 'release.test',
+        gateId: 'quality.unit-test',
         resultDigest: gateResultDigest,
       },
       ...additionalEvidence,
     ],
   };
   const evidenceRunSource = markdown(evidenceRunData, '# 交付证据批次\n');
-  const evidenceRunDigest = sha256Digest(Buffer.from(evidenceRunSource, 'utf8'));
+  const evidenceRunDigest = sha256Digest(
+    Buffer.from(evidenceRunSource, 'utf8'),
+  );
   data.deliveryEvidence = {
     integrationBaseCommit: targetCommit,
     subjectCommit,
@@ -520,10 +620,14 @@ function commitCompletedEvidence({
     findingContent,
     subjectCommit,
   });
-  const technicalDigest = calculateTechnicalEvidenceDigest(parsed, data.deliveryEvidence, {
-    data: evidenceRunData,
-    digest: evidenceRunDigest,
-  });
+  const technicalDigest = calculateTechnicalEvidenceDigest(
+    parsed,
+    data.deliveryEvidence,
+    {
+      data: evidenceRunData,
+      digest: evidenceRunDigest,
+    },
+  );
   data.deliveryEvidence.technicalEvidenceDigest = technicalDigest;
   parsed = parsedForDigest(data, {
     complete: true,
@@ -532,7 +636,10 @@ function commitCompletedEvidence({
     subjectCommit,
     technicalDigest,
   });
-  data.deliveryEvidence.executionDigest = calculateExecutionDigest(parsed, data.deliveryEvidence);
+  data.deliveryEvidence.executionDigest = calculateExecutionDigest(
+    parsed,
+    data.deliveryEvidence,
+  );
   writeContractBundle(root, data, {
     complete: true,
     definitionDigest,
@@ -555,6 +662,17 @@ function inspect(root, changes = []) {
   });
 }
 
+test('功能登记表仅接受 schemaVersion 2，不转换旧格式或补齐缺失版本', () => {
+  const registry = Object.freeze({ schemaVersion: 2, features: Object.freeze([]) });
+  assert.deepEqual(inspectFeatureRegistry(registry, 'features.json').issues, []);
+  for (const schemaVersion of [1, 3, undefined]) {
+    const unsupported = Object.freeze({ ...registry, schemaVersion });
+    const result = inspectFeatureRegistry(unsupported, 'features.json');
+    assert.ok(result.issues.some(({ message }) => message.includes('schemaVersion 必须为 2')));
+    assert.equal(unsupported.schemaVersion, schemaVersion);
+  }
+});
+
 test('validates a confirmed contract while implementation and acceptance remain open', (context) => {
   const { root } = fixture(context);
   const result = inspect(root);
@@ -563,26 +681,55 @@ test('validates a confirmed contract while implementation and acceptance remain 
   assert.equal(result.selected.parsed.data.schemaVersion, 2);
   assert.doesNotMatch(readContractSource(root), /^requirements:/m);
   assert.doesNotMatch(readContractSource(root), /^traceability:/m);
-  assert.equal(result.selected.parsed.componentPaths.obligations, OBLIGATIONS_PATH);
-  assert.equal(result.selected.parsed.obligations.find(({ id }) => id === 'TASK-001').checked, false);
+  assert.equal(
+    result.selected.parsed.componentPaths.obligations,
+    OBLIGATIONS_PATH,
+  );
+  assert.equal(
+    result.selected.parsed.obligations.find(({ id }) => id === 'TASK-001')
+      .checked,
+    false,
+  );
   const evidence = inspectDeliveryEvidence({ root, inspection: result });
   assert.equal(evidence.state, 'boundary-valid');
-  assert.ok(evidence.issues.some(({ rule }) => rule === 'delivery-evidence/missing'));
+  assert.ok(
+    evidence.issues.some(({ rule }) => rule === 'delivery-evidence/missing'),
+  );
 });
 
 test('rejects legacy single-file contracts and invalid component bindings', (context) => {
   const { root } = fixture(context);
-  write(root, CONTRACT_PATH, readContractSource(root).replace('schemaVersion: 2', 'schemaVersion: 1'));
+  write(
+    root,
+    CONTRACT_PATH,
+    readContractSource(root).replace('schemaVersion: 2', 'schemaVersion: 1'),
+  );
   let result = inspect(root);
-  assert.ok(result.issues.some(({ message }) => message.includes('schemaVersion 必须为 2')));
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('schemaVersion 必须为 2'),
+    ),
+  );
 
-  write(root, CONTRACT_PATH, readContractSource(root).replace('schemaVersion: 1', 'schemaVersion: 2'));
-  write(root, TRACEABILITY_PATH, readFileSync(
-    path.join(root, ...TRACEABILITY_PATH.split('/')),
-    'utf8',
-  ).replace('documentType: traceability', 'documentType: requirements'));
+  write(
+    root,
+    CONTRACT_PATH,
+    readContractSource(root).replace('schemaVersion: 1', 'schemaVersion: 2'),
+  );
+  write(
+    root,
+    TRACEABILITY_PATH,
+    readFileSync(
+      path.join(root, ...TRACEABILITY_PATH.split('/')),
+      'utf8',
+    ).replace('documentType: traceability', 'documentType: requirements'),
+  );
   result = inspect(root);
-  assert.ok(result.issues.some(({ message }) => message.includes('documentType 必须为 traceability')));
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('documentType 必须为 traceability'),
+    ),
+  );
 });
 
 test('loads a nested Markdown Spec as contract material instead of another contract', (context) => {
@@ -602,12 +749,14 @@ test('loads a nested Markdown Spec as contract material instead of another contr
     confirmedAt: data.confirmation.confirmedAt,
     definitionDigest: data.confirmation.definitionDigest,
   });
-  const artifactDigests = [{
-    digest: sha256Digest(spec),
-    kind: 'spec',
-    mode: 'file',
-    path: specPath,
-  }];
+  const artifactDigests = [
+    {
+      digest: sha256Digest(spec),
+      kind: 'spec',
+      mode: 'file',
+      path: specPath,
+    },
+  ];
   const definitionDigest = calculateDefinitionDigest(parsed, artifactDigests);
   data.confirmation.definitionDigest = definitionDigest;
   write(root, specPath, spec);
@@ -626,10 +775,16 @@ test('loads a nested Markdown Spec as contract material instead of another contr
 
 test('checks both sides of a rename and gives forbidden paths priority', (context) => {
   const { root } = fixture(context);
-  const result = inspect(root, [{ status: 'R100', oldPath: 'secrets/old.js', path: 'src/new.js' }]);
-  assert.ok(result.issues.some(({ rule, path: filePath }) => (
-    rule === 'delivery-contract/path-forbidden' && filePath === 'secrets/old.js'
-  )));
+  const result = inspect(root, [
+    { status: 'R100', oldPath: 'secrets/old.js', path: 'src/new.js' },
+  ]);
+  assert.ok(
+    result.issues.some(
+      ({ rule, path: filePath }) =>
+        rule === 'delivery-contract/path-forbidden' &&
+        filePath === 'secrets/old.js',
+    ),
+  );
 });
 
 test('blocks release-ready when an actual cross-contract overlap has no coordination record', (context) => {
@@ -638,7 +793,11 @@ test('blocks release-ready when an actual cross-contract overlap has no coordina
   const otherPath = `docs/delivery/contracts/${otherId}.md`;
   const registry = featureRegistry();
   registry.features[0].deliveryContracts.push({ id: otherId, path: otherPath });
-  write(root, 'docs/delivery/feature-registry.json', `${JSON.stringify(registry, null, 2)}\n`);
+  write(
+    root,
+    'docs/delivery/feature-registry.json',
+    `${JSON.stringify(registry, null, 2)}\n`,
+  );
   writeAuxiliaryContractBundle(root, {
     allowedPaths: ['src/**'],
     contractId: otherId,
@@ -652,17 +811,29 @@ test('blocks release-ready when an actual cross-contract overlap has no coordina
     changes: [],
     environment: 'release-ready',
   });
-  assert.ok(result.issues.some(({ rule }) => (
-    rule === 'delivery-contract/parallel-overlap-uncoordinated'
-  )));
+  assert.ok(
+    result.issues.some(
+      ({ rule }) => rule === 'delivery-contract/parallel-overlap-uncoordinated',
+    ),
+  );
 });
 
 test('recomputes local requirement file fingerprints from bytes', (context) => {
   const { root } = fixture(context);
   write(root, SOURCE_PATH, 'REQ-001: 被篡改。\n');
-  const result = inspect(root, [{ status: 'M', oldPath: null, path: SOURCE_PATH }]);
-  assert.ok(result.issues.some(({ rule }) => rule === 'delivery-contract/source-digest-mismatch'));
-  assert.ok(result.issues.some(({ rule }) => rule === 'delivery-contract/source-bundle-digest-mismatch'));
+  const result = inspect(root, [
+    { status: 'M', oldPath: null, path: SOURCE_PATH },
+  ]);
+  assert.ok(
+    result.issues.some(
+      ({ rule }) => rule === 'delivery-contract/source-digest-mismatch',
+    ),
+  );
+  assert.ok(
+    result.issues.some(
+      ({ rule }) => rule === 'delivery-contract/source-bundle-digest-mismatch',
+    ),
+  );
 });
 
 test('pre-commit reads the staged contract instead of an unstaged working-tree edit', (context) => {
@@ -680,7 +851,12 @@ test('pre-commit reads the staged contract instead of an unstaged working-tree e
 
 test('derives release-ready only after evidence-only commit closes every obligation', (context) => {
   const { baseline, data, definitionDigest, root } = fixture(context);
-  const { releaseTestResult } = commitCompletedEvidence({ baseline, data, definitionDigest, root });
+  const { releaseTestResult } = commitCompletedEvidence({
+    baseline,
+    data,
+    definitionDigest,
+    root,
+  });
 
   const inspection = inspect(root);
   assert.deepEqual(inspection.issues, []);
@@ -705,11 +881,13 @@ test('derives release-ready only after evidence-only commit closes every obligat
     },
   });
   assert.equal(gateResult.status, 'passed');
-  assert.deepEqual(gateResult.artifacts, [{
-    description: null,
-    path: EVIDENCE_RUN_PATH,
-    type: 'delivery-evidence',
-  }]);
+  assert.deepEqual(gateResult.artifacts, [
+    {
+      description: null,
+      path: EVIDENCE_RUN_PATH,
+      type: 'delivery-evidence',
+    },
+  ]);
 });
 
 test('rejects evidence when the subject commit contains an invalid contract definition', (context) => {
@@ -717,7 +895,10 @@ test('rejects evidence when the subject commit contains an invalid contract defi
   write(
     root,
     CONTRACT_PATH,
-    readContractSource(root).replace('schemaVersion: 2', 'schemaVersion: 2\nunexpected: true'),
+    readContractSource(root).replace(
+      'schemaVersion: 2',
+      'schemaVersion: 2\nunexpected: true',
+    ),
   );
   git(root, ['add', CONTRACT_PATH]);
   git(root, ['commit', '-m', 'invalid subject contract']);
@@ -726,9 +907,11 @@ test('rejects evidence when the subject commit contains an invalid contract defi
   const inspection = inspect(root);
   assert.deepEqual(inspection.issues, []);
   const evidence = inspectDeliveryEvidence({ root, inspection });
-  assert.ok(evidence.issues.some(({ rule }) => (
-    rule === 'delivery-evidence/subject-contract-invalid'
-  )));
+  assert.ok(
+    evidence.issues.some(
+      ({ rule }) => rule === 'delivery-evidence/subject-contract-invalid',
+    ),
+  );
 });
 
 test('allows a referenced execution report to be committed with evidence after subjectCommit', (context) => {
@@ -738,24 +921,28 @@ test('allows a referenced execution report to be committed with evidence after s
   const report = Buffer.from('本轮测试执行通过。\n', 'utf8');
   write(root, reportPath, report);
   commitCompletedEvidence({
-    additionalEvidence: [{
-      id: 'EVD-EXECUTION-001',
-      type: 'execution',
-      description: '代码提交后的测试执行报告。',
-      executionId: 'EXEC-AFTER-SUBJECT',
-    }],
+    additionalEvidence: [
+      {
+        id: 'EVD-EXECUTION-001',
+        type: 'execution',
+        description: '代码提交后的测试执行报告。',
+        executionId: 'EXEC-AFTER-SUBJECT',
+      },
+    ],
     baseline,
     data,
     definitionDigest,
-    executionLog: [{
-      id: 'EXEC-AFTER-SUBJECT',
-      occurredAt: '2026-09-06T15:40:00+08:00',
-      commandId: 'test-after-subject',
-      subjectCommit,
-      exitCode: 0,
-      reportPath,
-      resultDigest: sha256Digest(report),
-    }],
+    executionLog: [
+      {
+        id: 'EXEC-AFTER-SUBJECT',
+        occurredAt: '2026-09-06T15:40:00+08:00',
+        commandId: 'test-after-subject',
+        subjectCommit,
+        exitCode: 0,
+        reportPath,
+        resultDigest: sha256Digest(report),
+      },
+    ],
     root,
   });
 
@@ -769,11 +956,19 @@ test('rejects arbitrary checklist text that does not resolve to a structured evi
   const { baseline, data, definitionDigest, root } = fixture(context);
   commitCompletedEvidence({ baseline, data, definitionDigest, root });
   const source = readObligationsSource(root);
-  write(root, OBLIGATIONS_PATH, source.replace('EVD-COMMIT-001', '随便填写的完成说明'));
+  write(
+    root,
+    OBLIGATIONS_PATH,
+    source.replace('EVD-COMMIT-001', '随便填写的完成说明'),
+  );
 
   const inspection = inspect(root);
   const evidence = inspectDeliveryEvidence({ root, inspection });
-  assert.ok(evidence.issues.some(({ rule }) => rule === 'delivery-evidence/evidence-reference'));
+  assert.ok(
+    evidence.issues.some(
+      ({ rule }) => rule === 'delivery-evidence/evidence-reference',
+    ),
+  );
 });
 
 test('compares the recorded GateResult content with the current release-ready result', (context) => {
@@ -783,36 +978,43 @@ test('compares the recorded GateResult content with the current release-ready re
   const evidence = inspectDeliveryEvidence({
     root,
     inspection,
-    priorResults: [{
-      gateId: 'release.test',
-      status: 'passed',
-      summary: '本轮输出已经变化',
-      findings: [],
-      artifacts: [],
-      metrics: {},
-      error: null,
-      diagnostics: [],
-    }],
+    priorResults: [
+      {
+        gateId: 'quality.unit-test',
+        status: 'passed',
+        summary: '本轮输出已经变化',
+        findings: [],
+        artifacts: [],
+        metrics: {},
+        error: null,
+        diagnostics: [],
+      },
+    ],
     requireCurrentGateResults: true,
   });
-  assert.ok(evidence.issues.some(({ rule }) => rule === 'delivery-evidence/gate-result-changed'));
+  assert.ok(
+    evidence.issues.some(
+      ({ rule }) => rule === 'delivery-evidence/gate-result-changed',
+    ),
+  );
 });
 
 test('invalidates evidence after the target branch advances beyond the recorded integration base', (context) => {
-  const {
-    baseline,
-    data,
-    definitionDigest,
-    implementationCommit,
-    root,
-  } = fixture(context);
+  const { baseline, data, definitionDigest, implementationCommit, root } =
+    fixture(context);
   git(root, ['switch', 'main']);
   write(root, 'src/target.js', 'export const target = 1;\n');
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'target advance']);
   git(root, ['switch', 'feat/delivery-contract']);
   git(root, ['merge', '--no-edit', 'main']);
-  commitCompletedEvidence({ baseline, data, definitionDigest, implementationCommit, root });
+  commitCompletedEvidence({
+    baseline,
+    data,
+    definitionDigest,
+    implementationCommit,
+    root,
+  });
 
   git(root, ['switch', 'main']);
   write(root, 'src/target.js', 'export const target = 2;\n');
@@ -824,17 +1026,26 @@ test('invalidates evidence after the target branch advances beyond the recorded 
   assert.deepEqual(inspection.issues, []);
   const evidence = inspectDeliveryEvidence({ root, inspection });
   assert.ok(
-    evidence.issues.some(({ rule }) => rule === 'delivery-evidence/target-branch-drifted'),
+    evidence.issues.some(
+      ({ rule }) => rule === 'delivery-evidence/target-branch-drifted',
+    ),
     JSON.stringify(evidence.issues),
   );
 });
 
 test('requires the declared target branch to resolve to a local or origin commit', (context) => {
   const { root } = fixture(context);
-  const source = readContractSource(root).replace('targetBranch: main', 'targetBranch: missing-target');
+  const source = readContractSource(root).replace(
+    'targetBranch: main',
+    'targetBranch: missing-target',
+  );
   write(root, CONTRACT_PATH, source);
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ rule }) => rule === 'delivery-contract/target-branch-missing'));
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) => rule === 'delivery-contract/target-branch-missing',
+    ),
+  );
 });
 
 test('accepts a closed test-environment finding only with red-green runs and human retest', (context) => {
@@ -847,11 +1058,21 @@ test('accepts a closed test-environment finding only with red-green runs and hum
   } = fixture(context);
   const redPath = `docs/delivery/contracts/${CONTRACT_ID}/evidence/files/FND-001-red.txt`;
   const greenPath = `docs/delivery/contracts/${CONTRACT_ID}/evidence/files/FND-001-green.txt`;
-  const redReport = Buffer.from('TEST-001 failed on the problem commit\n', 'utf8');
-  const greenReport = Buffer.from('TEST-001 passed on the fixed commit\n', 'utf8');
+  const redReport = Buffer.from(
+    'TEST-001 failed on the problem commit\n',
+    'utf8',
+  );
+  const greenReport = Buffer.from(
+    'TEST-001 passed on the fixed commit\n',
+    'utf8',
+  );
   write(root, redPath, redReport);
   write(root, greenPath, greenReport);
-  write(root, 'src/sample.js', 'export const sample = true;\nexport const isolated = true;\n');
+  write(
+    root,
+    'src/sample.js',
+    'export const sample = true;\nexport const isolated = true;\n',
+  );
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'fix finding']);
   const fixedCommit = git(root, ['rev-parse', 'HEAD']);
@@ -977,7 +1198,11 @@ test('preserves confirmed obligations instead of allowing them to disappear from
   );
   write(root, OBLIGATIONS_PATH, withoutTask);
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ rule }) => rule === 'delivery-contract/obligation-removed'));
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) => rule === 'delivery-contract/obligation-removed',
+    ),
+  );
 });
 
 test('preserves files from earlier requirement revisions instead of overwriting history', (context) => {
@@ -985,10 +1210,12 @@ test('preserves files from earlier requirement revisions instead of overwriting 
   const nextSourcePath = `docs/delivery/contracts/${CONTRACT_ID}/requirements/rev-002/sources/SRC-001__20260906T160000+0800__需求.txt`;
   const nextSource = Buffer.from('REQ-001: 第二版需求事实。\n', 'utf8');
   const nextSourceDigest = sha256Digest(nextSource);
-  const nextBundleDigest = calculateSourceBundleDigest([{
-    path: nextSourcePath,
-    digest: nextSourceDigest,
-  }]);
+  const nextBundleDigest = calculateSourceBundleDigest([
+    {
+      path: nextSourcePath,
+      digest: nextSourceDigest,
+    },
+  ]);
   data.contractRevision = 2;
   data.requirements.revision = 2;
   data.materials.requirements = 'requirements/rev-002/requirements.md';
@@ -998,11 +1225,13 @@ test('preserves files from earlier requirement revisions instead of overwriting 
     confirmedAt: '2026-09-06T16:00:00+08:00',
     sourceBundleDigest: nextBundleDigest,
   };
-  data.requirements.sources[0].files = [{
-    ...data.requirements.sources[0].files[0],
-    path: nextSourcePath,
-    digest: nextSourceDigest,
-  }];
+  data.requirements.sources[0].files = [
+    {
+      ...data.requirements.sources[0].files[0],
+      path: nextSourcePath,
+      digest: nextSourceDigest,
+    },
+  ];
   data.requirements.sourceBundleDigest = nextBundleDigest;
   data.confirmation.confirmedAt = '2026-09-06T16:10:00+08:00';
   data.artifactPlan.confirmation.confirmedAt = '2026-09-06T16:10:00+08:00';
@@ -1023,9 +1252,11 @@ test('preserves files from earlier requirement revisions instead of overwriting 
   git(root, ['add', '--all']);
 
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ rule }) => (
-    rule === 'delivery-contract/historical-snapshot-removed'
-  )));
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) => rule === 'delivery-contract/historical-snapshot-removed',
+    ),
+  );
 });
 
 test('requires an AI self-test finding to reopen a task that had been marked complete', (context) => {
@@ -1089,13 +1320,23 @@ test('requires an AI self-test finding to reopen a task that had been marked com
   git(root, ['add', findingFile.path]);
 
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ message }) => message.includes('TASK-001 必须重新打开')));
+  assert.ok(
+    inspection.issues.some(({ message }) =>
+      message.includes('TASK-001 必须重新打开'),
+    ),
+  );
 
-  write(root, findingFile.path, findingFile.content.replace('- 关联任务：`TASK-001`\n', ''));
+  write(
+    root,
+    findingFile.path,
+    findingFile.content.replace('- 关联任务：`TASK-001`\n', ''),
+  );
   const missingAssociation = inspect(root);
-  assert.ok(missingAssociation.issues.some(({ message }) => (
-    message.includes('缺少有效的“关联任务”')
-  )));
+  assert.ok(
+    missingAssociation.issues.some(({ message }) =>
+      message.includes('缺少有效的“关联任务”'),
+    ),
+  );
 });
 
 test('requires rejected findings to record registration and a confirmed promotion decision', (context) => {
@@ -1127,8 +1368,16 @@ test('requires rejected findings to record registration and a confirmed promotio
   git(root, ['add', findingFile.path]);
 
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ message }) => message.includes('缺少 REGISTER 处理事项')));
-  assert.ok(inspection.issues.some(({ message }) => message.includes('缺少 PROMOTION 处理事项')));
+  assert.ok(
+    inspection.issues.some(({ message }) =>
+      message.includes('缺少 REGISTER 处理事项'),
+    ),
+  );
+  assert.ok(
+    inspection.issues.some(({ message }) =>
+      message.includes('缺少 PROMOTION 处理事项'),
+    ),
+  );
 });
 
 test('requires same-feature historical findings to be applied to the new contract', (context) => {
@@ -1136,8 +1385,15 @@ test('requires same-feature historical findings to be applied to the new contrac
   const historicalId = 'DC-20260801-001';
   const historicalPath = `docs/delivery/contracts/${historicalId}.md`;
   const registry = featureRegistry();
-  registry.features[0].deliveryContracts.push({ id: historicalId, path: historicalPath });
-  write(root, 'docs/delivery/feature-registry.json', `${JSON.stringify(registry, null, 2)}\n`);
+  registry.features[0].deliveryContracts.push({
+    id: historicalId,
+    path: historicalPath,
+  });
+  write(
+    root,
+    'docs/delivery/feature-registry.json',
+    `${JSON.stringify(registry, null, 2)}\n`,
+  );
   writeAuxiliaryContractBundle(root, {
     allowedPaths: ['historical/**'],
     contractId: historicalId,
@@ -1150,22 +1406,42 @@ test('requires same-feature historical findings to be applied to the new contrac
   git(root, ['commit', '-m', 'historical finding']);
 
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ rule }) => (
-    rule === 'delivery-contract/historical-feedback-not-applied'
-  )));
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) =>
+        rule === 'delivery-contract/historical-feedback-not-applied',
+    ),
+  );
 });
 
 test('doctor setup checks the registry, contract schemas, bindings, and managed scripts', (context) => {
   const { root } = fixture(context);
-  write(root, 'package.json', `${JSON.stringify({
-    scripts: {
-      'guard:delivery-contract': 'repo-guard delivery-contract',
-      'guard:delivery-evidence': 'repo-guard delivery-evidence',
-    },
-  }, null, 2)}\n`);
+  write(
+    root,
+    'package.json',
+    `${JSON.stringify(
+      {
+        scripts: {
+          'guard:delivery-contract': 'repo-guard delivery-contract',
+          'guard:delivery-evidence': 'repo-guard delivery-evidence',
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   git(root, ['add', 'package.json']);
   git(root, ['commit', '-m', 'managed scripts']);
-  const config = { deliveryContract: projectConfig() };
+  const config = validateConfig({
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
+    },
+    repository: { deliveryContract: projectConfig() },
+  });
   assert.equal(inspectDeliveryContractSetup({ root, config }).status, 'ready');
 
   write(root, 'package.json', '{"scripts":{}}\n');
@@ -1188,19 +1464,30 @@ test('requires a new revision and human confirmation when the contract definitio
   });
 
   const inspection = inspect(root);
-  assert.ok(inspection.issues.some(({ rule }) => (
-    rule === 'delivery-contract/revision-not-incremented'
-  )));
-  assert.ok(inspection.issues.some(({ rule }) => (
-    rule === 'delivery-contract/reconfirmation-missing'
-  )));
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) => rule === 'delivery-contract/revision-not-incremented',
+    ),
+  );
+  assert.ok(
+    inspection.issues.some(
+      ({ rule }) => rule === 'delivery-contract/reconfirmation-missing',
+    ),
+  );
 });
 
 test('requires separate children and deliveryContracts arrays in the feature tree', () => {
   const invalid = featureRegistry();
   delete invalid.features[0].children;
-  const result = inspectFeatureRegistry(invalid, 'docs/delivery/feature-registry.json');
-  assert.ok(result.issues.some(({ message }) => message.includes('.children 必须是数组')));
+  const result = inspectFeatureRegistry(
+    invalid,
+    'docs/delivery/feature-registry.json',
+  );
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('.children 必须是数组'),
+    ),
+  );
 });
 
 test('rejects unsafe feature sources and contract references outside the configured directory', () => {
@@ -1212,8 +1499,16 @@ test('rejects unsafe feature sources and contract references outside the configu
     'docs/delivery/feature-registry.json',
     { contractsDirectory: 'docs/delivery/contracts' },
   );
-  assert.ok(result.issues.some(({ message }) => message.includes('HTTPS 地址或仓库内相对路径')));
-  assert.ok(result.issues.some(({ message }) => message.includes('安全的仓库内相对路径')));
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('HTTPS 地址或仓库内相对路径'),
+    ),
+  );
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('安全的仓库内相对路径'),
+    ),
+  );
 });
 
 test('requires screenshot provenance and continuous explicit file sequence', () => {
@@ -1240,7 +1535,13 @@ test('requires screenshot provenance and continuous explicit file sequence', () 
   const result = inspectContractSchema(data, {
     contractsDirectory: 'docs/delivery/contracts',
   });
-  assert.ok(result.issues.some(({ message }) => message.includes('.capturedBy')));
+  assert.ok(
+    result.issues.some(({ message }) => message.includes('.capturedBy')),
+  );
   assert.ok(result.issues.some(({ message }) => message.includes('.coverage')));
-  assert.ok(result.issues.some(({ message }) => message.includes('sequence 必须从 1 开始')));
+  assert.ok(
+    result.issues.some(({ message }) =>
+      message.includes('sequence 必须从 1 开始'),
+    ),
+  );
 });

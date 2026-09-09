@@ -9,7 +9,7 @@ import {
 export function runBuildArtifactBaseline(action, cwd = process.cwd(), options = {}) {
   const target = loadExecutionTarget(cwd, options);
   const root = target.root;
-  const config = target.config.build.artifactBudget;
+  const config = target.config.checks.build.artifactBudget;
   const result = action === 'init'
     ? initializeBuildArtifactBaseline(root, config)
     : action === 'prune'

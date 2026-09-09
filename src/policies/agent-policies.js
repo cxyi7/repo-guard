@@ -13,22 +13,10 @@ import {
 
 export const AGENT_POLICY_FILE = 'AGENTS.md';
 
-const LEGACY_POLICY_IDS = Object.freeze([
-  'exception-policy',
-  'architecture-policy',
-  'unit-test-policy',
-  'accessibility-test-policy',
-]);
-
 export const agentPolicies = Object.freeze(agentPolicyGroups.map(({ id }) => defineManagedPolicy({
   id,
   file: AGENT_POLICY_FILE,
   buildLines: () => [],
-})));
-
-const LEGACY_MARKERS = Object.freeze(LEGACY_POLICY_IDS.map((id) => Object.freeze({
-  startMarker: `<!-- repo-guard:${id}:start -->`,
-  endMarker: `<!-- repo-guard:${id}:end -->`,
 })));
 
 function readPackageJson(root) {
@@ -62,8 +50,20 @@ function renderedBlocks(config, packageJson) {
 export function renderAgentPolicyDocument(current, config, packageJson = {}) {
   return buildManagedTextBlocks({
     current,
-    legacyMarkers: LEGACY_MARKERS,
     blocks: renderedBlocks(config, packageJson),
+    target: AGENT_POLICY_FILE,
+  });
+}
+
+/** 只校验现有标记，不要求内容已经同步，也不读取或改写项目配置。 */
+export function assertAgentPolicyFormat(root) {
+  const target = path.join(root, AGENT_POLICY_FILE);
+  if (!existsSync(target)) return;
+  buildManagedTextBlocks({
+    current: readFileSync(target, 'utf8'),
+    blocks: agentPolicies.map(({ startMarker, endMarker }) => ({
+      startMarker, endMarker, managedLines: [],
+    })),
     target: AGENT_POLICY_FILE,
   });
 }
@@ -72,7 +72,7 @@ export function inspectAgentPolicies(root, config) {
   const target = path.join(root, AGENT_POLICY_FILE);
   const exists = existsSync(target);
   const current = exists ? readFileSync(target, 'utf8') : '';
-  const packageJson = config.configVersion === 2 && !config.project && !existsSync(path.join(root, 'package.json'))
+  const packageJson = !config.project && !existsSync(path.join(root, 'package.json'))
     ? {}
     : readPackageJson(root);
   const expected = renderAgentPolicyDocument(current, config, packageJson);

@@ -10,10 +10,16 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { createStarterConfig, CONFIGURABLE_FEATURES } from '../../src/orchestration/setup/config-management.js';
+import {
+  createStarterConfig,
+  CONFIGURABLE_FEATURES,
+} from '../../src/orchestration/setup/config-management.js';
 import { officialGates } from '../../src/gates/registry.js';
 import { agentPolicyGate } from '../../src/gates/repository/repository-policy-gates.js';
-import { runEnable, runDisable } from '../../src/orchestration/cli/configuration.js';
+import {
+  runEnable,
+  runDisable,
+} from '../../src/orchestration/cli/configuration.js';
 import { runGit } from '../../src/git/execution.js';
 import {
   agentPolicyCatalog,
@@ -33,13 +39,20 @@ mkdirSync(TEST_ROOT, { recursive: true });
 
 function fixture() {
   const root = mkdtempSync(path.join(TEST_ROOT, 'agent-policy-'));
-  writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({
-    name: 'agent-policy-fixture',
-    version: '1.0.0',
-    scripts: {
-      'test:k6': 'repo-guard k6-runner --gate-id project.k6',
-    },
-  }, null, 2)}\n`);
+  writeFileSync(
+    path.join(root, 'package.json'),
+    `${JSON.stringify(
+      {
+        name: 'agent-policy-fixture',
+        version: '1.0.0',
+        scripts: {
+          'test:k6': 'repo-guard k6-runner --gate-id project.k6',
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   return root;
 }
 
@@ -48,7 +61,9 @@ test('每个可配置功能和既有官方门禁都归入托管规范目录', ()
   const entryIds = agentPolicyCatalog.map(({ id }) => id);
   assert.equal(new Set(groupIds).size, groupIds.length);
   assert.equal(new Set(entryIds).size, entryIds.length);
-  assert.ok(agentPolicyCatalog.every(({ groupId }) => groupIds.includes(groupId)));
+  assert.ok(
+    agentPolicyCatalog.every(({ groupId }) => groupIds.includes(groupId)),
+  );
   for (const field of ['features', 'gates', 'capabilities']) {
     const assignments = agentPolicyCatalog.flatMap((entry) => entry[field]);
     assert.equal(new Set(assignments).size, assignments.length);
@@ -64,7 +79,10 @@ test('每个可配置功能和既有官方门禁都归入托管规范目录', ()
       .filter((id) => id !== 'repository.agent-policy')
       .sort(),
   );
-  assert.deepEqual(agentPolicies.map(({ id }) => id), agentPolicyGroups.map(({ id }) => id));
+  assert.deepEqual(
+    agentPolicies.map(({ id }) => id),
+    agentPolicyGroups.map(({ id }) => id),
+  );
   assert.deepEqual(managedAgentPolicyCapabilities, [
     'dead-code-baseline',
     'guarded-build',
@@ -75,82 +93,70 @@ test('每个可配置功能和既有官方门禁都归入托管规范目录', ()
   ]);
 });
 
-test('原子迁移旧 marker，保留人工内容并按配置增删托管规则', (context) => {
+test('保留人工内容并按当前配置增删托管规则，重复同步保持幂等', (context) => {
   const root = fixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(path.join(root, 'AGENTS.md'), [
-    '# 人工规范',
-    '',
-    '这里的内容由项目维护。',
-    '',
-    '<!-- repo-guard:architecture-policy:start -->',
-    '旧架构策略',
-    '<!-- repo-guard:architecture-policy:end -->',
-    '',
-    '<!-- repo-guard:exception-policy:start -->',
-    '旧例外策略',
-    '<!-- repo-guard:exception-policy:end -->',
-    '',
-    '<!-- repo-guard:unit-test-policy:start -->',
-    '旧单元测试策略',
-    '<!-- repo-guard:unit-test-policy:end -->',
-    '',
-    '<!-- repo-guard:accessibility-test-policy:start -->',
-    '旧无障碍测试策略',
-    '<!-- repo-guard:accessibility-test-policy:end -->',
-    '',
-    '旧托管块之后的人工内容也必须保留。',
-    '',
-  ].join('\n'));
+  writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    [
+      '# 人工规范',
+      '',
+      '这里的内容由项目维护。',
+      '',
+      '另一段人工内容也必须保留。',
+      '',
+    ].join('\n'),
+  );
   const config = createStarterConfig();
-  config.commitMessage.enabled = true;
-  config.commitMessage.fixup.allowLocal = true;
-  config.commitMessage.fixup.allowPush = true;
-  config.commitMessage.fixup.allowCi = false;
-  config.preCommit.fileHeader.enabled = true;
-  config.imageAssets.enabled = true;
-  config.architecture.enabled = true;
-  config.deliveryContract.enabled = true;
-  config.codePlacement.enabled = true;
-  config.codePlacement.rules = [{
-    name: '支付签名',
-    content: '绝不能写入托管规范的敏感匹配内容',
-    allowedFiles: ['src/payment/signature.js'],
-    scanPatterns: ['src/**/*.js'],
-  }];
-  config.externalGates = [{
-    id: 'project.k6',
-    enabled: true,
-    environments: ['manual'],
-    script: 'test:k6',
-    timeoutMs: 1000,
-    report: { format: 'repo-guard-json-v1', path: 'reports/k6.json' },
-  }];
+  config.repository.commitMessage.enabled = true;
+  config.repository.commitMessage.fixup.allowLocal = true;
+  config.repository.commitMessage.fixup.allowPush = true;
+  config.repository.commitMessage.fixup.allowCi = false;
+  config.checks.fileHeader.enabled = true;
+  config.checks.imageAssets.enabled = true;
+  config.checks.architecture.enabled = true;
+  config.repository.deliveryContract.enabled = true;
+  config.repository.codePlacement.enabled = true;
+  config.repository.codePlacement.rules = [
+    {
+      name: '支付签名',
+      content: '绝不能写入托管规范的敏感匹配内容',
+      allowedFiles: ['src/payment/signature.js'],
+      scanPatterns: ['src/**/*.js'],
+    },
+  ];
+  config.ci.externalGates = [
+    {
+      id: 'project.k6',
+      enabled: true,
+      environments: ['manual'],
+      script: 'test:k6',
+      timeoutMs: 1000,
+      report: { format: 'repo-guard-json-v2', path: 'reports/k6.json' },
+    },
+  ];
 
   assert.equal(syncAgentPolicies(root, config).changed, true);
   assert.equal(syncAgentPolicies(root, config).changed, false);
   const enabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.match(enabledContent, /# 人工规范/);
-  assert.match(enabledContent, /旧托管块之后的人工内容也必须保留。/);
+  assert.match(enabledContent, /另一段人工内容也必须保留。/);
   assert.ok(
-    enabledContent.indexOf('# 人工规范')
-      < enabledContent.indexOf('旧托管块之后的人工内容也必须保留。'),
+    enabledContent.indexOf('# 人工规范') <
+      enabledContent.indexOf('另一段人工内容也必须保留。'),
   );
   assert.ok(
-    enabledContent.indexOf('旧托管块之后的人工内容也必须保留。')
-      < enabledContent.indexOf('<!-- repo-guard:repository-governance-policy:start -->'),
+    enabledContent.indexOf('另一段人工内容也必须保留。') <
+      enabledContent.indexOf(
+        '<!-- repo-guard:repository-governance-policy:start -->',
+      ),
   );
-  for (const legacyId of [
-    'architecture-policy',
-    'exception-policy',
-    'unit-test-policy',
-    'accessibility-test-policy',
-  ]) {
-    assert.doesNotMatch(enabledContent, new RegExp(`repo-guard:${legacyId}:(?:start|end)`));
-  }
   assert.match(enabledContent, /repo-guard:dependency-health-policy:start/);
   assert.match(enabledContent, /文件头由 repo-guard 依据 Git 记录维护/);
-  assert.match(enabledContent, /fixup!\/squash! 在本地允许、pre-push 阶段允许、CI 阶段禁止/);
+  assert.match(
+    enabledContent,
+    /fixup!\/squash! 在本地允许、pre-push 阶段允许、CI 阶段禁止/,
+  );
   assert.match(enabledContent, /k6 并发压测/);
   assert.match(enabledContent, /图片资源必须遵守/);
   assert.match(enabledContent, /Hook 与 CI 只能检查/);
@@ -161,18 +167,21 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   assert.doesNotMatch(enabledContent, /\bundefined\b/);
   assert.doesNotMatch(enabledContent, /绝不能写入托管规范的敏感匹配内容/);
 
-  config.imageAssets.naming.enabled = false;
+  config.checks.imageAssets.naming.enabled = false;
   assert.equal(syncAgentPolicies(root, config).changed, true);
-  const namingDisabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  const namingDisabledContent = readFileSync(
+    path.join(root, 'AGENTS.md'),
+    'utf8',
+  );
   assert.doesNotMatch(namingDisabledContent, /`camelCase` 命名/);
   assert.match(namingDisabledContent, /扩展名与真实格式一致/);
 
-  config.preCommit.fileHeader.enabled = false;
-  config.imageAssets.enabled = false;
-  config.architecture.enabled = false;
-  config.deliveryContract.enabled = false;
-  config.codePlacement.enabled = false;
-  config.externalGates = [];
+  config.checks.fileHeader.enabled = false;
+  config.checks.imageAssets.enabled = false;
+  config.checks.architecture.enabled = false;
+  config.repository.deliveryContract.enabled = false;
+  config.repository.codePlacement.enabled = false;
+  config.ci.externalGates = [];
   assert.equal(syncAgentPolicies(root, config).changed, true);
   const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.doesNotMatch(disabledContent, /文件头由 repo-guard 依据 Git 记录维护/);
@@ -180,6 +189,24 @@ test('原子迁移旧 marker，保留人工内容并按配置增删托管规则'
   assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
   assert.doesNotMatch(disabledContent, /当前分支唯一的活动 Markdown 交付合同/);
   assert.doesNotMatch(disabledContent, /修改模块依赖后必须运行/);
+});
+
+test('旧版、未知和新旧混合规范 marker 均拒绝，不改原文件或追加当前区块', (context) => {
+  const root = fixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const config = createStarterConfig();
+  const file = path.join(root, 'AGENTS.md');
+  syncAgentPolicies(root, config);
+  const current = readFileSync(file, 'utf8');
+  for (const id of ['architecture-policy', 'exception-policy', 'unit-test-policy', 'accessibility-test-policy', 'unknown-policy']) {
+    const unsupported = `<!-- repo-guard:${id}:start -->\n人工待确认的旧规范\n<!-- repo-guard:${id}:end -->\n`;
+    for (const content of [unsupported, `${current}\n${unsupported}`, unsupported.replaceAll('\n', '\r\n')]) {
+      writeFileSync(file, content);
+      assert.throws(() => syncAgentPolicies(root, config), { code: 'managed-text/unsupported-markers' });
+      assert.throws(() => inspectAgentPolicies(root, config), { code: 'managed-text/unsupported-markers' });
+      assert.equal(readFileSync(file, 'utf8'), content);
+    }
+  }
 });
 
 test('marker 异常时拒绝任何写入', (context) => {
@@ -229,7 +256,10 @@ test('启用和禁用图片治理会同步 AGENTS.md 托管规则', (context) =>
   assert.equal(runDisable(['imageAssets'], root), 0);
   const disabledContent = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.doesNotMatch(disabledContent, /图片资源必须遵守/);
-  assert.match(disabledContent, /repo-guard:repository-governance-policy:start/);
+  assert.match(
+    disabledContent,
+    /repo-guard:repository-governance-policy:start/,
+  );
 });
 
 test('启用和禁用交付合同会同步项目级流程 Skills', (context) => {
@@ -243,25 +273,44 @@ test('启用和禁用交付合同会同步项目级流程 Skills', (context) => 
   );
 
   assert.equal(runEnable(['deliveryContract'], root), 0);
-  assert.equal(existsSync(path.join(root, '.repo-guard', 'managed-skills.json')), true);
-  assert.equal(existsSync(path.join(
-    root,
-    '.agents',
-    'skills',
-    'repo-guard-delivery-contract',
-    'SKILL.md',
-  )), true);
-  assert.match(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), /五个流程 Skill/);
+  assert.equal(
+    existsSync(path.join(root, '.repo-guard', 'managed-skills.json')),
+    true,
+  );
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        '.agents',
+        'skills',
+        'repo-guard-delivery-contract',
+        'SKILL.md',
+      ),
+    ),
+    true,
+  );
+  assert.match(
+    readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    /五个流程 Skill/,
+  );
 
   assert.equal(runDisable(['deliveryContract'], root), 0);
-  assert.equal(existsSync(path.join(root, '.repo-guard', 'managed-skills.json')), false);
-  assert.equal(existsSync(path.join(
-    root,
-    '.agents',
-    'skills',
-    'repo-guard-delivery-contract',
-    'SKILL.md',
-  )), false);
+  assert.equal(
+    existsSync(path.join(root, '.repo-guard', 'managed-skills.json')),
+    false,
+  );
+  assert.equal(
+    existsSync(
+      path.join(
+        root,
+        '.agents',
+        'skills',
+        'repo-guard-delivery-contract',
+        'SKILL.md',
+      ),
+    ),
+    false,
+  );
 });
 
 test('启用无效图片资源会把静态引用和动态声明边界写入 AGENTS.md', (context) => {
@@ -288,9 +337,11 @@ test('启用无效图片资源会把静态引用和动态声明边界写入 AGEN
 test('构建产物预算按项目唯一平台写入 AGENTS.md 托管规范', (context) => {
   const root = fixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  const config = createStarterConfig({ buildEnabled: true });
-  config.build.artifactBudget = {
-    ...config.build.artifactBudget,
+  const config = createStarterConfig({
+    buildEnabled: true,
+  });
+  config.checks.build.artifactBudget = {
+    ...config.checks.build.artifactBudget,
     enabled: true,
     platform: 'miniProgram',
     outputDirectory: 'unpackage/dist/build/mp-weixin',

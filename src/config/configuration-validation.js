@@ -1,110 +1,112 @@
-import { validateCommitAnimationConfiguration } from './commit-animation-validation.js';
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { validateAccessibilityConfiguration } from './accessibility-validation.js';
-import { validateArchitectureConfiguration } from './architecture-validation.js';
+import { validateProjectDescriptor } from '../profiles/project-profiles.js';
+import { validateChecksConfiguration } from './checks-validation.js';
 import { validateCiConfiguration } from './ci-validation.js';
+import { validateCommitAnimationConfiguration } from './commit-animation-validation.js';
 import { validateCommitMessageConfiguration } from './commit-message-validation.js';
 import { validateCodePlacementConfiguration } from './code-placement-validation.js';
 import { validateDependencyPolicyConfiguration } from './dependency-policy-validation.js';
-import { validateDeadCodeConfiguration } from './dead-code-validation.js';
 import { validateDeliveryContractConfiguration } from './delivery-contract-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
-import { validateExecutionGateConfiguration } from './execution-gate-validation.js';
-import { validateImageAssetsConfiguration } from './image-assets-validation.js';
 import { validateNotificationConfiguration } from './notification-validation.js';
-import { validateMutationTestConfiguration } from './mutation-test-validation.js';
-import { validatePreCommitConfiguration } from './pre-commit-validation.js';
 import {
   normalizeProtectedFileConfiguration,
   validateProtectedFileConfigurationShape,
 } from './protected-file-validation.js';
 import { validateRootConfigurationContract } from './root-configuration-validation.js';
-import { validateUnitTestConfiguration } from './unit-test-validation.js';
-import { validateUiTokenConfiguration } from './ui-token-validation.js';
-import { CONFIG_FILE, configValidationError } from './validation-primitives.js';
+import { DEFAULT_REPOSITORY_RULES } from './project-defaults.js';
+import { REPOSITORY_FIELDS } from './project-feature-paths.js';
+import {
+  CONFIG_FILE,
+  assertKnownProperties,
+  configValidationError,
+} from './validation-primitives.js';
 
-export function validateConfigValue(value, configPath = CONFIG_FILE) {
-  validateRootConfigurationContract(value, configPath);
-  validateProtectedFileConfigurationShape(value, configPath);
-
-  const notification = validateNotificationConfiguration(value, configPath);
-
-  const { ci, externalGates } = validateCiConfiguration(value, configPath);
-
-  const codePlacement = validateCodePlacementConfiguration(value, configPath);
-
-  const exceptions = validateExceptionConfiguration(value, configPath);
-
-  const dependencyPolicy = validateDependencyPolicyConfiguration(value, configPath);
-
-  const commitMessage = validateCommitMessageConfiguration(value, configPath);
-
-  const deadCode = validateDeadCodeConfiguration(value, configPath);
-
-  const imageAssets = validateImageAssetsConfiguration(value, configPath);
-
-  const uiTokens = validateUiTokenConfiguration(value, configPath);
-
-  const deliveryContract = validateDeliveryContractConfiguration(value, configPath);
-
-  const architecture = validateArchitectureConfiguration(value, configPath);
-
-  const { build, lighthouse, typeCheck } = validateExecutionGateConfiguration(
-    value,
-    configPath,
-  );
-
-  const accessibilityTest = validateAccessibilityConfiguration(value, configPath);
-
-  const unitTest = validateUnitTestConfiguration(value, configPath);
-
-  const mutationTest = validateMutationTestConfiguration(value, configPath);
-
-  const preCommit = validatePreCommitConfiguration(value, configPath);
-
-  if (
-    imageAssets.enabled
-    && imageAssets.naming.enabled
-    && preCommit.pathNaming.enabled
-    && imageAssets.naming.convention !== preCommit.pathNaming.convention
-  ) {
-    throw configValidationError(
-      `${configPath} imageAssets.naming.convention 必须与 preCommit.pathNaming.convention 保持一致`,
-    );
+function sectionValue(value, fields, label) {
+  const section = value === undefined ? {} : value;
+  if (!section || typeof section !== 'object' || Array.isArray(section)) {
+    throw configValidationError(`${label} 必须是对象`);
   }
-
-  const { rules, exclusions } = normalizeProtectedFileConfiguration(value, configPath);
-
-  return {
-    version: 1,
-    notification,
-    commitAnimation: validateCommitAnimationConfiguration(value, configPath),
-    ci,
-    externalGates,
-    codePlacement,
-    exceptions,
-    dependencyPolicy,
-    commitMessage,
-    deadCode,
-    imageAssets,
-    uiTokens,
-    deliveryContract,
-    architecture,
-    build,
-    lighthouse,
-    typeCheck,
-    accessibilityTest,
-    unitTest,
-    mutationTest,
-    preCommit,
-    rules,
-    exclusions,
-  };
+  assertKnownProperties(section, new Set(fields), label);
+  return section;
 }
 
-export function validateConfig(value, configPath = CONFIG_FILE) {
+function assertNoDiscardedNulls(value, normalized, configPath, segments = []) {
+  if (value === null) {
+    if (normalized !== null) {
+      throw configValidationError(
+        `${configPath} ${segments.join('.')} 不允许为空值`,
+      );
+    }
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  for (const [key, candidate] of Object.entries(value)) {
+    assertNoDiscardedNulls(candidate, normalized?.[key], configPath, [
+      ...segments,
+      key,
+    ]);
+  }
+}
+
+export function validateConfigValue(
+  value,
+  configPath = CONFIG_FILE,
+  options = {},
+) {
+  validateRootConfigurationContract(value, configPath);
+  const project = options.repositoryOnly
+    ? undefined
+    : validateProjectDescriptor(value.project, options);
+  const repository = sectionValue(
+    value.repository,
+    REPOSITORY_FIELDS,
+    `${configPath} repository`,
+  );
+  const protectedFiles = {
+    ...repository,
+    rules: repository.rules ?? DEFAULT_REPOSITORY_RULES,
+  };
+  validateProtectedFileConfigurationShape(protectedFiles, configPath);
+  const reporting = sectionValue(
+    value.reporting,
+    ['notification', 'commitAnimation'],
+    `${configPath} reporting`,
+  );
+  const normalized = {
+    version: 2,
+    ...(project ? { project } : {}),
+    checks: validateChecksConfiguration(value.checks, project, configPath),
+    repository: {
+      ...normalizeProtectedFileConfiguration(protectedFiles, configPath),
+      codePlacement: validateCodePlacementConfiguration(repository, configPath),
+      exceptions: validateExceptionConfiguration(repository, configPath),
+      dependencyPolicy: validateDependencyPolicyConfiguration(
+        repository,
+        configPath,
+      ),
+      commitMessage: validateCommitMessageConfiguration(repository, configPath),
+      deliveryContract: validateDeliveryContractConfiguration(
+        repository,
+        configPath,
+      ),
+    },
+    reporting: {
+      notification: validateNotificationConfiguration(reporting, configPath),
+      commitAnimation: validateCommitAnimationConfiguration(
+        reporting,
+        configPath,
+      ),
+    },
+    ci: validateCiConfiguration(value.ci, configPath),
+  };
+  assertNoDiscardedNulls(value, normalized, configPath);
+  return normalized;
+}
+
+export function validateConfig(value, configPath = CONFIG_FILE, options = {}) {
   try {
-    return validateConfigValue(value, configPath);
+    return validateConfigValue(value, configPath, options);
   } catch (error) {
     throw toRepoGuardError(error, {
       kind: 'configuration',

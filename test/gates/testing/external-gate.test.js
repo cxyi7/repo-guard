@@ -39,24 +39,51 @@ function externalConfig(extra = {}) {
     environments: ['manual', 'ci-full'],
     script: 'test:external',
     timeoutMs: 30000,
-    report: { format: 'repo-guard-json-v1', path: 'reports/external.json' },
+    report: { format: 'repo-guard-json-v2', path: 'reports/external.json' },
     ...extra,
   };
 }
 
-function projectConfig(externalGates) {
+function projectConfig(externalGates, ci = {}) {
   return {
-    version: 1,
-    notification: { enabled: false },
-    externalGates,
-    dependencyPolicy: { enabled: false },
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      maxFileLines: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    eslint: {
+      enabled: false
     },
-    rules: [{ pattern: 'src/**', category: 'Source', level: 'audit' }],
-  };
+    prettier: {
+      enabled: false
+    },
+    maxFileLines: {
+      enabled: false
+    }
+  },
+  repository: {
+    dependencyPolicy: {
+      enabled: false
+    },
+    rules: [{
+      pattern: 'src/**',
+      category: 'Source',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  },
+  ci: {
+    ...ci,
+    externalGates
+  }
+};
 }
 
 function createFixture({
@@ -101,7 +128,7 @@ function createFixture({
 
 function passedReport(extra = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     gateId: 'project.api-contract',
     status: 'passed',
     summary: 'API contract checks passed',
@@ -112,14 +139,25 @@ function passedReport(extra = {}) {
   };
 }
 
+test('外部门禁拒绝 schemaVersion 1 报告，不转换为当前协议', async (context) => {
+  const root = createFixture({ report: passedReport({ schemaVersion: 1 }) });
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const result = await runExternalManualGate('project.api-contract', root);
+  assert.equal(result.status, 'execution-error');
+  assert.equal(result.error.code, 'external-gate/unsupported-schema');
+  assert.match(result.summary, /schemaVersion.*2/);
+  assert.equal(JSON.parse(readFileSync(path.join(root, 'reports/external.json'), 'utf8')).schemaVersion, 1);
+});
+
 test('appends enabled external gates only to the fixed end of CI full', () => {
   const config = validateConfig(projectConfig([
     externalConfig(),
-    externalConfig({ id: 'project.disabled', enabled: false, report: { format: 'repo-guard-json-v1', path: 'reports/disabled.json' } }),
-    externalConfig({ id: 'project.manual-only', environments: ['manual'], report: { format: 'repo-guard-json-v1', path: 'reports/manual.json' } }),
+    externalConfig({ id: 'project.disabled', enabled: false, report: { format: 'repo-guard-json-v2', path: 'reports/disabled.json' } }),
+    externalConfig({ id: 'project.manual-only', environments: ['manual'], report: { format: 'repo-guard-json-v2', path: 'reports/manual.json' } }),
   ]));
   const registry = createProjectGateRegistry(config);
   const plan = createProjectCiFullPlan(config, registry);
+  assert.deepEqual(registry.get('project.api-contract').artifactTypes, ['repo-guard-json-v2']);
   assert.equal(plan.steps.at(-1).id, 'project.api-contract');
   assert.equal(plan.steps.some(({ id }) => id === 'project.disabled'), false);
   assert.equal(plan.steps.some(({ id }) => id === 'project.manual-only'), false);
@@ -128,15 +166,19 @@ test('appends enabled external gates only to the fixed end of CI full', () => {
 });
 
 test('lets explicit CI policy activate a disabled external Gate only in trusted CI', () => {
-  const config = validateConfig({
-    ...projectConfig([externalConfig({ enabled: false, environments: ['ci-full'] })]),
-    ci: {
-      gatePolicy: {
-        defaultMode: 'inherit',
-        gates: { 'project.api-contract': { mode: 'enforce' } },
-      },
-    },
-  });
+  const config = validateConfig(projectConfig([externalConfig({
+    enabled: false,
+    environments: ['ci-full'],
+  })], {
+    gatePolicy: {
+      defaultMode: 'inherit',
+      gates: {
+        'project.api-contract': {
+          mode: 'enforce'
+        }
+      }
+    }
+  }));
   const registry = createProjectGateRegistry(config);
 
   assert.equal(
@@ -157,6 +199,7 @@ test('runs a project npm script and returns its native structured result', async
   assert.equal(result.status, 'passed');
   assert.equal(result.metrics.requests, 3);
   assert.equal(result.artifacts[0].path, 'reports/external.json');
+  assert.equal(result.artifacts[0].type, 'repo-guard-json-v2');
   assert.match(result.diagnostics[0].message, /api_key=\[REDACTED\]/);
   assert.doesNotMatch(result.diagnostics[0].message, /do-not-leak/);
 });
@@ -192,15 +235,16 @@ test('runs enabled external gates at the end of CI full and records native JSON'
   git(root, ['add', 'src/next.js']);
   git(root, ['commit', '-m', 'next']);
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
-  const config = validateConfig({
-    ...projectConfig([externalConfig({ environments: ['ci-full'] })]),
-    ci: {
-      enabled: true,
-      profile: 'full',
-      reportPath: 'reports/ci.json',
-      protectedFiles: { action: 'report' },
-    },
-  });
+  const config = validateConfig(projectConfig([externalConfig({
+    environments: ['ci-full'],
+  })], {
+    enabled: true,
+    profile: 'full',
+    reportPath: 'reports/ci.json',
+    protectedFiles: {
+      action: 'report'
+    }
+  }));
   assert.equal(await runCiGate({
     root,
     config,
@@ -212,18 +256,22 @@ test('runs enabled external gates at the end of CI full and records native JSON'
   assert.equal(report.steps.at(-1).name, 'project.api-contract');
   assert.equal(report.steps.at(-1).gateResult.status, 'passed');
 
-  const forcedConfig = validateConfig({
-    ...projectConfig([externalConfig({ enabled: false, environments: ['ci-full'] })]),
-    ci: {
-      enabled: true,
-      profile: 'full',
-      reportPath: 'reports/forced-ci.json',
-      gatePolicy: {
-        defaultMode: 'inherit',
-        gates: { 'project.api-contract': { mode: 'enforce' } },
-      },
-    },
-  });
+  const forcedConfig = validateConfig(projectConfig([externalConfig({
+    enabled: false,
+    environments: ['ci-full'],
+  })], {
+    enabled: true,
+    profile: 'full',
+    reportPath: 'reports/forced-ci.json',
+    gatePolicy: {
+      defaultMode: 'inherit',
+      gates: {
+        'project.api-contract': {
+          mode: 'enforce'
+        }
+      }
+    }
+  }));
   assert.equal(await runCiGate({
     root,
     config: forcedConfig,

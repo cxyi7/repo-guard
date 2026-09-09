@@ -29,136 +29,149 @@ function normalizeEol(value) {
   return value.replace(/\r\n/g, '\n');
 }
 
-function writeConfig(root, {
-  project,
-  enabled = true,
-  eslintPreset = false,
-  pattern = '*.js',
-  prettierEnabled = false,
-  prettierPattern = '*.{js,json,css}',
-  prettierFix = true,
-  prettierRequireConfig = true,
-  stylelintEnabled = false,
-  stylelintFix = true,
-  stylelintPattern = '**/*.{css,scss,sass,less,vue}',
-  stylelintRequireConfig = true,
-  styleComplexityEnabled = false,
-  styleMaxCompoundSelectors = 3,
-  styleMaxNestingDepth = 3,
-  styleGovernanceEnabled = false,
-  styleMaxSpecificity = '0,3,0',
-  styleMaxIdSelectors = 0,
-  styleDisallowImportant = true,
-  styleAllowedGlobalPatterns = [
-    'src/styles/**',
-    'src/App.vue',
-  ],
-  dependencyPolicyEnabled = false,
-  ciGatePolicy = null,
-  codePlacementEnabled = false,
-  codePlacementRules = [],
-  maxFileLinesEnabled = false,
-  filePlacementEnabled = false,
-  filePlacementMode = 'newFiles',
-  filePlacementRules = [{
-    name: 'Assets',
-    patterns: ['**/*.{png,svg}'],
-    allowedPatterns: ['src/assets/**'],
-    exceptions: [],
-    suggestedDirectory: 'src/assets',
-  }],
-  fileHeaderEnabled = false,
-  fileHeaderInclude = ['**/*'],
-  fileHeaderExclude = [],
-  fileHeaderExtensions = ['.js'],
-  functionDocsEnabled = false,
-  functionDocsInclude = ['**/*'],
-  functionDocsExclude = [],
-  functionDocsExtensions = ['.js'],
-  asyncResourceCleanupEnabled = false,
-  asyncResourceCleanupInclude = ['src/**'],
-  asyncResourceCleanupExclude = [],
-  asyncResourceCleanupExtensions = ['.vue', '.js', '.ts'],
-  pathNamingEnabled = false,
-  pathNamingConvention = 'camelCase',
-  pathNamingInclude = ['src/**'],
-  pathNamingExclude = [],
-  maxFileLineRules = [
-    { pattern: '**/*.vue', maxLines: 700 },
-    { pattern: '**/*.js', maxLines: 1000 },
-  ],
-  protectedRules = [{
-    pattern: '**',
-    category: 'Test fixture',
-    level: 'audit',
-  }],
-} = {}) {
+function writeConfig(
+  root,
+  {
+    project,
+    enabled = true,
+    eslintPreset = false,
+    pattern = '*.js',
+    prettierEnabled = false,
+    prettierPattern = '*.{js,json,css}',
+    prettierFix = true,
+    prettierRequireConfig = true,
+    stylelintEnabled = false,
+    stylelintFix = true,
+    stylelintPattern = '**/*.{css,scss,sass,less,vue}',
+    stylelintRequireConfig = true,
+    styleComplexityEnabled = false,
+    styleMaxCompoundSelectors = 3,
+    styleMaxNestingDepth = 3,
+    styleGovernanceEnabled = false,
+    styleMaxSpecificity = '0,3,0',
+    styleMaxIdSelectors = 0,
+    styleDisallowImportant = true,
+    styleAllowedGlobalPatterns = ['src/styles/**', 'src/App.vue'],
+    dependencyPolicyEnabled = false,
+    ciGatePolicy = null,
+    codePlacementEnabled = false,
+    codePlacementRules = [],
+    maxFileLinesEnabled = false,
+    filePlacementEnabled = false,
+    filePlacementMode = 'newFiles',
+    filePlacementRules = [
+      {
+        name: 'Assets',
+        patterns: ['**/*.{png,svg}'],
+        allowedPatterns: ['src/assets/**'],
+        exceptions: [],
+        suggestedDirectory: 'src/assets',
+      },
+    ],
+    fileHeaderEnabled = false,
+    fileHeaderInclude = ['**/*'],
+    fileHeaderExclude = [],
+    fileHeaderExtensions = ['.js'],
+    functionDocsEnabled = false,
+    functionDocsInclude = ['**/*'],
+    functionDocsExclude = [],
+    functionDocsExtensions = ['.js'],
+    asyncResourceCleanupEnabled = false,
+    asyncResourceCleanupInclude = ['src/**'],
+    asyncResourceCleanupExclude = [],
+    asyncResourceCleanupExtensions = ['.vue', '.js', '.ts'],
+    pathNamingEnabled = false,
+    pathNamingConvention = 'camelCase',
+    pathNamingInclude = ['src/**'],
+    pathNamingExclude = [],
+    maxFileLineRules = [
+      { pattern: '**/*.vue', maxLines: 700 },
+      { pattern: '**/*.js', maxLines: 1000 },
+    ],
+    protectedRules = [
+      {
+        pattern: '**',
+        category: 'Test fixture',
+        level: 'audit',
+      },
+    ],
+  } = {},
+) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-      project,
-      version: 1,
-      ci: ciGatePolicy == null ? undefined : { gatePolicy: ciGatePolicy },
-      codePlacement: {
-        enabled: codePlacementEnabled,
-        rules: codePlacementRules,
-      },
-      dependencyPolicy: {
-        enabled: dependencyPolicyEnabled,
-        requireExactVersions: true,
-        requireLockfile: true,
-        allowedProtocols: ['npm', 'workspace'],
-        bannedPackages: [],
-      },
-      preCommit: {
-        asyncResourceCleanup: {
-          enabled: asyncResourceCleanupEnabled,
-          include: asyncResourceCleanupInclude,
-          exclude: asyncResourceCleanupExclude,
-          extensions: asyncResourceCleanupExtensions,
-          timeoutThresholdMs: 1000,
-          requestFunctions: ['fetch'],
-        },
-        pathNaming: {
-          enabled: pathNamingEnabled,
-          convention: pathNamingConvention,
-          include: pathNamingInclude,
-          exclude: pathNamingExclude,
-        },
-        fileHeader: {
-          enabled: fileHeaderEnabled,
-          include: fileHeaderInclude,
-          exclude: fileHeaderExclude,
-          extensions: fileHeaderExtensions,
-        },
-        functionDocs: {
-          enabled: functionDocsEnabled,
-          include: functionDocsInclude,
-          exclude: functionDocsExclude,
-          extensions: functionDocsExtensions,
-        },
-        filePlacement: {
-          enabled: filePlacementEnabled,
-          mode: filePlacementMode,
-          rules: filePlacementRules,
-        },
-        maxFileLines: {
-          enabled: maxFileLinesEnabled,
-          rules: maxFileLineRules,
-          exclusions: [],
-        },
-        stylelint: {
-          enabled: stylelintEnabled,
-          pattern: stylelintPattern,
-          fix: stylelintFix,
-          maxWarnings: 0,
-          requireConfig: stylelintRequireConfig,
-          complexity: {
+    `${stringifyProjectFixture(
+      {
+        project,
+        version: 2,
+        ci:
+          ciGatePolicy == null
+            ? undefined
+            : {
+                gatePolicy: ciGatePolicy,
+              },
+        checks: {
+          asyncResourceCleanup: {
+            enabled: asyncResourceCleanupEnabled,
+            include: asyncResourceCleanupInclude,
+            exclude: asyncResourceCleanupExclude,
+            extensions: asyncResourceCleanupExtensions,
+            timeoutThresholdMs: 1000,
+            requestFunctions: ['fetch'],
+          },
+          pathNaming: {
+            enabled: pathNamingEnabled,
+            convention: pathNamingConvention,
+            include: pathNamingInclude,
+            exclude: pathNamingExclude,
+          },
+          fileHeader: {
+            enabled: fileHeaderEnabled,
+            include: fileHeaderInclude,
+            exclude: fileHeaderExclude,
+            extensions: fileHeaderExtensions,
+          },
+          functionDocs: {
+            enabled: functionDocsEnabled,
+            include: functionDocsInclude,
+            exclude: functionDocsExclude,
+            extensions: functionDocsExtensions,
+          },
+          filePlacement: {
+            enabled: filePlacementEnabled,
+            mode: filePlacementMode,
+            rules: filePlacementRules,
+          },
+          maxFileLines: {
+            enabled: maxFileLinesEnabled,
+            rules: maxFileLineRules,
+            exclusions: [],
+          },
+          stylelint: {
+            enabled: stylelintEnabled,
+            pattern: stylelintPattern,
+            fix: stylelintFix,
+            maxWarnings: 0,
+            requireConfig: stylelintRequireConfig,
+          },
+          prettier: {
+            enabled: prettierEnabled,
+            pattern: prettierPattern,
+            fix: prettierFix,
+            requireConfig: prettierRequireConfig,
+          },
+          eslint: {
+            enabled,
+            preset: eslintPreset,
+            pattern,
+            fix: true,
+            maxWarnings: 0,
+          },
+          styleComplexity: {
             enabled: styleComplexityEnabled,
             maxCompoundSelectors: styleMaxCompoundSelectors,
             maxNestingDepth: styleMaxNestingDepth,
           },
-          governance: {
+          styleGovernance: {
             enabled: styleGovernanceEnabled,
             maxSpecificity: styleMaxSpecificity,
             maxIdSelectors: styleMaxIdSelectors,
@@ -166,23 +179,25 @@ function writeConfig(root, {
             allowedGlobalStylePatterns: styleAllowedGlobalPatterns,
           },
         },
-        prettier: {
-          enabled: prettierEnabled,
-          pattern: prettierPattern,
-          fix: prettierFix,
-          requireConfig: prettierRequireConfig,
-        },
-        eslint: {
-          enabled,
-          preset: eslintPreset,
-          pattern,
-          fix: true,
-          maxWarnings: 0,
+        repository: {
+          codePlacement: {
+            enabled: codePlacementEnabled,
+            rules: codePlacementRules,
+          },
+          dependencyPolicy: {
+            enabled: dependencyPolicyEnabled,
+            requireExactVersions: true,
+            requireLockfile: true,
+            allowedProtocols: ['npm', 'workspace'],
+            bannedPackages: [],
+          },
+          rules: protectedRules,
+          exclusions: [],
         },
       },
-      rules: protectedRules,
-      exclusions: [],
-    }, null, 2)}\n`,
+      null,
+      2,
+    )}\n`,
   );
 }
 
@@ -217,10 +232,14 @@ function createRepository(options = {}) {
   if (options.prettierConfig !== null) {
     writeFileSync(
       path.join(root, '.prettierrc.json'),
-      `${JSON.stringify(options.prettierConfig || {
-        semi: true,
-        singleQuote: true,
-      }, null, 2)}\n`,
+      `${JSON.stringify(
+        options.prettierConfig || {
+          semi: true,
+          singleQuote: true,
+        },
+        null,
+        2,
+      )}\n`,
     );
   }
   if (options.stylelintConfig) {
@@ -252,7 +271,10 @@ test('auto-fixes only staged content and restores unstaged edits', async (contex
   );
 
   assert.equal(await runPreCommit(root), 0);
-  assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), 'const value = 2;\n');
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.js'])),
+    'const value = 2;\n',
+  );
 
   const worktree = readFileSync(path.join(root, 'sample.js'), 'utf8');
   assert.match(worktree, /^const value = 2;/);
@@ -269,10 +291,19 @@ test('动画接管任务列表时仍保留部分暂存内容和完整质量诊�
   git(root, ['add', 'sample.js']);
   writeFileSync(file, 'const value = 2\nconst localOnly = 3\n');
   let paused = 0;
-  const animation = { active: true, pause: () => { paused += 1; }, fail: () => assert.fail('成功检查不应显示失败') };
+  const animation = {
+    active: true,
+    pause: () => {
+      paused += 1;
+    },
+    fail: () => assert.fail('成功检查不应显示失败'),
+  };
   assert.equal(await runQualityGate({ cwd: root, animation }), 0);
   assert.ok(paused > 1, '输出诊断前必须暂停动画');
-  assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), 'const value = 2;\n');
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.js'])),
+    'const value = 2;\n',
+  );
   assert.match(readFileSync(file, 'utf8'), /localOnly/);
   assert.doesNotMatch(git(root, ['show', ':sample.js']), /localOnly/);
 });
@@ -290,7 +321,13 @@ test('动画模式质量失败保留退出码并恢复原始暂存和未暂存�
   const originalWorktree = readFileSync(file, 'utf8');
   const originalIndex = git(root, ['show', ':sample.js']);
   let failures = 0;
-  const animation = { active: true, pause() {}, fail: () => { failures += 1; } };
+  const animation = {
+    active: true,
+    pause() {},
+    fail: () => {
+      failures += 1;
+    },
+  };
   assert.equal(await runQualityGate({ cwd: root, animation }), 1);
   assert.ok(failures > 0, '失败诊断必须通知展示层停止角色');
   assert.equal(git(root, ['show', ':sample.js']), originalIndex);
@@ -338,7 +375,10 @@ test('仅同步暂存函数文档并保留未暂存内容', async (context) => {
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src'), { recursive: true });
   const filePath = path.join(root, 'src', 'query.js');
-  writeFileSync(filePath, 'export function query(userId) {\n  return userId;\n}\n');
+  writeFileSync(
+    filePath,
+    'export function query(userId) {\n  return userId;\n}\n',
+  );
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'test: baseline']);
 
@@ -417,7 +457,10 @@ test('rejects overlapping pre-commit runs without changing staged or unstaged co
     normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')),
     worktree,
   );
-  assert.doesNotMatch(git(root, ['stash', 'list']), /lint-staged automatic backup/);
+  assert.doesNotMatch(
+    git(root, ['stash', 'list']),
+    /lint-staged automatic backup/,
+  );
 });
 
 test('restores fixes on a failing initial commit without a Git stash', async (context) => {
@@ -435,10 +478,7 @@ test('restores fixes on a failing initial commit without a Git stash', async (co
     normalizeEol(readFileSync(path.join(root, 'fixable.js'), 'utf8')),
     fixable,
   );
-  assert.equal(
-    normalizeEol(git(root, ['show', ':fixable.js'])),
-    fixable,
-  );
+  assert.equal(normalizeEol(git(root, ['show', ':fixable.js'])), fixable);
 });
 
 test('dynamic-code gate rejects invalid syntax when ESLint is disabled', async (context) => {
@@ -476,7 +516,8 @@ test('启用异步资源清理后以 error 阻断未释放资源', async (contex
   commitBaseline(root);
 
   mkdirSync(path.join(root, 'src'), { recursive: true });
-  const source = '<script setup>\nconst timer = setInterval(refresh, 1000);\n</script>\n';
+  const source =
+    '<script setup>\nconst timer = setInterval(refresh, 1000);\n</script>\n';
   writeFileSync(path.join(root, 'src', 'App.vue'), source);
   git(root, ['add', 'src/App.vue']);
 
@@ -503,7 +544,12 @@ test('启用路径命名后检查全部已跟踪范围而不只检查本次暂�
 test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {
   const root = createRepository({
     eslintPreset: true,
-    project: { id: 'api', role: 'backend', stack: 'node', preset: 'node-javascript' },
+    project: {
+      id: 'api',
+      role: 'backend',
+      stack: 'node',
+      preset: 'node-javascript',
+    },
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
@@ -520,12 +566,20 @@ test('automatically applies the repo-guard ESLint preset from the JSON switch', 
 test('lets the project ESLint config override the automatic preset', async (context) => {
   const root = createRepository({
     eslintPreset: true,
-    project: { id: 'api', role: 'backend', stack: 'node', preset: 'node-javascript' },
+    project: {
+      id: 'api',
+      role: 'backend',
+      stack: 'node',
+      preset: 'node-javascript',
+    },
     eslintRules: { 'no-console': 'off' },
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  writeFileSync(path.join(root, 'sample.js'), 'console.log("project override");\n');
+  writeFileSync(
+    path.join(root, 'sample.js'),
+    'console.log("project override");\n',
+  );
   git(root, ['add', '.']);
 
   assert.equal(await runPreCommit(root), 0);
@@ -539,7 +593,10 @@ test('checks the staged file line count and ignores unstaged lines', async (cont
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  writeFileSync(path.join(root, 'sample.js'), 'const one = 1;\nconst two = 2;\n');
+  writeFileSync(
+    path.join(root, 'sample.js'),
+    'const one = 1;\nconst two = 2;\n',
+  );
   git(root, ['add', '.']);
   writeFileSync(
     path.join(root, 'sample.js'),
@@ -591,28 +648,42 @@ test('blocks restricted code in a staged disallowed file but ignores an unstaged
   const root = createRepository({
     enabled: false,
     codePlacementEnabled: true,
-    codePlacementRules: [{
-      name: '支付签名',
-      content: restrictedCode,
-      allowedFiles: ['src/payment/signature.js'],
-      scanPatterns: ['src/**/*.js'],
-    }],
+    codePlacementRules: [
+      {
+        name: '支付签名',
+        content: restrictedCode,
+        allowedFiles: ['src/payment/signature.js'],
+        scanPatterns: ['src/**/*.js'],
+      },
+    ],
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src', 'payment'), { recursive: true });
   mkdirSync(path.join(root, 'src', 'orders'), { recursive: true });
-  writeFileSync(path.join(root, 'src', 'payment', 'signature.js'), `${restrictedCode}\n`);
-  writeFileSync(path.join(root, 'src', 'orders', 'submit.js'), 'export const submit = true;\n');
+  writeFileSync(
+    path.join(root, 'src', 'payment', 'signature.js'),
+    `${restrictedCode}\n`,
+  );
+  writeFileSync(
+    path.join(root, 'src', 'orders', 'submit.js'),
+    'export const submit = true;\n',
+  );
   commitBaseline(root);
 
-  writeFileSync(path.join(root, 'src', 'orders', 'submit.js'), `${restrictedCode}\n`);
+  writeFileSync(
+    path.join(root, 'src', 'orders', 'submit.js'),
+    `${restrictedCode}\n`,
+  );
   writeFileSync(path.join(root, 'sample.js'), 'const value = 2;\n');
   git(root, ['add', 'sample.js']);
   assert.equal(await runPreCommit(root), 0);
 
   git(root, ['add', 'src/orders/submit.js']);
   assert.equal(await runPreCommit(root), 1);
-  assert.match(git(root, ['show', ':src/orders/submit.js']), /createPaymentSignature/);
+  assert.match(
+    git(root, ['show', ':src/orders/submit.js']),
+    /createPaymentSignature/,
+  );
 });
 
 test('dynamic-code gate still checks files ignored by ESLint', async (context) => {
@@ -639,7 +710,7 @@ test('formats staged code and non-code files with project Prettier rules', async
   assert.equal(await runPreCommit(root), 0);
   assert.equal(
     normalizeEol(git(root, ['show', ':sample.js'])),
-    "const value = { answer: 42 };\n",
+    'const value = { answer: 42 };\n',
   );
   assert.equal(
     normalizeEol(git(root, ['show', ':data.json'])),
@@ -711,7 +782,10 @@ test('blocks formatting when required project Prettier config is missing', async
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), unformatted);
-  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), unformatted);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
+    unformatted,
+  );
 });
 
 test('blocks unformatted staged files when Prettier fixes are disabled', async (context) => {
@@ -729,7 +803,10 @@ test('blocks unformatted staged files when Prettier fixes are disabled', async (
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), unformatted);
-  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), unformatted);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
+    unformatted,
+  );
 });
 
 test('rolls back the whole quality pipeline when Prettier conflicts with ESLint', async (context) => {
@@ -746,7 +823,10 @@ test('rolls back the whole quality pipeline when Prettier conflicts with ESLint'
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), original);
-  assert.equal(normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')), original);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')),
+    original,
+  );
 });
 
 test('runs the project Stylelint auto-fix and final verification', async (context) => {
@@ -845,7 +925,10 @@ test('enforces selector specificity, ID, and important governance despite bypass
   git(root, ['add', '.']);
 
   assert.equal(await runPreCommit(root), 1);
-  assert.equal(normalizeEol(git(root, ['show', ':sample.module.css'])), content);
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.module.css'])),
+    content,
+  );
 });
 
 test('preserves the project declaration-no-important rule when repo governance allows it', async (context) => {
@@ -868,7 +951,10 @@ test('preserves the project declaration-no-important rule when repo governance a
   git(root, ['add', '.']);
 
   assert.equal(await runPreCommit(root), 1);
-  assert.equal(normalizeEol(git(root, ['show', ':sample.module.css'])), content);
+  assert.equal(
+    normalizeEol(git(root, ['show', ':sample.module.css'])),
+    content,
+  );
 });
 
 test('allows CSS Module styles but blocks unexpected globals', async (context) => {
@@ -882,7 +968,10 @@ test('allows CSS Module styles but blocks unexpected globals', async (context) =
   context.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'src'), { recursive: true });
 
-  writeFileSync(path.join(root, 'src', 'safe.module.css'), '.safe { color: green; }\n');
+  writeFileSync(
+    path.join(root, 'src', 'safe.module.css'),
+    '.safe { color: green; }\n',
+  );
   git(root, ['add', '.']);
   assert.equal(await runPreCommit(root), 0);
 
@@ -905,7 +994,10 @@ test('allows intentional global styles only in configured locations', async (con
   mkdirSync(path.join(root, 'src', 'styles'), { recursive: true });
   mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
 
-  writeFileSync(path.join(root, 'src', 'styles', 'reset.css'), 'html { color: black; }\n');
+  writeFileSync(
+    path.join(root, 'src', 'styles', 'reset.css'),
+    'html { color: black; }\n',
+  );
   git(root, ['add', '.']);
   assert.equal(await runPreCommit(root), 0);
 
@@ -944,7 +1036,9 @@ test('auto-fixes only staged Stylelint content and restores unstaged edits', asy
     normalizeEol(git(root, ['show', ':style.css'])),
     '.sample { color: #fff; }\n',
   );
-  const worktree = normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8'));
+  const worktree = normalizeEol(
+    readFileSync(path.join(root, 'style.css'), 'utf8'),
+  );
   assert.match(worktree, /^\.sample \{ color: #fff; \}/);
   assert.match(worktree, /\.local \{ color: #ffffff; \}/);
   assert.doesNotMatch(git(root, ['show', ':style.css']), /\.local/);
@@ -970,7 +1064,10 @@ test('rolls back Stylelint fixes when a later quality gate fails', async (contex
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), css);
-  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), css);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
+    css,
+  );
 });
 
 test('blocks unfixable Stylelint problems without keeping partial fixes', async (context) => {
@@ -993,7 +1090,10 @@ test('blocks unfixable Stylelint problems without keeping partial fixes', async 
 
   assert.equal(await runPreCommit(root), 1);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), original);
-  assert.equal(normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')), original);
+  assert.equal(
+    normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
+    original,
+  );
 });
 
 test('rejects Vue files that mix style languages', async (context) => {
@@ -1048,7 +1148,8 @@ test('blocks staged dynamic code execution when optional gates are disabled', as
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const content = 'export const execute = (source) => new Function(source)();\n';
+  const content =
+    'export const execute = (source) => new Function(source)();\n';
   writeFileSync(path.join(root, 'runtime.ts'), content);
   git(root, ['add', '.']);
 
@@ -1069,7 +1170,8 @@ test('keeps CI Gate policy independent from the pre-commit Gate policy', async (
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const content = 'export const execute = (source) => new Function(source)();\n';
+  const content =
+    'export const execute = (source) => new Function(source)();\n';
   writeFileSync(path.join(root, 'runtime.ts'), content);
   git(root, ['add', '.']);
 
@@ -1104,12 +1206,16 @@ test('blocks staged dependency declarations when dependency governance is enable
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const packageJson = `${JSON.stringify({
-    name: 'fixture',
-    version: '1.0.0',
-    type: 'module',
-    dependencies: { axios: '^1.7.0' },
-  }, null, 2)}\n`;
+  const packageJson = `${JSON.stringify(
+    {
+      name: 'fixture',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: { axios: '^1.7.0' },
+    },
+    null,
+    2,
+  )}\n`;
   writeFileSync(path.join(root, 'package.json'), packageJson);
   git(root, ['add', '.']);
 
@@ -1127,16 +1233,22 @@ test('blocks staged deletion of a required dependency lockfile', async (context)
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const packageJson = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  );
   writeFileSync(
     path.join(root, 'package-lock.json'),
-    `${JSON.stringify({
-      name: packageJson.name,
-      version: packageJson.version,
-      lockfileVersion: 3,
-      requires: true,
-      packages: { '': packageJson },
-    }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        name: packageJson.name,
+        version: packageJson.version,
+        lockfileVersion: 3,
+        requires: true,
+        packages: { '': packageJson },
+      },
+      null,
+      2,
+    )}\n`,
   );
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'test: baseline']);
@@ -1214,11 +1326,13 @@ test('requires a project Stylelint configuration when configured', async (contex
 
 test('blocks a staged rename of an immutable protected file', async (context) => {
   const root = createRepository({
-    protectedRules: [{
-      pattern: 'sample.js',
-      category: '不可变安全文件',
-      level: 'block',
-    }],
+    protectedRules: [
+      {
+        pattern: 'sample.js',
+        category: '不可变安全文件',
+        level: 'block',
+      },
+    ],
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   commitBaseline(root);

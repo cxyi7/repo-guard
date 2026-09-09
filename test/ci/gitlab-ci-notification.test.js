@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { repoGuardPackageVersion } from '../../src/core/project/repo-guard-package.js';
-import { runGitLabCiNotification } from '../../src/gates/release/gitlab-ci-notification.js';
+import { runGitLabCiNotification } from '../../src/operations/notifications/gitlab-ci-notification.js';
 import {
   buildGitLabCiNotificationText,
   gitLabNotificationStatus,
@@ -17,7 +17,7 @@ const WEBHOOK = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=test-key';
 function gitLabEnvironment(overrides = {}) {
   return {
     GITLAB_CI: 'true',
-    REPO_GUARD_PIPELINE_NOTIFICATION: 'true',
+    REPO_GUARD_OPERATIONS_NOTIFICATION: 'true',
     REPO_GUARD_WECOM_WEBHOOK: WEBHOOK,
     CI_JOB_STATUS: 'success',
     CI_PROJECT_PATH: 'group/project',
@@ -32,12 +32,17 @@ function gitLabEnvironment(overrides = {}) {
 }
 
 test('通知任务使用当前包版本', () => {
-  const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  const manifest = JSON.parse(
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+  );
   assert.equal(repoGuardPackageVersion(), manifest.version);
 });
 
 test('recognizes final GitLab success, failure, and cancellation statuses', () => {
-  assert.equal(gitLabNotificationStatus({ CI_JOB_STATUS: ' success ' }), 'success');
+  assert.equal(
+    gitLabNotificationStatus({ CI_JOB_STATUS: ' success ' }),
+    'success',
+  );
   assert.equal(gitLabNotificationStatus({}), 'unknown');
   assert.equal(shouldNotifyGitLabPipeline({ CI_JOB_STATUS: 'success' }), true);
   assert.equal(shouldNotifyGitLabPipeline({ CI_JOB_STATUS: 'failed' }), true);
@@ -45,11 +50,14 @@ test('recognizes final GitLab success, failure, and cancellation statuses', () =
 });
 
 test('builds a single-line-safe Chinese GitLab notification', () => {
-  const content = buildGitLabCiNotificationText(gitLabEnvironment({
-    CI_COMMIT_TITLE: '修复发布\n流程',
-  }), {
-    now: new Date('2026-08-18T15:19:03.000Z'),
-  });
+  const content = buildGitLabCiNotificationText(
+    gitLabEnvironment({
+      CI_COMMIT_TITLE: '修复发布\n流程',
+    }),
+    {
+      now: new Date('2026-08-18T15:19:03.000Z'),
+    },
+  );
 
   assert.match(content, /^✅【GitLab 流水线成功】/);
   assert.match(content, /项目：group\/project/);
@@ -63,18 +71,22 @@ test('builds a single-line-safe Chinese GitLab notification', () => {
 });
 
 test('keeps only the first ten commit-title characters and appends an ellipsis', () => {
-  const content = buildGitLabCiNotificationText(gitLabEnvironment({
-    CI_COMMIT_TITLE: '一二三四五六七八九十十一十二',
-  }));
+  const content = buildGitLabCiNotificationText(
+    gitLabEnvironment({
+      CI_COMMIT_TITLE: '一二三四五六七八九十十一十二',
+    }),
+  );
 
   assert.match(content, /提交：abc12345 一二三四五六七八九十…/);
   assert.doesNotMatch(content, /十一十二/);
 });
 
 test('truncates oversized GitLab notification text on a UTF-8 boundary', () => {
-  const content = buildGitLabCiNotificationText(gitLabEnvironment({
-    CI_PROJECT_PATH: '长'.repeat(2000),
-  }));
+  const content = buildGitLabCiNotificationText(
+    gitLabEnvironment({
+      CI_PROJECT_PATH: '长'.repeat(2000),
+    }),
+  );
 
   assert.match(content, /消息过长，已截断。$/);
   assert.ok(Buffer.byteLength(content, 'utf8') <= 1900);
@@ -96,37 +108,51 @@ test('keeps mention mobiles mandatory locally but optional for built-in CI notif
 
 test('rejects direct, non-GitLab, and forged notification execution', async () => {
   await assert.rejects(
-    () => runGitLabCiNotification({ environment: gitLabEnvironment({
-      REPO_GUARD_PIPELINE_NOTIFICATION: 'false',
-    }) }),
-    /只能由 repo-guard 生成的托管 Job 调用/,
+    () =>
+      runGitLabCiNotification({
+        environment: gitLabEnvironment({
+          REPO_GUARD_OPERATIONS_NOTIFICATION: 'false',
+        }),
+      }),
+    /只能由开启 notifications.enabled 的独立运维托管 Job 调用/,
   );
   await assert.rejects(
-    () => runGitLabCiNotification({ environment: gitLabEnvironment({ GITLAB_CI: 'false' }) }),
+    () =>
+      runGitLabCiNotification({
+        environment: gitLabEnvironment({ GITLAB_CI: 'false' }),
+      }),
     /只能在 GITLAB_CI=true 的受信环境中发送/,
   );
   await assert.rejects(
-    () => runGitLabCiNotification({
-      environment: gitLabEnvironment(),
-      status: 'skipped',
-    }),
+    () =>
+      runGitLabCiNotification({
+        environment: gitLabEnvironment(),
+        status: 'skipped',
+      }),
     /只支持 success、failed 或 canceled/,
   );
 });
 
 test('exposes the guarded GitLab notification command through the package CLI', () => {
   const cli = path.join(process.cwd(), 'bin', 'repo-guard.js');
-  const execution = spawnSync(process.execPath, [cli, 'ci-notify', '--status', 'success'], {
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      GITLAB_CI: 'true',
-      REPO_GUARD_PIPELINE_NOTIFICATION: 'false',
+  const execution = spawnSync(
+    process.execPath,
+    [cli, 'ci-notify', '--status', 'success'],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITLAB_CI: 'true',
+        REPO_GUARD_OPERATIONS_NOTIFICATION: 'false',
+      },
     },
-  });
+  );
 
   assert.equal(execution.status, 1);
-  assert.match(execution.stderr, /只能由 repo-guard 生成的托管 Job 调用/);
+  assert.match(
+    execution.stderr,
+    /只能由开启 notifications.enabled 的独立运维托管 Job 调用/,
+  );
 });
 
 test('sends an explicit notification when a managed GitLab job is canceled', async () => {
@@ -171,14 +197,18 @@ test('skips non-final statuses without reading credentials or sending', async ()
   const exitCode = await runGitLabCiNotification({
     environment: {
       GITLAB_CI: 'true',
-      REPO_GUARD_PIPELINE_NOTIFICATION: 'true',
+      REPO_GUARD_OPERATIONS_NOTIFICATION: 'true',
       CI_JOB_STATUS: 'running',
     },
-    send: async () => { sent = true; },
+    send: async () => {
+      sent = true;
+    },
     write: (message) => messages.push(message),
   });
 
   assert.equal(exitCode, 0);
   assert.equal(sent, false);
-  assert.deepEqual(messages, ['当前 GitLab 流水线通知状态为 running，无需发送通知。']);
+  assert.deepEqual(messages, [
+    '当前 GitLab 流水线通知状态为 running，无需发送通知。',
+  ]);
 });

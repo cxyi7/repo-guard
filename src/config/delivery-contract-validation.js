@@ -8,7 +8,7 @@ import {
 
 export function validateDeliveryContractConfiguration(value, configPath) {
   const candidate = value.deliveryContract ?? DEFAULT_DELIVERY_CONTRACT_CONFIG;
-  const label = `${configPath} deliveryContract`;
+  const label = `${configPath} repository.deliveryContract`;
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
     throw configValidationError(`${label} 必须是对象`);
   }

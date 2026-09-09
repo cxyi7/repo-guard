@@ -8,7 +8,7 @@ export function validateDependencyPolicyConfiguration(value, configPath) {
   const dependencyPolicyValue = value.dependencyPolicy ?? {};
   if (!dependencyPolicyValue || typeof dependencyPolicyValue !== 'object'
     || Array.isArray(dependencyPolicyValue)) {
-    throw configValidationError(`${configPath} dependencyPolicy 必须是对象`);
+    throw configValidationError(`${configPath} repository.dependencyPolicy 必须是对象`);
   }
   assertKnownProperties(
     dependencyPolicyValue,
@@ -19,25 +19,25 @@ export function validateDependencyPolicyConfiguration(value, configPath) {
       'allowedProtocols',
       'bannedPackages',
     ]),
-    `${configPath} dependencyPolicy`,
+    `${configPath} repository.dependencyPolicy`,
   );
   for (const property of ['enabled', 'requireExactVersions', 'requireLockfile']) {
     if (dependencyPolicyValue[property] != null
       && typeof dependencyPolicyValue[property] !== 'boolean') {
-      throw configValidationError(`${configPath} dependencyPolicy.${property} 必须是布尔值`);
+      throw configValidationError(`${configPath} repository.dependencyPolicy.${property} 必须是布尔值`);
     }
   }
   const dependencyAllowedProtocolsValue = dependencyPolicyValue.allowedProtocols
     ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.allowedProtocols;
   if (!Array.isArray(dependencyAllowedProtocolsValue)) {
-    throw configValidationError(`${configPath} dependencyPolicy.allowedProtocols 必须是数组`);
+    throw configValidationError(`${configPath} repository.dependencyPolicy.allowedProtocols 必须是数组`);
   }
   const dependencyAllowedProtocols = [...new Set(
     dependencyAllowedProtocolsValue.map((protocol, index) => {
       if (typeof protocol !== 'string'
         || !/^[a-z][a-z0-9+.-]*$/.test(protocol.trim().toLowerCase())) {
         throw configValidationError(
-          `${configPath} dependencyPolicy.allowedProtocols 第 ${index + 1} `
+          `${configPath} repository.dependencyPolicy.allowedProtocols 第 ${index + 1} `
           + '项必须是不含冒号的协议名称',
         );
       }
@@ -47,11 +47,11 @@ export function validateDependencyPolicyConfiguration(value, configPath) {
   const bannedPackagesValue = dependencyPolicyValue.bannedPackages
     ?? DEFAULT_DEPENDENCY_POLICY_CONFIG.bannedPackages;
   if (!Array.isArray(bannedPackagesValue)) {
-    throw configValidationError(`${configPath} dependencyPolicy.bannedPackages 必须是数组`);
+    throw configValidationError(`${configPath} repository.dependencyPolicy.bannedPackages 必须是数组`);
   }
   const bannedPackageNames = new Set();
   const dependencyBannedPackages = bannedPackagesValue.map((item, index) => {
-    const label = `${configPath} dependencyPolicy.bannedPackages 第 ${index + 1}`;
+    const label = `${configPath} repository.dependencyPolicy.bannedPackages 第 ${index + 1}`;
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
       throw configValidationError(`${label} 必须是对象`);
     }

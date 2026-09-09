@@ -1,4 +1,7 @@
-import { FRONTEND_PROJECT, parseProjectFixture, stringifyProjectFixture } from '../helpers/project-config.js';
+import {
+  parseProjectFixture,
+  stringifyProjectFixture,
+} from '../helpers/project-config.js';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync,
@@ -12,7 +15,6 @@ import test from 'node:test';
 import {
   createStarterConfig,
   enableQualityGates,
-  migrateProjectConfig,
   setFeaturesEnabled,
 } from '../../src/orchestration/setup/config-management.js';
 import { CONFIG_FILE } from '../../src/config/validation-primitives.js';
@@ -20,29 +22,39 @@ import { CONFIG_FILE } from '../../src/config/validation-primitives.js';
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
-function createFixture(config, { legacy = false } = {}) {
+function createFixture(config) {
   const root = mkdtempSync(path.join(TEST_ROOT, 'config-management-'));
   writeFileSync(
     path.join(root, CONFIG_FILE),
-    `${legacy ? JSON.stringify(config, null, 2) : stringifyProjectFixture(config, null, 2)}\n`,
+    `${stringifyProjectFixture(config, null, 2)}\n`,
   );
   return root;
 }
 
 function readConfig(root) {
-  return parseProjectFixture(readFileSync(path.join(root, CONFIG_FILE), 'utf8'));
+  return parseProjectFixture(
+    readFileSync(path.join(root, CONFIG_FILE), 'utf8'),
+  );
 }
 
 function sparseConfig(extra = {}) {
   return {
-    version: 1,
-    rules: [
-      {
-        pattern: 'src/**',
-        category: 'Source',
-        level: 'audit',
-      },
-    ],
+    version: 2,
+    project: {
+      id: 'web',
+      role: 'frontend',
+      stack: 'node',
+      preset: 'vue-javascript',
+    },
+    repository: {
+      rules: [
+        {
+          pattern: 'src/**',
+          category: 'Source',
+          level: 'audit',
+        },
+      ],
+    },
     ...extra,
   };
 }
@@ -50,100 +62,104 @@ function sparseConfig(extra = {}) {
 test('starter configuration enables standard gates and leaves Stylelint opt-in', () => {
   const config = createStarterConfig();
 
-  assert.equal(config.preCommit.eslint.enabled, true);
-  assert.equal(config.preCommit.eslint.preset, true);
-  assert.equal(config.preCommit.eslint.fix, true);
-  assert.equal(config.preCommit.prettier.enabled, true);
-  assert.equal(config.preCommit.prettier.fix, true);
-  assert.equal(config.preCommit.stylelint.enabled, false);
-  assert.equal(config.preCommit.stylelint.complexity.enabled, false);
-  assert.equal(config.preCommit.stylelint.governance.enabled, false);
-  assert.equal(config.preCommit.asyncResourceCleanup.enabled, false);
-  assert.equal(config.preCommit.pathNaming.enabled, false);
-  assert.equal(config.preCommit.pathNaming.convention, 'camelCase');
-  assert.equal(config.preCommit.fileHeader.enabled, false);
-  assert.equal(config.preCommit.functionDocs.enabled, false);
-  assert.equal(config.preCommit.filePlacement.enabled, true);
-  assert.equal(config.preCommit.filePlacement.mode, 'newFiles');
-  assert.equal(config.preCommit.filePlacement.rules.length, 2);
-  assert.equal(config.codePlacement.enabled, false);
-  assert.deepEqual(config.codePlacement.rules, []);
-  assert.equal(config.preCommit.maxFileLines.enabled, true);
-  assert.equal(config.preCommit.maxFileLines.mode, 'strict');
-  assert.equal(config.preCommit.maxFileLines.warnAt, 0.85);
-  assert.deepEqual(config.preCommit.maxFileLines.rules, [
+  assert.equal(config.checks.eslint.enabled, true);
+  assert.equal(config.checks.eslint.preset, true);
+  assert.equal(config.checks.eslint.fix, true);
+  assert.equal(config.checks.prettier.enabled, true);
+  assert.equal(config.checks.prettier.fix, true);
+  assert.equal(config.checks.stylelint.enabled, false);
+  assert.equal(config.checks.styleComplexity.enabled, false);
+  assert.equal(config.checks.styleGovernance.enabled, false);
+  assert.equal(config.checks.asyncResourceCleanup.enabled, false);
+  assert.equal(config.checks.pathNaming.enabled, false);
+  assert.equal(config.checks.pathNaming.convention, 'camelCase');
+  assert.equal(config.checks.fileHeader.enabled, false);
+  assert.equal(config.checks.functionDocs.enabled, false);
+  assert.equal(config.checks.filePlacement.enabled, true);
+  assert.equal(config.checks.filePlacement.mode, 'newFiles');
+  assert.equal(config.checks.filePlacement.rules.length, 2);
+  assert.equal(config.repository.codePlacement.enabled, false);
+  assert.deepEqual(config.repository.codePlacement.rules, []);
+  assert.equal(config.checks.maxFileLines.enabled, true);
+  assert.equal(config.checks.maxFileLines.mode, 'strict');
+  assert.equal(config.checks.maxFileLines.warnAt, 0.85);
+  assert.deepEqual(config.checks.maxFileLines.rules, [
     { pattern: '**/*.vue', maxLines: 700 },
     { pattern: '**/*.{js,mjs,cjs,jsx}', maxLines: 1000 },
     { pattern: '**/*.{ts,tsx}', maxLines: 1000 },
   ]);
-  assert.equal(config.lighthouse.enabled, false);
-  assert.equal(config.dependencyPolicy.enabled, true);
-  assert.equal(config.commitMessage.enabled, false);
-  assert.equal(config.deadCode.enabled, false);
-  assert.equal(config.deadCode.mode, 'strict');
-  assert.equal(config.deadCode.baselineFile, '.repo-guard/knip-baseline.json');
-  assert.equal(config.imageAssets.enabled, false);
-  assert.equal(config.imageAssets.naming.convention, 'camelCase');
-  assert.equal(config.uiTokens.enabled, false);
-  assert.equal(config.uiTokens.adapters.sass.enabled, false);
-  assert.equal(config.uiTokens.adapters.unocss.enabled, false);
-  assert.equal(config.architecture.enabled, false);
-  assert.equal(config.accessibilityTest.enabled, false);
-  assert.equal(config.architecture.rules.length, 3);
-  assert.equal(config.build.enabled, false);
-  assert.equal(config.build.artifactBudget.enabled, false);
+  assert.equal(config.checks.lighthouse.enabled, false);
+  assert.equal(config.repository.dependencyPolicy.enabled, true);
+  assert.equal(config.repository.commitMessage.enabled, false);
+  assert.equal(config.checks.deadCode.enabled, false);
+  assert.equal(config.checks.deadCode.mode, 'strict');
   assert.equal(
-    config.rules.some(({ pattern }) => pattern === '.repo-guard/build-artifact-baseline.json'),
+    config.checks.deadCode.baselineFile,
+    '.repo-guard/knip-baseline.json',
+  );
+  assert.equal(config.checks.imageAssets.enabled, false);
+  assert.equal(config.checks.imageAssets.naming.convention, 'camelCase');
+  assert.equal(config.checks.uiTokens.enabled, false);
+  assert.equal(config.checks.uiTokens.adapters.sass.enabled, false);
+  assert.equal(config.checks.uiTokens.adapters.unocss.enabled, false);
+  assert.equal(config.checks.architecture.enabled, false);
+  assert.equal(config.checks.accessibilityTest.enabled, false);
+  assert.equal(config.checks.architecture.rules.length, 3);
+  assert.equal(config.checks.build.enabled, false);
+  assert.equal(config.checks.build.artifactBudget.enabled, false);
+  assert.equal(
+    config.repository.rules.some(
+      ({ pattern }) => pattern === '.repo-guard/build-artifact-baseline.json',
+    ),
     true,
   );
-  assert.equal(config.typeCheck.enabled, false);
-  assert.equal(config.unitTest.enabled, false);
-  assert.equal(config.unitTest.requireTests, 'newFiles');
-  assert.equal(config.unitTest.componentInteraction.enabled, false);
-  assert.equal(config.unitTest.mappings.length, 5);
-  assert.equal(config.mutationTest.enabled, false);
-  assert.equal(config.mutationTest.reportsDirectory, 'reports/mutation');
-  assert.deepEqual(config.mutationTest.guardedBuilds, []);
-  assert.equal(config.notification.enabled, true);
+  assert.equal(config.checks.typeCheck.enabled, false);
+  assert.equal(config.checks.unitTest.enabled, false);
+  assert.equal(config.checks.unitTest.requireTests, 'newFiles');
+  assert.equal(config.checks.componentInteraction.enabled, false);
+  assert.equal(config.checks.unitTest.mappings.length, 5);
+  assert.equal(config.checks.mutationTest.enabled, false);
+  assert.equal(config.checks.mutationTest.reportsDirectory, 'reports/mutation');
+  assert.deepEqual(config.checks.mutationTest.guardedBuilds, []);
+  assert.equal(config.reporting.notification.enabled, true);
   assert.equal(config.ci.enabled, false);
   assert.equal(config.ci.profile, 'policy');
   assert.equal(config.ci.reportPath, 'reports/repo-guard.json');
   assert.deepEqual(config.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
-  assert.deepEqual(config.ci.pipeline, {
-    enabled: false,
-    verifyStage: 'build',
-    deployStage: 'deploy',
-    verifyImage: 'node:22.23.2',
-    deployImage: 'node:22.23.2',
-    testBranches: ['dev'],
-    productionBranches: ['publish'],
-    runnerTags: ['docker'],
-    legacyPeerDeps: false,
-    quickDeploy: false,
-    notifications: false,
-  });
-  assert.deepEqual(config.externalGates, []);
-  assert.deepEqual(config.exceptions, {
+  assert.equal(Object.hasOwn(config.ci, 'pipeline'), false);
+  assert.deepEqual(config.ci.externalGates, []);
+  assert.deepEqual(config.repository.exceptions, {
     warningDays: 14,
     maxDays: 90,
     entries: [],
   });
-  assert.equal(config.dependencyPolicy.enabled, true);
-  assert.equal(config.dependencyPolicy.requireExactVersions, true);
-  assert.deepEqual(config.dependencyPolicy.allowedProtocols, ['npm', 'workspace']);
-  assert.equal(config.rules.length, 12);
-  assert.equal(config.rules.every(({ level }) => level === 'notify'), true);
-  assert.equal(config.rules.some(({ pattern }) => (
-    pattern === '.repo-guard/knip-baseline.json'
-  )), true);
+  assert.equal(config.repository.dependencyPolicy.enabled, true);
+  assert.equal(config.repository.dependencyPolicy.requireExactVersions, true);
+  assert.deepEqual(config.repository.dependencyPolicy.allowedProtocols, [
+    'npm',
+    'workspace',
+  ]);
+  assert.equal(config.repository.rules.length, 12);
+  assert.equal(
+    config.repository.rules.every(({ level }) => level === 'notify'),
+    true,
+  );
+  assert.equal(
+    config.repository.rules.some(
+      ({ pattern }) => pattern === '.repo-guard/knip-baseline.json',
+    ),
+    true,
+  );
 });
 
 test('starter configuration enables Stylelint when project setup was detected', () => {
-  const config = createStarterConfig({ stylelintEnabled: true });
+  const config = createStarterConfig({
+    stylelintEnabled: true,
+  });
 
-  assert.equal(config.preCommit.stylelint.enabled, true);
-  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
-  assert.equal(config.preCommit.stylelint.governance.enabled, true);
+  assert.equal(config.checks.stylelint.enabled, true);
+  assert.equal(config.checks.styleComplexity.enabled, true);
+  assert.equal(config.checks.styleGovernance.enabled, true);
 });
 
 test('can enable and disable image asset governance independently', (context) => {
@@ -152,11 +168,11 @@ test('can enable and disable image asset governance independently', (context) =>
 
   const enabled = setFeaturesEnabled(root, ['imageAssets'], true);
   assert.deepEqual(enabled.changed, ['imageAssets']);
-  assert.equal(readConfig(root).imageAssets.enabled, true);
+  assert.equal(readConfig(root).checks.imageAssets.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['imageAssets'], false);
   assert.deepEqual(disabled.changed, ['imageAssets']);
-  assert.equal(readConfig(root).imageAssets.enabled, false);
+  assert.equal(readConfig(root).checks.imageAssets.enabled, false);
 });
 
 test('enabling unused image assets also enables its parent and disabling the parent closes both', (context) => {
@@ -165,156 +181,91 @@ test('enabling unused image assets also enables its parent and disabling the par
 
   const enabled = setFeaturesEnabled(root, ['unusedImageAssets'], true);
   assert.deepEqual(enabled.changed, ['imageAssets', 'unusedImageAssets']);
-  assert.equal(readConfig(root).imageAssets.enabled, true);
-  assert.equal(readConfig(root).imageAssets.unused.enabled, true);
+  assert.equal(readConfig(root).checks.imageAssets.enabled, true);
+  assert.equal(readConfig(root).checks.unusedImageAssets.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['imageAssets'], false);
   assert.deepEqual(disabled.changed, ['unusedImageAssets', 'imageAssets']);
-  assert.equal(readConfig(root).imageAssets.enabled, false);
-  assert.equal(readConfig(root).imageAssets.unused.enabled, false);
+  assert.equal(readConfig(root).checks.imageAssets.enabled, false);
+  assert.equal(readConfig(root).checks.unusedImageAssets.enabled, false);
 });
 
 test('starter configuration enables build when its project script was detected', () => {
-  const config = createStarterConfig({ buildEnabled: true });
+  const config = createStarterConfig({
+    buildEnabled: true,
+  });
 
-  assert.equal(config.build.enabled, true);
-  assert.equal(config.build.script, 'build');
+  assert.equal(config.checks.build.enabled, true);
+  assert.equal(config.checks.build.script, 'build');
 });
 
 test('starter configuration enables architecture when dependency-cruiser was detected', () => {
-  const config = createStarterConfig({ architectureEnabled: true });
+  const config = createStarterConfig({
+    architectureEnabled: true,
+  });
 
-  assert.equal(config.architecture.enabled, true);
-  assert.deepEqual(config.architecture.sourcePaths, ['src']);
+  assert.equal(config.checks.architecture.enabled, true);
+  assert.deepEqual(config.checks.architecture.sourcePaths, ['src']);
 });
 
 test('starter configuration enables unit tests when project setup was detected', () => {
-  const config = createStarterConfig({ unitTestEnabled: true });
+  const config = createStarterConfig({
+    unitTestEnabled: true,
+  });
 
-  assert.equal(config.unitTest.enabled, true);
-  assert.equal(config.unitTest.componentInteraction.enabled, false);
-  assert.equal(config.unitTest.script, 'test:unit');
+  assert.equal(config.checks.unitTest.enabled, true);
+  assert.equal(config.checks.componentInteraction.enabled, false);
+  assert.equal(config.checks.unitTest.script, 'test:unit');
 });
 
 test('starter configuration enables axe accessibility tests when setup was detected', () => {
-  const config = createStarterConfig({ accessibilityTestEnabled: true });
+  const config = createStarterConfig({
+    accessibilityTestEnabled: true,
+  });
 
-  assert.equal(config.accessibilityTest.enabled, true);
-  assert.equal(config.accessibilityTest.script, 'test:a11y');
-  assert.equal(config.accessibilityTest.testPatterns.length, 2);
+  assert.equal(config.checks.accessibilityTest.enabled, true);
+  assert.equal(config.checks.accessibilityTest.script, 'test:a11y');
+  assert.equal(config.checks.accessibilityTest.testPatterns.length, 2);
 });
 
 test('starter configuration enables TypeScript when its project script was detected', () => {
-  const config = createStarterConfig({ typeCheckEnabled: true });
+  const config = createStarterConfig({
+    typeCheckEnabled: true,
+  });
 
-  assert.equal(config.typeCheck.enabled, true);
-  assert.equal(config.typeCheck.script, 'typecheck');
-});
-
-test('migrates sparse configuration without changing project rules', (context) => {
-  const root = createFixture(sparseConfig(), { legacy: true });
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const first = migrateProjectConfig(root, { project: FRONTEND_PROJECT });
-  const migrated = readConfig(root);
-
-  assert.equal(first.changed, true);
-  assert.deepEqual(migrated.rules, sparseConfig().rules);
-  assert.deepEqual(migrated.externalGates, []);
-  assert.deepEqual(migrated.exclusions, []);
-  assert.equal(migrated.preCommit.eslint.enabled, true);
-  assert.equal(migrated.preCommit.eslint.preset, true);
-  assert.equal(migrated.preCommit.prettier.enabled, true);
-  assert.equal(migrated.preCommit.stylelint.enabled, false);
-  assert.equal(migrated.preCommit.stylelint.governance.enabled, false);
-  assert.equal(migrated.preCommit.asyncResourceCleanup.enabled, false);
-  assert.equal(migrated.preCommit.pathNaming.enabled, false);
-  assert.equal(migrated.preCommit.pathNaming.convention, 'camelCase');
-  assert.equal(migrated.preCommit.fileHeader.enabled, false);
-  assert.equal(migrated.preCommit.functionDocs.enabled, false);
-  assert.equal(migrated.preCommit.filePlacement.enabled, true);
-  assert.equal(migrated.preCommit.filePlacement.rules.length, 2);
-  assert.equal(migrated.preCommit.maxFileLines.enabled, true);
-  assert.equal(migrated.preCommit.maxFileLines.mode, 'strict');
-  assert.equal(migrated.preCommit.maxFileLines.warnAt, 0.85);
-  assert.equal(migrated.lighthouse.enabled, false);
-  assert.equal(migrated.architecture.enabled, false);
-  assert.equal(migrated.accessibilityTest.enabled, false);
-  assert.equal(migrated.architecture.rules.length, 3);
-  assert.equal(migrated.build.enabled, false);
-  assert.equal(migrated.typeCheck.enabled, false);
-  assert.equal(migrated.unitTest.enabled, false);
-  assert.equal(migrated.unitTest.componentInteraction.enabled, false);
-  assert.equal(migrated.unitTest.mappings.length, 5);
-  assert.equal(migrated.notification.enabled, true);
-  assert.deepEqual(migrated.ci.gatePolicy, { defaultMode: 'inherit', gates: {} });
-  assert.deepEqual(migrated.exceptions.entries, []);
-  assert.equal(migrated.dependencyPolicy.enabled, true);
-  assert.equal(migrated.commitMessage.enabled, false);
-  assert.match(first.document.$schema, /repo-guard\/config\.schema\.json$/);
-  assert.equal(first.document.version, 2);
-  assert.deepEqual(first.document.project, FRONTEND_PROJECT);
-
-  const second = migrateProjectConfig(root, { project: FRONTEND_PROJECT });
-  assert.equal(second.changed, false);
-});
-
-test('migration protects a configured build artifact baseline', (context) => {
-  const root = createFixture(sparseConfig({
-    build: {
-      enabled: true,
-      script: 'build',
-      timeoutMs: 300000,
-      artifactBudget: {
-        enabled: true,
-        platform: 'pc',
-        outputDirectory: 'dist',
-        mode: 'baseline',
-        baselineFile: '.repo-guard/custom-build-budget.json',
-        pc: { analyzer: 'directory', limits: { totalRawBytes: 1000 } },
-      },
-    },
-  }), { legacy: true });
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  migrateProjectConfig(root, { project: FRONTEND_PROJECT });
-  const migrated = readConfig(root);
-  assert.equal(
-    migrated.rules.some(({ pattern, category, level }) => (
-      pattern === '.repo-guard/custom-build-budget.json'
-      && category === '构建产物历史债务基线'
-      && level === 'notify'
-    )),
-    true,
-  );
-});
-
-test('rejects legacy boolean coverage during migration', (context) => {
-  const root = createFixture(sparseConfig({
-    unitTest: { coverage: true },
-  }), { legacy: true });
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  assert.throws(() => migrateProjectConfig(root, { project: FRONTEND_PROJECT }), /unitTest\.coverage 必须是对象/);
+  assert.equal(config.checks.typeCheck.enabled, true);
+  assert.equal(config.checks.typeCheck.script, 'typecheck');
 });
 
 test('enables selected quality gates and preserves explicit settings', (context) => {
-  const root = createFixture(sparseConfig({
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false, requireConfig: false },
-    },
-  }));
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        eslint: {
+          enabled: false,
+        },
+        prettier: {
+          enabled: false,
+          requireConfig: false,
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const result = enableQualityGates(root, ['eslint', 'prettier', 'stylelint', 'eslint']);
+  const result = enableQualityGates(root, [
+    'eslint',
+    'prettier',
+    'stylelint',
+    'eslint',
+  ]);
   const config = readConfig(root);
 
   assert.deepEqual(result.enabled, ['eslint', 'prettier', 'stylelint']);
-  assert.equal(config.preCommit.eslint.enabled, true);
-  assert.equal(config.preCommit.prettier.enabled, true);
-  assert.equal(config.preCommit.prettier.requireConfig, false);
-  assert.equal(config.preCommit.stylelint.enabled, true);
+  assert.equal(config.checks.eslint.enabled, true);
+  assert.equal(config.checks.prettier.enabled, true);
+  assert.equal(config.checks.prettier.requireConfig, false);
+  assert.equal(config.checks.stylelint.enabled, true);
 });
 
 test('rejects unsupported gates without rewriting configuration', (context) => {
@@ -322,10 +273,7 @@ test('rejects unsupported gates without rewriting configuration', (context) => {
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
-  assert.throws(
-    () => enableQualityGates(root, ['biome']),
-    /不支持的质量门禁/,
-  );
+  assert.throws(() => enableQualityGates(root, ['biome']), /不支持的质量门禁/);
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });
 
@@ -335,11 +283,11 @@ test('disables and re-enables project notification', (context) => {
 
   const disabled = setFeaturesEnabled(root, ['notification'], false);
   assert.deepEqual(disabled.changed, ['notification']);
-  assert.equal(readConfig(root).notification.enabled, false);
+  assert.equal(readConfig(root).reporting.notification.enabled, false);
 
   const enabled = setFeaturesEnabled(root, ['notification'], true);
   assert.deepEqual(enabled.changed, ['notification']);
-  assert.equal(readConfig(root).notification.enabled, true);
+  assert.equal(readConfig(root).reporting.notification.enabled, true);
 });
 
 test('enables the Vue Lighthouse pre-push feature', (context) => {
@@ -348,7 +296,7 @@ test('enables the Vue Lighthouse pre-push feature', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['lighthouse'], true);
   assert.deepEqual(enabled.changed, ['lighthouse']);
-  assert.equal(readConfig(root).lighthouse.enabled, true);
+  assert.equal(readConfig(root).checks.lighthouse.enabled, true);
 });
 
 test('enables the unit test pre-push feature', (context) => {
@@ -357,24 +305,32 @@ test('enables the unit test pre-push feature', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['unitTest'], true);
   assert.deepEqual(enabled.changed, ['unitTest']);
-  assert.equal(readConfig(root).unitTest.enabled, true);
+  assert.equal(readConfig(root).checks.unitTest.enabled, true);
 });
 
 test('enables component interaction with unit tests and disables both consistently', (context) => {
-  const root = createFixture(sparseConfig({ unitTest: { enabled: false } }));
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        unitTest: {
+          enabled: false,
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['componentInteraction'], true);
   assert.deepEqual(enabled.changed, ['unitTest', 'componentInteraction']);
   let config = readConfig(root);
-  assert.equal(config.unitTest.enabled, true);
-  assert.equal(config.unitTest.componentInteraction.enabled, true);
+  assert.equal(config.checks.unitTest.enabled, true);
+  assert.equal(config.checks.componentInteraction.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['unitTest'], false);
   assert.deepEqual(disabled.changed, ['componentInteraction', 'unitTest']);
   config = readConfig(root);
-  assert.equal(config.unitTest.enabled, false);
-  assert.equal(config.unitTest.componentInteraction.enabled, false);
+  assert.equal(config.checks.unitTest.enabled, false);
+  assert.equal(config.checks.componentInteraction.enabled, false);
 });
 
 test('enables the axe accessibility test pre-push feature', (context) => {
@@ -383,7 +339,7 @@ test('enables the axe accessibility test pre-push feature', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['accessibilityTest'], true);
   assert.deepEqual(enabled.changed, ['accessibilityTest']);
-  assert.equal(readConfig(root).accessibilityTest.enabled, true);
+  assert.equal(readConfig(root).checks.accessibilityTest.enabled, true);
 });
 
 test('enables the architecture pre-push feature', (context) => {
@@ -392,7 +348,7 @@ test('enables the architecture pre-push feature', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['architecture'], true);
   assert.deepEqual(enabled.changed, ['architecture']);
-  assert.equal(readConfig(root).architecture.enabled, true);
+  assert.equal(readConfig(root).checks.architecture.enabled, true);
 });
 
 test('enables and disables the dead-code project gate', (context) => {
@@ -401,45 +357,65 @@ test('enables and disables the dead-code project gate', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['deadCode'], true);
   assert.deepEqual(enabled.changed, ['deadCode']);
-  assert.equal(readConfig(root).deadCode.enabled, true);
+  assert.equal(readConfig(root).checks.deadCode.enabled, true);
   const disabled = setFeaturesEnabled(root, ['deadCode'], false);
   assert.deepEqual(disabled.changed, ['deadCode']);
-  assert.equal(readConfig(root).deadCode.enabled, false);
+  assert.equal(readConfig(root).checks.deadCode.enabled, false);
 });
 
 test('在项目先声明语言适配器后启用和禁用 UI Token 门禁', (context) => {
-  const root = createFixture(sparseConfig({
-    uiTokens: {
-      enabled: false,
-      adapters: {
-        sass: { enabled: true },
-        unocss: { enabled: true },
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        uiTokens: {
+          enabled: false,
+          adapters: {
+            sass: {
+              enabled: true,
+            },
+            unocss: {
+              enabled: true,
+            },
+          },
+        },
       },
-    },
-  }));
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['uiTokens'], true);
   assert.deepEqual(enabled.changed, ['uiTokens']);
-  assert.equal(readConfig(root).uiTokens.enabled, true);
-  assert.equal(readConfig(root).uiTokens.adapters.sass.enabled, true);
-  assert.equal(readConfig(root).uiTokens.adapters.unocss.enabled, true);
-  assert.equal(readConfig(root).rules.some(({ pattern, category }) => (
-    pattern === 'ui-tokens.manifest.json' && category === 'UI Token 契约'
-  )), true);
+  assert.equal(readConfig(root).checks.uiTokens.enabled, true);
+  assert.equal(readConfig(root).checks.uiTokens.adapters.sass.enabled, true);
+  assert.equal(readConfig(root).checks.uiTokens.adapters.unocss.enabled, true);
+  assert.equal(
+    readConfig(root).repository.rules.some(
+      ({ pattern, category }) =>
+        pattern === 'ui-tokens.manifest.json' && category === 'UI Token 契约',
+    ),
+    true,
+  );
 
   const disabled = setFeaturesEnabled(root, ['uiTokens'], false);
   assert.deepEqual(disabled.changed, ['uiTokens']);
-  assert.equal(readConfig(root).uiTokens.enabled, false);
+  assert.equal(readConfig(root).checks.uiTokens.enabled, false);
 });
 
 test('enables the dependency governance pre-commit feature', (context) => {
-  const root = createFixture(sparseConfig({ dependencyPolicy: { enabled: false } }));
+  const root = createFixture(
+    sparseConfig({
+      repository: {
+        dependencyPolicy: {
+          enabled: false,
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['dependencies'], true);
   assert.deepEqual(enabled.changed, ['dependencies']);
-  assert.equal(readConfig(root).dependencyPolicy.enabled, true);
+  assert.equal(readConfig(root).repository.dependencyPolicy.enabled, true);
 });
 
 test('enables and disables the commit message lifecycle gate', (context) => {
@@ -448,11 +424,11 @@ test('enables and disables the commit message lifecycle gate', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['commitMessage'], true);
   assert.deepEqual(enabled.changed, ['commitMessage']);
-  assert.equal(readConfig(root).commitMessage.enabled, true);
+  assert.equal(readConfig(root).repository.commitMessage.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['commitMessage'], false);
   assert.deepEqual(disabled.changed, ['commitMessage']);
-  assert.equal(readConfig(root).commitMessage.enabled, false);
+  assert.equal(readConfig(root).repository.commitMessage.enabled, false);
 });
 
 test('enables Stylelint together with the style complexity gate', (context) => {
@@ -462,8 +438,8 @@ test('enables Stylelint together with the style complexity gate', (context) => {
   const enabled = setFeaturesEnabled(root, ['styleComplexity'], true);
   assert.deepEqual(enabled.changed, ['stylelint', 'styleComplexity']);
   const config = readConfig(root);
-  assert.equal(config.preCommit.stylelint.enabled, true);
-  assert.equal(config.preCommit.stylelint.complexity.enabled, true);
+  assert.equal(config.checks.stylelint.enabled, true);
+  assert.equal(config.checks.styleComplexity.enabled, true);
 });
 
 test('enables Stylelint together with the style governance gate', (context) => {
@@ -473,53 +449,76 @@ test('enables Stylelint together with the style governance gate', (context) => {
   const enabled = setFeaturesEnabled(root, ['styleGovernance'], true);
   assert.deepEqual(enabled.changed, ['stylelint', 'styleGovernance']);
   const config = readConfig(root);
-  assert.equal(config.preCommit.stylelint.enabled, true);
-  assert.equal(config.preCommit.stylelint.governance.enabled, true);
+  assert.equal(config.checks.stylelint.enabled, true);
+  assert.equal(config.checks.styleGovernance.enabled, true);
 });
 
 test('disables style enhancements together with Stylelint', (context) => {
-  const root = createFixture(sparseConfig({
-    preCommit: {
-      stylelint: {
-        enabled: true,
-        complexity: { enabled: true },
-        governance: { enabled: true },
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        stylelint: {
+          enabled: true,
+        },
+        styleComplexity: {
+          enabled: true,
+        },
+        styleGovernance: {
+          enabled: true,
+        },
       },
-    },
-  }));
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const disabled = setFeaturesEnabled(root, ['stylelint'], false);
-  assert.deepEqual(disabled.changed, ['styleComplexity', 'styleGovernance', 'stylelint']);
+  assert.deepEqual(disabled.changed, [
+    'styleComplexity',
+    'styleGovernance',
+    'stylelint',
+  ]);
   const config = readConfig(root);
-  assert.equal(config.preCommit.stylelint.enabled, false);
-  assert.equal(config.preCommit.stylelint.complexity.enabled, false);
-  assert.equal(config.preCommit.stylelint.governance.enabled, false);
+  assert.equal(config.checks.stylelint.enabled, false);
+  assert.equal(config.checks.styleComplexity.enabled, false);
+  assert.equal(config.checks.styleGovernance.enabled, false);
 });
 
 test('enables structured coverage configuration', (context) => {
-  const root = createFixture(sparseConfig({
-    unitTest: { coverage: { enabled: false } },
-  }));
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        unitTest: {},
+        coverage: {
+          enabled: false,
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['coverage'], true);
-  const coverage = readConfig(root).unitTest.coverage;
+  const coverage = readConfig(root).checks.coverage;
   assert.deepEqual(enabled.changed, ['unitTest', 'coverage']);
-  assert.equal(readConfig(root).unitTest.enabled, true);
+  assert.equal(readConfig(root).checks.unitTest.enabled, true);
   assert.equal(coverage.enabled, true);
   assert.equal(coverage.thresholds.changedLines, 90);
 });
 
 test('enables the maximum file lines pre-commit feature', (context) => {
-  const root = createFixture(sparseConfig({
-    preCommit: { maxFileLines: { enabled: false } },
-  }));
+  const root = createFixture(
+    sparseConfig({
+      checks: {
+        maxFileLines: {
+          enabled: false,
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['maxFileLines'], true);
   assert.deepEqual(enabled.changed, ['maxFileLines']);
-  assert.equal(readConfig(root).preCommit.maxFileLines.enabled, true);
+  assert.equal(readConfig(root).checks.maxFileLines.enabled, true);
 });
 
 test('enables and disables contract-driven delivery as one feature', (context) => {
@@ -528,11 +527,11 @@ test('enables and disables contract-driven delivery as one feature', (context) =
 
   const enabled = setFeaturesEnabled(root, ['deliveryContract'], true);
   assert.deepEqual(enabled.changed, ['deliveryContract']);
-  assert.equal(readConfig(root).deliveryContract.enabled, true);
+  assert.equal(readConfig(root).repository.deliveryContract.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['deliveryContract'], false);
   assert.deepEqual(disabled.changed, ['deliveryContract']);
-  assert.equal(readConfig(root).deliveryContract.enabled, false);
+  assert.equal(readConfig(root).repository.deliveryContract.enabled, false);
 });
 
 test('disables and re-enables the default file placement gate', (context) => {
@@ -541,11 +540,11 @@ test('disables and re-enables the default file placement gate', (context) => {
 
   const disabled = setFeaturesEnabled(root, ['filePlacement'], false);
   assert.deepEqual(disabled.changed, ['filePlacement']);
-  assert.equal(readConfig(root).preCommit.filePlacement.enabled, false);
+  assert.equal(readConfig(root).checks.filePlacement.enabled, false);
 
   const enabled = setFeaturesEnabled(root, ['filePlacement'], true);
   assert.deepEqual(enabled.changed, ['filePlacement']);
-  assert.equal(readConfig(root).preCommit.filePlacement.enabled, true);
+  assert.equal(readConfig(root).checks.filePlacement.enabled, true);
 });
 
 test('启用和禁用文件头同步功能', (context) => {
@@ -554,11 +553,11 @@ test('启用和禁用文件头同步功能', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['fileHeader'], true);
   assert.deepEqual(enabled.changed, ['fileHeader']);
-  assert.equal(readConfig(root).preCommit.fileHeader.enabled, true);
+  assert.equal(readConfig(root).checks.fileHeader.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['fileHeader'], false);
   assert.deepEqual(disabled.changed, ['fileHeader']);
-  assert.equal(readConfig(root).preCommit.fileHeader.enabled, false);
+  assert.equal(readConfig(root).checks.fileHeader.enabled, false);
 });
 
 test('启用和禁用函数文档同步功能', (context) => {
@@ -567,11 +566,11 @@ test('启用和禁用函数文档同步功能', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['functionDocs'], true);
   assert.deepEqual(enabled.changed, ['functionDocs']);
-  assert.equal(readConfig(root).preCommit.functionDocs.enabled, true);
+  assert.equal(readConfig(root).checks.functionDocs.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['functionDocs'], false);
   assert.deepEqual(disabled.changed, ['functionDocs']);
-  assert.equal(readConfig(root).preCommit.functionDocs.enabled, false);
+  assert.equal(readConfig(root).checks.functionDocs.enabled, false);
 });
 
 test('启用和禁用异步资源清理门禁', (context) => {
@@ -580,11 +579,11 @@ test('启用和禁用异步资源清理门禁', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['asyncResourceCleanup'], true);
   assert.deepEqual(enabled.changed, ['asyncResourceCleanup']);
-  assert.equal(readConfig(root).preCommit.asyncResourceCleanup.enabled, true);
+  assert.equal(readConfig(root).checks.asyncResourceCleanup.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['asyncResourceCleanup'], false);
   assert.deepEqual(disabled.changed, ['asyncResourceCleanup']);
-  assert.equal(readConfig(root).preCommit.asyncResourceCleanup.enabled, false);
+  assert.equal(readConfig(root).checks.asyncResourceCleanup.enabled, false);
 });
 
 test('启用和禁用统一路径命名门禁', (context) => {
@@ -593,78 +592,83 @@ test('启用和禁用统一路径命名门禁', (context) => {
 
   const enabled = setFeaturesEnabled(root, ['pathNaming'], true);
   assert.deepEqual(enabled.changed, ['pathNaming']);
-  assert.equal(readConfig(root).preCommit.pathNaming.enabled, true);
+  assert.equal(readConfig(root).checks.pathNaming.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['pathNaming'], false);
   assert.deepEqual(disabled.changed, ['pathNaming']);
-  assert.equal(readConfig(root).preCommit.pathNaming.enabled, false);
+  assert.equal(readConfig(root).checks.pathNaming.enabled, false);
 });
 
 test('enables and disables a configured code placement gate', (context) => {
-  const root = createFixture(sparseConfig({
-    codePlacement: {
-      enabled: false,
-      rules: [{
-        name: '支付签名',
-        content: 'createPaymentSignature(payload)',
-        allowedFiles: ['src/payment/signature.ts'],
-        scanPatterns: ['src/**/*.ts'],
-      }],
-    },
-  }));
+  const root = createFixture(
+    sparseConfig({
+      repository: {
+        codePlacement: {
+          enabled: false,
+          rules: [
+            {
+              name: '支付签名',
+              content: 'createPaymentSignature(payload)',
+              allowedFiles: ['src/payment/signature.ts'],
+              scanPatterns: ['src/**/*.ts'],
+            },
+          ],
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const enabled = setFeaturesEnabled(root, ['codePlacement'], true);
   assert.deepEqual(enabled.changed, ['codePlacement']);
-  assert.equal(readConfig(root).codePlacement.enabled, true);
+  assert.equal(readConfig(root).repository.codePlacement.enabled, true);
 
   const disabled = setFeaturesEnabled(root, ['codePlacement'], false);
   assert.deepEqual(disabled.changed, ['codePlacement']);
-  assert.equal(readConfig(root).codePlacement.enabled, false);
+  assert.equal(readConfig(root).repository.codePlacement.enabled, false);
 });
 
-test('rejects invalid values before migration can rewrite the file', (context) => {
-  const root = createFixture(sparseConfig({
-    preCommit: {
-      eslint: {
-        maxWarnings: -1,
-      },
-    },
-  }), { legacy: true });
+test('拒绝无效 v2 配置且不改写原文件', (context) => {
+  const root = createFixture(sparseConfig());
   context.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, CONFIG_FILE), JSON.stringify(sparseConfig({
+    checks: { eslint: { maxWarnings: -1 } },
+  })));
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
-  assert.throws(() => migrateProjectConfig(root, { project: FRONTEND_PROJECT }), /非负整数/);
+  assert.throws(() => setFeaturesEnabled(root, ['eslint'], true), /非负整数/);
   assert.equal(readFileSync(path.join(root, CONFIG_FILE), 'utf8'), before);
 });
 
-test('migration and feature toggles cannot proceed while a structured exception is expired', (context) => {
-  const root = createFixture(sparseConfig({
-    exceptions: {
-      warningDays: 14,
-      maxDays: 90,
-      entries: [{
-        id: 'expired-exception',
-        rule: 'security/no-unsafe-html',
-        path: 'src/Legacy.vue',
-        line: 1,
-        column: 1,
-        reason: 'Legacy exception that must be reviewed.',
-        owner: 'frontend-team',
-        approvedBy: 'security-team',
-        ticket: 'SEC-1000',
-        createdOn: '2020-01-01',
-        expiresOn: '2020-01-31',
-      }],
-    },
-  }));
+test('结构化例外过期时禁止功能启停且不改写原文件', (context) => {
+  const root = createFixture(
+    sparseConfig({
+      repository: {
+        exceptions: {
+          warningDays: 14,
+          maxDays: 90,
+          entries: [
+            {
+              id: 'expired-exception',
+              rule: 'security/no-unsafe-html',
+              path: 'src/Legacy.vue',
+              line: 1,
+              column: 1,
+              reason: 'Legacy exception that must be reviewed.',
+              owner: 'frontend-team',
+              approvedBy: 'security-team',
+              ticket: 'SEC-1000',
+              createdOn: '2020-01-01',
+              expiresOn: '2020-01-31',
+            },
+          ],
+        },
+      },
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const before = readFileSync(path.join(root, CONFIG_FILE), 'utf8');
 
-  assert.throws(
-    () => migrateProjectConfig(root, { project: FRONTEND_PROJECT }),
-    /已过期的例外/,
-  );
   assert.throws(
     () => setFeaturesEnabled(root, ['notification'], false),
     /已过期的例外/,

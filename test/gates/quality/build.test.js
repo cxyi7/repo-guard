@@ -73,11 +73,32 @@ function createFixture({ enabled = true } = {}) {
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      build: { ...buildConfig(), enabled },
-      notification: { enabled: false },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    build: {
+      ...buildConfig(),
+      enabled
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`,
   );
   return root;
 }
@@ -363,6 +384,39 @@ test('calculates WeChat main and subpackage budgets and validates preload rules'
   assert.equal(failed.findings.some(({ ruleId }) => ruleId === 'build-artifact/mini-program-subpackage-bytes'), true);
 });
 
+test('构建产物基线仅生成和接受 version 2，旧格式不能读取或裁剪', async (context) => {
+  const root = createArtifactFixture([
+    "import { mkdirSync, writeFileSync } from 'node:fs';",
+    "mkdirSync('dist', { recursive: true });",
+    "writeFileSync('dist/index.js', 'x'.repeat(40));",
+  ].join('\n'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const strictConfig = normalizedArtifactBuild({
+    enabled: true,
+    platform: 'pc',
+    outputDirectory: 'dist',
+    cleanScript: 'clean',
+    pc: { analyzer: 'directory', limits: { totalRawBytes: 10 } },
+  });
+  await runBuildGate({ root, config: strictConfig });
+  const baselineConfig = normalizedArtifactBuild({ ...strictConfig.artifactBudget, mode: 'baseline' });
+  const budget = baselineConfig.artifactBudget;
+  initializeBuildArtifactBaseline(root, budget);
+  const file = path.join(root, budget.baselineFile);
+  const baseline = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(baseline.version, 2);
+  git(root, ['add', budget.baselineFile]);
+  assert.equal((await runBuildGate({ root, config: baselineConfig })).status, 'passed');
+  for (const version of [1, '2', 3, null, undefined]) {
+    const rejected = JSON.stringify({ ...baseline, version });
+    writeFileSync(file, rejected);
+    assert.throws(() => initializeBuildArtifactBaseline(root, budget), /拒绝覆盖/);
+    await assert.rejects(() => runBuildGate({ root, config: baselineConfig }), /version.*2/);
+    assert.throws(() => pruneBuildArtifactBaseline(root, budget), /version.*2/);
+    assert.equal(readFileSync(file, 'utf8'), rejected);
+  }
+});
+
 test('allows existing PC debt but blocks growth and only prunes the artifact baseline', async (context) => {
   const root = createArtifactFixture([
     "import { mkdirSync, writeFileSync } from 'node:fs';",
@@ -426,14 +480,35 @@ test('exposes explicit artifact baseline initialization through the CLI', async 
   });
   await runBuildGate({ root, config: strictConfig });
   writeFileSync(path.join(root, 'repo-guard.config.json'), `${stringifyProjectFixture({
-    version: 1,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
     build: {
       ...strictConfig,
-      artifactBudget: { ...strictConfig.artifactBudget, mode: 'baseline' },
-    },
-    notification: { enabled: false },
-    rules: [{ pattern: '**', category: '测试项目', level: 'audit' }],
-  }, null, 2)}\n`);
+      artifactBudget: {
+        ...strictConfig.artifactBudget,
+        mode: 'baseline'
+      }
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: '测试项目',
+      level: 'audit'
+    }]
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`);
 
   const result = spawnSync(
     process.execPath,

@@ -103,7 +103,7 @@ function validateBindings(root, registry, contracts, errors) {
 }
 
 export function inspectDeliveryContractSetup({ root, config }) {
-  if (!config.deliveryContract.enabled) {
+  if (!config.repository.deliveryContract.enabled) {
     return { status: 'ready', summary: '交付合同与交付证据门禁已禁用' };
   }
   const errors = [];
@@ -112,13 +112,13 @@ export function inspectDeliveryContractSetup({ root, config }) {
     loader = createDeliveryContractLoader({
       root,
       environment: 'manual',
-      config: config.deliveryContract,
+      config: config.repository.deliveryContract,
     });
   } catch (error) {
     return { status: 'incomplete', summary: `无法读取交付合同目录：${error.message}` };
   }
-  const registry = readRegistry(loader, config.deliveryContract, errors);
-  const contracts = readContracts(loader, config.deliveryContract, errors);
+  const registry = readRegistry(loader, config.repository.deliveryContract, errors);
+  const contracts = readContracts(loader, config.repository.deliveryContract, errors);
   validateBindings(root, registry, contracts, errors);
   validateManagedScripts(root, errors);
   return errors.length === 0

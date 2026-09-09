@@ -11,9 +11,10 @@ export async function sendMutationTestFailureNotification({
   environment,
   send = sendWecomNotification,
 }) {
-  if (!build.notifyOnFailure || !config.notification.enabled) return 'disabled';
-  if (environment.GITLAB_CI === 'true' && config.ci.pipeline.notifications) {
-    return 'managed-pipeline';
+  if (!build.notifyOnFailure || !config.reporting.notification.enabled) return 'disabled';
+  if (environment.GITLAB_CI === 'true'
+      && environment.REPO_GUARD_OPERATIONS_NOTIFICATIONS === 'true') {
+    return 'managed-operations';
   }
   const { webhook, mentionMobiles } = loadNotificationConfig(
     resolveNotificationEnvironment(root, environment),

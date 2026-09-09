@@ -26,7 +26,7 @@ function renderResult(result) {
 export async function runDeadCodeBaseline(action, cwd = process.cwd(), options = {}) {
   const target = loadExecutionTarget(cwd, options);
   const root = target.root;
-  const config = target.config.deadCode;
+  const config = target.config.checks.deadCode;
   let result;
   if (action === 'init') result = await initializeDeadCodeBaseline(root, config);
   else if (action === 'prune') result = await pruneDeadCodeBaseline(root, config);

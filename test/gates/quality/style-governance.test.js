@@ -113,21 +113,33 @@ test('explicit CLI audits ignored files while the staged enhancement is disabled
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      preCommit: {
-        stylelint: {
-          enabled: true,
-          governance: {
-            enabled: false,
-            maxSpecificity: '0,3,0',
-            maxIdSelectors: 0,
-            disallowImportant: true,
-            allowedGlobalStylePatterns: ['src/styles/**'],
-          },
-        },
-      },
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    stylelint: {
+      enabled: true
+    },
+    styleGovernance: {
+      enabled: false,
+      maxSpecificity: '0,3,0',
+      maxIdSelectors: 0,
+      disallowImportant: true,
+      allowedGlobalStylePatterns: ['src/styles/**']
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  }
+}, null, 2)}\n`,
   );
   writeFileSync(path.join(root, 'src', 'components', 'unsafe.css'), '#app { color: red; }\n');
 

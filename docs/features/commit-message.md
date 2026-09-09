@@ -8,9 +8,13 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 提交信息门禁默认关闭。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
+
+提交摘要在 Git 元数据目录保存当前 `version: 2` 临时状态。状态缺失时，当前 Hook 会按本次索引重新生成；已有旧版、未知版本、缺少版本或无法解析的状态会以 `commit-message/unsupported-state-version` 拒绝读取、覆盖和清理，原状态、提交消息和索引保持不变。先确认相关提交进程已经退出，再人工核对遗留文件并重新提交；不能改写版本号绕过检查。当前 v2 状态会在索引变化时重新计算，并保留本次提交来源。
+
+如果提交已经创建，`post-commit` 清理时才发现不受支持的状态，会保留文件并输出中文警告，但仍返回成功，不把真实提交误报为失败。
 
 ```bash
 npx repo-guard enable commitMessage

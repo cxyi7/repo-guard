@@ -2,8 +2,8 @@ import { runAnimationPreview } from './animation-preview.js';
 import { readFileSync } from 'node:fs';
 import { runCheck } from './check.js';
 import { runCiCommand } from '../ci/command.js';
-import { runGitLabCiNotification } from '../../gates/release/gitlab-ci-notification.js';
-import { runDisable, runEnable, runMigrate } from './configuration.js';
+import { runGitLabCiNotification } from '../../operations/notifications/gitlab-ci-notification.js';
+import { runDisable, runEnable } from './configuration.js';
 import { runDoctor } from '../doctor/runner.js';
 import { gateRegistry } from '../../gates/registry.js';
 import {
@@ -64,7 +64,6 @@ repo-guard - 仓库保护门禁
 用法：
   repo-guard init --project <id> --role frontend|backend --stack node --preset <preset>
   repo-guard install-hooks
-  repo-guard migrate --project <id> --role frontend|backend --stack node --preset <preset>
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard doctor [--fix|--ci]
@@ -147,9 +146,6 @@ const COMMAND_HANDLERS = Object.freeze({
     project: projectDeclaration(argumentsList, projectId),
   }),
   'install-hooks': withoutOptions(runInstallHooks),
-  migrate: (argumentsList, { projectId }) => runMigrate(process.cwd(), {
-    project: projectDeclaration(argumentsList, projectId),
-  }),
   enable: async (argumentsList, options) => {
     ensureSupportedOptions(argumentsList, new Set());
     return runEnable(argumentsList, process.cwd(), options);
@@ -174,7 +170,7 @@ const COMMAND_HANDLERS = Object.freeze({
     );
     return runInstallCiCommand(process.cwd(), {
       provider: options.values['--provider'],
-      profile: options.values['--profile'] || 'policy',
+      profile: options.values['--profile'],
       stage: options.values['--stage'] || null,
       dryRun: options.flags.has('--dry-run'),
     });
@@ -281,7 +277,7 @@ const COMMAND_HANDLERS = Object.freeze({
 async function runKnownCommand(command, argumentsList) {
   const gate = gateRegistry.findByManualCommand(command);
   const scopedCommands = new Set([
-    'init', 'migrate', 'enable', 'disable', 'doctor', 'ci', 'external',
+    'init', 'enable', 'disable', 'doctor', 'ci', 'external',
     'guarded-build', 'dead-code-baseline', 'build-artifact-baseline',
     'api-performance-runner', 'k6-runner',
   ]);

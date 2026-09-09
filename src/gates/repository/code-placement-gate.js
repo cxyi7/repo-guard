@@ -20,10 +20,10 @@ function candidateContents({ root, environment, paths }) {
 
 export const codePlacementGate = defineGate({
   id: 'repository.code-placement',
-  configKey: 'codePlacement',
+  configKey: 'repository.codePlacement',
   featureName: 'codePlacement',
   featureOrder: 45,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
@@ -33,16 +33,16 @@ export const codePlacementGate = defineGate({
   packageScript: 'guard:code-placement',
   inspectSetup: ({ config }) => ({
     status: 'ready',
-    summary: config.codePlacement.enabled ? '代码位置策略已启用' : '代码位置策略已禁用',
+    summary: config.repository.codePlacement.enabled ? '代码位置策略已启用' : '代码位置策略已禁用',
   }),
   plan(context) {
-    const enabled = context.environment === 'manual' || context.config.codePlacement.enabled;
-    if (!enabled || context.config.codePlacement.rules.length === 0) {
+    const enabled = context.environment === 'manual' || context.config.repository.codePlacement.enabled;
+    if (!enabled || context.config.repository.codePlacement.rules.length === 0) {
       return { enabled, files: [] };
     }
     const paths = selectCodePlacementFiles(
       candidatePaths(context),
-      context.config.codePlacement,
+      context.config.repository.codePlacement,
     );
     return {
       enabled,
@@ -53,7 +53,7 @@ export const codePlacementGate = defineGate({
     if (!plan.enabled) {
       return skippedResult('repository.code-placement', '代码位置策略已禁用');
     }
-    const result = inspectCodePlacement({ files: plan.files, config: config.codePlacement });
+    const result = inspectCodePlacement({ files: plan.files, config: config.repository.codePlacement });
     if (result.violations.length === 0) {
       return passedResult(
         'repository.code-placement',

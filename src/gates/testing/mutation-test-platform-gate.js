@@ -5,14 +5,14 @@ import { definePlatformGate, readyGateSetup } from '../platform-gate.js';
 import { runMutationTestGate } from './mutation-test-gate.js';
 
 function inspectMutationTestSetup({ root, config }) {
-  if (!config.mutationTest.enabled) return readyGateSetup('变异测试门禁已禁用');
-  const setup = resolveMutationTestSetup(root, config.mutationTest);
+  if (!config.checks.mutationTest.enabled) return readyGateSetup('变异测试门禁已禁用');
+  const setup = resolveMutationTestSetup(root, config.checks.mutationTest);
   return readyGateSetup(`变异测试门禁（Stryker ${setup.version}）`);
 }
 
 export const mutationTestGate = definePlatformGate({
   id: 'quality.mutation-test',
-  configKey: 'mutationTest',
+  configKey: 'checks.mutationTest',
   featureName: 'mutationTest',
   featureOrder: 145,
   doctorOrder: 55,
@@ -29,13 +29,13 @@ export const mutationTestGate = definePlatformGate({
     'mutation-report-original-html',
   ],
   inspectSetup: inspectMutationTestSetup,
-  plan: ({ config }) => ({ enabled: config.mutationTest.enabled }),
+  plan: ({ config }) => ({ enabled: config.checks.mutationTest.enabled }),
   run: ({ root, config, plan, signal, environment }) => {
     if (!plan.enabled) return skippedResult('quality.mutation-test', '变异测试已禁用');
     return runMutationTestGate({
       root,
-      config: config.mutationTest,
-      setup: resolveMutationTestSetup(root, config.mutationTest),
+      config: config.checks.mutationTest,
+      setup: resolveMutationTestSetup(root, config.checks.mutationTest),
       signal,
       liveOutput: environment === 'manual',
     });

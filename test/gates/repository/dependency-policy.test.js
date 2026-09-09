@@ -64,10 +64,22 @@ function createFixture(packageJson, lockRoot = null, dependencyPolicy = policy()
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
     `${stringifyProjectFixture({
-      version: 1,
-      dependencyPolicy,
-      rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    }, null, 2)}\n`,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
+    dependencyPolicy,
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }]
+  }
+}, null, 2)}\n`,
   );
   return root;
 }

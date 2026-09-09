@@ -26,11 +26,11 @@ function finding(item) {
 
 export const deliveryEvidenceGate = defineGate({
   id: 'release.delivery-evidence',
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
-  after: ['release.package'],
+  after: ['quality.build', 'quality.lighthouse'],
   manualCommand: 'delivery-evidence',
   manualOrder: 28,
   packageScript: 'guard:delivery-evidence',
@@ -46,9 +46,9 @@ export const deliveryEvidenceGate = defineGate({
   artifactTypes: ['delivery-evidence'],
   inspectSetup: inspectDeliveryContractSetup,
   plan: ({ config, changes, environment, priorResults = [] }) => ({
-    config: config.deliveryContract,
+    config: config.repository.deliveryContract,
     changes: changeSetEntries(changes),
-    enabled: config.deliveryContract.enabled,
+    enabled: config.repository.deliveryContract.enabled,
     environment,
     priorResults,
   }),

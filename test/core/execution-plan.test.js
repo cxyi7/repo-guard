@@ -151,19 +151,32 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.delivery-contract',
       'quality.unit-test-policy',
       'repository.protected-files',
+      'quality.stylelint-project',
+      'quality.eslint-project',
+      'quality.prettier-project',
+      'quality.typecheck',
+      'quality.dead-code',
       'repository.unused-image-assets',
-      'release.check',
-      'release.test',
+      'quality.unit-test',
+      'quality.accessibility-test',
+      'quality.architecture',
       'quality.build',
       'quality.lighthouse',
-      'release.package',
       'release.delivery-evidence',
     ],
   );
-  assert.equal(executionPlans.all.every((plan) => plan.locked), true);
-  assert.equal(executionPlans.all.every((plan) => Object.isFrozen(plan.steps)), true);
+  assert.equal(
+    executionPlans.all.every((plan) => plan.locked),
+    true,
+  );
+  assert.equal(
+    executionPlans.all.every((plan) => Object.isFrozen(plan.steps)),
+    true,
+  );
   assert.deepEqual(
-    executionPlans.get('ci-full').steps.map((step) => step.reportName ?? step.id),
+    executionPlans
+      .get('ci-full')
+      .steps.map((step) => step.reportName ?? step.id),
     [
       'repository.structured-exceptions',
       'repository.agent-policy',
@@ -199,18 +212,22 @@ test('locks the reviewed lifecycle order independently from project configuratio
 
   const config = { executionOrder: ['repository.protected-files'] };
   assert.deepEqual(
-    executionPlans.get('pre-commit').steps.map(({ id }) => id).slice(0, 2),
+    executionPlans
+      .get('pre-commit')
+      .steps.map(({ id }) => id)
+      .slice(0, 2),
     ['quality.stylelint-fix', 'quality.eslint-fix'],
   );
   assert.deepEqual(config.executionOrder, ['repository.protected-files']);
 });
 
 test('requires every Registry-declared CI Gate to belong to a reviewed CI plan', () => {
-  const ciPlans = ['ci-policy', 'ci-full', 'release-ready']
-    .map((planId) => executionPlans.get(planId));
-  const plannedGateIds = new Set(ciPlans.flatMap((plan) => (
-    plan.steps.map(({ gateId }) => gateId)
-  )));
+  const ciPlans = ['ci-policy', 'ci-full', 'release-ready'].map((planId) =>
+    executionPlans.get(planId),
+  );
+  const plannedGateIds = new Set(
+    ciPlans.flatMap((plan) => plan.steps.map(({ gateId }) => gateId)),
+  );
 
   assert.deepEqual(
     gateRegistry.ci
@@ -230,14 +247,18 @@ test('requires every Registry-declared CI Gate to belong to a reviewed CI plan',
 });
 
 test('rejects every attempt to reorder or expand the protected pre-commit plan', () => {
-  const steps = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
+  const steps = executionPlans
+    .get('pre-commit')
+    .steps.map((step) => ({ ...step }));
   [steps[0], steps[1]] = [steps[1], steps[0]];
   assert.throws(
     () => defineProtectedPreCommitPlan({ steps }),
     /不得更改.*计划顺序和变更契约/,
   );
 
-  const relabeled = executionPlans.get('pre-commit').steps.map((step) => ({ ...step }));
+  const relabeled = executionPlans
+    .get('pre-commit')
+    .steps.map((step) => ({ ...step }));
   relabeled[0].mutation = 'read-only';
   assert.throws(
     () => defineProtectedPreCommitPlan({ steps: relabeled }),
@@ -254,9 +275,13 @@ test('rejects every attempt to reorder or expand the protected pre-commit plan',
   );
 
   assert.throws(
-    () => defineProtectedPreCommitPlan({
-      steps: [...executionPlans.get('pre-commit').steps, 'quality.lighthouse'],
-    }),
+    () =>
+      defineProtectedPreCommitPlan({
+        steps: [
+          ...executionPlans.get('pre-commit').steps,
+          'quality.lighthouse',
+        ],
+      }),
     /禁止项目级、类型检查、测试、构建和网络门禁：quality\.lighthouse/,
   );
 
@@ -287,15 +312,39 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
   });
   assert.equal(validateExecutionPlan(valid, registry), valid);
   assert.throws(
-    () => validateExecutionPlan(defineExecutionPlan({ id: 'unknown', environment: 'pre-commit', steps: ['missing'] }), registry),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'unknown',
+          environment: 'pre-commit',
+          steps: ['missing'],
+        }),
+        registry,
+      ),
     /未知门禁/,
   );
   assert.throws(
-    () => validateExecutionPlan(defineExecutionPlan({ id: 'wrong-order', environment: 'pre-commit', steps: ['second', 'first'] }), registry),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'wrong-order',
+          environment: 'pre-commit',
+          steps: ['second', 'first'],
+        }),
+        registry,
+      ),
     /在.*first.*之前运行了 second|在.*second.*之后运行了 first/,
   );
   assert.throws(
-    () => validateExecutionPlan(defineExecutionPlan({ id: 'missing-dependency', environment: 'pre-commit', steps: ['second'] }), registry),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'missing-dependency',
+          environment: 'pre-commit',
+          steps: ['second'],
+        }),
+        registry,
+      ),
     /遗漏了.*依赖 first/,
   );
   assert.throws(
@@ -303,15 +352,24 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
     /执行计划 id 重复/,
   );
   assert.throws(
-    () => validateExecutionPlan(defineExecutionPlan({ id: 'wrong-environment', environment: 'ci-full', steps: ['first'] }), registry),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'wrong-environment',
+          environment: 'ci-full',
+          steps: ['first'],
+        }),
+        registry,
+      ),
     /不支持的环境/,
   );
   assert.throws(
-    () => defineExecutionPlan({
-      id: 'invalid-report-name',
-      environment: 'ci-full',
-      steps: [{ id: 'first', gateId: 'first', reportName: ' ' }],
-    }),
+    () =>
+      defineExecutionPlan({
+        id: 'invalid-report-name',
+        environment: 'ci-full',
+        steps: [{ id: 'first', gateId: 'first', reportName: ' ' }],
+      }),
     /reportName 必须是非空字符串/,
   );
   const mutatingRegistry = createGateRegistry([
@@ -322,32 +380,51 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
     }),
   ]);
   assert.throws(
-    () => validateExecutionPlan(
-      defineExecutionPlan({ id: 'unsafe-ci', environment: 'ci-full', steps: ['mutating'] }),
-      mutatingRegistry,
-    ),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'unsafe-ci',
+          environment: 'ci-full',
+          steps: ['mutating'],
+        }),
+        mutatingRegistry,
+      ),
     /不能在.*以 working-tree-fix 运行 mutating/,
   );
-  assert.doesNotThrow(() => validateExecutionPlan(
-    defineExecutionPlan({
-      id: 'verified-ci',
-      environment: 'ci-full',
-      steps: [{ id: 'mutating-verify', gateId: 'mutating', mutation: 'read-only' }],
-    }),
-    mutatingRegistry,
-  ));
+  assert.doesNotThrow(() =>
+    validateExecutionPlan(
+      defineExecutionPlan({
+        id: 'verified-ci',
+        environment: 'ci-full',
+        steps: [
+          { id: 'mutating-verify', gateId: 'mutating', mutation: 'read-only' },
+        ],
+      }),
+      mutatingRegistry,
+    ),
+  );
   const mislabeledRegistry = createGateRegistry([
-    gate('mislabeled', { environments: ['ci-full'], mutation: 'working-tree-fix' }),
+    gate('mislabeled', {
+      environments: ['ci-full'],
+      mutation: 'working-tree-fix',
+    }),
   ]);
   assert.throws(
-    () => validateExecutionPlan(
-      defineExecutionPlan({
-        id: 'mislabeled-ci',
-        environment: 'ci-full',
-        steps: [{ id: 'mislabeled-read', gateId: 'mislabeled', mutation: 'read-only' }],
-      }),
-      mislabeledRegistry,
-    ),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'mislabeled-ci',
+          environment: 'ci-full',
+          steps: [
+            {
+              id: 'mislabeled-read',
+              gateId: 'mislabeled',
+              mutation: 'read-only',
+            },
+          ],
+        }),
+        mislabeledRegistry,
+      ),
     /不能将 mislabeled-read 的变更级别改为 read-only/,
   );
 
@@ -355,27 +432,42 @@ test('rejects duplicate plans, unknown gates, unsupported environments, and depe
     gate('managed', { environments: ['ci-policy'], mutation: 'managed-files' }),
   ]);
   assert.throws(
-    () => validateExecutionPlan(
-      defineExecutionPlan({ id: 'managed-policy', environment: 'ci-policy', steps: ['managed'] }),
-      managedRegistry,
-    ),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'managed-policy',
+          environment: 'ci-policy',
+          steps: ['managed'],
+        }),
+        managedRegistry,
+      ),
     /不能在.*以 managed-files 运行 managed/,
   );
 });
 
 test('rejects duplicate config keys, invalid relation references, ordering cycles, and conflicts', () => {
   assert.throws(
-    () => createGateRegistry([
-      gate('first', { configKey: 'shared' }),
-      gate('second', { configKey: 'shared' }),
-    ]),
+    () =>
+      createGateRegistry([
+        gate('first', { configKey: 'shared' }),
+        gate('second', { configKey: 'shared' }),
+      ]),
     /门禁配置键重复/,
   );
   assert.throws(
-    () => createGateRegistry([
-      gate('first', { configKey: 'first', featureName: 'shared', featureOrder: 1 }),
-      gate('second', { configKey: 'second', featureName: 'shared', featureOrder: 2 }),
-    ]),
+    () =>
+      createGateRegistry([
+        gate('first', {
+          configKey: 'first',
+          featureName: 'shared',
+          featureOrder: 1,
+        }),
+        gate('second', {
+          configKey: 'second',
+          featureName: 'shared',
+          featureOrder: 2,
+        }),
+      ]),
     /门禁功能名称重复/,
   );
   assert.throws(
@@ -383,10 +475,11 @@ test('rejects duplicate config keys, invalid relation references, ordering cycle
     /before 指向未知门禁/,
   );
   assert.throws(
-    () => createGateRegistry([
-      gate('first', { before: ['second'] }),
-      gate('second', { before: ['first'] }),
-    ]),
+    () =>
+      createGateRegistry([
+        gate('first', { before: ['second'] }),
+        gate('second', { before: ['first'] }),
+      ]),
     /门禁依赖环/,
   );
   const conflictRegistry = createGateRegistry([
@@ -394,37 +487,56 @@ test('rejects duplicate config keys, invalid relation references, ordering cycle
     gate('second'),
   ]);
   assert.throws(
-    () => validateExecutionPlan(
-      defineExecutionPlan({ id: 'conflict', environment: 'pre-commit', steps: ['first', 'second'] }),
-      conflictRegistry,
-    ),
+    () =>
+      validateExecutionPlan(
+        defineExecutionPlan({
+          id: 'conflict',
+          environment: 'pre-commit',
+          steps: ['first', 'second'],
+        }),
+        conflictRegistry,
+      ),
     /冲突门禁/,
   );
 });
 
 test('keeps capability discovery in Registry and lifecycle order in Execution Plans', () => {
-  const sources = Object.fromEntries([
-    'orchestration/cli/runner',
+  const sources = Object.fromEntries(
+    [
+      'orchestration/cli/runner',
       'orchestration/doctor/runner',
-    'orchestration/setup/hook-installer',
-    'orchestration/ci/runner',
-    'orchestration/pre-commit/quality-runner',
-    'orchestration/pre-commit/runner',
-    'orchestration/pre-push/runner',
-  ].map((name) => [name, readFileSync(new URL(`../../src/${name}.js`, import.meta.url), 'utf8')]));
+      'orchestration/setup/hook-installer',
+      'orchestration/ci/runner',
+      'orchestration/pre-commit/quality-runner',
+      'orchestration/pre-commit/runner',
+      'orchestration/pre-push/runner',
+    ].map((name) => [
+      name,
+      readFileSync(new URL(`../../src/${name}.js`, import.meta.url), 'utf8'),
+    ]),
+  );
 
   assert.doesNotMatch(
     sources['orchestration/cli/runner'],
     /case ['"](?:dynamic-code|unsafe-html|typecheck|build)['"]/,
   );
-  assert.doesNotMatch(sources['orchestration/setup/hook-installer'], /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/);
-    assert.match(sources['orchestration/doctor/runner'], /createProjectGateRegistry\(config\)\.all/);
+  assert.doesNotMatch(
+    sources['orchestration/setup/hook-installer'],
+    /scripts\[['"]guard:(?:dynamic-code|unsafe-html|typecheck|build)['"]\]/,
+  );
+  assert.match(
+    sources['orchestration/doctor/runner'],
+    /createProjectGateRegistry\(config\)\.all/,
+  );
   assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
   assert.doesNotMatch(
     sources['orchestration/ci/runner'],
     /executeStep|micromatch|quality\.(?:stylelint|eslint|prettier|typecheck|unit-test|accessibility-test|architecture|build)/,
   );
-  assert.match(sources['orchestration/pre-commit/quality-runner'], /plan: preCommitQualityPlan/);
+  assert.match(
+    sources['orchestration/pre-commit/quality-runner'],
+    /plan: preCommitQualityPlan/,
+  );
   assert.doesNotMatch(
     sources['orchestration/pre-commit/quality-runner'],
     /run\w+Project|quality\.typecheck|quality\.lighthouse/,
@@ -437,14 +549,20 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     sources['orchestration/pre-commit/runner'],
     /executeStep|unsupported-plan-step|dependencies\.policy|repository\.protected-files/,
   );
-  assert.match(sources['orchestration/pre-push/runner'], /orchestratePlan\(\{[\s\S]*plan: prePushPlan/);
+  assert.match(
+    sources['orchestration/pre-push/runner'],
+    /orchestratePlan\(\{[\s\S]*plan: prePushPlan/,
+  );
   assert.doesNotMatch(
     sources['orchestration/pre-push/runner'],
     /executeStep|unsupported-plan-step|quality\.(?:typecheck|unit-test|accessibility-test|architecture|build|lighthouse)/,
   );
   assert.equal(gateRegistry.all.length >= 20, true);
   assert.equal(gateRegistry.configurable.length > 0, true);
-  assert.equal(gateRegistry.findByConfigKey('typeCheck')?.id, 'quality.typecheck');
+  assert.equal(
+    gateRegistry.findByConfigKey('checks.typeCheck')?.id,
+    'quality.typecheck',
+  );
 });
 
 test('executes a newly registered native read-only gate without a lifecycle-specific adapter', async () => {
@@ -454,7 +572,8 @@ test('executes a newly registered native read-only gate without a lifecycle-spec
       contexts.push(context);
       return { status: 'ready', summary: 'ready' };
     },
-    plan: (context) => Object.freeze({ files: Object.freeze([...context.files]) }),
+    plan: (context) =>
+      Object.freeze({ files: Object.freeze([...context.files]) }),
     run: ({ plan }) => {
       contexts.push(plan);
       return createGateResult({
@@ -470,7 +589,10 @@ test('executes a newly registered native read-only gate without a lifecycle-spec
     environment: 'pre-commit',
     steps: [nativeGate.id],
   });
-  const context = Object.freeze({ root: 'C:/repo', files: Object.freeze(['src/a.js']) });
+  const context = Object.freeze({
+    root: 'C:/repo',
+    files: Object.freeze(['src/a.js']),
+  });
   const execution = await orchestratePlan({ plan, registry, context });
 
   assert.equal(execution.status, 'passed');

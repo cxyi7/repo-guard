@@ -12,7 +12,10 @@ test('preserves the package entry export for rule matching', () => {
 });
 
 test('normalizes Git paths without changing repository-relative segments', () => {
-  assert.equal(normalizeGitPath('.\\src\\components\\Button.vue'), 'src/components/Button.vue');
+  assert.equal(
+    normalizeGitPath('.\\src\\components\\Button.vue'),
+    'src/components/Button.vue',
+  );
   assert.equal(normalizeGitPath('docs/guide.md'), 'docs/guide.md');
 });
 
@@ -29,15 +32,17 @@ test('compiles supported glob tokens while escaping regular expression syntax', 
 
 test('matches the first configured rule after applying exclusions', () => {
   const config = {
-    exclusions: [{ matcher: globToRegExp('docs/generated/**') }],
-    rules: [
-      {
-        pattern: 'docs/**',
-        matcher: globToRegExp('docs/**'),
-        category: 'documentation',
-        level: 'notify',
-      },
-    ],
+    repository: {
+      exclusions: [{ matcher: globToRegExp('docs/generated/**') }],
+      rules: [
+        {
+          pattern: 'docs/**',
+          matcher: globToRegExp('docs/**'),
+          category: 'documentation',
+          level: 'notify',
+        },
+      ],
+    },
   };
 
   assert.deepEqual(matchRule('docs\\guide.md', config), {

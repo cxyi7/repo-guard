@@ -7,7 +7,7 @@ import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { runRegisteredManualGate } from './manual-gates.js';
 
 function configuredBuild(config, script) {
-  const build = config.mutationTest.guardedBuilds.find((entry) => entry.script === script);
+  const build = config.checks.mutationTest.guardedBuilds.find((entry) => entry.script === script);
   if (!build) {
     throw configurationError(
       'guarded-build/not-configured',
@@ -36,7 +36,7 @@ export async function runGuardedBuild(script, {
 } = {}) {
   const { root, config } = loadExecutionTarget(cwd, { projectId });
   const build = configuredBuild(config, script);
-  if (!config.mutationTest.enabled) {
+  if (!config.checks.mutationTest.enabled) {
     throw configurationError(
       'guarded-build/mutation-test-disabled',
       '受保护构建要求启用 mutationTest.enabled，已拒绝绕过变异测试执行构建',
@@ -57,7 +57,7 @@ export async function runGuardedBuild(script, {
       enabled: true,
       script: build.script,
       timeoutMs: build.timeoutMs,
-      artifactBudget: config.build.artifactBudget,
+      artifactBudget: config.checks.build.artifactBudget,
     },
     liveOutput: true,
   });

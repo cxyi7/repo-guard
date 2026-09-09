@@ -335,10 +335,10 @@ async function inspectCandidates({
 
 export const imageAssetsGate = defineGate({
   id: IMAGE_ASSETS_GATE_ID,
-  configKey: 'imageAssets',
+  configKey: 'checks.imageAssets',
   featureName: 'imageAssets',
   featureOrder: 42,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'read-only',
@@ -356,26 +356,26 @@ export const imageAssetsGate = defineGate({
   supportsFix: false,
   supportsCancellation: false,
   async inspectSetup({ root, config }) {
-    if (!config.imageAssets.enabled) {
+    if (!config.checks.imageAssets.enabled) {
       return {
         status: 'ready',
         summary: '图片资源治理已禁用，可运行 repo-guard enable imageAssets 启用',
       };
     }
-    const rasterEnabled = config.imageAssets.extensions.some((extension) => (
+    const rasterEnabled = config.checks.imageAssets.extensions.some((extension) => (
       ['png', 'jpg', 'jpeg', 'webp', 'avif'].includes(extension)
     ));
     const needsSharp = rasterEnabled && (
-      config.imageAssets.duplicates.pixel !== 'off'
-      || (config.imageAssets.compression.enabled
+      config.checks.imageAssets.duplicates.pixel !== 'off'
+      || (config.checks.imageAssets.compression.enabled
         && (
-          config.imageAssets.compression.raster.enabled
-          || config.imageAssets.compression.conversion.enabled
+          config.checks.imageAssets.compression.raster.enabled
+          || config.checks.imageAssets.compression.conversion.enabled
         ))
     );
-    const needsSvgo = config.imageAssets.extensions.includes('svg')
-      && config.imageAssets.compression.enabled
-      && config.imageAssets.compression.svg.enabled;
+    const needsSvgo = config.checks.imageAssets.extensions.includes('svg')
+      && config.checks.imageAssets.compression.enabled
+      && config.checks.imageAssets.compression.svg.enabled;
     const [sharpProject, svgoProject] = await Promise.all([
       needsSharp ? loadProjectSharp(root) : null,
       needsSvgo ? loadProjectSvgo(root) : null,
@@ -390,16 +390,16 @@ export const imageAssetsGate = defineGate({
     };
   },
   plan({ root, config, environment, revision, changes, files }) {
-    const enabled = environment === 'manual' || config.imageAssets.enabled;
+    const enabled = environment === 'manual' || config.checks.imageAssets.enabled;
     const entries = enabled ? snapshotEntries({ root, environment, revision, files }) : [];
-    const selectedPaths = selectImageAssetPaths(entries, config.imageAssets);
+    const selectedPaths = selectImageAssetPaths(entries, config.checks.imageAssets);
     const selected = new Set(selectedPaths);
     const selectedEntries = entries.filter(({ path: filePath }) => selected.has(filePath));
     const changedPaths = changedImagePaths(
       changes,
       selectedPaths,
       environment,
-      config.imageAssets.enforcement,
+      config.checks.imageAssets.enforcement,
     );
     return Object.freeze({
       enabled,
@@ -418,7 +418,7 @@ export const imageAssetsGate = defineGate({
         root,
         plan.entries,
         plan.environment,
-        config.imageAssets.limits,
+        config.checks.imageAssets.limits,
       );
       const entries = plan.entries.map((entry) => ({
         ...entry,
@@ -427,20 +427,20 @@ export const imageAssetsGate = defineGate({
       const findings = [
         ...inspectImageAssetNames(
           entries.map(({ path: filePath }) => filePath),
-          config.imageAssets,
+          config.checks.imageAssets,
           { governedPaths: [...changedPaths] },
         ),
-        ...exactDuplicateFindings(entries, changedPaths, config.imageAssets),
+        ...exactDuplicateFindings(entries, changedPaths, config.checks.imageAssets),
       ];
       const candidateInspection = await inspectCandidates({
         root,
         entries,
         readBuffer,
         changedPaths,
-        config: config.imageAssets,
+        config: config.checks.imageAssets,
       });
       findings.push(...candidateInspection.findings);
-      if (config.imageAssets.duplicates.pixel !== 'off'
+      if (config.checks.imageAssets.duplicates.pixel !== 'off'
         && !['pre-commit', 'ci-policy'].includes(plan.environment)) {
         const sharpProject = candidateInspection.sharpProject ?? await loadProjectSharp(root);
         findings.push(...await inspectPixelDuplicates({
@@ -448,10 +448,10 @@ export const imageAssetsGate = defineGate({
           entries,
           readBuffer,
           changedPaths,
-          config: config.imageAssets,
+          config: config.checks.imageAssets,
         }));
       }
-      const exceptionResult = applyExceptions(findings, config.exceptions);
+      const exceptionResult = applyExceptions(findings, config.repository.exceptions);
       const errorFindings = exceptionResult.violations.filter(({ severity = 'error' }) => severity === 'error');
       const warningFindings = exceptionResult.violations.filter(({ severity = 'error' }) => severity !== 'error');
       const normalized = exceptionResult.violations.map((finding) => findingFromPolicy(finding, {

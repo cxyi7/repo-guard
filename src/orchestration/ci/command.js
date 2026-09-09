@@ -3,7 +3,7 @@ import { DEFAULT_CI_CONFIG } from '../../config/defaults.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { runCiGate } from './runner.js';
 import { runWorkspaceCi } from './workspace-runner.js';
-import { writeCiReport } from './report.js';
+import { CI_REPORT_VERSION, writeCiReport } from './report.js';
 import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
 import { writeGateResultConsole } from '../../core/report/console-renderer.js';
@@ -25,7 +25,7 @@ function errorReport(options, error, {
     error: typedError,
   });
   return {
-    version: 1,
+    version: CI_REPORT_VERSION,
     status,
     profile: options.profile ?? null,
     base: options.base ?? null,
@@ -91,8 +91,8 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
   }
   const config = workspace.repositoryConfig;
   const forbiddenReports = new Set([
-    ...workspace.repositoryConfig.externalGates.map(({ report }) => path.resolve(root, report.path).toLowerCase()),
-    ...workspace.projects.flatMap((project) => project.config.externalGates.map(({ report }) => (
+    ...workspace.repositoryConfig.ci.externalGates.map(({ report }) => path.resolve(root, report.path).toLowerCase()),
+    ...workspace.projects.flatMap((project) => project.config.ci.externalGates.map(({ report }) => (
       path.resolve(project.root, report.path).toLowerCase()
     ))),
     ...(workspace.document.projects ? [

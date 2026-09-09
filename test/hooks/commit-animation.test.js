@@ -1,4 +1,7 @@
-import { FRONTEND_PROJECT, parseProjectFixture } from '../helpers/project-config.js';
+import {
+  FRONTEND_PROJECT,
+  parseProjectFixture,
+} from '../helpers/project-config.js';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { executionError } from '../../src/core/error/repo-guard-error.js';
@@ -11,7 +14,6 @@ import { validateConfig } from '../../src/config/configuration-validation.js';
 import { DEFAULT_COMMIT_ANIMATION_CONFIG as defaults } from '../../src/config/commit-animation-validation.js';
 import {
   createStarterConfig,
-  migrateProjectConfig,
   setFeaturesEnabled,
 } from '../../src/orchestration/setup/config-management.js';
 import {
@@ -21,7 +23,11 @@ import {
   renderPetFrame,
 } from '../../src/core/report/commit-animation/presenter.js';
 import { scenePixels } from '../../src/core/report/commit-animation/scenes.js';
-import { selectEgg, COMMIT_TYPES, drawCargo } from '../../src/core/report/commit-animation/surprises.js';
+import {
+  selectEgg,
+  COMMIT_TYPES,
+  drawCargo,
+} from '../../src/core/report/commit-animation/surprises.js';
 import { DEFAULT_COMMIT_MESSAGE_CONFIG } from '../../src/config/defaults.js';
 
 function terminal(config = {}) {
@@ -64,7 +70,9 @@ function terminal(config = {}) {
     get output() {
       return output;
     },
-    get scheduled() { return tick !== null; },
+    get scheduled() {
+      return tick !== null;
+    },
     advance(ms) {
       clock += ms;
       tick?.();
@@ -72,31 +80,47 @@ function terminal(config = {}) {
   };
 }
 
-test('动画配置默认关闭，旧配置迁移和功能开关保留主题', (t) => {
+test('动画配置默认关闭，v2 功能开关保留主题', (t) => {
   assert.deepEqual(
     validateConfig({
-      version: 1,
-      rules: [{ pattern: '**', category: '测试', level: 'audit' }],
-    }).commitAnimation,
+      version: 2,
+      project: FRONTEND_PROJECT,
+      repository: {
+        rules: [
+          {
+            pattern: '**',
+            category: '测试',
+            level: 'audit',
+          },
+        ],
+      },
+    }).reporting.commitAnimation,
     defaults,
   );
-  assert.deepEqual(createStarterConfig().commitAnimation, defaults);
+  assert.deepEqual(createStarterConfig().reporting.commitAnimation, defaults);
   const root = mkdtempSync(path.join(tmpdir(), 'guard-animation-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const file = path.join(root, 'repo-guard.config.json');
   writeFileSync(
     file,
     JSON.stringify({
-      version: 1,
-      rules: [{ pattern: '**', category: '测试', level: 'audit' }],
-      commitAnimation: { theme: 'dog' },
+      version: 2,
+      project: FRONTEND_PROJECT,
+      repository: { rules: [{ pattern: '**', category: '测试', level: 'audit' }] },
+      reporting: { commitAnimation: { theme: 'dog' } },
     }),
   );
-  assert.equal(migrateProjectConfig(root, { project: FRONTEND_PROJECT }).config.commitAnimation.theme, 'dog');
   setFeaturesEnabled(root, ['commitAnimation'], true);
-  assert.equal(parseProjectFixture(readFileSync(file)).commitAnimation.enabled, true);
+  assert.equal(parseProjectFixture(readFileSync(file)).reporting.commitAnimation.theme, 'dog');
+  assert.equal(
+    parseProjectFixture(readFileSync(file)).reporting.commitAnimation.enabled,
+    true,
+  );
   setFeaturesEnabled(root, ['commitAnimation'], false);
-  assert.equal(parseProjectFixture(readFileSync(file)).commitAnimation.theme, 'dog');
+  assert.equal(
+    parseProjectFixture(readFileSync(file)).reporting.commitAnimation.theme,
+    'dog',
+  );
 });
 
 test('拒绝信号主题、未知字段、非法概率及非布尔开关', () => {
@@ -118,19 +142,34 @@ test('拒绝信号主题、未知字段、非法概率及非布尔开关', () =>
     assert.throws(
       () =>
         validateConfig({
-          version: 1,
-          rules: [{ pattern: '**', category: '测试', level: 'audit' }],
-          commitAnimation,
+          version: 2,
+          project: {
+            id: 'web',
+            role: 'frontend',
+            stack: 'node',
+            preset: 'vue-javascript',
+          },
+          repository: {
+            rules: [
+              {
+                pattern: '**',
+                category: '测试',
+                level: 'audit',
+              },
+            ],
+          },
+          reporting: {
+            commitAnimation,
+          },
         }),
       /commitAnimation/,
     );
   }
   const schema = JSON.parse(readFileSync('config.schema.json'));
-  const animationSchema = schema.$defs.singleProjectDocument.properties.reporting.properties.commitAnimation;
-  assert.deepEqual(animationSchema.properties.theme.enum, [
-    'cat',
-    'dog',
-  ]);
+  const animationSchema =
+    schema.$defs.singleProjectDocument.properties.reporting.properties
+      .commitAnimation;
+  assert.deepEqual(animationSchema.properties.theme.enum, ['cat', 'dog']);
   assert.deepEqual(
     Object.keys(animationSchema.properties).sort(),
     Object.keys(defaults).sort(),
@@ -166,31 +205,59 @@ test('提交标题仅提取稳定类型，未知类型退回普通包裹', () =>
 });
 
 test('道具覆盖项目全部默认类型，共享标题语法，特殊与自定义类型使用普通包裹', () => {
-  assert.deepEqual(Object.keys(COMMIT_TYPES), [...DEFAULT_COMMIT_MESSAGE_CONFIG.types]);
+  assert.deepEqual(Object.keys(COMMIT_TYPES), [
+    ...DEFAULT_COMMIT_MESSAGE_CONFIG.types,
+  ]);
   const sprites = new Set();
   for (const type of DEFAULT_COMMIT_MESSAGE_CONFIG.types) {
     assert.equal(commitPropType(`${type}: 示例`), type);
     assert.equal(commitPropType(`${type}(ui/button)!: 示例`), type);
     const pixels = Array.from({ length: 10 }, () => Array(8).fill('.'));
-    drawCargo({ box(x, y, width, height, color) {
-      assert.equal(typeof color, 'string');
-      for (let dy = 0; dy < height; dy += 1) for (let dx = 0; dx < width; dx += 1) {
-        assert.ok(x + dx >= 0 && x + dx < 8 && y + dy >= 0 && y + dy < 10);
-        pixels[y + dy][x + dx] = color;
-      }
-    } }, 0, 4, type);
+    drawCargo(
+      {
+        box(x, y, width, height, color) {
+          assert.equal(typeof color, 'string');
+          for (let dy = 0; dy < height; dy += 1)
+            for (let dx = 0; dx < width; dx += 1) {
+              assert.ok(
+                x + dx >= 0 && x + dx < 8 && y + dy >= 0 && y + dy < 10,
+              );
+              pixels[y + dy][x + dx] = color;
+            }
+        },
+      },
+      0,
+      4,
+      type,
+    );
     sprites.add(JSON.stringify(pixels));
     for (const theme of ['cat', 'dog']) {
-      const frame = renderPetFrame({ theme, width: 80, time: 0, commitType: type }).join('');
+      const frame = renderPetFrame({
+        theme,
+        width: 80,
+        time: 0,
+        commitType: type,
+      }).join('');
       assert.ok(frame.includes('▀'));
     }
   }
   assert.equal(sprites.size, 10);
-  for (const title of ['fixup! feat: 示例', 'squash! fix: 示例', 'amend! docs: 示例',
-    'Revert "feat: 示例"', 'Merge branch main', 'custom: 示例', 'feat:缺少空格', 'feat(非法范围): 示例']) {
+  for (const title of [
+    'fixup! feat: 示例',
+    'squash! fix: 示例',
+    'amend! docs: 示例',
+    'Revert "feat: 示例"',
+    'Merge branch main',
+    'custom: 示例',
+    'feat:缺少空格',
+    'feat(非法范围): 示例',
+  ]) {
     assert.equal(commitPropType(title), 'chore');
   }
-  assert.equal(commitPropType('feat: 合并标题', ['parent1', 'parent2']), 'chore');
+  assert.equal(
+    commitPropType('feat: 合并标题', ['parent1', 'parent2']),
+    'chore',
+  );
 });
 
 test('两种角色有不同像素且持续运动，失败状态冻结并禁止彩蛋', () => {
@@ -225,23 +292,44 @@ test('两种角色有不同像素且持续运动，失败状态冻结并禁止�
 
 test('成功彩蛋使用内置概率，触发后只抽取一种', () => {
   let calls = 0;
-  assert.equal(selectEgg(() => { calls += 1; return 0.1; }), 'none');
+  assert.equal(
+    selectEgg(() => {
+      calls += 1;
+      return 0.1;
+    }),
+    'none',
+  );
   assert.equal(calls, 1);
-  for (const [value, expected] of [[0, 'meteor'], [0.5, 'butterfly'], [0.99, 'fireworks']]) {
+  for (const [value, expected] of [
+    [0, 'meteor'],
+    [0.5, 'butterfly'],
+    [0.99, 'fireworks'],
+  ]) {
     const randomValues = [0.099, value];
-    assert.equal(selectEgg(() => randomValues.shift()), expected);
+    assert.equal(
+      selectEgg(() => randomValues.shift()),
+      expected,
+    );
     assert.equal(randomValues.length, 0);
   }
 });
 
 test('指定彩蛋仅用于预览，项目配置不能覆盖真实提交的随机规则', async () => {
   const preview = terminal();
-  await preview.animation.celebrate('test: 示例', { previewEgg: 'butterfly',
-    random: () => assert.fail('预览指定彩蛋时不抽签'), wait: async () => {} });
+  await preview.animation.celebrate('test: 示例', {
+    previewEgg: 'butterfly',
+    random: () => assert.fail('预览指定彩蛋时不抽签'),
+    wait: async () => {},
+  });
   assert.match(preview.output, /蝴蝶来访/);
   const real = terminal({ successEgg: 'fireworks', eggChance: 1 });
   let duration = 0;
-  await real.animation.celebrate('build: 示例', { random: () => 0.9, wait: async ms => { duration = ms; } });
+  await real.animation.celebrate('build: 示例', {
+    random: () => 0.9,
+    wait: async (ms) => {
+      duration = ms;
+    },
+  });
   assert.equal(duration, 750);
   assert.doesNotMatch(real.output, /小小烟花/);
 });
@@ -258,7 +346,10 @@ test('只刷新变化行，输出背压时跳过帧，关闭配置完全静默',
 
   const slow = terminal();
   const write = slow.stream.write;
-  slow.stream.write = value => { write(value); return false; };
+  slow.stream.write = (value) => {
+    write(value);
+    return false;
+  };
   slow.animation.start();
   const blocked = slow.output;
   slow.advance(500);
@@ -271,7 +362,9 @@ test('只刷新变化行，输出背压时跳过帧，关闭配置完全静默',
 
   const disabled = terminal({ enabled: false });
   disabled.animation.start();
-  await disabled.animation.celebrate('feat: 不应显示', { random: () => assert.fail('关闭后不抽签') });
+  await disabled.animation.celebrate('feat: 不应显示', {
+    random: () => assert.fail('关闭后不抽签'),
+  });
   disabled.animation.close();
   assert.equal(disabled.output, '');
 });
@@ -295,7 +388,10 @@ test('窗口缩放不回退旧行数，退出与暂停恢复光标且不接管�
   fixture.animation.start();
   const before = fixture.output;
   fixture.stream.emit('resize');
-  assert.doesNotMatch(fixture.output.slice(before.length).replaceAll('\u001b', ''), /\[\d+A/);
+  assert.doesNotMatch(
+    fixture.output.slice(before.length).replaceAll('\u001b', ''),
+    /\[\d+A/,
+  );
   assert.equal(fixture.animation.active, false);
   assert.equal(fixture.stream.listenerCount('resize'), 0);
   const second = terminal();
@@ -335,7 +431,9 @@ test('中断时先恢复光标，保留原有取消处理，缺省时重新交�
     const fixture = terminal();
     let forwarded = null;
     fixture.lifecycle.pid = 123;
-    fixture.lifecycle.kill = (pid, received) => { forwarded = [pid, received]; };
+    fixture.lifecycle.kill = (pid, received) => {
+      forwarded = [pid, received];
+    };
     fixture.animation.start();
     fixture.lifecycle.emit(signal);
     assert.deepEqual(forwarded, [123, signal]);
@@ -359,7 +457,9 @@ test('中断时先恢复光标，保留原有取消处理，缺省时重新交�
 
 test('终端能力检测和绘制异常均降级，失败后不创建动画计时器', () => {
   const unavailable = terminal();
-  unavailable.stream.getColorDepth = () => { throw executionError('animation/test-terminal', '终端不可用'); };
+  unavailable.stream.getColorDepth = () => {
+    throw executionError('animation/test-terminal', '终端不可用');
+  };
   assert.equal(supportsCommitAnimation(unavailable.stream, {}), false);
   assert.doesNotThrow(() => unavailable.animation.start());
   assert.equal(unavailable.animation.active, false);

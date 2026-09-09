@@ -11,18 +11,18 @@ export function validateNotificationConfiguration(value, configPath) {
     || typeof notificationValue !== 'object'
     || Array.isArray(notificationValue)
   ) {
-    throw configValidationError(`${configPath} notification 必须是对象`);
+    throw configValidationError(`${configPath} reporting.notification 必须是对象`);
   }
   assertKnownProperties(
     notificationValue,
     new Set(['enabled']),
-    `${configPath} notification`,
+    `${configPath} reporting.notification`,
   );
   if (
     notificationValue.enabled != null
     && typeof notificationValue.enabled !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} notification.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} reporting.notification.enabled 必须是布尔值`);
   }
   return {
     enabled: notificationValue.enabled ?? DEFAULT_NOTIFICATION_CONFIG.enabled,

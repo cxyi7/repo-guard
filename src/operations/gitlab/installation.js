@@ -3,6 +3,7 @@ import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { planOperationsPipeline } from '../pipeline/plan.js';
 import { assertOperationsFileLocation } from '../config/file-location.js';
+import { managedContentIsUnmodified } from './managed-content.js';
 import {
   OPERATIONS_PIPELINE_FILE,
   OPERATIONS_PIPELINE_MARKER,
@@ -16,6 +17,21 @@ function readExisting(root, file) {
   return existsSync(path.join(root, file)) ? readFileSync(path.join(root, file), 'utf8') : null;
 }
 
+function pipelineWriteConflict(currentPipeline) {
+  if (!currentPipeline) return null;
+  if (!currentPipeline.startsWith(`${OPERATIONS_PIPELINE_MARKER}\n`)
+      && !currentPipeline.startsWith(`${OPERATIONS_PIPELINE_MARKER}\r\n`)) {
+    return configurationError('operations/unmanaged-pipeline', `拒绝覆盖非托管流水线：${OPERATIONS_PIPELINE_FILE}`);
+  }
+  if (!managedContentIsUnmodified(currentPipeline)) {
+    return configurationError(
+      'operations/modified-pipeline',
+      `拒绝覆盖人工修改或缺少有效摘要的非托管流水线：${OPERATIONS_PIPELINE_FILE}；仅接受当前带有效内容摘要的受管片段，请保留原文件并人工合并 \`repo-guard ops plan\` 预览，不自动转换无摘要片段`,
+    );
+  }
+  return null;
+}
+
 export function inspectOperationsGitLabPipeline(root, operations, projects) {
   const plan = planOperationsPipeline(root, operations, projects);
   const expected = renderOperationsGitLabPipeline(plan);
@@ -25,7 +41,10 @@ export function inspectOperationsGitLabPipeline(root, operations, projects) {
     if (current) problems.push('运维已关闭，但生成的流水线片段仍存在；请移除根引用后删除片段');
     return { enabled: false, problems };
   }
-  if (current?.replaceAll('\r\n', '\n') !== expected) {
+  const conflict = pipelineWriteConflict(current);
+  if (conflict) {
+    problems.push(conflict.message);
+  } else if (current?.replaceAll('\r\n', '\n') !== expected) {
     problems.push(`${OPERATIONS_PIPELINE_FILE} 缺失、已修改或已过期；请运行 repo-guard ops install`);
   }
   const rootContent = readExisting(root, '.gitlab-ci.yml') ?? '';
@@ -49,21 +68,22 @@ export function installOperationsGitLabPipeline(root, operations, projects, { dr
     }
     return { enabled: false, integrated: false, pipelineChanged: false, rootChanged: false, plan };
   }
-  if (currentPipeline && !currentPipeline.startsWith(`${OPERATIONS_PIPELINE_MARKER}\n`)
-      && !currentPipeline.startsWith(`${OPERATIONS_PIPELINE_MARKER}\r\n`)) {
-    throw configurationError('operations/unmanaged-pipeline', `拒绝覆盖非托管流水线：${OPERATIONS_PIPELINE_FILE}`);
-  }
+  const conflict = pipelineWriteConflict(currentPipeline);
+  if (conflict && !dryRun) throw conflict;
   const rootFile = '.gitlab-ci.yml';
   const currentRoot = readExisting(root, rootFile);
   const rootContent = `${ROOT_MARKER}\ninclude:\n  - local: /${OPERATIONS_PIPELINE_FILE}\n`;
   const integrated = currentRoot === null || currentRoot.replaceAll('\r\n', '\n') === rootContent;
   const preview = {
     enabled: true,
-    integrated,
+    integrated: integrated && !conflict,
     pipelineChanged: currentPipeline?.replaceAll('\r\n', '\n') !== pipeline,
     rootChanged: currentRoot === null,
-    manualSnippet: integrated ? null : `include:\n  - local: /${OPERATIONS_PIPELINE_FILE}\n`,
-    guidance: integrated ? null : '根流水线保持不变，请合并 include，并确认 .pre、build、deploy 阶段可用；Runner 必须预先准备项目工具和依赖',
+    manualSnippet: conflict && integrated
+      ? '请保留原文件，并人工合并流水线预览。'
+      : integrated ? null : `include:\n  - local: /${OPERATIONS_PIPELINE_FILE}\n`,
+    guidance: conflict?.message
+      ?? (integrated ? null : '根流水线保持不变，请合并 include，并确认 .pre、build、deploy 阶段可用；Runner 必须预先准备项目工具和依赖'),
     plan,
   };
   if (dryRun) return preview;

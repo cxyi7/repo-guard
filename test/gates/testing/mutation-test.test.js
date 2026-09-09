@@ -116,32 +116,47 @@ function createFixture() {
   );
   writeFileSync(path.join(root, 'stryker.config.json'), '{}\n');
   writeFileSync(path.join(root, 'repo-guard.config.json'), `${stringifyProjectFixture({
-    version: 1,
-    notification: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
     mutationTest: {
       enabled: true,
       configFile: 'stryker.config.json',
       timeoutMs: 30000,
       reportsDirectory: 'reports/mutation',
       originalHtml: true,
-      guardedBuilds: [
-        {
-          script: 'build:mp-weixin',
-          packageScript: 'guard:build:mp-weixin',
-          timeoutMs: 30000,
-          notifyOnFailure: true,
-        },
-        {
-          script: 'build:h5',
-          packageScript: 'guard:build:h5',
-          timeoutMs: 30000,
-          notifyOnFailure: false,
-        },
-      ],
-    },
-    rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    exclusions: [],
-  }, null, 2)}\n`);
+      guardedBuilds: [{
+        script: 'build:mp-weixin',
+        packageScript: 'guard:build:mp-weixin',
+        timeoutMs: 30000,
+        notifyOnFailure: true
+      }, {
+        script: 'build:h5',
+        packageScript: 'guard:build:h5',
+        timeoutMs: 30000,
+        notifyOnFailure: false
+      }]
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }],
+    exclusions: []
+  },
+  reporting: {
+    notification: {
+      enabled: false
+    }
+  }
+}, null, 2)}\n`);
   createFakeStryker(root);
   git(root, ['add', '.']);
   git(root, ['commit', '-m', 'fixture']);
@@ -183,10 +198,22 @@ test('拒绝不可信的报告状态、阈值和文件路径', () => {
 
 test('校验多个受保护构建，并拒绝脚本递归和别名冲突', () => {
   const base = {
-    version: 1,
-    rules: [{ pattern: '**', category: 'Fixture', level: 'audit' }],
-    exclusions: [],
-  };
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
+    rules: [{
+      pattern: '**',
+      category: 'Fixture',
+      level: 'audit'
+    }],
+    exclusions: []
+  }
+};
   const mutationTest = {
     enabled: true,
     guardedBuilds: [{
@@ -194,30 +221,39 @@ test('校验多个受保护构建，并拒绝脚本递归和别名冲突', () =>
       packageScript: 'guard:build:h5',
     }],
   };
-  const normalized = validateConfigValue({ ...base, mutationTest }, 'repo-guard.config.json');
-  assert.equal(normalized.mutationTest.guardedBuilds[0].timeoutMs, 300000);
+  const normalized = validateConfigValue({
+  checks: {
+    mutationTest
+  },
+  ...base
+}, 'repo-guard.config.json');
+  assert.equal(normalized.checks.mutationTest.guardedBuilds[0].timeoutMs, 300000);
 
   assert.throws(() => validateConfigValue({
-    ...base,
+  checks: {
     mutationTest: {
       ...mutationTest,
       guardedBuilds: [{
         script: 'guard:build:other',
-        packageScript: 'guard:build:h5',
-      }],
-    },
-  }, 'repo-guard.config.json'), /不得指向其他受保护构建脚本/);
+        packageScript: 'guard:build:h5'
+      }]
+    }
+  },
+  ...base
+}, 'repo-guard.config.json'), /不得指向其他受保护构建脚本/);
 
   assert.throws(() => validateConfigValue({
-    ...base,
+  checks: {
     mutationTest: {
       ...mutationTest,
       guardedBuilds: [{
         script: 'build:h5',
-        packageScript: 'guard:build:',
-      }],
-    },
-  }, 'repo-guard.config.json'), /必须以 guard:build: 开头/);
+        packageScript: 'guard:build:'
+      }]
+    }
+  },
+  ...base
+}, 'repo-guard.config.json'), /必须以 guard:build: 开头/);
 });
 
 test('变异得分未达门槛时阻断构建，通过后才运行任意已配置构建脚本', (context) => {
@@ -330,8 +366,8 @@ test('失败通知复用企业微信配置，并在受管流水线中避免重�
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const calls = [];
   const config = {
-    notification: { enabled: true },
-    ci: { pipeline: { notifications: false } },
+    version: 2,
+    reporting: { notification: { enabled: true } },
   };
   const build = { script: 'build:mp-weixin', notifyOnFailure: true };
   const result = {
@@ -354,14 +390,13 @@ test('失败通知复用企业微信配置，并在受管流水线中避免重�
   assert.match(calls[0][1], /构建脚本：build:mp-weixin/);
   assert.match(calls[0][1], /变异得分：未生成/);
 
-  config.ci.pipeline.notifications = true;
   assert.equal(await sendMutationTestFailureNotification({
     root,
     config,
     build,
     result,
-    environment: { ...environment, GITLAB_CI: 'true' },
+    environment: { ...environment, GITLAB_CI: 'true', REPO_GUARD_OPERATIONS_NOTIFICATIONS: 'true' },
     send,
-  }), 'managed-pipeline');
+  }), 'managed-operations');
   assert.equal(calls.length, 1);
 });

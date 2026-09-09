@@ -15,7 +15,7 @@ export function runInit(cwd = process.cwd(), options = {}) {
   const result = installHooks({ cwd: root, updatePackageScripts: true });
   const agentPolicies = workspaceAgentPolicyTargets(workspace).map((target) => syncAgentPolicies(target.root, target.config));
   const agentPolicy = { changed: agentPolicies.some((policy) => policy.changed) };
-  const deliverySkills = syncDeliverySkills(root, workspace.repositoryConfig.deliveryContract.enabled);
+  const deliverySkills = syncDeliverySkills(root, workspace.repositoryConfig.repository.deliveryContract.enabled);
 
   writeConsoleMessage(`repo-guard 已在以下目录完成初始化：${root}`);
   writeConsoleMessage(`- 配置：${CONFIG_FILE}${created ? '（已创建）' : '（已保留）'}`);

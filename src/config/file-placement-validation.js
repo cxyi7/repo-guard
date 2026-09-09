@@ -7,7 +7,7 @@ import {
 } from './validation-primitives.js';
 
 function normalizeFilePlacementRule(rule, index, configPath) {
-  const label = `${configPath} preCommit.filePlacement 规则 ${index + 1}`;
+  const label = `${configPath} checks.filePlacement 规则 ${index + 1}`;
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
     throw configValidationError(`${label} 必须是对象`);
   }
@@ -50,37 +50,37 @@ function normalizeFilePlacementRule(rule, index, configPath) {
   };
 }
 
-export function validateFilePlacementConfiguration(preCommitValue, configPath) {
-  const filePlacementValue = preCommitValue.filePlacement ?? {};
+export function validateFilePlacementConfiguration(checksValue, configPath) {
+  const filePlacementValue = checksValue.filePlacement ?? {};
   if (
     !filePlacementValue
     || typeof filePlacementValue !== 'object'
     || Array.isArray(filePlacementValue)
   ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement 必须是对象`);
+    throw configValidationError(`${configPath} checks.filePlacement 必须是对象`);
   }
   assertKnownProperties(
     filePlacementValue,
     new Set(['enabled', 'mode', 'rules']),
-    `${configPath} preCommit.filePlacement`,
+    `${configPath} checks.filePlacement`,
   );
   if (
     filePlacementValue.enabled != null
     && typeof filePlacementValue.enabled !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.filePlacement.enabled 必须是布尔值`);
   }
   if (
     filePlacementValue.mode != null
     && !['newFiles', 'changedFiles'].includes(filePlacementValue.mode)
   ) {
     throw configValidationError(
-      `${configPath} preCommit.filePlacement.mode 必须为 newFiles 或 changedFiles`,
+      `${configPath} checks.filePlacement.mode 必须为 newFiles 或 changedFiles`,
     );
   }
   const rulesValue = filePlacementValue.rules ?? DEFAULT_FILE_PLACEMENT_CONFIG.rules;
   if (!Array.isArray(rulesValue) || rulesValue.length === 0) {
-    throw configValidationError(`${configPath} preCommit.filePlacement.rules 必须是非空数组`);
+    throw configValidationError(`${configPath} checks.filePlacement.rules 必须是非空数组`);
   }
   return {
     enabled: filePlacementValue.enabled ?? DEFAULT_FILE_PLACEMENT_CONFIG.enabled,

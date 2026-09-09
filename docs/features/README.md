@@ -1,12 +1,14 @@
 # 功能说明文档索引
 
+当前接入只使用新格式：自有结构化配置、登记表、基线与报告统一为 v2，Hook 仅接受当前 v5，AGENTS 仅接受当前托管区块；旧文件拒绝处理且不自动转换。公共写入口先检查相关托管格式，避免拒绝旧输入时留下部分写入；无法识别的执行锁也保留并阻断。格式清单与重新接入边界见[配置管理与规则启停](configuration-management.md)。
+
 每项能力都提供用途、接入或调用方式、执行范围、判断依据、失败处理以及实现和测试入口。安装与日常操作从[使用说明](../usage-guide.md)开始；内部模块职责见[维护者架构说明](../project-structure-and-feature-inventory.md)。
 
 交付相关能力统一维护在[交付合同手册](delivery-contract.md)：功能登记、合同、证据和反馈是同一条流程，下面按环节链接到同页相应位置。
 
-v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护集中在仓库公共规则中；迁移与启用命令会按应用目录补充对应保护，字段和行为见各专题。
+v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护集中在仓库公共规则中；启停命令会按应用目录补充对应保护，字段和行为见各专题。子应用使用 `project.schema.json`，只声明身份与 `checks`；仓库公共分区使用根目录的 `config.schema.json`。
 
-当前内部配置统一与旧 CI 发布链路清理尚未完成，进度和验收要求见 [2.0 重构剩余工作](../refactor-2.0-remaining-work.md)。下表“已维护”表示已有对应功能文档，不表示全部重构工作已完成。
+当前配置加载、功能启停和各执行入口共同使用原生 v2 模型；质量检查与运维发布独立维护。具体改动与验收依据见 [2.0 重构工作清单](../refactor-2.0-remaining-work.md)。下表“已维护”表示已有对应功能文档，不表示已发布到 npm。
 
 ## 接入与托管
 
@@ -14,7 +16,7 @@ v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护�
 |---|---|---|
 | 项目初始化 | [docs/features/project-initialization.md](project-initialization.md) | 已维护 |
 | 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，Node 后端已接入 |
-| 配置迁移 | [docs/features/configuration-migration.md](configuration-migration.md) | 已维护 |
+| 配置管理与规则启停 | [docs/features/configuration-management.md](configuration-management.md) | 已维护 |
 | Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护 |
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护 |
 | 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
@@ -89,7 +91,7 @@ v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护�
 | GateResult 与报告 | [docs/features/gate-result-and-reporting.md](gate-result-and-reporting.md) | 已维护 |
 | 项目外部门禁 | [docs/features/external-gates.md](external-gates.md) | 已维护 |
 | GitLab 应用交付流水线 | [docs/features/managed-delivery-pipeline.md](managed-delivery-pipeline.md) | 已维护 |
-| 独立运维与各应用发布 | [docs/features/operations.md](operations.md) | 已维护，使用独立 ops 配置 |
+| 独立运维与各应用发布 | [docs/features/operations.md](operations.md) | 已维护，独立 ops 配置，通知覆盖 MR 与分支流水线 |
 | 发布就绪检查 | [docs/features/release-ready.md](release-ready.md) | 已维护 |
 
 ## 单项文档约定

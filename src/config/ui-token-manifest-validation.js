@@ -184,8 +184,8 @@ export function validateUiTokenManifest(value, label = 'UI Token Manifest') {
   if (value.$schema != null && typeof value.$schema !== 'string') {
     throw configValidationError(`${label}.$schema 必须是字符串`);
   }
-  if (value.version !== 1) {
-    throw configValidationError(`${label} 使用了不支持的版本：${String(value.version)}`);
+  if (value.version !== 2) {
+    throw configValidationError(`${label} 仅支持 version: 2，不转换旧格式；当前为 ${String(value.version)}`);
   }
   if (!Array.isArray(value.sources) || value.sources.length === 0) {
     throw configValidationError(`${label} sources 必须是非空数组`);
@@ -215,5 +215,5 @@ export function validateUiTokenManifest(value, label = 'UI Token Manifest') {
     );
   }
   assertAcyclicShortcuts(shortcuts, label);
-  return { version: 1, sources, tokens, shortcuts };
+  return { version: 2, sources, tokens, shortcuts };
 }

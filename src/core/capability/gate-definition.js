@@ -35,7 +35,7 @@ export function defineGate({
   configKey = null,
   featureName = null,
   featureOrder = null,
-  configVersions = [1],
+  configVersions = [2],
   environments,
   mutation,
   allowedMutations = [mutation],

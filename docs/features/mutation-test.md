@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 变异测试默认关闭，并且不会进入 pre-commit、pre-push 或固定 CI 计划。消费项目先按 [StrykerJS 官方初始化流程](https://stryker-mutator.io/docs/stryker-js/getting-started/)安装自身需要的 `@stryker-mutator/core` 10.x、测试运行器和 `stryker.config.*`；repo-guard 只调用消费项目的安装与配置，不内置测试运行器。
 

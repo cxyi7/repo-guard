@@ -10,6 +10,13 @@
     "version": { "const": 2, "description": "配置版本，必须为 2。" },
     "enabled": { "type": "boolean", "default": false, "description": "是否显式启用运维流水线；缺省关闭。" },
     "provider": { "const": "gitlab", "default": "gitlab", "description": "当前仅支持 GitLab。" },
+    "notifications": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false, "description": "启用整条运维流水线的企业微信成功、失败及尽力取消通知；成功和失败通知覆盖与质量、构建相同的合并请求及分支流水线。通知失败不改变质量或部署结果，凭据只从 CI 环境变量读取；配置更新后需重新执行 ops install。" }
+      }
+    },
     "projects": {
       "type": "object",
       "default": {},

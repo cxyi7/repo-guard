@@ -25,7 +25,7 @@ import {
   executionPlans,
 } from '../execution-plans.js';
 import { orchestratePlan } from '../orchestrator.js';
-import { writeCiReport } from './report.js';
+import { CI_REPORT_VERSION, writeCiReport } from './report.js';
 import { createCiGatePolicyController } from './gate-policy.js';
 
 function isTrustedExternalGateCi(env) {
@@ -34,7 +34,7 @@ function isTrustedExternalGateCi(env) {
 
 function configurationErrorReport(profile, error) {
   return {
-    version: 1,
+    version: CI_REPORT_VERSION,
     status: 'configuration-error',
     profile: profile ?? null,
     base: null,
@@ -89,18 +89,18 @@ export async function runCiGate({
 } = {}) {
   reportPath ||= config.ci.reportPath;
   reportPath = validateCiReportPath(reportPath);
-  if (config.externalGates.some(({ report }) => report.path.toLowerCase() === reportPath.toLowerCase())) {
+  if (config.ci.externalGates.some(({ report }) => report.path.toLowerCase() === reportPath.toLowerCase())) {
     throw configurationError('ci/report-path-collision', 'CI 汇总报告路径不得与外部门禁报告路径相同。');
   }
   if (!['all', 'repository', 'project', 'evidence'].includes(scope)) {
     throw configurationError('ci/invalid-scope', 'CI 执行范围必须为整个项目、仓库、应用或交付证据。');
   }
   const publishReport = (report) => {
-    const output = { ...report, ...(config.configVersion === 2 ? {
+    const output = { ...report,
       projectId: config.project?.id ?? null,
       projectRoot: path.relative(repositoryRoot, root).replaceAll('\\', '/') || '.',
       scope,
-    } : {}) };
+    };
     writeCiReport(root, reportPath, output);
     if (onReport) onReport(output);
   };
@@ -138,7 +138,7 @@ export async function runCiGate({
     };
   } catch (error) {
     const report = {
-      version: 1,
+      version: CI_REPORT_VERSION,
       status: 'range-error',
       profile,
       base: base ?? null,
@@ -151,7 +151,7 @@ export async function runCiGate({
     return gateStatusToExitCode('range-error');
   }
 
-  const reportPaths = new Set([reportPath, ...config.externalGates.map(({ report }) => report.path)]);
+  const reportPaths = new Set([reportPath, ...config.ci.externalGates.map(({ report }) => report.path)]);
   const projectFiles = collectProjectFiles(root)
     .filter((file) => !reportPaths.has(file) && !file.startsWith('reports/.npm-cache/'));
   const steps = [];
@@ -236,7 +236,7 @@ export async function runCiGate({
       ? 'error'
     : policyExecution.status === 'violation' ? 'failed' : 'passed';
   const report = {
-    version: 1,
+    version: CI_REPORT_VERSION,
     status,
     profile,
     base: range.base,

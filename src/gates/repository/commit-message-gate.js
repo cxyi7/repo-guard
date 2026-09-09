@@ -134,10 +134,10 @@ export function createCommitMessageResult({
 
 export const commitMessageGate = defineGate({
   id: GATE_ID,
-  configKey: 'commitMessage',
+  configKey: 'repository.commitMessage',
   featureName: 'commitMessage',
   featureOrder: 70,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['pre-push', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 30000,
@@ -161,10 +161,10 @@ export const commitMessageGate = defineGate({
   ],
   inspectSetup: ({ config }) => ({
     status: 'ready',
-    summary: config.commitMessage.enabled ? '提交信息门禁已启用' : '提交信息门禁已禁用',
+    summary: config.repository.commitMessage.enabled ? '提交信息门禁已启用' : '提交信息门禁已禁用',
   }),
   plan: ({ config, revision }) => ({
-    enabled: config.commitMessage.enabled,
+    enabled: config.repository.commitMessage.enabled,
     revision,
   }),
   run({ root, config, environment, plan }) {
@@ -177,10 +177,10 @@ export const commitMessageGate = defineGate({
     }
     const records = collectCommitMessages(root, plan.revision);
     const requireVersion = environment === 'release-ready'
-      && config.commitMessage.breakingChange.requireMajorVersionOnRelease;
+      && config.repository.commitMessage.breakingChange.requireMajorVersionOnRelease;
     return createCommitMessageResult({
       records,
-      config: config.commitMessage,
+      config: config.repository.commitMessage,
       environment,
       previousVersion: requireVersion
         ? previousPackageVersion(root, plan.revision.base)

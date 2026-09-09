@@ -25,12 +25,12 @@ function normalizeReportsDirectory(value, label) {
 
 function normalizeGuardedBuilds(value, configPath) {
   if (!Array.isArray(value)) {
-    throw configValidationError(`${configPath} mutationTest.guardedBuilds 必须是数组`);
+    throw configValidationError(`${configPath} checks.mutationTest.guardedBuilds 必须是数组`);
   }
   const scripts = new Set();
   const packageScripts = new Set();
   return value.map((entry, index) => {
-    const label = `${configPath} mutationTest.guardedBuilds 第 ${index + 1} 项`;
+    const label = `${configPath} checks.mutationTest.guardedBuilds 第 ${index + 1} 项`;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw configValidationError(`${label} 必须是对象`);
     }
@@ -71,7 +71,7 @@ function normalizeGuardedBuilds(value, configPath) {
 export function validateMutationTestConfiguration(value, configPath) {
   const mutationValue = value.mutationTest ?? {};
   if (!mutationValue || typeof mutationValue !== 'object' || Array.isArray(mutationValue)) {
-    throw configValidationError(`${configPath} mutationTest 必须是对象`);
+    throw configValidationError(`${configPath} checks.mutationTest 必须是对象`);
   }
   assertKnownProperties(
     mutationValue,
@@ -83,24 +83,24 @@ export function validateMutationTestConfiguration(value, configPath) {
       'originalHtml',
       'guardedBuilds',
     ]),
-    `${configPath} mutationTest`,
+    `${configPath} checks.mutationTest`,
   );
   if (mutationValue.enabled != null && typeof mutationValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} mutationTest.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.mutationTest.enabled 必须是布尔值`);
   }
   if (mutationValue.timeoutMs != null
     && (!Number.isInteger(mutationValue.timeoutMs) || mutationValue.timeoutMs <= 0)) {
-    throw configValidationError(`${configPath} mutationTest.timeoutMs 必须是正整数`);
+    throw configValidationError(`${configPath} checks.mutationTest.timeoutMs 必须是正整数`);
   }
   if (mutationValue.originalHtml != null && typeof mutationValue.originalHtml !== 'boolean') {
-    throw configValidationError(`${configPath} mutationTest.originalHtml 必须是布尔值`);
+    throw configValidationError(`${configPath} checks.mutationTest.originalHtml 必须是布尔值`);
   }
   const configFile = normalizeRelativePattern(
     mutationValue.configFile ?? DEFAULT_MUTATION_TEST_CONFIG.configFile,
-    `${configPath} mutationTest.configFile`,
+    `${configPath} checks.mutationTest.configFile`,
   );
   if (!/\.(?:cjs|mjs|js|json)$/i.test(configFile)) {
-    throw configValidationError(`${configPath} mutationTest.configFile 必须是 JS 或 JSON 配置文件`);
+    throw configValidationError(`${configPath} checks.mutationTest.configFile 必须是 JS 或 JSON 配置文件`);
   }
   return {
     enabled: mutationValue.enabled ?? DEFAULT_MUTATION_TEST_CONFIG.enabled,
@@ -108,7 +108,7 @@ export function validateMutationTestConfiguration(value, configPath) {
     timeoutMs: mutationValue.timeoutMs ?? DEFAULT_MUTATION_TEST_CONFIG.timeoutMs,
     reportsDirectory: normalizeReportsDirectory(
       mutationValue.reportsDirectory ?? DEFAULT_MUTATION_TEST_CONFIG.reportsDirectory,
-      `${configPath} mutationTest.reportsDirectory`,
+      `${configPath} checks.mutationTest.reportsDirectory`,
     ),
     originalHtml: mutationValue.originalHtml ?? DEFAULT_MUTATION_TEST_CONFIG.originalHtml,
     guardedBuilds: normalizeGuardedBuilds(

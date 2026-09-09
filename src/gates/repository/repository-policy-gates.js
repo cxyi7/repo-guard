@@ -26,7 +26,7 @@ import { commitMessageGate } from './commit-message-gate.js';
 import { inspectAgentPolicies } from '../../policies/agent-policies.js';
 import { deliveryContractGate } from './delivery-contract-gate.js';
 
-const CONFIG_VERSION = [1];
+const CONFIG_VERSION = [2];
 
 function ready(summary) { return { status: 'ready', summary }; }
 
@@ -89,12 +89,12 @@ function protectedFileFinding(change, action) {
 }
 
 export const exceptionRegistryGate = defineGate({
-  id: 'repository.structured-exceptions', configKey: 'exceptions', configVersions: CONFIG_VERSION,
+  id: 'repository.structured-exceptions', configKey: 'repository.exceptions', configVersions: CONFIG_VERSION,
   environments: ['manual', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 30000,
   manualCommand: 'exceptions', manualOrder: 10, packageScript: 'guard:exceptions',
   inspectSetup: () => ready('结构化例外注册表'), plan: () => ({}),
   run({ config }) {
-    const result = inspectExceptionLifecycle(config.exceptions);
+    const result = inspectExceptionLifecycle(config.repository.exceptions);
     const invalid = [...result.expired, ...result.future];
     if (invalid.length === 0) return passedResult('repository.structured-exceptions', `结构化例外均在有效期内（${result.active.length} 条生效）`, { metrics: { entries: result.entries.length, active: result.active.length, expiring: result.expiring.length } });
     return violationResult('repository.structured-exceptions', '结构化例外包含无效日期', {
@@ -136,20 +136,20 @@ export const agentPolicyGate = defineGate({
 });
 
 export const dependencyPolicyGate = defineGate({
-  id: 'dependencies.policy', configKey: 'dependencyPolicy', featureName: 'dependencies', featureOrder: 80,
+  id: 'dependencies.policy', configKey: 'repository.dependencyPolicy', featureName: 'dependencies', featureOrder: 80,
   configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000,
   manualCommand: 'dependencies', manualOrder: 20, doctorOrder: 120, packageScript: 'guard:dependencies',
-  inspectSetup: ({ config }) => ready(config.dependencyPolicy.enabled ? '依赖策略已启用' : '依赖策略已禁用'),
+  inspectSetup: ({ config }) => ready(config.repository.dependencyPolicy.enabled ? '依赖策略已启用' : '依赖策略已禁用'),
   plan: ({ config, changes, environment }) => ({
-    enabled: environment === 'manual' || config.dependencyPolicy.enabled,
+    enabled: environment === 'manual' || config.repository.dependencyPolicy.enabled,
     applicable: environment !== 'pre-commit' || changeSetEntries(changes).some((change) => ['package.json', 'package-lock.json'].includes(change.path ?? change.relative)),
   }),
   run({ root, config, plan, environment }) {
     if (!plan.enabled) return skippedResult('dependencies.policy', '依赖策略已禁用');
     if (!plan.applicable) return skippedResult('dependencies.policy', '根包元数据未变更');
     const result = environment === 'pre-commit'
-      ? inspectStagedDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions })
-      : inspectDependencyPolicy({ root, config: config.dependencyPolicy, exceptions: config.exceptions });
+      ? inspectStagedDependencyPolicy({ root, config: config.repository.dependencyPolicy, exceptions: config.repository.exceptions })
+      : inspectDependencyPolicy({ root, config: config.repository.dependencyPolicy, exceptions: config.repository.exceptions });
     if (result.violations.length === 0) return passedResult('dependencies.policy', '依赖策略已通过', { metrics: { approvedExceptions: result.approved.length } });
     return violationResult('dependencies.policy', `依赖策略发现 ${result.violations.length} 项违规`, {
       findings: result.violations.map((item) => policyFinding(
@@ -163,19 +163,19 @@ export const dependencyPolicyGate = defineGate({
 });
 
 export const filePlacementGate = defineGate({
-  id: 'repository.file-placement', configKey: 'preCommit.filePlacement', featureName: 'filePlacement', featureOrder: 40,
+  id: 'repository.file-placement', configKey: 'checks.filePlacement', featureName: 'filePlacement', featureOrder: 40,
   configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000,
   manualCommand: 'file-placement', manualOrder: 150, doctorOrder: 150, packageScript: 'guard:file-placement',
-  inspectSetup: ({ config }) => ready(config.preCommit.filePlacement.enabled ? '文件归类策略已启用' : '文件归类策略已禁用'),
+  inspectSetup: ({ config }) => ready(config.checks.filePlacement.enabled ? '文件归类策略已启用' : '文件归类策略已禁用'),
   plan: ({ config, changes, files, environment }) => ({
-    enabled: environment === 'manual' || config.preCommit.filePlacement.enabled,
+    enabled: environment === 'manual' || config.checks.filePlacement.enabled,
     changes: environment === 'manual'
       ? files.map((file) => ({ status: 'A', oldPath: null, path: typeof file === 'string' ? file : file.relative }))
       : changeSetEntries(changes),
   }),
   run({ config, plan }) {
     if (!plan.enabled) return skippedResult('repository.file-placement', '文件归类策略已禁用');
-    const result = inspectFilePlacement({ changes: plan.changes, config: config.preCommit.filePlacement });
+    const result = inspectFilePlacement({ changes: plan.changes, config: config.checks.filePlacement });
     if (result.violations.length === 0) return passedResult('repository.file-placement', '文件归类策略已通过', { diagnostics: [{ level: 'info', message: `文件归类项目检查已通过：${result.checkedCount} 个文件匹配规则。` }], metrics: { checkedFiles: result.checkedCount } });
     return violationResult('repository.file-placement', `文件归类策略发现 ${result.violations.length} 项违规`, {
       findings: result.violations.map((item) => ({ ruleId: 'repository/file-placement', severity: 'error', message: `${item.path} 必须放置在允许的目录下`, location: { path: item.path }, remediation: `将其移动到 ${item.suggestedPath}` })),
@@ -185,19 +185,19 @@ export const filePlacementGate = defineGate({
 });
 
 export const maximumFileLinesGate = defineGate({
-  id: 'repository.maximum-file-lines', configKey: 'preCommit.maxFileLines', featureName: 'maxFileLines', featureOrder: 50,
+  id: 'repository.maximum-file-lines', configKey: 'checks.maxFileLines', featureName: 'maxFileLines', featureOrder: 50,
   configVersions: CONFIG_VERSION, environments: ['pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000, doctorOrder: 140,
   ciScopes: ['all-files', 'changed-files'],
-  inspectSetup: ({ config }) => ready(config.preCommit.maxFileLines.enabled ? '最大文件行数策略已启用' : '最大文件行数策略已禁用'),
+  inspectSetup: ({ config }) => ready(config.checks.maxFileLines.enabled ? '最大文件行数策略已启用' : '最大文件行数策略已禁用'),
   plan: ({ root, config, files, revision, changes }) => ({
-    enabled: config.preCommit.maxFileLines.enabled,
-    files: selectMaxFileLineFiles(projectFiles({ root, files }), config.preCommit.maxFileLines),
+    enabled: config.checks.maxFileLines.enabled,
+    files: selectMaxFileLineFiles(projectFiles({ root, files }), config.checks.maxFileLines),
     baselineRef: revision?.base ?? null,
     changes: changeSetEntries(changes),
   }),
   run({ root, config, plan }) {
     if (!plan.enabled || plan.files.length === 0) return skippedResult('repository.maximum-file-lines', '最大文件行数策略没有适用文件');
-    const result = evaluateMaxFileLines({ root, files: plan.files, config: config.preCommit.maxFileLines, baselineRef: plan.baselineRef, changes: plan.changes });
+    const result = evaluateMaxFileLines({ root, files: plan.files, config: config.checks.maxFileLines, baselineRef: plan.baselineRef, changes: plan.changes });
     const warningFindings = result.warnings.map((item) => ({
       ruleId: 'repository/maximum-file-lines',
       severity: 'warning',
@@ -250,7 +250,7 @@ export const protectedFilesGate = defineGate({
     }
     const notifyChanges = plan.protectedChanges.filter(({ level }) => level === 'notify');
     const diagnostics = findings.map(({ message }) => ({ level: 'warn', message }));
-    if (notifyChanges.length === 0 || !config.notification.enabled) {
+    if (notifyChanges.length === 0 || !config.reporting.notification.enabled) {
       return passedResult('repository.protected-files', findings.length === 0
         ? '没有受保护文件发生变更'
         : `已记录 ${findings.length} 项受保护文件变更`, {

@@ -5,9 +5,43 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { securityError } from '../../core/error/repo-guard-error.js';
+import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { runGit } from '../../git/execution.js';
+
+export const CI_REPORT_VERSION = 2;
+
+function assertGateResultVersion(result) {
+  if (result?.schemaVersion !== 2) {
+    throw configurationError(
+      'ci-report/unsupported-gate-result-version',
+      'CI 报告中的 GateResult 仅支持 schemaVersion: 2，请重新运行 CI 生成当前格式报告。',
+    );
+  }
+}
+
+export function assertCiReportVersion(report) {
+  if (report?.version !== CI_REPORT_VERSION) {
+    throw configurationError(
+      'ci-report/unsupported-version',
+      'CI 报告仅支持 version: 2，请重新运行 CI 生成当前格式报告。',
+    );
+  }
+  if (Object.hasOwn(report, 'gateResult')) assertGateResultVersion(report.gateResult);
+  for (const step of report.steps ?? []) {
+    if (Object.hasOwn(step, 'gateResult')) assertGateResultVersion(step.gateResult);
+  }
+  if (Object.hasOwn(report, 'gateResults')) {
+    if (!Array.isArray(report.gateResults)) {
+      throw configurationError(
+        'ci-report/invalid-gate-results',
+        'CI 报告的 gateResults 必须是 schemaVersion: 2 的 GateResult 数组。',
+      );
+    }
+    for (const result of report.gateResults) assertGateResultVersion(result);
+  }
+  for (const target of report.targets ?? []) assertCiReportVersion(target.report);
+}
 
 function assertNoSymlinkPath(root, reportPath) {
   let current = root;
@@ -23,6 +57,7 @@ function assertNoSymlinkPath(root, reportPath) {
 }
 
 export function writeCiReport(root, reportPath, report) {
+  assertCiReportVersion(report);
   const normalized = validateCiReportPath(reportPath);
   assertNoSymlinkPath(root, normalized);
   const tracked = runGit(['ls-files', '--error-unmatch', '--', normalized], {

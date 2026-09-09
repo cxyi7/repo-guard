@@ -37,7 +37,7 @@ function assertManualProcessEnvironment(environment) {
 }
 
 function manualOnlyGate(config, gateId) {
-  const gate = config.externalGates.find(({ id }) => id === gateId);
+  const gate = config.ci.externalGates.find(({ id }) => id === gateId);
   if (!gate) {
     throw configurationError('k6-load/external-gate-not-configured', `找不到 k6 压测外部门禁 ${gateId}`);
   }

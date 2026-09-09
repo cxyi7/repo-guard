@@ -5,30 +5,20 @@ import { validateRootConfigurationContract } from '../../src/config/root-configu
 const CONFIG_PATH = 'repo-guard.config.json';
 
 test('accepts the complete set of supported root configuration properties', () => {
-  assert.doesNotThrow(() => validateRootConfigurationContract({
-    $schema: null,
-    version: 1,
-    notification: null,
-    ci: null,
-    externalGates: null,
-    codePlacement: null,
-    exceptions: null,
-    dependencyPolicy: null,
-    commitMessage: null,
-    deadCode: null,
-    imageAssets: null,
-    uiTokens: null,
-    architecture: null,
-    accessibilityTest: null,
-    build: null,
-    mutationTest: null,
-    lighthouse: null,
-    typeCheck: null,
-    unitTest: null,
-    preCommit: null,
-    rules: null,
-    exclusions: null,
-  }, CONFIG_PATH));
+  assert.doesNotThrow(() =>
+    validateRootConfigurationContract(
+      {
+        $schema: null,
+        version: 2,
+        project: null,
+        checks: null,
+        repository: null,
+        reporting: null,
+        ci: null,
+      },
+      CONFIG_PATH,
+    ),
+  );
 });
 
 test('requires the root configuration to be a JSON object', () => {
@@ -40,13 +30,23 @@ test('requires the root configuration to be a JSON object', () => {
   }
 });
 
-test('requires known root properties and configuration version 1', () => {
+test('requires known root properties and configuration version 2', () => {
   assert.throws(
-    () => validateRootConfigurationContract({ version: 1, command: 'check' }, CONFIG_PATH),
+    () =>
+      validateRootConfigurationContract(
+        { version: 2, command: 'check' },
+        CONFIG_PATH,
+      ),
     /包含不支持的属性： command/,
   );
   assert.throws(
-    () => validateRootConfigurationContract({ version: 2 }, CONFIG_PATH),
-    /使用了不支持的版本： 2/,
+    () => validateRootConfigurationContract({ version: 3 }, CONFIG_PATH),
+    { code: 'config/unsupported-version' },
+  );
+  assert.throws(
+    () => validateRootConfigurationContract({ version: 1 }, CONFIG_PATH),
+    {
+      code: 'config/unsupported-version',
+    },
   );
 });

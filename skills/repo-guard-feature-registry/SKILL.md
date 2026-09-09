@@ -5,7 +5,7 @@ description: 登记或调整 repo-guard 树形功能归属，并判断新需求�
 
 # Repo Guard 功能登记
 
-先读取项目 `repo-guard.config.json` 的 `deliveryContract` 配置，再读取对应功能登记表。不要从目录名称或代码位置直接推断业务归属。
+先读取仓库 `repo-guard.config.json` 的 `repository.deliveryContract` 配置，再读取对应功能登记表；多应用也使用仓库公共配置。项目配置必须为 `version: 2`，功能登记表必须为 `schemaVersion: 2`，旧格式停止处理并交由人工按当前规范重新建立，不自动转换。不要从目录名称或代码位置直接推断业务归属。
 
 ## 工作流
 
@@ -16,7 +16,7 @@ description: 登记或调整 repo-guard 树形功能归属，并判断新需求�
 5. 在人工确认前只使用 `proposed`；人工明确确认后才填写 `active`、`confirmedAt` 和 `confirmedBy`。
 6. 修改后运行 `repo-guard delivery-contract` 或 `repo-guard doctor`，以 repo-guard 的确定性结果为准。
 
-如果登记表尚不存在，先把 [assets/feature-registry.json](assets/feature-registry.json) 复制到 `deliveryContract.registryPath`；创建节点时再复制 [assets/feature-node.json](assets/feature-node.json) 到目标父节点的 `children`，或复制到根 `features`。两个资产都是故意保持未确认状态的脚手架，必须替换全部 `<REQUIRED_*>` 占位符后再提交。
+如果登记表尚不存在，先把 [assets/feature-registry.json](assets/feature-registry.json) 复制到 `repository.deliveryContract.registryPath`；创建节点时再复制 [assets/feature-node.json](assets/feature-node.json) 到目标父节点的 `children`，或复制到根 `features`。两个资产都是故意保持未确认状态的脚手架，必须替换全部 `<REQUIRED_*>` 占位符后再提交。
 
 ## 边界
 

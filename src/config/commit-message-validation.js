@@ -37,7 +37,7 @@ function stringList(value, fallback, label, pattern, { allowEmpty = false } = {}
 
 export function validateCommitMessageConfiguration(value, configPath) {
   const candidate = value.commitMessage ?? {};
-  const label = `${configPath} commitMessage`;
+  const label = `${configPath} repository.commitMessage`;
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
     throw configValidationError(`${label} 必须是对象`);
   }

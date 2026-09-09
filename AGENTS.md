@@ -23,7 +23,7 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Keep Lighthouse out of pre-commit; it may run explicitly or from the optional pre-push gate.
 - Do not add TypeScript type checking to the pre-commit gate.
 - Preserve partially staged and unstaged changes through `lint-staged`.
-- Managed Hook upgrades must accept known older markers but generate only the current version.
+- 托管 Hook 和规范区块只接受当前格式；旧版或未知标记必须拒绝，不转换或覆盖既有文件。repo-guard 自有配置、报告、登记表和基线只使用文档规定的当前格式，不得新增旧版读取器或转换路径。
 - Every behavior change requires tests and synchronized README/config schema updates.
 - Treat `docs/project-structure-and-feature-inventory.md` and `docs/features/` as the joint
   long-lived capability documentation. Every feature addition, change, or removal must update

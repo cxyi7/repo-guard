@@ -60,7 +60,7 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
   try {
     workspace = loadWorkspace(root, { allowExpiredExceptions: true });
     selectProjects(workspace, projectId);
-    checks.push(`配置（${workspace.projects.length} 个显式应用，${workspace.repositoryConfig.rules.length} 条仓库规则）`);
+    checks.push(`配置（${workspace.projects.length} 个显式应用，${workspace.repositoryConfig.repository.rules.length} 条仓库规则）`);
   } catch (error) {
     errors.push(error.message);
     return null;
@@ -68,7 +68,7 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
   if (!workspace) return null;
   const config = workspace.repositoryConfig;
 
-  const exceptionResult = inspectExceptionLifecycle(config.exceptions);
+  const exceptionResult = inspectExceptionLifecycle(config.repository.exceptions);
   const policyTargets = workspaceAgentPolicyTargets(workspace, projectId);
   for (const target of policyTargets) {
     try {
@@ -80,10 +80,10 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
       errors.push(`${target.label}：${error.message}`);
     }
   }
-  const deliverySkills = inspectDeliverySkills(root, config.deliveryContract.enabled);
+  const deliverySkills = inspectDeliverySkills(root, config.repository.deliveryContract.enabled);
   if (deliverySkills.issues.length > 0) {
     errors.push(...deliverySkills.issues.map((message) => `${message}；请运行 repo-guard doctor --fix`));
-  } else if (config.deliveryContract.enabled) {
+  } else if (config.repository.deliveryContract.enabled) {
     checks.push(`${deliverySkills.skills.length} 个交付流程 Skills`);
   } else {
     checks.push('交付流程 Skills 在功能禁用时未安装');
@@ -150,10 +150,10 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
 
   if (!ci) inspectManagedHooks(root, { checks, errors });
 
-  const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
-  const hasMutationFailureNotification = workspace?.projects.some(({ config: appConfig }) => appConfig.mutationTest.enabled
-    && appConfig.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure));
-  const notificationRequired = config?.notification.enabled
+  const hasNotifyRules = config?.repository.rules.some(({ level }) => level === 'notify') ?? false;
+  const hasMutationFailureNotification = workspace?.projects.some(({ config: appConfig }) => appConfig.checks.mutationTest.enabled
+    && appConfig.checks.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure));
+  const notificationRequired = config?.reporting.notification.enabled
     && (hasNotifyRules || hasMutationFailureNotification);
   if (!ci) {
     const localEnvironmentPath = path.join(root, LOCAL_ENV_FILE);
@@ -176,7 +176,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
       }
     }
 
-    if (config && !config.notification.enabled) {
+    if (config && !config.reporting.notification.enabled) {
       checks.push('企业微信通知已禁用');
     } else if (notificationRequired) {
       try {
@@ -233,7 +233,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
       }
     }
     for (const context of targets.projects) {
-      for (const externalGate of context.config.externalGates) {
+      for (const externalGate of context.config.ci.externalGates) {
         if (!externalGate.enabled) {
           checks.push(`应用 ${context.project.id} 外部门禁 ${externalGate.id} 已禁用`);
           continue;
@@ -263,10 +263,10 @@ async function inspectGate(gate, context, { checks, errors }) {
 }
 
 function inspectGuardedBuilds(application, repositoryRoot, { checks, errors }) {
-  if (application.config.mutationTest.guardedBuilds.length === 0) return;
+  if (application.config.checks.mutationTest.guardedBuilds.length === 0) return;
   try {
     const packageJson = JSON.parse(readFileSync(path.join(application.root, 'package.json'), 'utf8'));
-    for (const guardedBuild of application.config.mutationTest.guardedBuilds) {
+    for (const guardedBuild of application.config.checks.mutationTest.guardedBuilds) {
       const expected = guardedBuildCommand(guardedBuild.script, application, repositoryRoot);
       if (typeof packageJson.scripts?.[guardedBuild.script] !== 'string') {
         errors.push(`应用 ${application.id} 受保护构建找不到原始 npm 脚本：${guardedBuild.script}`);

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { configurationError } from '../core/error/repo-guard-error.js';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const KNIP_MAJOR = 6;
 const BASELINE_PROPERTIES = Object.freeze([
   'schemaVersion',
@@ -112,8 +112,11 @@ export function createDeadCodeBaseline(issues, issueTypes) {
 }
 
 export function parseDeadCodeBaseline(value, expectedIssueTypes) {
+  if (value?.schemaVersion !== SCHEMA_VERSION) {
+    throw baselineFormatError('无效代码基线仅支持 schemaVersion: 2，请按当前格式重新评审并登记基线。');
+  }
   if (!value || typeof value !== 'object' || Array.isArray(value)
-    || value.schemaVersion !== SCHEMA_VERSION || value.knipMajor !== KNIP_MAJOR
+    || value.knipMajor !== KNIP_MAJOR
     || !Array.isArray(value.issueTypes) || !Array.isArray(value.entries)) {
     throw baselineFormatError('无效代码基线格式无效');
   }

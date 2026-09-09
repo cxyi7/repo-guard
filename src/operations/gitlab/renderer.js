@@ -5,7 +5,7 @@ function yaml(value) {
   return JSON.stringify(value);
 }
 
-function jobHeader(name, stage) {
+function jobHeader(name, stage, notifications = false) {
   return [
     `${yaml(name)}:`,
     `  stage: ${stage}`,
@@ -13,6 +13,7 @@ function jobHeader(name, stage) {
     '  variables:',
     '    GIT_DEPTH: "0"',
     '    REPO_GUARD_SKIP_HOOKS: "1"',
+    ...(notifications ? ['    REPO_GUARD_OPERATIONS_NOTIFICATIONS: "true"'] : []),
   ];
 }
 
@@ -33,17 +34,26 @@ function scriptLines(project, command, { quality = false } = {}) {
   ];
 }
 
-function qualityJob(project) {
+function cancellationNotification(enabled) {
+  if (!enabled) return [];
   return [
-    ...jobHeader(project.quality.job, '.pre'),
+    '  after_script:',
+    `    - ${yaml('if [ "$CI_JOB_STATUS" = "canceled" ]; then cd "$CI_PROJECT_DIR" && REPO_GUARD_OPERATIONS_NOTIFICATION=true npx --no-install repo-guard ci-notify --status canceled; fi')}`,
+  ];
+}
+
+function qualityJob(project, notifications) {
+  return [
+    ...jobHeader(project.quality.job, '.pre', notifications),
     ...scriptLines(project, project.quality.command, { quality: true }),
     ...verificationRules(),
+    ...cancellationNotification(notifications),
   ].join('\n');
 }
 
-function buildJob(project) {
+function buildJob(project, notifications) {
   return [
-    ...jobHeader(project.build.job, 'build'),
+    ...jobHeader(project.build.job, 'build', notifications),
     '  needs:',
     `    - job: ${yaml(project.quality.job)}`,
     '      artifacts: false',
@@ -56,12 +66,13 @@ function buildJob(project) {
     '    paths:',
     ...project.build.artifactPaths.map((artifact) => `      - ${yaml(artifact)}`),
     ...verificationRules(),
+    ...cancellationNotification(notifications),
   ].join('\n');
 }
 
-function deploymentJob(project, deployment) {
+function deploymentJob(project, deployment, notifications) {
   return [
-    ...jobHeader(deployment.job, 'deploy'),
+    ...jobHeader(deployment.job, 'deploy', notifications),
     '  needs:',
     `    - job: ${yaml(project.quality.job)}`,
     '      artifacts: false',
@@ -78,15 +89,34 @@ function deploymentJob(project, deployment) {
       `      when: ${deployment.production ? 'manual' : 'on_success'}`,
       '      allow_failure: false',
     ]),
+    ...cancellationNotification(notifications),
+  ].join('\n');
+}
+
+function notificationJob(status) {
+  return [
+    `${yaml(`repo_guard_operations_notify_${status}`)}:`,
+    '  stage: .post',
+    '  allow_failure: true',
+    '  variables:',
+    '    REPO_GUARD_SKIP_HOOKS: "1"',
+    '    REPO_GUARD_OPERATIONS_NOTIFICATION: "true"',
+    ...scriptLines({ root: '.' }, `npx --no-install repo-guard ci-notify --status ${status}`),
+    `  when: ${status === 'success' ? 'on_success' : 'on_failure'}`,
+    ...verificationRules(),
+    ...cancellationNotification(true),
   ].join('\n');
 }
 
 export function renderOperationsGitLabPipeline(plan) {
   if (!plan.enabled || plan.projects.length === 0) return '';
+  const notifications = plan.notifications?.enabled === true;
   const jobs = plan.projects.flatMap((project) => [
-    qualityJob(project),
-    buildJob(project),
-    ...project.deployments.map((deployment) => deploymentJob(project, deployment)),
+    qualityJob(project, notifications),
+    buildJob(project, notifications),
+    ...project.deployments.map((deployment) => deploymentJob(project, deployment, notifications)),
   ]);
-  return `${OPERATIONS_PIPELINE_MARKER}\n# 工具和依赖须由 Runner 环境或上游准备流程提供。\n# 每个应用独立验证、构建和部署；部署使用本次构建的产物。\n${jobs.join('\n\n')}\n`;
+  const allJobs = notifications ? [...jobs, notificationJob('success'), notificationJob('failed')] : jobs;
+  return markManagedContent(`${OPERATIONS_PIPELINE_MARKER}\n# 工具和依赖须由 Runner 环境或上游准备流程提供。\n# 每个应用独立验证、构建和部署；部署使用本次构建的产物。\n${allJobs.join('\n\n')}\n`);
 }
+import { markManagedContent } from './managed-content.js';

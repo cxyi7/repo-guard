@@ -16,10 +16,10 @@ export const PATH_NAMING_GATE_ID = 'repository.path-naming';
 
 export const pathNamingGate = defineGate({
   id: PATH_NAMING_GATE_ID,
-  configKey: 'preCommit.pathNaming',
+  configKey: 'checks.pathNaming',
   featureName: 'pathNaming',
   featureOrder: 38,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   ciScopes: ['all-files'],
   mutation: 'read-only',
@@ -37,7 +37,7 @@ export const pathNamingGate = defineGate({
   supportsFix: false,
   supportsCancellation: false,
   inspectSetup({ config }) {
-    const featureConfig = config.preCommit.pathNaming;
+    const featureConfig = config.checks.pathNaming;
     return {
       status: 'ready',
       summary: featureConfig.enabled
@@ -46,12 +46,12 @@ export const pathNamingGate = defineGate({
     };
   },
   plan({ root, config, environment, files }) {
-    const enabled = environment === 'manual' || config.preCommit.pathNaming.enabled;
+    const enabled = environment === 'manual' || config.checks.pathNaming.enabled;
     const selectedFiles = enabled
       ? [...(environment === 'manual' ? files : collectTrackedProjectPaths(root))]
       : [];
-    const imageFiles = config.imageAssets?.enabled && config.imageAssets.naming.enabled
-      ? selectImageAssetPaths(selectedFiles, config.imageAssets)
+    const imageFiles = config.checks.imageAssets?.enabled && config.checks.imageAssets.naming.enabled
+      ? selectImageAssetPaths(selectedFiles, config.checks.imageAssets)
       : [];
     return Object.freeze({
       enabled,
@@ -65,7 +65,7 @@ export const pathNamingGate = defineGate({
     }
     const result = inspectPathNaming({
       files: plan.files,
-      config: config.preCommit.pathNaming,
+      config: config.checks.pathNaming,
       skipFiles: plan.imageFiles,
     });
     const metrics = {

@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 无效图片是指位于 `checks.imageAssets.include` 范围内，但没有被配置范围源码静态引用、也没有被有效动态声明覆盖的图片。该能力默认关闭，不会进入 pre-commit；启用时同步打开父级图片治理：
 
@@ -125,6 +125,7 @@ npx repo-guard unused-image-assets
 - 运行时拼接无法静态证明时，必须配置 `dynamicReferences`。每项声明都要有原因，并同时匹配真实源码和图片；整个仓库通配、空匹配和已经失效的声明会作为配置错误处理。
 - 手动命令始终审计当前工作区全量。`changedFiles` 在 pre-push、CI full 和 release-ready 中比较基线与当前 revision 的“未使用集合”，只阻止新增未引用图片或删除最后一处引用造成的新债务；`allFiles` 阻止全部存量。
 - v2 基线从对应提交中的工作区清单读取应用配置，支持自定义子配置文件名；通过应用标识找到原来的目录和别名。当前工作区配置不能替代历史配置，基线缺少已声明的子配置会报错。
+- Git 基线中的项目配置也必须为 v2；其他版本会直接报错，不提供转换。应按当前结构重新建立配置，经团队评审后选择可信的 v2 提交作为基线，再启用增量债务检查。不得默默使用当前配置代替历史配置，也不能把失败当作已通过。
 - `action: "report"` 只报告警告，`error` 产生阻断错误。结构化例外仍需精确匹配 `assets/unused` 与图片路径。工具只提供证据，不自动删除图片或改写引用；删除前必须人工确认运行时、后端下发和平台约定路径。
 
 ## 执行与复核

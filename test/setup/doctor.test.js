@@ -1,4 +1,7 @@
-import { parseProjectFixture, stringifyProjectFixture } from '../helpers/project-config.js';
+import {
+  parseProjectFixture,
+  stringifyProjectFixture,
+} from '../helpers/project-config.js';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync,
@@ -10,9 +13,7 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import {
-  runDoctor,
-} from '../../src/orchestration/doctor/runner.js';
+import { runDoctor } from '../../src/orchestration/doctor/runner.js';
 import {
   nodeVersionIsSupported,
   REQUIRED_NODE_RANGE,
@@ -35,17 +36,47 @@ function createRepository() {
   );
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-      version: 1,
-      notification: { enabled: false },
-      dependencyPolicy: { enabled: false },
-      preCommit: {
-        eslint: { enabled: false },
-        prettier: { enabled: false },
-        maxFileLines: { enabled: false },
+    `${stringifyProjectFixture(
+      {
+        version: 2,
+        project: {
+          id: 'web',
+          role: 'frontend',
+          stack: 'node',
+          preset: 'vue-javascript',
+        },
+        checks: {
+          eslint: {
+            enabled: false,
+          },
+          prettier: {
+            enabled: false,
+          },
+          maxFileLines: {
+            enabled: false,
+          },
+        },
+        repository: {
+          dependencyPolicy: {
+            enabled: false,
+          },
+          rules: [
+            {
+              pattern: 'src/**',
+              category: 'Source',
+              level: 'notify',
+            },
+          ],
+        },
+        reporting: {
+          notification: {
+            enabled: false,
+          },
+        },
       },
-      rules: [{ pattern: 'src/**', category: 'Source', level: 'notify' }],
-    }, null, 2)}\n`,
+      null,
+      2,
+    )}\n`,
   );
   return root;
 }
@@ -69,32 +100,61 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const exitCode = await runDoctor(root, { fix: true });
-  const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const packageJson = JSON.parse(
+    readFileSync(path.join(root, 'package.json'), 'utf8'),
+  );
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
 
   assert.equal(exitCode, 0);
-  assert.equal(packageJson.scripts['guard:migrate'], 'repo-guard migrate');
-  assert.equal(packageJson.scripts['guard:exceptions'], 'repo-guard exceptions');
-  assert.equal(packageJson.scripts['guard:dependencies'], 'repo-guard dependencies');
+  assert.equal(Object.hasOwn(packageJson.scripts, 'guard:migrate'), false);
+  assert.equal(
+    packageJson.scripts['guard:exceptions'],
+    'repo-guard exceptions',
+  );
+  assert.equal(
+    packageJson.scripts['guard:dependencies'],
+    'repo-guard dependencies',
+  );
   assert.equal(
     packageJson.scripts['guard:enable-dependencies'],
     'repo-guard enable dependencies',
   );
-  assert.equal(packageJson.scripts['guard:unsafe-html'], 'repo-guard unsafe-html');
-  assert.equal(packageJson.scripts['guard:dynamic-code'], 'repo-guard dynamic-code');
+  assert.equal(
+    packageJson.scripts['guard:unsafe-html'],
+    'repo-guard unsafe-html',
+  );
+  assert.equal(
+    packageJson.scripts['guard:dynamic-code'],
+    'repo-guard dynamic-code',
+  );
   assert.equal(
     packageJson.scripts['guard:async-resource-cleanup'],
     'repo-guard async-resource-cleanup',
   );
-  assert.equal(packageJson.scripts['guard:path-naming'], 'repo-guard path-naming');
+  assert.equal(
+    packageJson.scripts['guard:path-naming'],
+    'repo-guard path-naming',
+  );
   assert.equal(packageJson.scripts['guard:ui-tokens'], 'repo-guard ui-tokens');
-  assert.equal(packageJson.scripts['guard:target-blank'], 'repo-guard target-blank');
-  assert.equal(packageJson.scripts['guard:form-labels'], 'repo-guard form-labels');
+  assert.equal(
+    packageJson.scripts['guard:target-blank'],
+    'repo-guard target-blank',
+  );
+  assert.equal(
+    packageJson.scripts['guard:form-labels'],
+    'repo-guard form-labels',
+  );
   assert.equal(packageJson.scripts['guard:image-alt'], 'repo-guard image-alt');
-  assert.equal(packageJson.scripts['guard:image-assets'], 'repo-guard image-assets');
-  assert.equal(packageJson.scripts['guard:image-optimize'], 'repo-guard image-optimize');
+  assert.equal(
+    packageJson.scripts['guard:image-assets'],
+    'repo-guard image-assets',
+  );
+  assert.equal(
+    packageJson.scripts['guard:image-optimize'],
+    'repo-guard image-optimize',
+  );
   assert.equal(
     packageJson.scripts['guard:accessibility-test'],
     'repo-guard accessibility-test',
@@ -124,8 +184,14 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     'repo-guard enable eslint prettier',
   );
   assert.equal(packageJson.scripts.prepare, 'repo-guard install-hooks');
-  assert.equal(packageJson.scripts['guard:lighthouse'], 'repo-guard lighthouse');
-  assert.equal(packageJson.scripts['guard:architecture'], 'repo-guard architecture');
+  assert.equal(
+    packageJson.scripts['guard:lighthouse'],
+    'repo-guard lighthouse',
+  );
+  assert.equal(
+    packageJson.scripts['guard:architecture'],
+    'repo-guard architecture',
+  );
   assert.equal(
     packageJson.scripts['guard:enable-architecture'],
     'repo-guard enable architecture',
@@ -157,27 +223,30 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     packageJson.scripts['guard:disable-notification'],
     'repo-guard disable notification',
   );
-  assert.equal(config.notification.enabled, false);
-  assert.deepEqual(config.exceptions.entries, []);
-  assert.equal(config.dependencyPolicy.enabled, false);
-  assert.equal(config.preCommit.eslint.enabled, false);
-  assert.equal(config.preCommit.eslint.preset, true);
-  assert.equal(config.preCommit.prettier.enabled, false);
-  assert.equal(config.preCommit.stylelint.complexity.enabled, false);
-  assert.equal(config.preCommit.stylelint.governance.enabled, false);
-  assert.equal(config.preCommit.filePlacement.enabled, true);
-  assert.equal(config.lighthouse.enabled, false);
-  assert.equal(config.architecture.enabled, false);
-  assert.equal(config.build.enabled, false);
-  assert.equal(config.typeCheck.enabled, false);
-  assert.equal(config.unitTest.enabled, false);
-  assert.equal(config.unitTest.componentInteraction.enabled, false);
-  assert.equal(config.accessibilityTest.enabled, false);
+  assert.equal(config.reporting.notification.enabled, false);
+  assert.deepEqual(config.repository.exceptions.entries, []);
+  assert.equal(config.repository.dependencyPolicy.enabled, false);
+  assert.equal(config.checks.eslint.enabled, false);
+  assert.equal(config.checks.eslint.preset, true);
+  assert.equal(config.checks.prettier.enabled, false);
+  assert.equal(config.checks.styleComplexity.enabled, false);
+  assert.equal(config.checks.styleGovernance.enabled, false);
+  assert.equal(config.checks.filePlacement.enabled, true);
+  assert.equal(config.checks.lighthouse.enabled, false);
+  assert.equal(config.checks.architecture.enabled, false);
+  assert.equal(config.checks.build.enabled, false);
+  assert.equal(config.checks.typeCheck.enabled, false);
+  assert.equal(config.checks.unitTest.enabled, false);
+  assert.equal(config.checks.componentInteraction.enabled, false);
+  assert.equal(config.checks.accessibilityTest.enabled, false);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:repository-governance-policy:start/,
   );
-  assert.match(readFileSync(path.join(root, '.gitignore'), 'utf8'), /\.lighthouseci\//);
+  assert.match(
+    readFileSync(path.join(root, '.gitignore'), 'utf8'),
+    /\.lighthouseci\//,
+  );
   assert.match(
     readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8'),
     /repo-guard-managed:v5/,
@@ -188,7 +257,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
 
   const agentsPath = path.join(root, 'AGENTS.md');
-  const windowsAgents = readFileSync(agentsPath, 'utf8').replaceAll('\n', '\r\n');
+  const windowsAgents = readFileSync(agentsPath, 'utf8').replaceAll(
+    '\n',
+    '\r\n',
+  );
   writeFileSync(agentsPath, windowsAgents);
   rmSync(path.join(root, '.env.config'));
   assert.equal(await runDoctor(root), 0);
@@ -203,20 +275,25 @@ test('禁用变异测试时不要求为受保护构建配置企业微信凭据',
   const packagePath = path.join(root, 'package.json');
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
   packageJson.scripts['build:mp-weixin'] = 'node build.mjs';
-  packageJson.scripts['guard:build:mp-weixin'] = 'repo-guard guarded-build build:mp-weixin';
+  packageJson.scripts['guard:build:mp-weixin'] =
+    'repo-guard guarded-build build:mp-weixin';
   writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
   const configPath = path.join(root, 'repo-guard.config.json');
   const config = parseProjectFixture(readFileSync(configPath, 'utf8'));
-  config.notification.enabled = true;
-  config.rules = [{ pattern: 'src/**', category: 'Source', level: 'audit' }];
-  config.mutationTest = {
+  config.reporting.notification.enabled = true;
+  config.repository.rules = [
+    { pattern: 'src/**', category: 'Source', level: 'audit' },
+  ];
+  config.checks.mutationTest = {
     enabled: false,
-    guardedBuilds: [{
-      script: 'build:mp-weixin',
-      packageScript: 'guard:build:mp-weixin',
-      notifyOnFailure: true,
-    }],
+    guardedBuilds: [
+      {
+        script: 'build:mp-weixin',
+        packageScript: 'guard:build:mp-weixin',
+        notifyOnFailure: true,
+      },
+    ],
   };
   writeFileSync(configPath, `${stringifyProjectFixture(config, null, 2)}\n`);
 

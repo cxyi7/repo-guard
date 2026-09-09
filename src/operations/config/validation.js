@@ -99,7 +99,7 @@ function projectConfig(value, location) {
 }
 
 export function validateOperationsConfig(value) {
-  requireObject(value, '运维配置', ['$schema', 'version', 'enabled', 'provider', 'projects']);
+  requireObject(value, '运维配置', ['$schema', 'version', 'enabled', 'provider', 'projects', 'notifications']);
   if (value.$schema !== undefined && typeof value.$schema !== 'string') {
     fail('$schema', '必须是字符串');
   }
@@ -108,10 +108,14 @@ export function validateOperationsConfig(value) {
     fail('provider', '当前仅支持 gitlab');
   }
   const projects = requireObject(value.projects ?? {}, 'projects');
+  const notifications = requireObject(value.notifications ?? {}, 'notifications', ['enabled']);
   return {
     version: 2,
     enabled: booleanValue(value.enabled, 'enabled', false),
     provider: 'gitlab',
+    notifications: {
+      enabled: booleanValue(notifications.enabled, 'notifications.enabled', false),
+    },
     projects: Object.fromEntries(Object.entries(projects).map(([id, project]) => {
       requireIdentifier(id, 'projects');
       return [id, projectConfig(project, `projects.${id}`)];

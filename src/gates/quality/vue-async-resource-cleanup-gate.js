@@ -28,10 +28,10 @@ function normalizedFiles(root, files) {
 
 export const vueAsyncResourceCleanupGate = defineGate({
   id: ASYNC_RESOURCE_CLEANUP_GATE_ID,
-  configKey: 'preCommit.asyncResourceCleanup',
+  configKey: 'checks.asyncResourceCleanup',
   featureName: 'asyncResourceCleanup',
   featureOrder: 35,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'read-only',
@@ -51,7 +51,7 @@ export const vueAsyncResourceCleanupGate = defineGate({
   inspectSetup({ config }) {
     return {
       status: 'ready',
-      summary: config.preCommit.asyncResourceCleanup.enabled
+      summary: config.checks.asyncResourceCleanup.enabled
         ? `Vue 异步资源清理门禁已启用（阻断级，规则=${ASYNC_RESOURCE_CLEANUP_RULE}）`
         : 'Vue 异步资源清理门禁已禁用，可使用 repo-guard enable asyncResourceCleanup 启用',
     };
@@ -64,8 +64,8 @@ export const vueAsyncResourceCleanupGate = defineGate({
       );
     }
     const featureConfig = environment === 'manual'
-      ? { ...config.preCommit.asyncResourceCleanup, enabled: true }
-      : config.preCommit.asyncResourceCleanup;
+      ? { ...config.checks.asyncResourceCleanup, enabled: true }
+      : config.checks.asyncResourceCleanup;
     const immutableConfig = Object.freeze({
       ...featureConfig,
       include: Object.freeze([...featureConfig.include]),
@@ -97,7 +97,7 @@ export const vueAsyncResourceCleanupGate = defineGate({
         root,
         files: plan.files,
         config: plan.config,
-        exceptions: config.exceptions,
+        exceptions: config.repository.exceptions,
       });
       const metrics = {
         checkedFiles: inspection.checkedCount,

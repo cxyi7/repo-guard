@@ -26,10 +26,10 @@ function deliveryFinding(item, severity = 'error') {
 
 export const deliveryContractGate = defineGate({
   id: 'repository.delivery-contract',
-  configKey: 'deliveryContract',
+  configKey: 'repository.deliveryContract',
   featureName: 'deliveryContract',
   featureOrder: 85,
-  configVersions: [1],
+  configVersions: [2],
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
@@ -48,9 +48,9 @@ export const deliveryContractGate = defineGate({
   ],
   inspectSetup: inspectDeliveryContractSetup,
   plan: ({ config, changes, environment }) => ({
-    config: config.deliveryContract,
+    config: config.repository.deliveryContract,
     changes: changeSetEntries(changes),
-    enabled: config.deliveryContract.enabled,
+    enabled: config.repository.deliveryContract.enabled,
     environment,
   }),
   run({ root, plan }) {

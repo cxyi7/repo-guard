@@ -10,6 +10,7 @@ import { createProjectReleaseReadyPlan } from '../../src/orchestration/execution
 import { normalizeProjectDocument } from '../../src/config/project-configuration.js';
 import { createProjectGateRegistry } from '../../src/gates/registry.js';
 import { createGateResult } from '../../src/core/result/gate-result.js';
+import { renderGateResultJson } from '../../src/core/report/json-renderer.js';
 import { configurationError } from '../../src/core/error/repo-guard-error.js';
 import { loadWorkspace } from '../../src/config/configuration-loader.js';
 import { syncAgentPolicies } from '../../src/policies/agent-policies.js';
@@ -52,7 +53,12 @@ function fixture(t, { otherId = 'worker' } = {}) {
   git(root, '-c', 'core.hooksPath=', 'commit', '-m', 'fix: 调整通用实现');
   return { root, base, head: git(root, 'rev-parse', 'HEAD') };
 }
-function report(root) { return JSON.parse(readFileSync(path.join(root, 'reports/repo-guard.json'), 'utf8')); }
+function report(root) {
+  const result = JSON.parse(readFileSync(path.join(root, 'reports/repo-guard.json'), 'utf8'));
+  assert.equal(result.version, 2);
+  for (const target of result.targets ?? []) assert.equal(target.report.version, 2);
+  return result;
+}
 
 function enableAndSynchronizeAgentPolicies(root) {
   const file = path.join(root, 'repo-guard.config.json');
@@ -184,31 +190,31 @@ test('v2 发布就绪执行通用工程检查且最后复核证据，不要求 n
 });
 
 test('多应用同名门禁汇总不允许后一个成功覆盖前一个失败', () => {
-  const failed = createGateResult({ gateId: 'quality.build', status: 'violation', summary: '构建未通过' });
-  const passed = createGateResult({ gateId: 'quality.build', status: 'passed', summary: '构建通过' });
+  const failed = renderGateResultJson(createGateResult({ gateId: 'quality.build', status: 'violation', summary: '构建未通过' }));
+  const passed = renderGateResultJson(createGateResult({ gateId: 'quality.build', status: 'passed', summary: '构建通过' }));
   const results = aggregateWorkspaceGateResults([
-    { projectId: 'api', report: { steps: [{ gateResult: failed }] } },
-    { projectId: 'worker', report: { steps: [{ gateResult: passed }] } },
+    { projectId: 'api', report: { version: 2, steps: [{ gateResult: failed }] } },
+    { projectId: 'worker', report: { version: 2, steps: [{ gateResult: passed }] } },
   ]);
   assert.equal(results[0].status, 'violation');
   assert.equal(results[0].metrics.targets, 2);
   assert.match(results[0].diagnostics[0].message, /api/);
   assert.match(results[0].diagnostics[1].message, /worker/);
   const sameApplication = aggregateWorkspaceGateResults([
-    { projectId: 'api', report: { steps: [{ gateResult: failed }, { gateResult: passed }] } },
+    { projectId: 'api', report: { version: 2, steps: [{ gateResult: failed }, { gateResult: passed }] } },
   ]);
   assert.equal(sameApplication[0].status, 'violation');
 });
 
 test('工具配置错误保持错误类型，Git 范围错误不会被误报为通过', async (t) => {
-  const configFailure = createGateResult({
+  const configFailure = renderGateResultJson(createGateResult({
     gateId: 'quality.build', status: 'configuration-error', summary: '缺少构建配置',
     error: configurationError('build/missing-script', '缺少构建脚本'),
-  });
-  const passed = createGateResult({ gateId: 'quality.build', status: 'passed', summary: '构建通过' });
+  }));
+  const passed = renderGateResultJson(createGateResult({ gateId: 'quality.build', status: 'passed', summary: '构建通过' }));
   const aggregated = aggregateWorkspaceGateResults([
-    { projectId: 'api', report: { steps: [{ gateResult: configFailure }] } },
-    { projectId: 'worker', report: { steps: [{ gateResult: passed }] } },
+    { projectId: 'api', report: { version: 2, steps: [{ gateResult: configFailure }] } },
+    { projectId: 'worker', report: { version: 2, steps: [{ gateResult: passed }] } },
   ]);
   assert.equal(aggregated[0].status, 'configuration-error');
   assert.equal(aggregated[0].error.kind, 'configuration');
@@ -239,7 +245,7 @@ test('自定义汇总路径和内部报告不能覆盖外部结果，错误报�
   const external = {
     id: 'project.engineering', enabled: false, environments: ['ci-full'],
     script: 'test:engineering', timeoutMs: 1000,
-    report: { format: 'repo-guard-json-v1', path: 'reports/external.json' },
+    report: { format: 'repo-guard-json-v2', path: 'reports/external.json' },
   };
   mkdirSync(path.join(repo.root, 'reports'), { recursive: true });
   const original = '独立工具的原始结果';

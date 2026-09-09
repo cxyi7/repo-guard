@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cxyi7.github.io/repo-guard/repo-guard-json-v1.schema.json",
-  "title": "repo-guard external gate report v1",
+  "$id": "https://cxyi7.github.io/repo-guard/repo-guard-json-v2.schema.json",
+  "title": "repo-guard 外部门禁报告 v2",
   "$comment": "外部门禁协议字段和机器枚举保持稳定；repo-guard 在展示边界提供中文说明，第三方原始诊断只作为明确标记的定位信息保留。",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "gateId", "status", "summary", "findings", "metrics", "artifacts"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "gateId": { "type": "string", "pattern": "^project\\.[a-z][a-z0-9-]*$" },
     "status": { "type": "string", "enum": ["passed", "violation"] },
     "summary": { "type": "string", "pattern": "\\S" },

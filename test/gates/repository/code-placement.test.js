@@ -40,11 +40,23 @@ function codePlacementConfig() {
 
 function projectConfig() {
   return validateConfig({
-    version: 1,
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  repository: {
     codePlacement: codePlacementConfig(),
-    rules: [{ pattern: '**', category: '测试文件', level: 'audit' }],
-    exclusions: [],
-  });
+    rules: [{
+      pattern: '**',
+      category: '测试文件',
+      level: 'audit'
+    }],
+    exclusions: []
+  }
+});
 }
 
 test('reports exact code outside every allowed file with its line', () => {

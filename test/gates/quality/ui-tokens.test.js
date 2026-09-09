@@ -2,7 +2,7 @@ import { stringifyProjectFixture } from '../../helpers/project-config.js';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -28,7 +28,7 @@ function digest(content) {
 
 function manifest(sourceContent = 'export default {}\n') {
   return {
-    version: 1,
+    version: 2,
     sources: [{ path: 'uno.config.ts', sha256: digest(sourceContent) }],
     tokens: [
       {
@@ -85,6 +85,22 @@ function fixture(context) {
   mkdirSync(path.join(root, 'src'), { recursive: true });
   return root;
 }
+
+test('Manifest 读取仅支持 v2，拒绝旧文件时不改写原内容', (context) => {
+  const root = fixture(context);
+  const file = path.join(root, 'ui-tokens.manifest.json');
+  const source = 'export default {}\n';
+  const current = manifest(source);
+  writeFileSync(path.join(root, 'uno.config.ts'), source);
+  const oldContent = `${JSON.stringify({ ...current, version: 1 })}\r\n`;
+  writeFileSync(file, oldContent);
+  assert.throws(() => loadUiTokenManifest(root, DEFAULT_UI_TOKENS_CONFIG), /仅支持 version: 2/);
+  assert.equal(readFileSync(file, 'utf8'), oldContent);
+  writeFileSync(file, JSON.stringify(current));
+  const loaded = loadUiTokenManifest(root, DEFAULT_UI_TOKENS_CONFIG);
+  assert.equal(loaded.version, 2);
+  assert.equal(loaded.sources[0].actualSha256, digest(source));
+});
 
 test('Manifest 严格校验类别、别名唯一性和来源文件路径', () => {
   const valid = validateUiTokenManifest(manifest());
@@ -513,13 +529,16 @@ test('UnoCSS 门禁对配置快照变更执行全量复查并返回结构化结�
     `${JSON.stringify(manifest(unoConfig), null, 2)}\n`,
   );
   const config = {
-    uiTokens: policyConfig({
-      adapters: {
-        sass: { enabled: false },
-        unocss: { ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss, enabled: true },
-      },
-    }),
-    exceptions: DEFAULT_EXCEPTIONS_CONFIG,
+    version: 2,
+    checks: {
+      uiTokens: policyConfig({
+        adapters: {
+          sass: { enabled: false },
+          unocss: { ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss, enabled: true },
+        },
+      }),
+    },
+    repository: { exceptions: DEFAULT_EXCEPTIONS_CONFIG },
   };
   const plan = uiTokenGate.plan({
     root,
@@ -547,8 +566,9 @@ test('UnoCSS 配置未纳入 Manifest 时返回策略问题而不是读取未受
     `${JSON.stringify(value, null, 2)}\n`,
   );
   const config = {
-    uiTokens: policyConfig(),
-    exceptions: DEFAULT_EXCEPTIONS_CONFIG,
+    version: 2,
+    checks: { uiTokens: policyConfig() },
+    repository: { exceptions: DEFAULT_EXCEPTIONS_CONFIG },
   };
   const plan = uiTokenGate.plan({ root, config, files: [], changes: { entries: [] } });
   const result = await uiTokenGate.run({ root, config, plan });
@@ -576,22 +596,45 @@ test('pre-commit 在 Manifest 来源位于源码范围外时仍执行 UI Token �
   );
   spawnSync('git', ['add', '.'], { cwd: root, encoding: 'utf8' });
   const config = validateConfig({
-    version: 1,
-    rules: [{ pattern: 'src/**', category: '源码', level: 'audit' }],
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      stylelint: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    eslint: {
+      enabled: false
+    },
+    prettier: {
+      enabled: false
+    },
+    stylelint: {
+      enabled: false
     },
     uiTokens: {
       ...DEFAULT_UI_TOKENS_CONFIG,
       enabled: true,
       adapters: {
-        sass: { enabled: false },
-        unocss: { ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss, enabled: true },
-      },
-    },
-  });
+        sass: {
+          enabled: false
+        },
+        unocss: {
+          ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss,
+          enabled: true
+        }
+      }
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: 'src/**',
+      category: '源码',
+      level: 'audit'
+    }]
+  }
+});
 
   const execution = await runQualityExecution({
     root,
@@ -618,22 +661,45 @@ test('pre-commit 在只有删除项时仍按暂存快照阻断移除 Manifest �
     `${JSON.stringify(value, null, 2)}\n`,
   );
   const projectConfig = {
-    version: 1,
-    rules: [{ pattern: 'src/**', category: '源码', level: 'audit' }],
-    preCommit: {
-      eslint: { enabled: false },
-      prettier: { enabled: false },
-      stylelint: { enabled: false },
+  version: 2,
+  project: {
+    id: 'web',
+    role: 'frontend',
+    stack: 'node',
+    preset: 'vue-javascript'
+  },
+  checks: {
+    eslint: {
+      enabled: false
+    },
+    prettier: {
+      enabled: false
+    },
+    stylelint: {
+      enabled: false
     },
     uiTokens: {
       ...DEFAULT_UI_TOKENS_CONFIG,
       enabled: true,
       adapters: {
-        sass: { enabled: false },
-        unocss: { ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss, enabled: true },
-      },
-    },
-  };
+        sass: {
+          enabled: false
+        },
+        unocss: {
+          ...DEFAULT_UI_TOKENS_CONFIG.adapters.unocss,
+          enabled: true
+        }
+      }
+    }
+  },
+  repository: {
+    rules: [{
+      pattern: 'src/**',
+      category: '源码',
+      level: 'audit'
+    }]
+  }
+};
   validateConfig(projectConfig);
   writeFileSync(
     path.join(root, 'repo-guard.config.json'),

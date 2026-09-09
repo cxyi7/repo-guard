@@ -29,7 +29,7 @@ npx repo-guard doctor
 npx repo-guard disable commitAnimation
 ```
 
-升级旧项目时需要重新安装托管 Hook：新 `post-commit` 使用 `hook-message success`，安装器接受 v1–v4 标记并生成 v5。原 `hook-message cleanup` 继续仅负责清理。启停命令同步配置与托管规范，但不自动覆盖 Hook。
+当前 `post-commit` 使用 `hook-message success`，安装器只接受并生成 v5 Hook。旧版本、混合标记或非托管 Hook 会被拒绝并保留，需人工确认后按当前入口重新接入，不会自动升级。`hook-message cleanup` 仅负责清理，不播放成功动画。启停命令同步配置与托管规范，但不自动覆盖 Hook。
 
 ## 配置及字段说明
 
@@ -95,7 +95,7 @@ npx repo-guard disable commitAnimation
 - 窗口缩放后本次停止动画，避免折行后覆盖历史日志；下次运行重新检测。背压时跳过动画帧，避免输出队列持续增长。
 - 不接管键盘。收到 `SIGINT`（通常由 `Ctrl+C` 触发）或 `SIGTERM` 时先恢复光标，再交给已有取消处理器；没有其他处理器时重新交付原信号，保持正常退出。输出错误、能力检测或绘制异常会停止动画且不留下计时器；检查结果仍由门禁决定。
 - 提交后入口只有成功读取 Git 提交记录才显示成功，空仓库或读取失败时不庆祝。
-- 若只有检查动画而没有成功动作，先运行 `install-hooks` 升级受管 Hook；若使用 GUI 提交且输出不是终端，文字降级属于正常行为。
+- 若只有检查动画而没有成功动作，先核对当前 v5 Hook 的 `post-commit` 是否连接 `hook-message success`；当前托管 Hook 可重复安装，旧标记或冲突文件需保留后人工重新接入。若使用 GUI 提交且输出不是终端，文字降级属于正常行为。
 - 成功前出现失败时，优先阅读报告中的文件位置、预期与修复建议。不要通过关闭检查、跳过 Hook 来让角色显示成功。
 
 ## 维护依据

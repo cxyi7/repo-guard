@@ -4,7 +4,6 @@ export {
   normalizeProjectDocument,
   createProjectDocument,
   serializeProjectConfig,
-  migrateLegacyConfig,
 } from './config/project-configuration.js';
 export { getProjectToolRequirements, PROJECT_PROFILES } from './profiles/project-profiles.js';
 export { matchRule } from './config/path-matching.js';

@@ -58,15 +58,15 @@ npx repo-guard ci --profile release-ready --project api --base <sha> --head <sha
 
 仓库公共规则 → 各应用的完整工程检查、测试和构建 → 适用且启用的 Lighthouse 与外部门禁 → 最终交付证据复核。
 
-配置 v2 的发布就绪包含 `full` 的检查步骤。代码格式检查只读，真实测试和构建可以生成报告与产物。未开启的功能按配置跳过，后端项目不执行 Vue 专用规则；`skipped` 不能当作已经测试通过。
+发布就绪只有一套执行计划，包含 `full` 的检查步骤，再加入 Lighthouse、适用外部门禁和最终证据复核；不再按配置历史选择另一套计划。代码格式检查只读，真实测试和构建可以生成报告与产物。未开启的功能按配置跳过，后端项目不执行 Vue 专用规则；`skipped` 不能当作已经测试通过。
 
-应用无需成为可发布的 npm 包，也不必提供固定的 `check`、`test`、`pack:check` 脚本。检查使用 `checks` 中声明的入口。npm 包自身的发布验证应在独立运维流程配置；维护者内部旧门禁契约仍保留旧包检查实现，但磁盘配置版本 1 必须显式迁移后使用。
+应用无需成为可发布的 npm 包，也不必提供固定的 `check`、`test`、`pack:check` 脚本。检查使用 `checks` 中声明的入口。旧 `release.check / release.test / release.package` 已移除；团队如需额外检查，可注册 `project.*` 外部门禁。repo-guard 本仓库的 npm 发布验证由维护者发布 Skill 管理，不属于消费项目的默认检查。
 
 ## 多应用证据与结果
 
 多应用的公共仓库规则只执行一次，各应用独立执行并保存报告。最后的交付证据步骤使用本轮全部目标的结果，不会让后执行应用的成功覆盖先前应用的失败。
 
-聚合报告位于根目录 `ci.reportPath`；应用报告位于各自目录的 `reports/repo-guard-workspace/projects/<项目 id>.json`，交付证据报告位于根目录 `reports/repo-guard-workspace/evidence.json`。每个目标包含 `projectId`、`projectRoot`、检查范围和退出码。
+聚合报告位于根目录 `ci.reportPath`；应用报告位于各自目录的 `reports/repo-guard-workspace/projects/<项目 id>.json`，交付证据报告位于根目录 `reports/repo-guard-workspace/evidence.json`。每个目标包含 `projectId`、`projectRoot`、检查范围和退出码。以上报告及错误报告统一使用 `version: 2`，内部 `GateResult` 使用 `schemaVersion: 2`；写入和汇总拒绝旧报告，需重新运行生成当前结果。
 
 同名门禁在多个目标执行时，聚合结果保留最严重状态及每个目标的结果指纹。交付合同的证据应绑定聚合报告中的 `gateResults`；原始应用报告仍保留，便于定位与复测。`--project` 只证明被选择应用及公共仓库的结果，不表示整个仓库的全部应用通过。
 

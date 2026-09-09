@@ -6,7 +6,7 @@ import {
 } from './validation-primitives.js';
 
 function normalizeCodePlacementRule(rule, index, configPath) {
-  const label = `${configPath} codePlacement 规则 ${index + 1}`;
+  const label = `${configPath} repository.codePlacement 规则 ${index + 1}`;
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
     throw configValidationError(`${label} 必须是对象`);
   }
@@ -36,27 +36,27 @@ export function validateCodePlacementConfiguration(value, configPath) {
     || typeof codePlacementValue !== 'object'
     || Array.isArray(codePlacementValue)
   ) {
-    throw configValidationError(`${configPath} codePlacement 必须是对象`);
+    throw configValidationError(`${configPath} repository.codePlacement 必须是对象`);
   }
   assertKnownProperties(
     codePlacementValue,
     new Set(['enabled', 'rules']),
-    `${configPath} codePlacement`,
+    `${configPath} repository.codePlacement`,
   );
   if (
     codePlacementValue.enabled != null
     && typeof codePlacementValue.enabled !== 'boolean'
   ) {
-    throw configValidationError(`${configPath} codePlacement.enabled 必须是布尔值`);
+    throw configValidationError(`${configPath} repository.codePlacement.enabled 必须是布尔值`);
   }
   const rules = codePlacementValue.rules ?? DEFAULT_CODE_PLACEMENT_CONFIG.rules;
   if (!Array.isArray(rules)) {
-    throw configValidationError(`${configPath} codePlacement.rules 必须是数组`);
+    throw configValidationError(`${configPath} repository.codePlacement.rules 必须是数组`);
   }
   const enabled = codePlacementValue.enabled ?? DEFAULT_CODE_PLACEMENT_CONFIG.enabled;
   if (enabled && rules.length === 0) {
     throw configValidationError(
-      `${configPath} codePlacement.enabled 为 true 时 rules 必须至少包含一条规则`,
+      `${configPath} repository.codePlacement.enabled 为 true 时 rules 必须至少包含一条规则`,
     );
   }
   return {

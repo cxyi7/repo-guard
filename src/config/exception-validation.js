@@ -10,30 +10,30 @@ export function validateExceptionConfiguration(value, configPath) {
   const exceptionsValue = value.exceptions ?? {};
   if (!exceptionsValue || typeof exceptionsValue !== 'object'
     || Array.isArray(exceptionsValue)) {
-    throw configValidationError(`${configPath} exceptions 必须是对象`);
+    throw configValidationError(`${configPath} repository.exceptions 必须是对象`);
   }
   assertKnownProperties(
     exceptionsValue,
     new Set(['warningDays', 'maxDays', 'entries']),
-    `${configPath} exceptions`,
+    `${configPath} repository.exceptions`,
   );
   const exceptionWarningDays = exceptionsValue.warningDays
     ?? DEFAULT_EXCEPTIONS_CONFIG.warningDays;
   const exceptionMaxDays = exceptionsValue.maxDays ?? DEFAULT_EXCEPTIONS_CONFIG.maxDays;
   if (!Number.isInteger(exceptionWarningDays) || exceptionWarningDays < 0) {
-    throw configValidationError(`${configPath} exceptions.warningDays 必须是非负整数`);
+    throw configValidationError(`${configPath} repository.exceptions.warningDays 必须是非负整数`);
   }
   if (!Number.isInteger(exceptionMaxDays) || exceptionMaxDays <= 0
     || exceptionMaxDays > 365) {
-    throw configValidationError(`${configPath} exceptions.maxDays 必须介于 1 到 365 之间`);
+    throw configValidationError(`${configPath} repository.exceptions.maxDays 必须介于 1 到 365 之间`);
   }
   if (exceptionWarningDays >= exceptionMaxDays) {
-    throw configValidationError(`${configPath} exceptions.warningDays 必须小于 maxDays`);
+    throw configValidationError(`${configPath} repository.exceptions.warningDays 必须小于 maxDays`);
   }
   const exceptionEntriesValue = exceptionsValue.entries
     ?? DEFAULT_EXCEPTIONS_CONFIG.entries;
   if (!Array.isArray(exceptionEntriesValue)) {
-    throw configValidationError(`${configPath} exceptions.entries 必须是数组`);
+    throw configValidationError(`${configPath} repository.exceptions.entries 必须是数组`);
   }
   const exceptionIds = new Set();
   const exceptionTargets = new Set();

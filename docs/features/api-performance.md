@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 提供外部门禁专用的 Axios 性能 runner。它不是官方 Gate，不进入 Registry 固定计划；只有消费项目显式执行 `npx repo-guard external project.api-performance` 时，现有外部门禁才会调用项目精确 npm script。runner 同时要求 `environments` 只能是 `["manual"]`，并拒绝在带有常见 CI、GitLab CI、GitHub Actions、Azure Pipelines 或 Jenkins 环境标记的进程中运行。
 
@@ -27,7 +27,7 @@
         "script": "test:api-performance:runner",
         "timeoutMs": 300000,
         "report": {
-          "format": "repo-guard-json-v1",
+          "format": "repo-guard-json-v2",
           "path": "reports/api-performance/axios-gate.json"
         }
       }
@@ -47,7 +47,7 @@
 | `ci.externalGates[].environments` | 允许执行的入口；manual 为手动，ci-full 为完整 CI，release-ready 为发布准备 | 数组；每项可选 `"manual"`、`"ci-full"`、`"release-ready"`<br>本对象内必填，无自动代填值 | 至少 1 项；元素不可重复；CI 仅在受信任 GitLab 受保护分支调度；Axios/k6 runner 进一步只允许 manual。 |
 | `ci.externalGates[].script` | 项目 package.json 中的精确脚本名，不是 shell 命令 | 字符串<br>本对象内必填，无自动代填值 | 仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
 | `ci.externalGates[].timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>本对象内必填，无自动代填值 | ≥ 1000；≤ 1800000 |
-| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v1"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v2"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `ci.externalGates[].report.path` | 本轮新生成的外部门禁 JSON 报告路径 | 字符串<br>本对象内必填，无自动代填值 | 仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名，以 .json 结尾；必须在 reports/ 内、未跟踪、无符号链接、每轮新生成；命名不能使用平台保留名。 |
 
 <!-- config-fields:end -->
@@ -160,6 +160,8 @@ npm run guard:api-performance
 runner 只接受 HTTPS、精确主机白名单和本次确认值。默认只允许 `GET`、`HEAD`、`OPTIONS`；`POST`、`PUT`、`PATCH`、`DELETE` 必须同时启用全局 `safety.allowWrites`、场景 `allowWrites: true` 并提供 `cleanup`。清理失败、预热失败、配置错误或报告错误使用退出码 `1` 且不生成主报告；阈值不满足生成 `violation` 报告并使用退出码 `2`；通过使用退出码 `0`。报告目录必须被 `.gitignore` 忽略，最终生成协议 JSON 和 `axios-report.html` 中文报告，二者仍由通用外部门禁执行新鲜度、路径、Git 跟踪状态和敏感信息复检。
 
 ## 执行与复核
+
+runner 生成的外部门禁 JSON 使用 `schemaVersion: 2`，与配置中的 `repo-guard-json-v2` 及[外部门禁报告 Schema](../../external-report.schema.json)一致。旧协议名称或旧版本报告不会被转换或接受，应更新配置后重新执行生成报告；业务接口自身的版本不受影响。
 
 执行入口：只允许显式本地手动执行。功能开关、CI 模式与具体文件范围仍按上文配置生效。
 

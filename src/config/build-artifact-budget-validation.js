@@ -188,7 +188,7 @@ function normalizeMiniProgram(value, label) {
 }
 
 export function validateBuildArtifactBudgetConfiguration(value, configPath) {
-  const label = `${configPath} build.artifactBudget`;
+  const label = `${configPath} checks.build.artifactBudget`;
   const artifactBudget = objectValue(value ?? {}, label);
   assertKnownProperties(
     artifactBudget,

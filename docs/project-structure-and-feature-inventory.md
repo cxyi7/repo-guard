@@ -6,7 +6,7 @@
 
 产品用途见 [README](../README.md)，安装与配置见[使用说明](usage-guide.md)，单项能力见[功能索引](features/README.md)。交付资料与反馈流程统一维护在[交付合同手册](features/delivery-contract.md)。
 
-当前为阶段性重构成果，内部配置统一和旧 CI 发布链路清理尚未完成。具体代码依据、后续任务和验收标准见 [2.0 重构剩余工作](refactor-2.0-remaining-work.md)。
+本轮内部模型统一、旧 CI 发布链路清理及回归验收记录见 [2.0 重构工作清单](refactor-2.0-remaining-work.md)。源码完成验证不等于已发布 npm 包。
 
 ## 项目结构与职责
 
@@ -57,7 +57,7 @@ repo-guard/
 ├─ bin/                         npm bin 命令启动器
 ├─ src/
 │  ├─ profiles/                 显式身份、预设组合和工具需求声明
-│  ├─ config/                   v2 加载、校验、归一化与显式迁移
+│  ├─ config/                   原生 v2 加载、校验与归一化
 │  ├─ core/                     Gate、Context、Result、错误与基础执行
 │  ├─ git/                      仓库、索引、提交、范围与 Worktree 事实
 │  ├─ policies/                 工程规则、AI 规范与纯策略判断
@@ -69,14 +69,14 @@ repo-guard/
 │  │  ├─ pre-push/              真实推送范围、快照验证与重型检查
 │  │  ├─ ci/                    CI 中的质量执行与结果汇总
 │  │  ├─ doctor/                按仓库及应用诊断接入状态
-│  │  ├─ setup/                 显式初始化、托管 Hook 与资料同步
+│  │  ├─ setup/                 写入前格式预检、初始化与托管资料同步
 │  │  └─ cli/                   命令参数及各流程入口
 │  └─ operations/
 │     ├─ config/                独立运维配置及写入边界
 │     ├─ pipeline/              按项目标识建立发布计划
 │     ├─ providers/             Node 构建和部署脚本适配
 │     ├─ gitlab/                流水线渲染、安装和检查
-│     └─ notifications/         迁入的旧 GitLab 通知实现
+│     └─ notifications/         独立运维的 GitLab 通知执行
 ├─ test/                        按功能分组的测试与公共辅助
 ├─ docs/features/               单项能力维护入口
 ├─ docs/images/                 图形及可导出的 HTML 源文件
@@ -84,7 +84,7 @@ repo-guard/
 ├─ .agents/skills/              本仓库维护者 Skill
 ├─ scripts/                     本仓库的检查、测试收集与打包验证
 ├─ config.schema.json           项目和工作区质量配置
-├─ project.schema.json          子应用身份与检查配置
+├─ project.schema.json          仅允许子应用身份与检查，不接受公共分区
 ├─ operations.schema.json       独立运维配置
 └─ package.json                 npm 入口、导出和维护命令
 ```
@@ -96,7 +96,7 @@ repo-guard/
 | 层 | 应负责 | 不应负责 |
 |---|---|---|
 | `profiles` | 校验身份组合，声明运行环境和工具需求 | 猜项目类型、安装依赖、执行检查或部署 |
-| `config` | 字段校验、v2 工作区读取、旧配置显式迁移 | Git 查询、工具执行和运维生成 |
+| `config` | 原生 v2 字段校验、工作区读取与默认值归一化 | 旧配置转换、Git 查询、工具执行和运维生成 |
 | `core` | 稳定契约、结构化结果、错误、基础执行和输出能力 | 依赖具体 Gate、预设或运维实现 |
 | `git` | 提供索引、提交和变更范围事实 | 判定规则是否通过 |
 | `policies` | 比较工程事实与团队要求，生成 AI 指引 | 编排质量生命周期 |
@@ -105,7 +105,9 @@ repo-guard/
 | `orchestration` | 建立可信上下文、固定计划、按应用调度与汇总 | 复制检查算法、直接调用工具适配器 |
 | `operations` | 发布计划、产物约束、模板与通知 | 深层调用质量 Gate 或 orchestration；猜测部署流程 |
 
-质量链路通过 Registry 调用 Gate；运维生成的作业通过公共 CLI 调用质量链路，运维模块不反向导入质量编排。旧模板和通知入口保留薄桥，实际实现集中到 `operations`；v2 外部质量配置已移除 `ci.pipeline`。
+质量链路通过 Registry 调用 Gate；运维生成的作业通过公共 CLI 调用质量链路，运维模块不反向导入质量编排。质量安装器只生成质量任务，构建、部署与流水线通知由独立 `operations` 配置负责。旧发布渲染器、通知薄桥与旧模板转换器已删除；只更新当前可验证的托管内容，旧模板、缺失摘要或人工改动均拒绝覆盖。
+
+`orchestration/setup` 复用 Hook、Skill 清单和规范区块的现有校验，在公共写入口修改配置或托管文件前拒绝相关旧格式。预检只组合检查，不承担旧格式转换或通用写入事务；底层配置校验不反向依赖这些编排行为。
 
 `core`、`profiles` 和 `config` 的底层边界、运维与质量编排的独立边界、Gate 领域边界、循环依赖及不可解析导入，由 `.dependency-cruiser.cjs` 和架构测试共同约束。结构调整应先判断职责归属，再修改依赖。
 
@@ -127,7 +129,9 @@ repo-guard/
 | 运维发布计划 | 绑定同一应用的质量、构建、产物、分支和环境 |
 | Delivery Contract / Evidence Run | 为团队启用的交付资料与反馈流程提供可核验依据 |
 
-目前 v2 外部配置仍被归一化为旧的内部执行结构，这是尚待收尾的过渡实现。后续需统一配置校验、Gate 和执行计划，并将旧配置解析隔离到迁移模块。磁盘上的 v1 配置不能直接执行，需使用 `migrate` 明确提供项目身份并保存备份；旧运维设置存在定制时会阻断迁移，需人工拆分，不能静默丢弃。
+加载、启停、Doctor、Hook、CI、手动检查和 AGENTS 规则共同使用原生 `version: 2` 模型：`checks / repository / reporting / ci`。归一化只补齐默认值、编译匹配规则等，不生成旧项目配置，也没有 `configVersion` 双版本标记。组合运行单元测试、覆盖率与组件交互等功能时，只传递所需的局部工具选项，不改变统一配置结构。
+
+项目配置只支持 `version: 2`。旧解析器、冻结旧默认值、迁移 CLI/API 和字段转换已删除；读取旧配置直接拒绝且不改写原文件，接入时由人工按新架构重新建立。功能登记表、托管 Skill 清单、UI Token、基线及报告也统一使用 v2；外部门禁标识为 `repo-guard-json-v2`。Hook 仅接受当前 v5 标记，AGENTS 仅接受当前职责区块，不再转换旧托管文件。格式清单见[配置管理与规则启停](features/configuration-management.md)。
 
 可选提交动画位于 `core/report/commit-animation`，配置归属 `reporting.commitAnimation`，不注册为 Gate。动画不改变失败状态，成功庆祝只在真实 `post-commit` 后发生。详细说明见[提交动画](features/commit-animation.md)。
 

@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 使用消费项目本机 k6 二进制的并发压测 runner。它与 Axios 性能 runner 互补：Axios runner 验证业务客户端、拦截器和低并发真实调用链；k6 runner 验证服务在受控并发或恒定到达率下的延迟、错误率、检查成功率和丢弃迭代。k6 不是 Node.js 运行时，不能直接加载 Axios 客户端；本功能不修改业务 Axios 实例，也不进入提交、推送、CI、发布、受保护构建或打包流程。
 
@@ -29,7 +29,7 @@
         "script": "test:k6:runner",
         "timeoutMs": 900000,
         "report": {
-          "format": "repo-guard-json-v1",
+          "format": "repo-guard-json-v2",
           "path": "reports/k6/k6-gate.json"
         }
       }
@@ -49,7 +49,7 @@
 | `ci.externalGates[].environments` | 允许执行的入口；manual 为手动，ci-full 为完整 CI，release-ready 为发布准备 | 数组；每项可选 `"manual"`、`"ci-full"`、`"release-ready"`<br>本对象内必填，无自动代填值 | 至少 1 项；元素不可重复；CI 仅在受信任 GitLab 受保护分支调度；Axios/k6 runner 进一步只允许 manual。 |
 | `ci.externalGates[].script` | 项目 package.json 中的精确脚本名，不是 shell 命令 | 字符串<br>本对象内必填，无自动代填值 | 仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
 | `ci.externalGates[].timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>本对象内必填，无自动代填值 | ≥ 1000；≤ 1800000 |
-| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v1"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v2"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `ci.externalGates[].report.path` | 本轮新生成的外部门禁 JSON 报告路径 | 字符串<br>本对象内必填，无自动代填值 | 仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名，以 .json 结尾；必须在 reports/ 内、未跟踪、无符号链接、每轮新生成；命名不能使用平台保留名。 |
 
 <!-- config-fields:end -->
@@ -194,6 +194,8 @@ npm run guard:k6
 通过时退出码为 `0`；k6 阈值失败的原始退出码必须为 `99`，runner 生成 `violation` 后对外返回 `2`；其他退出码、超时、报告缺失或判定不一致均返回 `1`，且不生成可误用的主报告。报告目录必须位于已忽略、未跟踪且不穿过符号链接的 `reports/`，成功执行会保留 k6 机器摘要 `k6-summary.json`、中文 `k6-report.html` 和外部门禁 JSON；报告不会保存配置中的凭据。
 
 ## 执行与复核
+
+runner 生成的外部门禁 JSON 使用 `schemaVersion: 2`，对应 `repo-guard-json-v2`。旧协议名称和旧版本报告一律拒绝，应更新配置后重新压测生成；k6 原始机器摘要仍遵循 k6 自身格式，不随 repo-guard 报告版本变更。
 
 执行入口：只允许显式本地手动执行。功能开关、CI 模式与具体文件范围仍按上文配置生效。
 

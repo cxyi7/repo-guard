@@ -323,8 +323,8 @@ function validateLimits(value, label) {
 }
 
 export function validateImageAssetsConfiguration(value, configPath) {
-  const imageAssets = objectValue(value.imageAssets ?? {}, `${configPath} imageAssets`);
-  const label = `${configPath} imageAssets`;
+  const imageAssets = objectValue(value.imageAssets ?? {}, `${configPath} checks.imageAssets`);
+  const label = `${configPath} checks.imageAssets`;
   assertKnownProperties(
     imageAssets,
     new Set([
@@ -351,7 +351,7 @@ export function validateImageAssetsConfiguration(value, configPath) {
     naming: validateNaming(imageAssets.naming, `${label}.naming`),
     duplicates: validateDuplicates(imageAssets.duplicates, `${label}.duplicates`),
     compression: validateCompression(imageAssets.compression, `${label}.compression`),
-    unused: validateUnused(imageAssets.unused, `${label}.unused`),
+    unused: validateUnused(imageAssets.unused, `${configPath} checks.unusedImageAssets`),
     limits: validateLimits(imageAssets.limits, `${label}.limits`),
   };
 }

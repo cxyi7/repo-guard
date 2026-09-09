@@ -3,9 +3,10 @@ import path from 'node:path';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { AGENT_POLICY_FILE, syncAgentPolicies } from '../../policies/agent-policies.js';
-import { installHooks } from './hook-installer.js';
+import { assertHookInstallationSupported, installHooks } from './hook-installer.js';
 import { syncDeliverySkills } from './delivery-skills.js';
 import { workspaceAgentPolicyTargets } from '../workspace/targets.js';
+import { assertManagedDocumentFormats } from './managed-format-preflight.js';
 
 export function repairRepository(root, { projectId } = {}) {
   const repairs = [];
@@ -18,13 +19,15 @@ export function repairRepository(root, { projectId } = {}) {
     const workspace = loadWorkspace(root, { allowExpiredExceptions: true });
     const config = workspace.repositoryConfig;
     const targets = workspaceAgentPolicyTargets(workspace, projectId);
+    assertManagedDocumentFormats(root, { workspace, projectId });
+    assertHookInstallationSupported(root);
     for (const target of targets) {
       const agentPolicy = syncAgentPolicies(target.root, target.config);
       repairs.push(agentPolicy.changed
         ? `已同步${target.label} ${AGENT_POLICY_FILE} 托管规范`
         : `${target.label} ${AGENT_POLICY_FILE} 托管规范已是最新状态`);
     }
-    const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
+    const deliverySkills = syncDeliverySkills(root, config.repository.deliveryContract.enabled);
     repairs.push(
       deliverySkills.changed
         ? '已同步交付流程 Skills'

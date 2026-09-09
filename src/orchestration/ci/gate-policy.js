@@ -44,14 +44,14 @@ function activateAtPath(value, segments, index = 0) {
 
 function activateGateConfig(config, gate) {
   if (gate.id.startsWith('project.')) {
-    const externalGates = config.externalGates.map((entry) => (
+    const externalGates = config.ci.externalGates.map((entry) => (
       entry.id === gate.id && !entry.enabled
         ? Object.freeze({ ...entry, enabled: true })
         : entry
     ));
     return Object.freeze({
       ...config,
-      externalGates: Object.freeze(externalGates),
+      ci: Object.freeze({ ...config.ci, externalGates: Object.freeze(externalGates) }),
     });
   }
   if (!gate.configKey) return config;

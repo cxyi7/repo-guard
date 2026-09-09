@@ -1,5 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "repo-guard 单应用配置 v2",
-  "$ref": "./config.schema.json#/$defs/singleProjectDocument"
+  "title": "repo-guard 子应用配置 v2",
+  "description": "多应用工作区的子配置仅声明自身身份与检查；仓库规则、报告和 CI 策略统一写入根配置。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/version"
+    },
+    "project": { "$ref": "./config.schema.json#/$defs/projectDescriptor" },
+    "checks": {
+      "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/checks"
+    }
+  }
 }

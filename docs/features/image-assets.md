@@ -8,7 +8,7 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 图片治理默认关闭，消费项目需自行安装兼容的 Sharp 和 SVGO，再显式启用：
 
@@ -18,7 +18,7 @@ npx repo-guard enable imageAssets
 npx repo-guard doctor
 ```
 
-通过 `npx repo-guard enable imageAssets` 启用时会同步 `AGENTS.md` 托管区块，写入当前生效的命名、真实格式、重复、压缩范围以及 Hook/CI 只读约束；关闭功能会移除对应规则。若直接编辑配置，请运行 `npx repo-guard migrate` 或 `npx repo-guard doctor --fix` 完成同步，CI 只检查一致性，不会写入文件。
+通过 `npx repo-guard enable imageAssets` 启用时会同步 `AGENTS.md` 托管区块，写入当前生效的命名、真实格式、重复、压缩范围以及 Hook/CI 只读约束；关闭功能会移除对应规则。若直接编辑 v2 配置，请运行 `npx repo-guard doctor --fix` 完成同步，再运行 `npx repo-guard doctor` 复核；CI 只检查一致性，不会写入文件。
 
 ```json
 {

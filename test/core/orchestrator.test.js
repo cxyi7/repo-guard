@@ -38,7 +38,11 @@ function result(gateId, status) {
 }
 
 function fixture(environment) {
-  const registry = createGateRegistry([gate('first'), gate('second'), gate('third')]);
+  const registry = createGateRegistry([
+    gate('first'),
+    gate('second'),
+    gate('third'),
+  ]);
   const plan = defineExecutionPlan({
     id: environment,
     environment,
@@ -52,7 +56,7 @@ function fixture(environment) {
   const context = createGateContext({
     root: 'C:/repo',
     environment,
-    config: Object.freeze({ version: 1 }),
+    config: Object.freeze({ version: 2 }),
     changes,
     files: ['src/example.js'],
   });
@@ -92,7 +96,10 @@ test('aggregates all CI results and maps execution errors ahead of violations', 
     },
   });
   assert.deepEqual(visited, ['first', 'second', 'third']);
-  assert.equal(receivedChangeSets.every((value) => value === fixtureValue.context.changes), true);
+  assert.equal(
+    receivedChangeSets.every((value) => value === fixtureValue.context.changes),
+    true,
+  );
   assert.deepEqual(priorGateIds, [[], ['first'], ['first', 'second']]);
   assert.equal(execution.status, 'execution-error');
   assert.equal(execution.exitCode, 1);
@@ -164,14 +171,19 @@ test('waits for cancellation-capable gates to finish cleanup after a timeout', a
     plan,
     registry,
     context: fixtureValue.context,
-    executeStep: ({ context }) => new Promise((resolve, reject) => {
-      context.signal.addEventListener('abort', () => {
-        setTimeout(() => {
-          cleaned = true;
-          reject(context.signal.reason);
-        }, 20);
-      }, { once: true });
-    }),
+    executeStep: ({ context }) =>
+      new Promise((resolve, reject) => {
+        context.signal.addEventListener(
+          'abort',
+          () => {
+            setTimeout(() => {
+              cleaned = true;
+              reject(context.signal.reason);
+            }, 20);
+          },
+          { once: true },
+        );
+      }),
   });
   assert.equal(cleaned, true);
   assert.equal(execution.status, 'execution-error');
@@ -196,11 +208,16 @@ test('does not accept a passing result returned after cancellation', async () =>
     plan,
     registry,
     context: fixtureValue.context,
-    executeStep: ({ context }) => new Promise((resolve) => {
-      context.signal.addEventListener('abort', () => {
-        setTimeout(() => resolve(result('timed-late-pass', 'passed')), 20);
-      }, { once: true });
-    }),
+    executeStep: ({ context }) =>
+      new Promise((resolve) => {
+        context.signal.addEventListener(
+          'abort',
+          () => {
+            setTimeout(() => resolve(result('timed-late-pass', 'passed')), 20);
+          },
+          { once: true },
+        );
+      }),
   });
   assert.equal(execution.status, 'execution-error');
   assert.match(execution.decisiveResult.error.message, /超过 10ms 超时时间/);
@@ -209,11 +226,13 @@ test('does not accept a passing result returned after cancellation', async () =>
 test('honors an upstream cancellation before starting an asynchronous step', async () => {
   const fixtureValue = fixture('ci-full');
   const controller = new AbortController();
-  controller.abort(cancellationError(
-    'test/caller-cancelled',
-    'cancelled by caller',
-  ));
-  const context = Object.freeze({ ...fixtureValue.context, signal: controller.signal });
+  controller.abort(
+    cancellationError('test/caller-cancelled', 'cancelled by caller'),
+  );
+  const context = Object.freeze({
+    ...fixtureValue.context,
+    signal: controller.signal,
+  });
   let invoked = false;
   const execution = await orchestratePlan({
     ...fixtureValue,
@@ -234,7 +253,10 @@ test('classifies setup failures before executing a gate body', async () => {
   const invalidGate = defineGate({
     ...fixtureValue.registry.get('first'),
     id: 'invalid',
-    inspectSetup: () => ({ status: 'invalid', summary: 'missing project tool' }),
+    inspectSetup: () => ({
+      status: 'invalid',
+      summary: 'missing project tool',
+    }),
   });
   const registry = createGateRegistry([invalidGate]);
   const plan = defineExecutionPlan({
@@ -266,5 +288,8 @@ test('rejects results that do not belong to the executing gate', async () => {
     executeStep: () => result('another-gate', 'passed'),
   });
   assert.equal(execution.status, 'execution-error');
-  assert.match(execution.decisiveResult.error.message, /返回了属于 another-gate 的结果/);
+  assert.match(
+    execution.decisiveResult.error.message,
+    /返回了属于 another-gate 的结果/,
+  );
 });

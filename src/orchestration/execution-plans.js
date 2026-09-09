@@ -127,13 +127,8 @@ export const releaseReadyPlan = defineExecutionPlan({
   environment: 'release-ready',
   locked: true,
   steps: [
-    ...ciPolicyPlan.steps,
-    'repository.unused-image-assets',
-    'release.check',
-    'release.test',
-    { id: 'quality.build', gateId: 'quality.build', reportName: 'build' },
+    ...ciFullPlan.steps,
     'quality.lighthouse',
-    'release.package',
     'release.delivery-evidence',
   ],
 });
@@ -153,7 +148,7 @@ export function createProjectCiFullPlan(config, registry, { includeExternalGates
     locked: true,
     steps: [
       ...ciFullPlan.steps,
-      ...config.externalGates
+      ...config.ci.externalGates
         .filter((gate) => includeExternalGate(
           config,
           gate,
@@ -170,7 +165,7 @@ export function createProjectReleaseReadyPlan(
   registry,
   { includeExternalGates = true } = {},
 ) {
-  const externalSteps = config.externalGates
+  const externalSteps = config.ci.externalGates
     .filter((gate) => includeExternalGate(
       config,
       gate,
@@ -178,9 +173,7 @@ export function createProjectReleaseReadyPlan(
       includeExternalGates,
     ))
     .map(({ id }) => id);
-  const projectSteps = config.configVersion === 2
-    ? [...ciFullPlan.steps, 'quality.lighthouse', 'release.delivery-evidence']
-    : releaseReadyPlan.steps;
+  const projectSteps = releaseReadyPlan.steps;
   return validateExecutionPlan(defineExecutionPlan({
     id: 'release-ready',
     environment: 'release-ready',
