@@ -24,4 +24,4 @@ npx repo-guard unsafe-html
 
 ## 维护依据
 
-[实现入口](../../src/policies/vue-unsafe-html.js) · [对应测试](../../test/vue-unsafe-html.test.js)
+[实现入口](../../src/policies/vue-unsafe-html.js) · [对应测试](../../test/gates/security/vue-unsafe-html.test.js)

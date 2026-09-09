@@ -4,41 +4,49 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 产物预算是现有 `build` 门禁的可选后置阶段。一个业务项目只能选择一种平台：PC 项目配置 `pc`，小程序项目配置 `miniProgram`，不能同时存在。未启用 `artifactBudget` 时，原有构建行为不变。
+
+迁移旧配置或通过命令启停功能时，已启用的 `baseline` 模式会为 `baselineFile` 补充根配置 `repository.rules` 保护。多应用使用带应用目录的仓库相对路径；已有同路径规则保留原级别，避免降低对基线的团队约束。手动编辑配置时也应一并维护该保护规则。
 
 PC/Vite 项目示例：
 
 ```json
 {
-  "build": {
-    "enabled": true,
-    "script": "build",
-    "timeoutMs": 300000,
-    "artifactBudget": {
+  "checks": {
+    "build": {
       "enabled": true,
-      "platform": "pc",
-      "outputDirectory": "dist",
-      "cleanScript": "clean:dist",
-      "action": "error",
-      "mode": "strict",
-      "pc": {
-        "analyzer": "viteManifest",
-        "manifest": ".vite/manifest.json",
-        "sourceMaps": "forbid",
-        "compression": ["raw", "gzip", "brotli"],
-        "limits": {
-          "totalRawBytes": 8388608,
-          "initialJsBrotliBytes": 358400,
-          "initialCssBrotliBytes": 153600,
-          "maxChunkRawBytes": 614400,
-          "maxChunkCount": 80,
-          "maxAssetRawBytes": 2097152
+      "script": "build",
+      "timeoutMs": 300000,
+      "artifactBudget": {
+        "enabled": true,
+        "platform": "pc",
+        "outputDirectory": "dist",
+        "cleanScript": "clean:dist",
+        "action": "error",
+        "mode": "strict",
+        "pc": {
+          "analyzer": "viteManifest",
+          "manifest": ".vite/manifest.json",
+          "sourceMaps": "forbid",
+          "compression": [
+            "raw",
+            "gzip",
+            "brotli"
+          ],
+          "limits": {
+            "totalRawBytes": 8388608,
+            "initialJsBrotliBytes": 358400,
+            "initialCssBrotliBytes": 153600,
+            "maxChunkRawBytes": 614400,
+            "maxChunkCount": 80,
+            "maxAssetRawBytes": 2097152
+          }
         }
       }
     }
@@ -47,29 +55,29 @@ PC/Vite 项目示例：
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `build` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用项目构建 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"build"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
-| `timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
-| `artifactBudget.enabled` | 是否启用构建产物预算 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `artifactBudget.platform` | pc 表示网页产物，miniProgram 表示小程序产物；启用预算时必须选定一个平台 | `"pc"` / `"miniProgram"` / `null`<br>默认：`null` | 启用后 pc 与 miniProgram 配置只能选择对应的一项。 |
-| `artifactBudget.outputDirectory` | 仓库内未跟踪且不穿过符号链接的生产产物目录；不得为仓库根目录或 src | 字符串<br>默认：`"dist"` | 至少 1 个字符 |
-| `artifactBudget.cleanScript` | 可选的项目 npm 清理脚本。未配置时，构建本身必须清除 repo-guard 的旧产物探针 | 字符串 / null<br>默认：`null` | 非 null 时：仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
-| `artifactBudget.action` | report 只报告预算问题；error 使超标导致门禁失败 | `"report"` / `"error"`<br>默认：`"error"` | 只接受列出的值 |
-| `artifactBudget.mode` | strict 按绝对上限检查；baseline 结合已登记基线限制新增问题 | `"strict"` / `"baseline"`<br>默认：`"strict"` | 只接受列出的值 |
-| `artifactBudget.pc.analyzer` | viteManifest 按 Vite 清单分析依赖与首屏；directory 按目录分析 | `"viteManifest"` / `"directory"`<br>默认：`"viteManifest"` | 只接受列出的值 |
-| `artifactBudget.pc.manifest` | 相对于产物目录的 Vite manifest 文件位置 | 字符串<br>默认：`".vite/manifest.json"` | 不得替换为其他类型；按本页说明提供实际项目值 |
-| `artifactBudget.pc.sourceMaps` | allow 允许发布 source map；forbid 拒绝产物中的 source map | `"allow"` / `"forbid"`<br>默认：`"forbid"` | 只接受列出的值 |
-| `artifactBudget.pc.compression` | 统计体积的方式：raw 原始字节、gzip 压缩、brotli 压缩 | 数组；每项可选 `"raw"`、`"gzip"`、`"brotli"`<br>默认：`["raw","gzip","brotli"]` | 至少 1 项；元素不可重复 |
-| `artifactBudget.pc.limits.totalRawBytes` | 全部纳入统计的产物原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.pc.limits.initialJsBrotliBytes` | 首屏 JavaScript 的 Brotli 压缩字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1；依赖 viteManifest 分析并启用 brotli 统计。 |
-| `artifactBudget.pc.limits.initialCssBrotliBytes` | 首屏 CSS 的 Brotli 压缩字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1；依赖 viteManifest 分析并启用 brotli 统计。 |
-| `artifactBudget.pc.limits.maxChunkRawBytes` | 单个代码分块的原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.pc.limits.maxChunkCount` | 代码分块数量上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.pc.limits.maxAssetRawBytes` | 单个静态资源的原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.enabled` | 是否启用项目构建 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.build.script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"build"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
+| `checks.build.timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
+| `checks.build.artifactBudget.enabled` | 是否启用构建产物预算 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.build.artifactBudget.platform` | pc 表示网页产物，miniProgram 表示小程序产物；启用预算时必须选定一个平台 | `"pc"` / `"miniProgram"` / `null`<br>默认：`null` | 启用后 pc 与 miniProgram 配置只能选择对应的一项。 |
+| `checks.build.artifactBudget.outputDirectory` | 仓库内未跟踪且不穿过符号链接的生产产物目录；不得为仓库根目录或 src | 字符串<br>默认：`"dist"` | 至少 1 个字符 |
+| `checks.build.artifactBudget.cleanScript` | 可选的项目 npm 清理脚本。未配置时，构建本身必须清除 repo-guard 的旧产物探针 | 字符串 / null<br>默认：`null` | 非 null 时：仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
+| `checks.build.artifactBudget.action` | report 只报告预算问题；error 使超标导致门禁失败 | `"report"` / `"error"`<br>默认：`"error"` | 只接受列出的值 |
+| `checks.build.artifactBudget.mode` | strict 按绝对上限检查；baseline 结合已登记基线限制新增问题 | `"strict"` / `"baseline"`<br>默认：`"strict"` | 只接受列出的值 |
+| `checks.build.artifactBudget.pc.analyzer` | viteManifest 按 Vite 清单分析依赖与首屏；directory 按目录分析 | `"viteManifest"` / `"directory"`<br>默认：`"viteManifest"` | 只接受列出的值 |
+| `checks.build.artifactBudget.pc.manifest` | 相对于产物目录的 Vite manifest 文件位置 | 字符串<br>默认：`".vite/manifest.json"` | 不得替换为其他类型；按本页说明提供实际项目值 |
+| `checks.build.artifactBudget.pc.sourceMaps` | allow 允许发布 source map；forbid 拒绝产物中的 source map | `"allow"` / `"forbid"`<br>默认：`"forbid"` | 只接受列出的值 |
+| `checks.build.artifactBudget.pc.compression` | 统计体积的方式：raw 原始字节、gzip 压缩、brotli 压缩 | 数组；每项可选 `"raw"`、`"gzip"`、`"brotli"`<br>默认：`["raw","gzip","brotli"]` | 至少 1 项；元素不可重复 |
+| `checks.build.artifactBudget.pc.limits.totalRawBytes` | 全部纳入统计的产物原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.pc.limits.initialJsBrotliBytes` | 首屏 JavaScript 的 Brotli 压缩字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1；依赖 viteManifest 分析并启用 brotli 统计。 |
+| `checks.build.artifactBudget.pc.limits.initialCssBrotliBytes` | 首屏 CSS 的 Brotli 压缩字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1；依赖 viteManifest 分析并启用 brotli 统计。 |
+| `checks.build.artifactBudget.pc.limits.maxChunkRawBytes` | 单个代码分块的原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.pc.limits.maxChunkCount` | 代码分块数量上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.pc.limits.maxAssetRawBytes` | 单个静态资源的原始字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
 
 <!-- config-fields:end -->
 
@@ -81,43 +89,50 @@ PC 的 `limits` 至少填写一个正整数上限；单项省略或设为 `null`
 
 ```json
 {
-  "build": {
-    "enabled": true,
-    "script": "build:mp-weixin",
-    "timeoutMs": 300000,
-    "artifactBudget": {
+  "checks": {
+    "build": {
       "enabled": true,
-      "platform": "miniProgram",
-      "outputDirectory": "unpackage/dist/build/mp-weixin",
-      "action": "error",
-      "mode": "strict",
-      "miniProgram": {
-        "provider": "weixin",
-        "appConfig": "app.json",
-        "limits": {
-          "mainPackageBytes": 2097152,
-          "defaultSubPackageBytes": 2097152,
-          "totalPackageBytes": 20971520,
-          "maxSingleFileBytes": 524288,
-          "maxPreloadBytes": 4194304
-        },
-        "subPackages": [
-          {
-            "root": "pagesA",
-            "maxBytes": 1572864
+      "script": "build:mp-weixin",
+      "timeoutMs": 300000,
+      "artifactBudget": {
+        "enabled": true,
+        "platform": "miniProgram",
+        "outputDirectory": "unpackage/dist/build/mp-weixin",
+        "action": "error",
+        "mode": "strict",
+        "miniProgram": {
+          "provider": "weixin",
+          "appConfig": "app.json",
+          "limits": {
+            "mainPackageBytes": 2097152,
+            "defaultSubPackageBytes": 2097152,
+            "totalPackageBytes": 20971520,
+            "maxSingleFileBytes": 524288,
+            "maxPreloadBytes": 4194304
           },
-          {
-            "root": "pagesB",
-            "maxBytes": 1835008
-          }
-        ],
-        "expectedSubPackages": ["pagesA", "pagesB"],
-        "exclusions": [
-          {
-            "patterns": ["project.private.config.json"],
-            "reason": "微信开发者工具本机配置"
-          }
-        ]
+          "subPackages": [
+            {
+              "root": "pagesA",
+              "maxBytes": 1572864
+            },
+            {
+              "root": "pagesB",
+              "maxBytes": 1835008
+            }
+          ],
+          "expectedSubPackages": [
+            "pagesA",
+            "pagesB"
+          ],
+          "exclusions": [
+            {
+              "patterns": [
+                "project.private.config.json"
+              ],
+              "reason": "微信开发者工具本机配置"
+            }
+          ]
+        }
       }
     }
   }
@@ -125,32 +140,32 @@ PC 的 `limits` 至少填写一个正整数上限；单项省略或设为 `null`
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `build` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用项目构建 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"build"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
-| `timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
-| `artifactBudget.enabled` | 是否启用构建产物预算 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `artifactBudget.platform` | pc 表示网页产物，miniProgram 表示小程序产物；启用预算时必须选定一个平台 | `"pc"` / `"miniProgram"` / `null`<br>默认：`null` | 启用后 pc 与 miniProgram 配置只能选择对应的一项。 |
-| `artifactBudget.outputDirectory` | 仓库内未跟踪且不穿过符号链接的生产产物目录；不得为仓库根目录或 src | 字符串<br>默认：`"dist"` | 至少 1 个字符 |
-| `artifactBudget.action` | report 只报告预算问题；error 使超标导致门禁失败 | `"report"` / `"error"`<br>默认：`"error"` | 只接受列出的值 |
-| `artifactBudget.mode` | strict 按绝对上限检查；baseline 结合已登记基线限制新增问题 | `"strict"` / `"baseline"`<br>默认：`"strict"` | 只接受列出的值 |
-| `artifactBudget.miniProgram.provider` | 小程序平台；当前仅支持微信 | 只能为 `"weixin"`<br>默认：`"weixin"` | 只接受列出的值 |
-| `artifactBudget.miniProgram.appConfig` | 相对于产物目录的小程序应用配置文件 | 字符串<br>默认：`"app.json"` | 不得替换为其他类型；按本页说明提供实际项目值 |
-| `artifactBudget.miniProgram.limits.mainPackageBytes` | 小程序主包字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
-| `artifactBudget.miniProgram.limits.defaultSubPackageBytes` | 未单独覆盖时使用的分包字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
-| `artifactBudget.miniProgram.limits.totalPackageBytes` | 全部小程序包合计字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
-| `artifactBudget.miniProgram.limits.maxSingleFileBytes` | 单个小程序产物文件的字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.miniProgram.limits.maxPreloadBytes` | 预加载分包合计字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.miniProgram.subPackages` | 为指定分包覆盖大小上限 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
-| `artifactBudget.miniProgram.subPackages[].root` | 需要单独限制的分包根目录，与 app.json 中的声明对应 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `artifactBudget.miniProgram.subPackages[].maxBytes` | 该分包专用字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
-| `artifactBudget.miniProgram.expectedSubPackages` | 必须出现在产物中的预期分包根目录列表 | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项为非空字符串 |
-| `artifactBudget.miniProgram.exclusions` | 有明确原因的产物排除列表 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
-| `artifactBudget.miniProgram.exclusions[].patterns` | 该项排除的产物相对匹配模式 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串；排除范围需具体，并保留原因；不能排除核心应用配置。 |
-| `artifactBudget.miniProgram.exclusions[].reason` | 排除这些产物的具体原因 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.build.enabled` | 是否启用项目构建 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.build.script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"build"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
+| `checks.build.timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
+| `checks.build.artifactBudget.enabled` | 是否启用构建产物预算 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.build.artifactBudget.platform` | pc 表示网页产物，miniProgram 表示小程序产物；启用预算时必须选定一个平台 | `"pc"` / `"miniProgram"` / `null`<br>默认：`null` | 启用后 pc 与 miniProgram 配置只能选择对应的一项。 |
+| `checks.build.artifactBudget.outputDirectory` | 仓库内未跟踪且不穿过符号链接的生产产物目录；不得为仓库根目录或 src | 字符串<br>默认：`"dist"` | 至少 1 个字符 |
+| `checks.build.artifactBudget.action` | report 只报告预算问题；error 使超标导致门禁失败 | `"report"` / `"error"`<br>默认：`"error"` | 只接受列出的值 |
+| `checks.build.artifactBudget.mode` | strict 按绝对上限检查；baseline 结合已登记基线限制新增问题 | `"strict"` / `"baseline"`<br>默认：`"strict"` | 只接受列出的值 |
+| `checks.build.artifactBudget.miniProgram.provider` | 小程序平台；当前仅支持微信 | 只能为 `"weixin"`<br>默认：`"weixin"` | 只接受列出的值 |
+| `checks.build.artifactBudget.miniProgram.appConfig` | 相对于产物目录的小程序应用配置文件 | 字符串<br>默认：`"app.json"` | 不得替换为其他类型；按本页说明提供实际项目值 |
+| `checks.build.artifactBudget.miniProgram.limits.mainPackageBytes` | 小程序主包字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
+| `checks.build.artifactBudget.miniProgram.limits.defaultSubPackageBytes` | 未单独覆盖时使用的分包字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
+| `checks.build.artifactBudget.miniProgram.limits.totalPackageBytes` | 全部小程序包合计字节上限 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
+| `checks.build.artifactBudget.miniProgram.limits.maxSingleFileBytes` | 单个小程序产物文件的字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.miniProgram.limits.maxPreloadBytes` | 预加载分包合计字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.miniProgram.subPackages` | 为指定分包覆盖大小上限 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
+| `checks.build.artifactBudget.miniProgram.subPackages[].root` | 需要单独限制的分包根目录，与 app.json 中的声明对应 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.build.artifactBudget.miniProgram.subPackages[].maxBytes` | 该分包专用字节上限 | 整数 / null<br>默认：`null` | 非 null 时：≥ 1 |
+| `checks.build.artifactBudget.miniProgram.expectedSubPackages` | 必须出现在产物中的预期分包根目录列表 | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项为非空字符串 |
+| `checks.build.artifactBudget.miniProgram.exclusions` | 有明确原因的产物排除列表 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
+| `checks.build.artifactBudget.miniProgram.exclusions[].patterns` | 该项排除的产物相对匹配模式 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串；排除范围需具体，并保留原因；不能排除核心应用配置。 |
+| `checks.build.artifactBudget.miniProgram.exclusions[].reason` | 排除这些产物的具体原因 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
 
 <!-- config-fields:end -->
 

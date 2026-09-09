@@ -1,10 +1,9 @@
-import { loadConfig } from '../../config/configuration-loader.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { gateResultToExitCode } from '../../core/result/gate-result.js';
 import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { runBuildGate } from '../../gates/quality/build-gate.js';
 import { sendMutationTestFailureNotification } from '../../gates/release/mutation-test-notification.js';
-import { findRepositoryRoot } from '../../git/repository.js';
+import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { runRegisteredManualGate } from './manual-gates.js';
 
 function configuredBuild(config, script) {
@@ -33,9 +32,9 @@ export async function runGuardedBuild(script, {
   cwd = process.cwd(),
   environment = process.env,
   send = undefined,
+  projectId,
 } = {}) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
+  const { root, config } = loadExecutionTarget(cwd, { projectId });
   const build = configuredBuild(config, script);
   if (!config.mutationTest.enabled) {
     throw configurationError(
@@ -43,7 +42,7 @@ export async function runGuardedBuild(script, {
       '受保护构建要求启用 mutationTest.enabled，已拒绝绕过变异测试执行构建',
     );
   }
-  const mutationResult = await runRegisteredManualGate('mutation-test', [], root);
+  const mutationResult = await runRegisteredManualGate('mutation-test', [], root, { projectId: config.project?.id });
   if (mutationResult.status !== 'passed') {
     try {
       await notifyFailure(root, config, build, mutationResult, environment, send);

@@ -37,19 +37,21 @@ npx repo-guard disable commitAnimation
 
 ```jsonc
 {
-  "commitAnimation": {
-    "enabled": true, // 布尔值；默认 false，控制整项动画与成功提示
-    "theme": "dog", // cat 小猫 / dog 小狗；默认 cat，没有 signal 主题
-    "commitTypeProps": true // 布尔值；默认 true，成功后按提交类型切换道具
+  "reporting": {
+    "commitAnimation": {
+      "enabled": true, // 布尔值；默认 false，控制整项动画与成功提示
+      "theme": "dog", // cat 小猫 / dog 小狗；默认 cat，没有 signal 主题
+      "commitTypeProps": true // 布尔值；默认 true，成功后按提交类型切换道具
+    }
   }
 }
 ```
 
 | 字段 | 用途、可填值与约束 |
 |---|---|
-| `enabled` | `true` 开启、`false` 关闭，不能使用字符串。关闭动画不关闭任何检查。 |
-| `theme` | `cat` 为橘色小猫，`dog` 为垂耳小狗；不支持任意脚本、文件路径或外部主题。 |
-| `commitTypeProps` | `true` 时按成功提交的标题识别类型；`false` 始终使用普通包裹。 |
+| `reporting.commitAnimation.enabled` | `true` 开启、`false` 关闭，不能使用字符串。关闭动画不关闭任何检查。 |
+| `reporting.commitAnimation.theme` | `cat` 为橘色小猫，`dog` 为垂耳小狗；不支持任意脚本、文件路径或外部主题。 |
+| `reporting.commitAnimation.commitTypeProps` | `true` 时按成功提交的标题识别类型；`false` 始终使用普通包裹。 |
 
 省略字段使用默认值；未知字段、`null` 或非法类型都会报错。若使用过早期开发版示例，请删除 `successEgg` 和 `eggChance`；正式配置不再提供彩蛋字段。没有音效、桌面弹窗或额外网络请求。
 
@@ -98,4 +100,4 @@ npx repo-guard disable commitAnimation
 
 ## 维护依据
 
-[配置验证](../../src/config/commit-animation-validation.js) · [终端渲染](../../src/core/report/commit-animation/presenter.js) · [预提交编排](../../src/orchestration/pre-commit/runner.js) · [提交后入口](../../src/orchestration/commit-message/runner.js) · [动画测试](../../test/commit-animation.test.js) · [暂存区集成测试](../../test/pre-commit.test.js)
+[配置验证](../../src/config/commit-animation-validation.js) · [终端渲染](../../src/core/report/commit-animation/presenter.js) · [预提交编排](../../src/orchestration/pre-commit/runner.js) · [提交后入口](../../src/orchestration/commit-message/runner.js) · [动画测试](../../test/hooks/commit-animation.test.js) · [暂存区集成测试](../../test/hooks/pre-commit.test.js)

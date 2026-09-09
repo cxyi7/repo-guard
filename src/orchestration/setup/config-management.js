@@ -1,3 +1,8 @@
+import { isDeepStrictEqual } from 'node:util';
+import { loadWorkspace, readConfigurationDocument } from '../../config/configuration-loader.js';
+import { createProjectDocument, migrateLegacyConfig, normalizeProjectDocument } from '../../config/project-configuration.js';
+import { PROJECT_CHECK_PATHS, setValueAtPath, valueAtPath } from '../../config/project-feature-paths.js';
+import { DEFAULT_CI_PIPELINE_CONFIG } from '../../config/defaults.js';
 import { DEFAULT_COMMIT_ANIMATION_CONFIG } from '../../config/commit-animation-validation.js';
 import {
   existsSync,
@@ -8,7 +13,6 @@ import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { assertExceptionLifecycleCurrent } from '../../config/exception-lifecycle.js';
-import { validateConfig } from '../../config/configuration-validation.js';
 import {
   DEFAULT_CI_CONFIG,
   DEFAULT_ACCESSIBILITY_TEST_CONFIG,
@@ -153,232 +157,200 @@ function configPath(root) {
   return path.join(root, CONFIG_FILE);
 }
 
-function readProjectConfig(root) {
-  try {
-    return JSON.parse(readFileSync(configPath(root), 'utf8'));
-  } catch (error) {
-    throw configurationError('config/management-invalid', `无法读取 ${CONFIG_FILE}: ${error.message}`);
-  }
-}
-
 function writeProjectConfig(root, value) {
   writeFileSync(configPath(root), `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-export function ensureProjectConfig(root, options) {
+export function ensureProjectConfig(root, options = {}) {
   if (existsSync(configPath(root))) {
+    loadWorkspace(root);
     return { created: false };
   }
-  writeProjectConfig(root, createStarterConfig(options));
+  const document = createProjectDocument(options.project);
+  writeProjectConfig(root, document);
   return { created: true };
 }
 
-export function migrateProjectConfig(root, {
-  allowExpiredExceptions = false,
-  now = new Date(),
-} = {}) {
-  const current = readProjectConfig(root);
-  const prepared = { ...current, version: current.version ?? 1 };
-
-  // Invalid values must fail before migration can rewrite the user's file.
-  const currentConfig = validateConfig(prepared);
-  if (!allowExpiredExceptions) {
-    assertExceptionLifecycleCurrent(currentConfig.exceptions, { now });
+export function migrateProjectConfig(root, options = {}) {
+  const current = readConfigurationDocument(configPath(root));
+  if (current.version === 2) {
+    const workspace = loadWorkspace(root, options);
+    return { changed: false, config: workspace.repositoryConfig, document: current };
   }
-
-  const preCommit = prepared.preCommit ?? {};
-  const migratedBuild = cloneBuildConfig(prepared.build);
-  const migratedUiTokens = cloneUiTokensConfig(prepared.uiTokens);
-  const next = {
-    $schema: prepared.$schema ?? CONFIG_SCHEMA_PATH,
-    ...prepared,
-    commitAnimation: { ...DEFAULT_COMMIT_ANIMATION_CONFIG, ...(prepared.commitAnimation ?? {}) },
-    notification: {
-      ...DEFAULT_NOTIFICATION_CONFIG,
-      ...(prepared.notification ?? {}),
-    },
-    ci: {
-      ...DEFAULT_CI_CONFIG,
-      ...(prepared.ci ?? {}),
-      protectedFiles: {
-        ...DEFAULT_CI_CONFIG.protectedFiles,
-        ...(prepared.ci?.protectedFiles ?? {}),
-      },
-      gatePolicy: {
-        ...DEFAULT_CI_CONFIG.gatePolicy,
-        ...(prepared.ci?.gatePolicy ?? {}),
-        gates: {
-          ...DEFAULT_CI_CONFIG.gatePolicy.gates,
-          ...(prepared.ci?.gatePolicy?.gates ?? {}),
-        },
-      },
-      pipeline: cloneCiPipelineConfig(prepared.ci?.pipeline),
-    },
-    externalGates: prepared.externalGates ?? [],
-    codePlacement: cloneCodePlacementConfig(prepared.codePlacement),
-    exceptions: cloneExceptionsConfig(prepared.exceptions),
-    dependencyPolicy: cloneDependencyPolicyConfig(prepared.dependencyPolicy),
-    commitMessage: cloneCommitMessageConfig(prepared.commitMessage),
-    deadCode: cloneDeadCodeConfig(prepared.deadCode),
-    imageAssets: cloneImageAssetsConfig(prepared.imageAssets),
-    uiTokens: migratedUiTokens,
-    deliveryContract: cloneDeliveryContractConfig(prepared.deliveryContract),
-    architecture: cloneArchitectureConfig(prepared.architecture),
-    accessibilityTest: {
-      ...DEFAULT_ACCESSIBILITY_TEST_CONFIG,
-      ...(prepared.accessibilityTest ?? {}),
-      testPatterns: [
-        ...(prepared.accessibilityTest?.testPatterns
-          ?? DEFAULT_ACCESSIBILITY_TEST_CONFIG.testPatterns),
-      ],
-    },
-    build: migratedBuild,
-    lighthouse: {
-      ...DEFAULT_LIGHTHOUSE_CONFIG,
-      ...(prepared.lighthouse ?? {}),
-    },
-    typeCheck: {
-      ...DEFAULT_TYPE_CHECK_CONFIG,
-      ...(prepared.typeCheck ?? {}),
-    },
-    unitTest: cloneUnitTestConfig(prepared.unitTest),
-    mutationTest: cloneMutationTestConfig(prepared.mutationTest),
-    preCommit: {
-      ...preCommit,
-      asyncResourceCleanup: cloneAsyncResourceCleanupConfig(preCommit.asyncResourceCleanup),
-      pathNaming: clonePathNamingConfig(preCommit.pathNaming),
-      fileHeader: cloneFileHeaderConfig(preCommit.fileHeader),
-      functionDocs: cloneFunctionDocConfig(preCommit.functionDocs),
-      filePlacement: cloneFilePlacementConfig(preCommit.filePlacement),
-      maxFileLines: {
-        ...DEFAULT_MAX_FILE_LINES_CONFIG,
-        ...(preCommit.maxFileLines ?? {}),
-      },
-      stylelint: cloneStylelintConfig(preCommit.stylelint),
-      prettier: {
-        ...DEFAULT_PRETTIER_CONFIG,
-        ...(preCommit.prettier ?? {}),
-      },
-      eslint: {
-        ...DEFAULT_ESLINT_CONFIG,
-        ...(preCommit.eslint ?? {}),
-      },
-    },
-    rules: ensureUiTokenManifestRule(
-      ensureBuildArtifactBaselineRule(prepared.rules, migratedBuild),
-      migratedUiTokens,
-    ),
-    exclusions: prepared.exclusions ?? [],
-  };
-
-  validateConfig(next);
-  const changed = JSON.stringify(current) !== JSON.stringify(next);
-  if (changed) {
-    writeProjectConfig(root, next);
+  const migration = migrateLegacyConfig(current, options.project);
+  if (!isDeepStrictEqual(migration.operations, DEFAULT_CI_PIPELINE_CONFIG)) {
+    throw configurationError('config/operations-migration-required', '旧 ci.pipeline 包含运维设置；必须先按 operations.schema.json 明确迁移独立流水线、产物和发布环境。本次未写入任何配置，原文件已保留。');
   }
-  return { changed, config: next };
+  migration.document.repository.rules = protectProjectArtifacts(
+    migration.document.repository.rules,
+    normalizeProjectDocument(migration.document),
+  );
+  const config = normalizeProjectDocument(migration.document);
+  if (!options.allowExpiredExceptions) {
+    assertExceptionLifecycleCurrent(config.exceptions, { now: options.now ?? new Date() });
+  }
+  const backupPath = path.join(root, 'repo-guard.config.v1.backup.json');
+  // 独占创建备份，避免二次迁移覆盖用户保存的原始配置。
+  try {
+    writeFileSync(backupPath, readFileSync(configPath(root)), { flag: 'wx' });
+  } catch (error) {
+    throw configurationError('config/backup-failed', '无法创建旧配置备份；请保留并检查 repo-guard.config.v1.backup.json，本次未修改配置。', { cause: error });
+  }
+  writeProjectConfig(root, migration.document);
+  return { changed: true, config, document: migration.document, backupPath };
 }
 
 function featureConfig(config, feature) {
-  if (feature === 'coverage') {
-    return config.unitTest.coverage;
-  }
-  if (feature === 'componentInteraction') {
-    return config.unitTest.componentInteraction;
-  }
-  if (feature === 'fileHeader') {
-    return config.preCommit.fileHeader;
-  }
-  if (feature === 'functionDocs') {
-    return config.preCommit.functionDocs;
-  }
-  const gate = gateRegistry.configurable.find(({ featureName }) => featureName === feature);
-  if (gate) {
-    return gate.configKey.split('.').reduce((current, key) => current[key], config);
-  }
-  if (feature === 'ci' || feature === 'notification' || feature === 'commitAnimation') return config[feature];
-  throw configurationError('config/management-invalid', `不支持的可配置功能： ${feature}`);
+  if (PROJECT_CHECK_PATHS[feature]) return valueAtPath(config, PROJECT_CHECK_PATHS[feature]);
+  if (feature === 'dependencies') return config.dependencyPolicy;
+  return config[feature];
 }
 
-export function setFeaturesEnabled(root, requestedFeatures, enabled) {
-  if (typeof enabled !== 'boolean') {
-    throw configurationError('config/management-invalid', '功能状态必须是布尔值');
-  }
-  const uniqueFeatures = [...new Set(requestedFeatures)];
-  if (uniqueFeatures.length === 0) {
-    throw configurationError('config/management-invalid', `请至少选择一项功能： ${CONFIGURABLE_FEATURES.join(', ')}`);
-  }
+function featureDocumentPath(feature) {
+  if (Object.hasOwn(PROJECT_CHECK_PATHS, feature)) return ['checks', feature];
+  if (feature === 'dependencies') return ['repository', 'dependencyPolicy'];
+  if (['commitMessage', 'codePlacement', 'deliveryContract'].includes(feature)) return ['repository', feature];
+  if (feature === 'notification' || feature === 'commitAnimation') return ['reporting', feature];
+  if (feature === 'ci') return ['ci'];
+  throw configurationError('config/management-invalid', `不支持的可配置功能：${feature}。`);
+}
 
-  const unsupported = uniqueFeatures.filter(
-    (feature) => !CONFIGURABLE_FEATURES.includes(feature),
-  );
-  if (unsupported.length > 0) {
-    throw configurationError('config/management-invalid', `不支持的功能： ${unsupported.join(', ')}`);
+function effectiveFeaturesFor(requestedFeatures, enabled) {
+  if (typeof enabled !== 'boolean') throw configurationError('config/management-invalid', '功能状态必须是布尔值');
+  if (!Array.isArray(requestedFeatures) || requestedFeatures.length === 0) {
+    throw configurationError('config/management-invalid', `请至少选择一项功能：${CONFIGURABLE_FEATURES.join(', ')}。`);
   }
-  const requiredFeatures = [];
-  if (enabled && uniqueFeatures.includes('coverage')) requiredFeatures.push('unitTest');
-  if (enabled && uniqueFeatures.includes('componentInteraction')) requiredFeatures.push('unitTest');
-  if (!enabled && uniqueFeatures.includes('unitTest')) requiredFeatures.push('componentInteraction');
-  if (enabled && uniqueFeatures.includes('styleComplexity')) requiredFeatures.push('stylelint');
-  if (enabled && uniqueFeatures.includes('styleGovernance')) requiredFeatures.push('stylelint');
-  if (!enabled && uniqueFeatures.includes('stylelint')) {
-    requiredFeatures.push('styleComplexity', 'styleGovernance');
+  const unique = [...new Set(requestedFeatures)];
+  const unsupported = unique.filter((feature) => !CONFIGURABLE_FEATURES.includes(feature));
+  if (unsupported.length > 0) throw configurationError('config/management-invalid', `不支持的功能：${unsupported.join(', ')}。`);
+  const related = [];
+  if (enabled && unique.some((feature) => ['coverage', 'componentInteraction'].includes(feature))) related.push('unitTest');
+  if (!enabled && unique.includes('unitTest')) related.push('componentInteraction', 'coverage');
+  if (enabled && unique.some((feature) => ['styleComplexity', 'styleGovernance'].includes(feature))) related.push('stylelint');
+  if (!enabled && unique.includes('stylelint')) related.push('styleComplexity', 'styleGovernance');
+  if (enabled && unique.includes('unusedImageAssets')) related.push('imageAssets');
+  if (!enabled && unique.includes('imageAssets')) related.push('unusedImageAssets');
+  return [...new Set([...related, ...unique])];
+}
+
+function selectApplication(workspace, features, projectId) {
+  if (projectId !== undefined) {
+    const selected = workspace.projects.find((project) => project.id === projectId);
+    if (!selected) throw configurationError('project/not-found', `未配置项目：${projectId}。`);
+    return selected;
   }
-  if (enabled && uniqueFeatures.includes('unusedImageAssets')) requiredFeatures.push('imageAssets');
-  if (!enabled && uniqueFeatures.includes('imageAssets')) requiredFeatures.push('unusedImageAssets');
-  const effectiveFeatures = [...new Set([...requiredFeatures, ...uniqueFeatures])];
+  if (workspace.projects.length === 1) return workspace.projects[0];
+  if (features.some((feature) => Object.hasOwn(PROJECT_CHECK_PATHS, feature))) {
+    throw configurationError('project/selection-required', '修改应用检查时必须使用 --project 显式选择应用。');
+  }
+  return null;
+}
 
-  const migration = migrateProjectConfig(root);
-  const next = migration.config;
-  const changed = [];
-  const unchanged = [];
-
-  for (const feature of effectiveFeatures) {
-    const target = featureConfig(next, feature);
-    if (target.enabled === enabled) {
-      unchanged.push(feature);
-    } else {
-      target.enabled = enabled;
-      changed.push(feature);
+function stripChildFeatures(value, feature) {
+  const segments = PROJECT_CHECK_PATHS[feature];
+  if (!segments) return value;
+  for (const child of Object.values(PROJECT_CHECK_PATHS)) {
+    if (child.length === segments.length + 1 && segments.every((item, index) => item === child[index])) {
+      delete value[child.at(-1)];
     }
   }
-
-  next.rules = ensureUiTokenManifestRule(next.rules, next.uiTokens);
-
-  validateConfig(next);
-  if (changed.length > 0) {
-    writeProjectConfig(root, next);
-  }
-  return {
-    changed,
-    migrated: migration.changed,
-    targetEnabled: enabled,
-    unchanged,
-  };
+  return value;
 }
 
-export function enableQualityGates(root, requestedGates) {
-  const unsupported = requestedGates.filter((gate) => !QUALITY_GATES.includes(gate));
-  if (unsupported.length > 0) {
-    throw configurationError('config/management-invalid', `不支持的质量门禁： ${unsupported.join(', ')}`);
+function validateAndWriteDocuments(workspace, replacements) {
+  loadWorkspace(workspace.root, {
+    readDocument: (relative) => replacements.get(path.resolve(workspace.root, relative))
+      ?? readConfigurationDocument(path.resolve(workspace.root, relative)),
+  });
+  const original = new Map([...replacements.keys()].map((file) => [file, readFileSync(file, 'utf8')]));
+  const written = [];
+  try {
+    for (const [file, document] of replacements) {
+      writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
+      written.push(file);
+    }
+  } catch (error) {
+    for (const file of written) writeFileSync(file, original.get(file), 'utf8');
+    throw configurationError('config/write-failed', '配置写入失败；已恢复本次写入成功的文件，请检查配置目录的写入权限。', { cause: error });
   }
-  const result = setFeaturesEnabled(root, requestedGates, true);
-  return {
-    alreadyEnabled: result.unchanged,
-    enabled: result.changed,
-    migrated: result.migrated,
-  };
+}
+
+function protectProjectArtifacts(rules, config, relativeRoot = '.') {
+  const relativeFile = (file) => path.posix.join(relativeRoot, file);
+  const baseline = config.build.artifactBudget;
+  return ensureUiTokenManifestRule(
+    ensureBuildArtifactBaselineRule(rules, {
+      ...config.build,
+      artifactBudget: { ...baseline, baselineFile: relativeFile(baseline.baselineFile) },
+    }),
+    { ...config.uiTokens, manifestFile: relativeFile(config.uiTokens.manifestFile) },
+  );
+}
+
+function protectWorkspaceArtifacts(workspace, replacements) {
+  const candidate = loadWorkspace(workspace.root, {
+    readDocument: (relative) => replacements.get(path.resolve(workspace.root, relative))
+      ?? readConfigurationDocument(path.resolve(workspace.root, relative)),
+  });
+  const document = replacements.get(workspace.configPath) ?? workspace.document;
+  const originalRules = document.repository?.rules
+    ?? candidate.repositoryConfig.rules.map(({ pattern, category, level }) => ({ pattern, category, level }));
+  let rules = originalRules;
+  for (const project of candidate.projects) {
+    rules = protectProjectArtifacts(rules, project.config, project.relativeRoot);
+  }
+  if (!isDeepStrictEqual(rules, originalRules)) {
+    replacements.set(workspace.configPath, { ...document, repository: { ...document.repository, rules } });
+  }
+}
+
+export function setFeaturesEnabled(root, requestedFeatures, enabled, options = {}) {
+  const effectiveFeatures = effectiveFeaturesFor(requestedFeatures, enabled);
+  const workspace = loadWorkspace(root);
+  const application = selectApplication(workspace, effectiveFeatures, options.projectId);
+  const replacements = new Map();
+  const changed = [];
+  const unchanged = [];
+  for (const feature of effectiveFeatures) {
+    const fields = featureDocumentPath(feature);
+    const appCheck = fields[0] === 'checks';
+    const file = appCheck ? application.configPath : workspace.configPath;
+    const normalized = appCheck ? application.config : workspace.repositoryConfig;
+    const previous = featureConfig(normalized, feature);
+    if (previous.enabled === enabled) {
+      unchanged.push(feature);
+      continue;
+    }
+    const document = replacements.get(file) ?? readConfigurationDocument(file);
+    const existing = valueAtPath(document, fields) ?? previous;
+    // ci 的内部字段 pipeline 不属于 v2 外部配置。
+    const next = stripChildFeatures({ ...structuredClone(existing), enabled }, feature);
+    if (feature === 'ci') delete next.pipeline;
+    replacements.set(file, setValueAtPath(document, fields, next));
+    changed.push(feature);
+  }
+  if (changed.length > 0) {
+    protectWorkspaceArtifacts(workspace, replacements);
+    validateAndWriteDocuments(workspace, replacements);
+  }
+  return { changed, migrated: false, targetEnabled: enabled, unchanged };
+}
+
+export function enableQualityGates(root, requestedGates, options = {}) {
+  const unsupported = requestedGates.filter((gate) => !QUALITY_GATES.includes(gate));
+  if (unsupported.length > 0) throw configurationError('config/management-invalid', `不支持的质量门禁：${unsupported.join(', ')}。`);
+  const result = setFeaturesEnabled(root, requestedGates, true, options);
+  return { alreadyEnabled: result.unchanged, enabled: result.changed, migrated: false };
 }
 
 export function configureCi(root, { profile = 'policy' } = {}) {
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
     throw configurationError('config/management-invalid', 'CI 配置档必须为 policy、full 或 release-ready');
   }
-  const migration = migrateProjectConfig(root);
-  const config = migration.config;
-  const changed = !config.ci.enabled || config.ci.profile !== profile;
-  config.ci.enabled = true;
-  config.ci.profile = profile;
-  if (changed) writeProjectConfig(root, config);
-  return { changed, config, migrated: migration.changed };
+  const workspace = loadWorkspace(root);
+  const changed = !workspace.repositoryConfig.ci.enabled || workspace.repositoryConfig.ci.profile !== profile;
+  const document = { ...workspace.document, ci: { ...workspace.document.ci, enabled: true, profile } };
+  if (changed) validateAndWriteDocuments(workspace, new Map([[workspace.configPath, document]]));
+  const config = loadWorkspace(root).repositoryConfig;
+  return { changed, config, document, migrated: false };
 }

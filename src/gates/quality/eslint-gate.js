@@ -23,7 +23,7 @@ function supportsRepoGuardPreset(version) {
     || (major === minimumMajor && minor >= minimumMinor);
 }
 
-export async function resolveRepoGuardEslintPreset(root, eslintVersion) {
+export async function resolveRepoGuardEslintPreset(root, eslintVersion, descriptor = null) {
   if (!supportsRepoGuardPreset(eslintVersion)) {
     throw configurationError(
       'eslint/unsupported-project-version',
@@ -32,18 +32,20 @@ export async function resolveRepoGuardEslintPreset(root, eslintVersion) {
   }
 
   const js = await loadProjectEslintIntegration(root, '@eslint/js', '@eslint/js', true);
-  const vue = await loadProjectEslintIntegration(
+  const useVue = descriptor == null || descriptor.preset?.startsWith('vue-');
+  const useTypeScript = descriptor == null || descriptor.preset?.endsWith('-typescript');
+  const vue = useVue ? await loadProjectEslintIntegration(
     root,
     'eslint-plugin-vue',
     'eslint-plugin-vue',
-    false,
-  );
-  const typescript = await loadProjectEslintIntegration(
+    descriptor != null,
+  ) : null;
+  const typescript = useTypeScript ? await loadProjectEslintIntegration(
     root,
     'typescript-eslint',
     'typescript-eslint',
-    false,
-  );
+    descriptor != null,
+  ) : null;
 
   return {
     configs: createRepoGuardEslintConfig({
@@ -100,6 +102,7 @@ export async function runEslintFiles({
   fix,
   maxWarnings,
   preset = false,
+  descriptor = null,
 }) {
   if (files.length === 0) {
     return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: 'ESLint 没有适用文件' });
@@ -107,7 +110,7 @@ export async function runEslintFiles({
 
   const project = await loadProjectEslint(root);
   const repoGuardPreset = preset
-    ? await resolveRepoGuardEslintPreset(root, project.version)
+    ? await resolveRepoGuardEslintPreset(root, project.version, descriptor)
     : null;
   const execution = await prepareProjectEslintExecution({
     root,

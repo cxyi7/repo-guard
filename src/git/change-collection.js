@@ -90,6 +90,9 @@ function diffChanges(root, args) {
       '-z',
       '--diff-filter=ACMRDTUXB',
       '--find-renames',
+      '--relative',
+      '--',
+      '.',
     ],
     { cwd: root },
   ).stdout;

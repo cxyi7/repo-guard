@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 对 Vue 项目的页面进行 Lighthouse CI 采集和断言。使用项目自己的 `@lhci/cli`、Chrome、页面路由与配置，只在本地保存报告。
 
@@ -55,24 +55,26 @@ npm install --save-dev --save-exact "@lhci/cli@>=0.13 <0.16"
 
 ```json
 {
-  "lighthouse": {
-    "enabled": true,
-    "configFile": "lighthouserc.json",
-    "buildScript": "build",
-    "timeoutMs": 300000
+  "checks": {
+    "lighthouse": {
+      "enabled": true,
+      "configFile": "lighthouserc.json",
+      "buildScript": "build",
+      "timeoutMs": 300000
+    }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `lighthouse` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用自动 Lighthouse 检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；手动 lighthouse 可在该值为 false 时显式检查。 |
-| `configFile` | 项目 Lighthouse CI 配置位置；null 使用标准文件名探测 | 字符串 / null<br>默认：`null` | 非 null 时：至少 1 个字符 |
-| `buildScript` | 采集前的项目 npm 构建脚本；null 表示跳过该构建步骤 | 字符串 / null<br>默认：`"build"` | 非 null 时：至少 1 个字符；与已启用 build.script 同名时跳过内部构建；手动执行前确认产物来自本轮。 |
-| `timeoutMs` | 分别应用到构建、collect、assert 进程的超时，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
+| `checks.lighthouse.enabled` | 是否启用自动 Lighthouse 检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；手动 lighthouse 可在该值为 false 时显式检查。 |
+| `checks.lighthouse.configFile` | 项目 Lighthouse CI 配置位置；null 使用标准文件名探测 | 字符串 / null<br>默认：`null` | 非 null 时：至少 1 个字符 |
+| `checks.lighthouse.buildScript` | 采集前的项目 npm 构建脚本；null 表示跳过该构建步骤 | 字符串 / null<br>默认：`"build"` | 非 null 时：至少 1 个字符；与已启用 build.script 同名时跳过内部构建；手动执行前确认产物来自本轮。 |
+| `checks.lighthouse.timeoutMs` | 分别应用到构建、collect、assert 进程的超时，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
 
 <!-- config-fields:end -->
 
@@ -88,8 +90,8 @@ npx repo-guard lighthouse
 
 手动、可选 pre-push 和 `release-ready` 可执行，不进入 pre-commit 或 CI `full`。手动 `lighthouse` 会显式运行检查，即使自动检查开关关闭。
 
-当前实现只要发现 `build.enabled: true` 且 `lighthouse.buildScript` 与 `build.script` 相同，就会跳过 Lighthouse 内部的构建阶段，这也适用于手动命令。因此手动复测时应先执行 `npx repo-guard build` 生成本轮产物，再运行 Lighthouse；不能仅凭自动跳过构建就认为现有产物已经最新。
+当前实现只要发现 `checks.build.enabled: true` 且 `checks.lighthouse.buildScript` 与 `checks.build.script` 相同，就会跳过 Lighthouse 内部的构建阶段，这也适用于手动命令。因此手动复测时应先执行 `npx repo-guard build` 生成本轮产物，再运行 Lighthouse；不能仅凭自动跳过构建就认为现有产物已经最新。
 
 报告保存到 `.lighthouseci/`。repo-guard 调用 `collect` 和 `assert`，不隐式执行上传。采集失败时检查 Chrome、预览服务和 URL；断言失败时查看实际页面报告，修复性能或其他未达标项后复测。
 
-源码：[Lighthouse 门禁](../../src/gates/quality/lighthouse-gate.js)。测试：[Lighthouse](../../test/lighthouse.test.js)。
+源码：[Lighthouse 门禁](../../src/gates/quality/lighthouse-gate.js)。测试：[Lighthouse](../../test/gates/quality/lighthouse.test.js)。

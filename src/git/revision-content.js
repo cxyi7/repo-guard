@@ -9,7 +9,7 @@ export function isTrackedPath(root, relativePath) {
 
 export function readFileAtRevision(root, revision, relativePath) {
   const result = runGit(
-    ['show', `${revision}:${relativePath}`],
+    ['show', `${revision}:./${relativePath}`],
     { allowFailure: true, cwd: root },
   );
   return Object.freeze({

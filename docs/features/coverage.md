@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 用可复算的测试报告检查全量源码和本次变更是否得到足够验证，帮助定位未覆盖的逻辑。
 
@@ -12,8 +12,7 @@
 
 ```json
 {
-  "unitTest": {
-    "enabled": true,
+  "checks": {
     "coverage": {
       "enabled": true,
       "reportsDirectory": "coverage",
@@ -24,24 +23,27 @@
         "branches": 80,
         "changedLines": 90
       }
+    },
+    "unitTest": {
+      "enabled": true
     }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `unitTest` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `coverage.enabled` | 是否启用本轮覆盖率生成与阈值检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用命令同时启用 unitTest；父级关闭时不执行。 |
-| `coverage.reportsDirectory` | 本轮 coverage-summary.json 与 lcov.info 的专用输出目录 | 字符串<br>默认：`"coverage"` | 至少 1 个字符；末级目录名称必须包含 coverage（不区分大小写）；末级目录名必须含 coverage；Vitest 会清理该专用目录，不能指向源码。 |
-| `coverage.thresholds.lines` | 全量行覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
-| `coverage.thresholds.statements` | 全量语句覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
-| `coverage.thresholds.functions` | 全量函数覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
-| `coverage.thresholds.branches` | 全量分支覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
-| `coverage.thresholds.changedLines` | 本次变更行覆盖率最低百分比 | 数值<br>默认：`90` | ≥ 0；≤ 100；依赖可信 Git 变更范围，不是只看全量摘要。 |
+| `checks.unitTest.enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.coverage.enabled` | 是否启用本轮覆盖率生成与阈值检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用命令同时启用 unitTest；父级关闭时不执行。 |
+| `checks.coverage.reportsDirectory` | 本轮 coverage-summary.json 与 lcov.info 的专用输出目录 | 字符串<br>默认：`"coverage"` | 至少 1 个字符；末级目录名称必须包含 coverage（不区分大小写）；末级目录名必须含 coverage；Vitest 会清理该专用目录，不能指向源码。 |
+| `checks.coverage.thresholds.lines` | 全量行覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
+| `checks.coverage.thresholds.statements` | 全量语句覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
+| `checks.coverage.thresholds.functions` | 全量函数覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
+| `checks.coverage.thresholds.branches` | 全量分支覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
+| `checks.coverage.thresholds.changedLines` | 本次变更行覆盖率最低百分比 | 数值<br>默认：`90` | ≥ 0；≤ 100；依赖可信 Git 变更范围，不是只看全量摘要。 |
 
 <!-- config-fields:end -->
 
@@ -64,4 +66,4 @@ npx repo-guard unit-test
 
 ## 维护依据
 
-[实现入口](../../src/gates/testing/coverage-gate.js) · [对应测试](../../test/coverage.test.js)
+[实现入口](../../src/gates/testing/coverage-gate.js) · [对应测试](../../test/gates/testing/coverage.test.js)

@@ -35,7 +35,9 @@ function matchingFiles(root, files, pattern) {
 async function inspectEslintSetup({ root, config }) {
   if (!config.preCommit.eslint.enabled) return readyGateSetup('ESLint 门禁已禁用');
   const eslint = resolveProjectEslintMetadata(root);
-  if (config.preCommit.eslint.preset) await resolveRepoGuardEslintPreset(root, eslint.version);
+  if (config.preCommit.eslint.preset) {
+    await resolveRepoGuardEslintPreset(root, eslint.version, config.project);
+  }
   return readyGateSetup(`ESLint 门禁（版本 ${eslint.version}）`);
 }
 
@@ -69,7 +71,7 @@ export const stylelintGate = definePlatformGate({
   featureName: 'stylelint',
   featureOrder: 30,
   doctorOrder: 160,
-  environments: ['pre-commit', 'ci-full'],
+  environments: ['pre-commit', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'working-tree-fix',
   allowedMutations: ['working-tree-fix', 'read-only'],
@@ -102,7 +104,7 @@ export const eslintGate = definePlatformGate({
   featureName: 'eslint',
   featureOrder: 10,
   doctorOrder: 130,
-  environments: ['pre-commit', 'ci-full'],
+  environments: ['pre-commit', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'working-tree-fix',
   allowedMutations: ['working-tree-fix', 'read-only'],
@@ -122,6 +124,7 @@ export const eslintGate = definePlatformGate({
         fix: plan.fix,
         maxWarnings: config.preCommit.eslint.maxWarnings,
         preset: config.preCommit.eslint.preset,
+        descriptor: config.project,
       })
     : skippedResult('quality.eslint', 'ESLint 已禁用'),
 });
@@ -132,7 +135,7 @@ export const prettierGate = definePlatformGate({
   featureName: 'prettier',
   featureOrder: 20,
   doctorOrder: 170,
-  environments: ['pre-commit', 'ci-full'],
+  environments: ['pre-commit', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
   mutation: 'working-tree-fix',
   allowedMutations: ['working-tree-fix', 'read-only'],

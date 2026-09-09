@@ -2,35 +2,40 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 依赖策略默认启用，要求精确版本与同步锁文件。项目可配置允许的协议和禁用依赖：
 
 ```json
 {
-  "dependencyPolicy": {
-    "enabled": true,
-    "requireExactVersions": true,
-    "requireLockfile": true,
-    "allowedProtocols": ["npm", "workspace"],
-    "bannedPackages": []
+  "repository": {
+    "dependencyPolicy": {
+      "enabled": true,
+      "requireExactVersions": true,
+      "requireLockfile": true,
+      "allowedProtocols": [
+        "npm",
+        "workspace"
+      ],
+      "bannedPackages": []
+    }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `dependencyPolicy` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用依赖声明与锁文件检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `requireExactVersions` | 是否要求 peerDependencies 以外使用精确依赖版本 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `requireLockfile` | 是否要求 npm 锁文件存在且根依赖与 package.json 一致 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `allowedProtocols` | 允许的额外依赖来源协议名，例如 npm、workspace；不带冒号 | 字符串数组<br>默认：`["npm","workspace"]` | 允许空数组；元素不可重复；每项：协议名使用小写字母开头，后续可含数字、加号、点或连字符；不带冒号 |
-| `bannedPackages` | 禁止使用的包及审核原因，空数组表示没有项目禁用包 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
-| `bannedPackages[].name` | 被禁止的 npm 包名 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `bannedPackages[].reason` | 禁用该依赖的具体理由 | 字符串<br>本对象内必填，无自动代填值 | 至少 10 个字符 |
-| `bannedPackages[].replacement` | 建议替代包；可省略或设为 null | 字符串 / null<br>未声明固定默认值 | 非 null 时：至少 1 个字符 |
+| `repository.dependencyPolicy.enabled` | 是否启用依赖声明与锁文件检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.dependencyPolicy.requireExactVersions` | 是否要求 peerDependencies 以外使用精确依赖版本 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.dependencyPolicy.requireLockfile` | 是否要求 npm 锁文件存在且根依赖与 package.json 一致 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.dependencyPolicy.allowedProtocols` | 允许的额外依赖来源协议名，例如 npm、workspace；不带冒号 | 字符串数组<br>默认：`["npm","workspace"]` | 允许空数组；元素不可重复；每项：协议名使用小写字母开头，后续可含数字、加号、点或连字符；不带冒号 |
+| `repository.dependencyPolicy.bannedPackages` | 禁止使用的包及审核原因，空数组表示没有项目禁用包 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
+| `repository.dependencyPolicy.bannedPackages[].name` | 被禁止的 npm 包名 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `repository.dependencyPolicy.bannedPackages[].reason` | 禁用该依赖的具体理由 | 字符串<br>本对象内必填，无自动代填值 | 至少 10 个字符 |
+| `repository.dependencyPolicy.bannedPackages[].replacement` | 建议替代包；可省略或设为 null | 字符串 / null<br>未声明固定默认值 | 非 null 时：至少 1 个字符 |
 
 <!-- config-fields:end -->
 
@@ -58,4 +63,4 @@ pre-commit 读取最终索引中的 `package.json` 与 `package-lock.json`；CI 
 
 ## 维护依据
 
-[实现入口](../../src/gates/repository/dependency-policy.js) · [对应测试](../../test/dependency-policy.test.js)
+[实现入口](../../src/gates/repository/dependency-policy.js) · [对应测试](../../test/gates/repository/dependency-policy.test.js)

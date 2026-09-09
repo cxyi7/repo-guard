@@ -13,7 +13,16 @@ npx repo-guard image-optimize -- src/assets/banner.png
 npx repo-guard image-optimize --write -- src/assets/banner.png
 ```
 
-开启 `imageAssets.compression.conversion.enabled` 后可生成 WebP：
+多应用仓库从仓库根目录执行时，使用 `--project` 指定应用；路径始终相对于该应用目录，配置来自工作区登记的文件，也支持自定义子应用配置文件名。进入某个应用目录时可以省略 `--project`。
+
+```bash
+npx repo-guard image-optimize --project web -- src/assets/banner.png
+npx repo-guard image-optimize --project web --write -- src/assets/banner.png
+```
+
+未选择唯一应用时会拒绝执行，不会合并扫描其他应用的同名图片。切换目标应用后，仍按其自身的压缩规则、工具安装和 Git 文件状态检查。
+
+开启 `checks.imageAssets.compression.conversion.enabled` 后可生成 WebP：
 
 ```bash
 npx repo-guard image-optimize --to webp -- src/assets/banner.png
@@ -24,7 +33,7 @@ npx repo-guard image-optimize --to webp --write -- src/assets/banner.png
 
 | 条件 | 要求 |
 |---|---|
-| 路径 | 必须在仓库与配置范围内，不得经过符号链接 |
+| 路径 | 必须在所选应用与配置范围内，不得经过符号链接或跨应用目录 |
 | 源文件 | 写入前必须受 Git 跟踪且没有暂存或未暂存改动 |
 | 内容 | 扩展名与真实格式一致，并满足输入、像素和帧数限制 |
 | 收益 | 同时满足配置的输入大小、节省字节及节省比例阈值 |
@@ -40,4 +49,4 @@ npx repo-guard image-optimize --to webp --write -- src/assets/banner.png
 
 ## 维护依据
 
-[实现入口](../../src/gates/repository/image-assets-optimizer.js) · [对应测试](../../test/image-assets.test.js)
+[实现入口](../../src/gates/repository/image-assets-optimizer.js) · [对应测试](../../test/gates/repository/image-assets.test.js) · [多应用命令测试](../../test/gates/repository/image-optimization-workspace.test.js)

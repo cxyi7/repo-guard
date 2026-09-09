@@ -4,11 +4,11 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例使用配置 v2。项目身份由人或 AI 显式提供；基础预设决定默认值，不根据已安装工具自动开启能力。主配置片段合并到已有文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到仓库根目录的 `repo-guard.config.json`。`ci` 统一定义质量检查策略；多应用的子配置只维护项目身份与 `checks`，不能覆盖根目录的 CI 策略。直接编辑 v2 配置后运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 安装或检查 CI：
 
@@ -24,15 +24,35 @@ npx repo-guard doctor --ci
 npx repo-guard ci --profile policy --base <sha> --head <sha>
 npx repo-guard ci --profile full --base <sha> --head <sha>
 npx repo-guard ci --profile release-ready --base <sha> --head <sha>
+npx repo-guard ci --profile full --project api --base <sha> --head <sha>
 ```
 
 | 配置档 | 内容 |
 |---|---|
 | `policy` | 结构化例外、AGENTS、提交信息、异步资源、路径命名、UI Token、安全与基础可访问性、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、Knip、无效图片、完整单元测试/覆盖率、axe、架构和构建 |
-| `release-ready` | `policy` 加无效图片、项目 `check`、项目 `test`、构建、可选 Lighthouse、发布包一致性检查和最终交付证据复核 |
+| `release-ready` | 配置 v2 使用 `full` 的通用工程检查，加适用且启用的 Lighthouse 和最终交付证据复核；不强制项目提供固定的 `check`、`test`、`pack:check` 脚本，不执行 npm 发布 |
 
-CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；测试、构建和报告仍会生成产物。只有显式启用的托管流水线通知会读取 GitLab CI 受保护变量并发送结果。
+CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；测试、构建和报告仍会生成产物。流水线生成与部署由独立的[运维模块](managed-delivery-pipeline.md)管理，开启 CI 质量检查不会连带开启部署。
+
+## 多应用执行与负责人
+
+仓库通过 `projects` 清单明确配置前端、Node 后端及它们的目录。默认执行清单中的全部应用；`--project api` 只验证 `api` 应用并复核公共仓库规则，报告不会把未选择的前端显示为通过。
+
+仓库规则执行一次，应用检查依次在各自目录运行。依赖策略检查每个应用的 `package.json`；仓库根目录另外存在 `package.json` 时也会检查。Git 变更路径转换为应用相对路径，包括跨应用重命名，避免检查错误的文件。
+
+`repository.agent-policy` 同时核验仓库公共 `AGENTS.md` 和所选应用各自的 `AGENTS.md`，使用对应目录的配置生成期望内容。默认策略下，任一受管规范缺失、过期或被改写都会阻断。使用 `--project web` 时检查公共规范与 web 规范，不检查未选择的 api 规范；报告也不会宣称 api 已通过。
+
+如果清单中唯一应用声明 `root: "."` 并使用独立的应用配置文件，仓库与应用共用同一个 `AGENTS.md`。该文件只在应用范围按应用配置检查一次，避免同一路径被要求满足两种文本。
+
+| 报告 | 路径与内容 |
+|---|---|
+| 聚合报告 | 根目录 `ci.reportPath`，默认 `reports/repo-guard.json`；列出选择的应用、各目标退出码、独立报告和聚合门禁结果 |
+| 公共仓库报告 | `reports/repo-guard-workspace/repository.json` |
+| 应用报告 | 各应用目录内的 `reports/repo-guard-workspace/projects/<项目 id>.json` |
+| 最终交付证据报告 | `release-ready` 执行完成后的 `reports/repo-guard-workspace/evidence.json` |
+
+聚合报告与各目标报告不得使用同一路径；报告不覆盖受跟踪文件或穿过符号链接。应用检查互相隔离，任何按策略必须阻断的失败都会使整体退出码非零。前后端负责人可在各自 CI 作业中选择应用；联合验证时不传 `--project`。
 
 ## CI 门禁策略
 
@@ -67,19 +87,19 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `ci` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用CI 门禁流程 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `profile` | policy 检查仓库策略；full 加入完整质量检查；release-ready 复核发布准备 | `"policy"` / `"full"` / `"release-ready"`<br>默认：`"policy"` | 只接受列出的值 |
-| `reportPath` | 整体 CI JSON 报告的仓库相对路径 | 字符串<br>默认：`"reports/repo-guard.json"` | 仓库相对 reports/*.json 路径；必须在 reports/ 下以 .json 结尾，不覆盖已跟踪文件，不经过符号链接。 |
-| `protectedFiles.action` | report 报告受保护变更；fail 阻断此类变更；block 级规则始终阻断 | `"report"` / `"fail"`<br>默认：`"report"` | 只接受列出的值 |
-| `gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>默认：`"inherit"` | 只接受列出的值 |
-| `gatePolicy.gates.security.dynamic-code.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `gatePolicy.gates.security.dynamic-code.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
-| `gatePolicy.gates.accessibility.vue-image-alt.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `gatePolicy.gates.repository.maximum-file-lines.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.enabled` | 是否启用CI 门禁流程 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `ci.profile` | policy 检查仓库策略；full 加入完整质量检查；release-ready 复核发布准备 | `"policy"` / `"full"` / `"release-ready"`<br>默认：`"policy"` | 只接受列出的值 |
+| `ci.reportPath` | 整体 CI JSON 报告的仓库相对路径 | 字符串<br>默认：`"reports/repo-guard.json"` | 仓库相对 reports/*.json 路径；必须在 reports/ 下以 .json 结尾，不覆盖已跟踪文件，不经过符号链接。 |
+| `ci.protectedFiles.action` | report 报告受保护变更；fail 阻断此类变更；block 级规则始终阻断 | `"report"` / `"fail"`<br>默认：`"report"` | 只接受列出的值 |
+| `ci.gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>默认：`"inherit"` | 只接受列出的值 |
+| `ci.gatePolicy.gates.security.dynamic-code.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.gatePolicy.gates.security.dynamic-code.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
+| `ci.gatePolicy.gates.accessibility.vue-image-alt.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.gatePolicy.gates.repository.maximum-file-lines.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 
 <!-- config-fields:end -->
 
@@ -92,7 +112,7 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 
 `scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
 
-`full` 与 `release-ready` 不是逐级包含；项目 `check` 与 `test` 应明确承担发布前所需的验证。外部门禁只在受信任的 GitLab CI 中按声明追加。
+配置 v2 的 `release-ready` 包含完整工程检查，并在所有应用检查之后复核交付证据。具体构建和测试脚本分别由 `checks.build.script`、`checks.unitTest.script` 等配置；未启用或不适用的能力显示跳过。后端项目不会执行 Vue 专用检查，CI 模式不会把前端能力强制套用到后端。外部门禁只在受信任的 GitLab CI 中按声明追加。
 
 ## 执行与复核
 
@@ -100,4 +120,4 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/orchestration/execution-plans.js) · [对应测试](../../test/ci.test.js)
+[实现入口](../../src/orchestration/execution-plans.js) · [多应用调度](../../src/orchestration/ci/workspace-runner.js) · [多应用测试](../../test/ci/workspace-ci.test.js)

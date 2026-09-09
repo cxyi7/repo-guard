@@ -29,4 +29,4 @@ npx repo-guard image-alt
 
 ## 维护依据
 
-[实现入口](../../src/policies/vue-image-alt.js) · [对应测试](../../test/vue-image-alt.test.js)
+[实现入口](../../src/policies/vue-image-alt.js) · [对应测试](../../test/gates/quality/vue-image-alt.test.js)

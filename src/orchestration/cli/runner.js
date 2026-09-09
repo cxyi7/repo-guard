@@ -13,6 +13,7 @@ import {
 import {
   ensureSupportedOptions,
   parseValuedOptions,
+  extractProjectOption,
 } from './argument-parsing.js';
 import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { createGateResult, gateResultToExitCode } from '../../core/result/gate-result.js';
@@ -31,6 +32,7 @@ import { runK6Runner } from './k6-runner.js';
 import { runDeadCodeBaseline } from './dead-code-baseline.js';
 import { runBuildArtifactBaseline } from './build-artifact-baseline.js';
 import { runImageOptimize } from './image-optimize.js';
+import { runOperations } from './operations.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -60,15 +62,17 @@ const HELP_TEXT = `
 repo-guard - 仓库保护门禁
 
 用法：
-  repo-guard init
+  repo-guard init --project <id> --role frontend|backend --stack node --preset <preset>
   repo-guard install-hooks
-  repo-guard migrate
+  repo-guard migrate --project <id> --role frontend|backend --stack node --preset <preset>
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard doctor [--fix|--ci]
   repo-guard install-ci --provider gitlab [--profile policy|full|release-ready] [--stage <name>] [--dry-run]
   repo-guard ci [--profile policy|full|release-ready] [--base <sha>] [--head <sha>] [--report-json <path>]
   repo-guard ci-notify [--status success|failed|canceled]
+  repo-guard ops plan
+  repo-guard ops install [--dry-run]
 ${EARLY_MANUAL_HELP}
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
@@ -82,9 +86,14 @@ ${EARLY_MANUAL_HELP}
   repo-guard guarded-build <npm-script>
   repo-guard dead-code-baseline <init|prune>
   repo-guard build-artifact-baseline <init|prune>
-  repo-guard image-optimize [--to webp] [--write] [--allow-lossy] -- <paths...>
+  repo-guard image-optimize [--project <id>] [--to webp] [--write] [--allow-lossy] -- <paths...>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup|success> [hook arguments]
+
+应用选择：
+  doctor、ci、enable、disable 和应用检查支持 --project <id>。
+  多应用工作区中的提交与推送按配置清单依次检查全部应用。
+  预设：vue-javascript、vue-typescript、node-javascript、node-typescript。
 
 退出码：
   0  成功
@@ -124,26 +133,37 @@ const helpCommand = () => {
   return 0;
 };
 
+function projectDeclaration(argumentsList, projectId) {
+  const { values } = valuedOptions(argumentsList, ['--role', '--stack', '--preset']);
+  if (projectId === undefined && Object.keys(values).length === 0) return undefined;
+  return { id: projectId, role: values['--role'], stack: values['--stack'], preset: values['--preset'] };
+}
+
 const COMMAND_HANDLERS = Object.freeze({
   help: helpCommand,
   '--help': helpCommand,
   '-h': helpCommand,
-  init: withoutOptions(runInit),
+  init: (argumentsList, { projectId }) => runInit(process.cwd(), {
+    project: projectDeclaration(argumentsList, projectId),
+  }),
   'install-hooks': withoutOptions(runInstallHooks),
-  migrate: withoutOptions(runMigrate),
-  enable: async (argumentsList) => {
+  migrate: (argumentsList, { projectId }) => runMigrate(process.cwd(), {
+    project: projectDeclaration(argumentsList, projectId),
+  }),
+  enable: async (argumentsList, options) => {
     ensureSupportedOptions(argumentsList, new Set());
-    return runEnable(argumentsList);
+    return runEnable(argumentsList, process.cwd(), options);
   },
-  disable: async (argumentsList) => {
+  disable: async (argumentsList, options) => {
     ensureSupportedOptions(argumentsList, new Set());
-    return runDisable(argumentsList);
+    return runDisable(argumentsList, process.cwd(), options);
   },
-  doctor: async (argumentsList) => {
+  doctor: async (argumentsList, { projectId }) => {
     ensureSupportedOptions(argumentsList, new Set(['--fix', '--ci']));
     return runDoctor(process.cwd(), {
       fix: argumentsList.includes('--fix'),
       ci: argumentsList.includes('--ci'),
+      projectId,
     });
   },
   'install-ci': async (argumentsList) => {
@@ -159,13 +179,14 @@ const COMMAND_HANDLERS = Object.freeze({
       dryRun: options.flags.has('--dry-run'),
     });
   },
-  ci: async (argumentsList) => {
+  ci: async (argumentsList, { projectId }) => {
     const options = valuedOptions(argumentsList, ['--profile', '--base', '--head', '--report-json']);
     return runCiCommand(process.cwd(), {
       profile: options.values['--profile'],
       base: options.values['--base'] || null,
       head: options.values['--head'] || null,
       reportPath: options.values['--report-json'],
+      projectId,
     });
   },
   'ci-notify': async (argumentsList) => {
@@ -175,13 +196,13 @@ const COMMAND_HANDLERS = Object.freeze({
       write: writeConsoleMessage,
     });
   },
-  'animation-preview': runAnimationPreview,
+  'animation-preview': (argumentsList) => runAnimationPreview(argumentsList),
   'pre-commit': withoutOptions(runPreCommit),
   'pre-push': async (argumentsList) => runPrePush(process.cwd(), {
     input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
     remoteName: argumentsList[0] || 'origin',
   }),
-  'quality-files': runQualityFileCommand,
+  'quality-files': (argumentsList) => runQualityFileCommand(argumentsList),
   check: withoutOptions(runCheck),
   gate: async (argumentsList) => {
     ensureSupportedOptions(argumentsList, new Set(['--dry-run', '--force-notify']));
@@ -191,42 +212,49 @@ const COMMAND_HANDLERS = Object.freeze({
     });
   },
   'dry-run': withoutOptions(() => runGate({ dryRun: true })),
-  'hook-message': runHookMessage,
-  external: async (argumentsList) => {
+  'hook-message': (argumentsList) => runHookMessage(argumentsList),
+  external: async (argumentsList, options) => {
     const gateId = requireSingleArgument(argumentsList, {
       code: 'cli/invalid-external-gate-arguments',
       message: 'external 命令需要一个 project.<kebab-case> 门禁 id',
     });
-    return gateResultToExitCode(await runExternalManualGate(gateId));
+    return gateResultToExitCode(await runExternalManualGate(gateId, process.cwd(), options));
   },
-  'api-performance-runner': async (argumentsList) => {
+  'api-performance-runner': async (argumentsList, { projectId }) => {
     const options = valuedOptions(argumentsList, ['--gate-id', '--config']);
     return runApiPerformanceRunner({
       gateId: options.values['--gate-id'],
       configFile: options.values['--config'],
+      projectId,
     });
   },
-  'k6-runner': async (argumentsList) => {
+  'k6-runner': async (argumentsList, { projectId }) => {
     const options = valuedOptions(argumentsList, ['--gate-id', '--config']);
     return runK6Runner({
       gateId: options.values['--gate-id'],
       configFile: options.values['--config'],
+      projectId,
     });
   },
-  'guarded-build': async (argumentsList) => runGuardedBuild(requireSingleArgument(argumentsList, {
+  'guarded-build': async (argumentsList, options) => runGuardedBuild(requireSingleArgument(argumentsList, {
     code: 'cli/invalid-guarded-build-arguments',
     message: 'guarded-build 命令需要一个已在 mutationTest.guardedBuilds 中声明的 npm 脚本名称',
-  })),
-  'dead-code-baseline': async (argumentsList) => runDeadCodeBaseline(requireSingleArgument(argumentsList, {
+  }), options),
+  'dead-code-baseline': async (argumentsList, options) => runDeadCodeBaseline(requireSingleArgument(argumentsList, {
     allowed: ['init', 'prune'],
     code: 'cli/invalid-dead-code-baseline-arguments',
     message: 'dead-code-baseline 命令需要 init 或 prune',
-  })),
-  'build-artifact-baseline': async (argumentsList) => runBuildArtifactBaseline(requireSingleArgument(argumentsList, {
+  }), process.cwd(), options),
+  'build-artifact-baseline': async (argumentsList, options) => runBuildArtifactBaseline(requireSingleArgument(argumentsList, {
     allowed: ['init', 'prune'],
     code: 'cli/invalid-build-artifact-baseline-arguments',
     message: 'build-artifact-baseline 命令需要 init 或 prune',
-  })),
+  }), process.cwd(), options),
+  ops: (argumentsList) => {
+    const [command, ...rest] = argumentsList;
+    const options = valuedOptions(rest, [], ['--dry-run']);
+    return runOperations(command, process.cwd(), { dryRun: options.flags.has('--dry-run') });
+  },
   'image-optimize': async (argumentsList) => {
     const delimiter = argumentsList.indexOf('--');
     if (delimiter < 0) {
@@ -237,11 +265,12 @@ const COMMAND_HANDLERS = Object.freeze({
     }
     const options = valuedOptions(
       argumentsList.slice(0, delimiter),
-      ['--to'],
+      ['--to', '--project'],
       ['--write', '--allow-lossy'],
     );
     return runImageOptimize({
       paths: argumentsList.slice(delimiter + 1),
+      projectId: options.values['--project'],
       to: options.values['--to'] ?? null,
       write: options.flags.has('--write'),
       allowLossy: options.flags.has('--allow-lossy'),
@@ -250,12 +279,23 @@ const COMMAND_HANDLERS = Object.freeze({
 });
 
 async function runKnownCommand(command, argumentsList) {
-  const handler = COMMAND_HANDLERS[command];
-  if (handler) return await handler(argumentsList);
   const gate = gateRegistry.findByManualCommand(command);
+  const scopedCommands = new Set([
+    'init', 'migrate', 'enable', 'disable', 'doctor', 'ci', 'external',
+    'guarded-build', 'dead-code-baseline', 'build-artifact-baseline',
+    'api-performance-runner', 'k6-runner',
+  ]);
+  const selection = gate || scopedCommands.has(command)
+    ? extractProjectOption(argumentsList)
+    : { argumentsList, projectId: undefined };
+  argumentsList = selection.argumentsList;
+  const handler = COMMAND_HANDLERS[command];
+  if (handler) return await handler(argumentsList, { projectId: selection.projectId });
   if (gate) {
     ensureSupportedOptions(argumentsList, new Set(gate.manualOptions));
-    return gateResultToExitCode(await runRegisteredManualGate(command, argumentsList));
+    return gateResultToExitCode(await runRegisteredManualGate(command, argumentsList, process.cwd(), {
+      projectId: selection.projectId,
+    }));
   }
   throw configurationError('cli/unknown-command', `未知命令： ${command}\n\n${HELP_TEXT}`);
 }

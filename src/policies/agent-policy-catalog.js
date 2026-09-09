@@ -48,6 +48,15 @@ function entry({ id, groupId, gates = [], features = [], capabilities = [], when
 
 const entries = [
   entry({
+    id: 'project-identity',
+    groupId: 'repository-governance-policy',
+    when: ({ config }) => config.configVersion === 2 && config.project != null,
+    lines: ({ config }) => [
+      `- 本应用标识为 ${code(config.project.id)}，角色为${config.project.role === 'backend' ? '后端' : '前端'}，技术栈为 ${code(config.project.stack)}，预设为 ${code(config.project.preset)}；必须遵循显式配置，不得根据依赖自动改变身份。`,
+      '- 检查范围为通用工程质量与团队规则；repo-guard 不判断具体业务正确性、接口输入输出或身份权限。',
+    ],
+  }),
+  entry({
     id: 'commit-animation',
     groupId: 'repository-governance-policy',
     features: ['commitAnimation'],
@@ -412,7 +421,10 @@ const entries = [
     id: 'release-readiness', groupId: 'delivery-policy',
     gates: ['release.check', 'release.test', 'release.package'],
     when: () => true,
-    lines: () => [
+    lines: ({ config }) => config.configVersion === 2 ? [
+      '- 交付前必须通过已配置的工程质量、测试与构建检查；缺少工具、脚本或配置必须修复，不得将执行失败改为通过。',
+      '- 构建与部署计划由独立的 repo-guard.ops.json 维护；前后端可独立发布，工程质量检查不会自动执行部署。',
+    ] : [
       '- 发布前必须依次通过 `npm run check`、`npm test` 和 `npm run pack:check`；一个独立审查功能对应一个版本，不得把下一功能混入已完成审查的版本。',
       '- 版本号按影响选择 patch、minor 或 major；npm 发布必须使用官方 Web 登录与 2FA，且不得保存任何凭据。',
     ],
@@ -436,13 +448,41 @@ export const managedAgentPolicyCapabilities = Object.freeze(
 export function renderAgentPolicyGroups(context) {
   return Object.freeze(agentPolicyGroups.map((group) => {
     const activeEntries = entries.filter((item) => (
-      item.groupId === group.id && item.when(context)
+      item.groupId === group.id && item.when(context) && entryAppliesToProject(item, context.config)
     ));
     const lines = [
       `## ${group.title}`,
       '',
-      ...activeEntries.flatMap((item) => item.lines(context)),
+      ...activeEntries.flatMap((item) => renderProjectEntry(item, context)),
     ];
     return Object.freeze({ ...group, lines: Object.freeze(lines) });
   }));
+}
+
+function entryAppliesToProject(item, config) {
+  if (config.configVersion !== 2) return true;
+  if (!config.project) {
+    return ['commit-animation', 'structured-exceptions', 'protected-files', 'delivery-contract',
+      'commit-message', 'pre-commit-order', 'code-placement', 'dependency-policy', 'ci',
+      'notification', 'release-readiness'].includes(item.id);
+  }
+  return config.project.role !== 'backend'
+    || !['vue-security', 'vue-accessibility', 'async-resource-cleanup', 'component-interaction',
+      'accessibility-test', 'lighthouse', 'ui-tokens'].includes(item.id);
+}
+
+function renderProjectEntry(item, context) {
+  let lines = item.lines(context);
+  const { config } = context;
+  if (config.configVersion !== 2) return lines;
+  if (config.project?.role === 'backend') {
+    lines = lines.filter((line) => !line.includes('Vue 样式语言必须'));
+    if (item.id === 'unit-test') {
+      lines = [lines[0], '- 测试必须覆盖团队要求的正常、边界、异常和回归路径；禁止空测试及 skip/only/todo 绕过。'];
+    }
+  }
+  return lines.map((line) => line
+    .replaceAll('repo-guard.config.json#exceptions.entries', 'repo-guard.config.json#repository.exceptions.entries')
+    .replaceAll('`rules` 与 `exclusions`', '`repository.rules` 与 `repository.exclusions`')
+    .replaceAll('`imageAssets.unused.dynamicReferences`', '`checks.unusedImageAssets.dynamicReferences`'));
 }

@@ -9,7 +9,7 @@
 先按[快速开始](../usage-guide.md#快速开始)安装当前版本，并准备项目自己的 ESLint、Prettier 等工具。在项目根目录执行：
 
 ```bash
-npx repo-guard init
+npx repo-guard init --project web --role frontend --stack node --preset vue-javascript
 npx repo-guard doctor
 ```
 
@@ -23,7 +23,11 @@ npx repo-guard doctor
 | `AGENTS.md` | 将实际配置同步为项目 AI 规范 |
 | `.agents/skills/` | 启用合同后同步五个交付流程 Skill |
 
-首次生成配置默认开启 ESLint、Prettier、依赖、文件归位、行数和通知。Stylelint、类型、单元测试、axe、架构及构建根据项目准备情况启用；详细状态见[能力开关表](../usage-guide.md#启用或关闭能力)。重复初始化不会重新探测并重置已有选择。
+首次生成配置默认开启 ESLint、Prettier、依赖、文件归位、行数和通知。Stylelint、类型、单元测试、axe、架构及构建默认关闭，准备工具后由人或 AI 明确启用；详细状态见[能力开关表](../usage-guide.md#启用或关闭能力)。重复初始化保留已有选择，不根据依赖改变项目身份和功能开关。
+
+上面的命令声明 Vue JavaScript 前端。Node 后端使用 `--role backend --stack node --preset node-javascript`，TypeScript 后端使用 `node-typescript`；`--project` 提供应用标识。四个字段必须明确填写且互相匹配。
+
+新配置采用 `version: 2`。已有 v1 配置须先按[迁移说明](configuration-migration.md)转换；init 不会自动覆盖旧格式。多应用仓库先手动登记根清单和子应用配置，再运行 init，同步一份根 Hook 与各应用规范，示例见[前后端与多应用配置](project-workspace.md)。
 
 ## 完成接入的判断
 
@@ -33,4 +37,4 @@ npx repo-guard doctor
 
 ## 维护依据
 
-[实现入口](../../src/orchestration/setup/project-initialization.js) · [对应测试](../../test/config-management.test.js)
+[实现入口](../../src/orchestration/setup/project-initialization.js) · [对应测试](../../test/setup/config-management.test.js)

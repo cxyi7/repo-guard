@@ -2,9 +2,9 @@
 
 本手册帮助团队完成接入、配置规则、处理检查结果，并将需求到反馈的交付流程落到项目中。详细规则按功能独立维护，使用时从本页进入对应说明。
 
-- 当前版本：`1.24.1`
+- 当前源码版本：`2.0.0`
 - Node.js：`>=22.23.2`
-- 配置契约：`version: 1`
+- 配置契约：`version: 2`，项目身份由人或 AI 明确配置
 
 [开始接入](#快速开始) · [配置规则](#配置团队规则) · [日常提交](#固定执行顺序) · [功能用法](#常用使用方式) · [测试与构建](#接入测试与构建) · [交付流程](#完整交付流程) · [CI](#gitlab-ci) · [排查问题](#诊断与修复)
 
@@ -29,8 +29,8 @@
 ### 安装与初始化
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.1
-npx repo-guard init
+npm install --save-dev --save-exact @cxyi7/repo-guard@2.0.0
+npx repo-guard init --project web --role frontend --stack node --preset vue-javascript
 npx repo-guard doctor
 ```
 
@@ -41,7 +41,7 @@ npx repo-guard doctor
 **新建配置时的启用状态：**
 
 - 默认启用 ESLint（含预设）、Prettier、依赖策略、文件归位、单文件行数和通知开关。
-- Stylelint、类型、单元测试、axe、架构和构建根据项目就绪情况启用；Stylelint 就绪时同时启用样式复杂度与样式治理。
+- Stylelint、样式增强、类型、单元测试、axe、架构和构建默认关闭；通过显式配置或 enable 命令启用，不根据安装的依赖自动改变开关。
 - Lighthouse、覆盖率、组件交互、图片治理、交付合同、变异测试、CI 等能力默认关闭。
 - 通知开关启用不等于通知凭据已经可用；按 Doctor 提示配置本地环境。
 
@@ -60,7 +60,20 @@ git commit -m "feat: 添加用户信息"
 
 ## 配置团队规则
 
-配置统一保存在项目根目录 `repo-guard.config.json`。本手册的 JSON 标为“配置片段”时，应合并到已有配置，保留 `version`、其他规则与团队已有选择；不要用片段覆盖整个文件。
+单应用配置保存在项目根目录 `repo-guard.config.json`。多应用仓库在根配置登记应用清单及公共规范，各应用保存自己的检查配置。本手册的 JSON 标为“配置片段”时，应合并到对应配置，保留 `version`、项目身份、其他规则与团队已有选择；不要用片段覆盖整个文件。
+
+### Node 后端与前后端协作
+
+Node 后端使用显式身份初始化。JavaScript 选择 `node-javascript`，TypeScript 选择 `node-typescript`：
+
+```bash
+npx repo-guard init --project api --role backend --stack node --preset node-typescript
+npx repo-guard doctor
+```
+
+Node 后端复用 ESLint、Prettier、命名、目录、依赖、类型、架构、测试、覆盖率、变异测试及构建等通用工程检查。团队准备自己的工具和脚本，再开启所需能力；Vue、组件交互和页面检查不适用于后端。当前不会新增接口输入输出、身份权限或业务规则校验。
+
+前后端分仓时，各仓库独立初始化；同仓时用 `projects` 明确应用目录，提交 Hook 按文件归属调用各应用的工具，公共仓库规则统一执行。专项命令和 CI 可通过 `--project api` 选择应用，省略选择的仓库级 CI 检查全部应用。完整目录、字段约束及示例见[项目身份与多应用工作区](features/project-workspace.md)。Java 校验和自动安装工具将在后续适配，本版尚未提供。
 
 ### 启用或关闭能力
 
@@ -73,59 +86,59 @@ npx repo-guard enable eslint prettier
 启停命令会保存配置并同步 AGENTS 托管规范。直接编辑配置后执行：
 
 ```bash
-npx repo-guard migrate
+npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-下表列出全部 31 个可配置功能名。默认状态指首次生成配置；“按探测”表示初始化只在项目准备就绪时启用。CI 还有独立策略，自动执行范围见后文。
+下表列出全部 31 个可配置功能名。默认状态指首次按显式预设生成配置。Vue 专用功能不能用于后端；启用检查后必须准备项目工具与配置。CI 还有独立策略，自动执行范围见后文。
 
 | 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
 |---|---|---|---|---|
-| `eslint` | `preCommit.eslint` | [检查 JS、TS、Vue 代码问题，并按项目规则修复可修复项](features/eslint.md) | 开 | 提交、CI full |
-| `prettier` | `preCommit.prettier` | [统一缩进、换行、引号等代码与文档格式](features/prettier.md) | 开 | 提交、CI full |
-| `stylelint` | `preCommit.stylelint` | [检查 CSS、预处理样式与 Vue 样式规范](features/stylelint.md) | 按探测 | 提交、CI full |
-| `styleComplexity` | `preCommit.stylelint.complexity` | [限制选择器组合数量和样式嵌套深度](features/style-complexity.md) | 随 Stylelint 探测 | 随 Stylelint |
-| `styleGovernance` | `preCommit.stylelint.governance` | [约束样式优先级、ID、!important 和全局样式位置](features/style-governance.md) | 随 Stylelint 探测 | 随 Stylelint |
-| `fileHeader` | `preCommit.fileHeader` | [按 Git 事实同步文件头信息，保留人工描述](features/file-header.md) | 关 | 提交 |
-| `functionDocs` | `preCommit.functionDocs` | [随函数签名同步文档标签，保留业务说明](features/function-documentation.md) | 关 | 提交 |
-| `asyncResourceCleanup` | `preCommit.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 关 | 提交、CI 三档 |
-| `pathNaming` | `preCommit.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 关 | 提交、CI 三档 |
-| `uiTokens` | `uiTokens` | [要求受控颜色、间距、字号等使用项目声明的设计 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
-| `filePlacement` | `preCommit.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
-| `maxFileLines` | `preCommit.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
-| `codePlacement` | `codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
-| `dependencies` | `dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI 三档 |
-| `commitMessage` | `commitMessage` | [统一提交信息格式，并在推送和 CI 复核提交历史](features/commit-message.md) | 关 | 提交信息、推送、CI 三档 |
-| `imageAssets` | `imageAssets` | [检查图片命名、真实格式、重复内容及优化收益](features/image-assets.md) | 关 | 提交、CI 三档 |
-| `unusedImageAssets` | `imageAssets.unused` | [查找没有有效引用的图片，支持限制新增历史债务](features/unused-image-assets.md) | 关 | 推送、CI full/release-ready |
-| `deliveryContract` | `deliveryContract` | [把需求、任务、测试、人工验收与反馈绑定为可复核交付](features/delivery-contract.md) | 关 | 提交、CI 三档 |
-| `typeCheck` | `typeCheck` | [调用项目类型脚本，检查 TypeScript 或 Vue 类型错误](features/typecheck.md) | 按探测 | 推送、CI full |
-| `architecture` | `architecture` | [检查循环依赖、导入解析与团队模块分层边界](features/architecture.md) | 按探测 | 推送、CI full |
-| `deadCode` | `deadCode` | [使用 Knip 检查无效文件、导出和依赖，支持历史基线](features/dead-code.md) | 关 | 推送、CI full |
-| `build` | `build` | [执行项目构建，并检查已配置的产物预算](features/build.md) | 按探测 | 推送、CI full/release-ready |
-| `lighthouse` | `lighthouse` | [检查 Vue 页面的性能等 Lighthouse 指标和项目断言](features/lighthouse.md) | 关 | 推送、release-ready |
-| `unitTest` | `unitTest` | [执行项目 Vitest，并检查源码与测试的对应关系](features/unit-test.md) | 按探测 | 推送、CI full；其他 CI 为资料策略 |
-| `componentInteraction` | `unitTest.componentInteraction` | [要求 Vue 组件测试包含真实操作及可观察结果断言](features/component-interaction.md) | 关 | 随单元测试及资料策略 |
-| `coverage` | `unitTest.coverage` | [检查测试覆盖率与本次变更行覆盖率是否达标](features/coverage.md) | 关 | 随完整单元测试执行 |
-| `accessibilityTest` | `accessibilityTest` | [执行项目 axe 测试，检查实际界面的可访问性问题](features/accessibility-test.md) | 按探测 | 推送、CI full |
-| `mutationTest` | `mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 关 | 显式手动或受保护构建 |
-| `notification` | `notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
-| `commitAnimation` | `commitAnimation` | [用小猫或小狗展示提交检查状态，真实提交成功后播放类型道具和彩蛋](features/commit-animation.md) | 关 | 本地 `pre-commit` / `post-commit` |
+| `eslint` | `checks.eslint` | [检查 JS、TS、Vue 代码问题，并按项目规则修复可修复项](features/eslint.md) | 开 | 提交、CI full/release-ready |
+| `prettier` | `checks.prettier` | [统一缩进、换行、引号等代码与文档格式](features/prettier.md) | 开 | 提交、CI full/release-ready |
+| `stylelint` | `checks.stylelint` | [检查 CSS、预处理样式与 Vue 样式规范](features/stylelint.md) | 关 | 提交、CI full/release-ready |
+| `styleComplexity` | `checks.styleComplexity` | [限制选择器组合数量和样式嵌套深度](features/style-complexity.md) | 关 | 随 Stylelint |
+| `styleGovernance` | `checks.styleGovernance` | [约束样式优先级、ID、!important 和全局样式位置](features/style-governance.md) | 关 | 随 Stylelint |
+| `fileHeader` | `checks.fileHeader` | [按 Git 事实同步文件头信息，保留人工描述](features/file-header.md) | 关 | 提交 |
+| `functionDocs` | `checks.functionDocs` | [随函数签名同步文档标签，保留业务说明](features/function-documentation.md) | 关 | 提交 |
+| `asyncResourceCleanup` | `checks.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 关 | 提交、CI 三档 |
+| `pathNaming` | `checks.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 关 | 提交、CI 三档 |
+| `uiTokens` | `checks.uiTokens` | [要求受控颜色、间距、字号等使用项目声明的设计 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
+| `filePlacement` | `checks.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
+| `maxFileLines` | `checks.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
+| `codePlacement` | `repository.codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
+| `dependencies` | `repository.dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI 三档 |
+| `commitMessage` | `repository.commitMessage` | [统一提交信息格式，并在推送和 CI 复核提交历史](features/commit-message.md) | 关 | 提交信息、推送、CI 三档 |
+| `imageAssets` | `checks.imageAssets` | [检查图片命名、真实格式、重复内容及优化收益](features/image-assets.md) | 关 | 提交、CI 三档 |
+| `unusedImageAssets` | `checks.unusedImageAssets` | [查找没有有效引用的图片，支持限制新增历史债务](features/unused-image-assets.md) | 关 | 推送、CI full/release-ready |
+| `deliveryContract` | `repository.deliveryContract` | [把需求、任务、测试、人工验收与反馈绑定为可复核交付](features/delivery-contract.md) | 关 | 提交、CI 三档 |
+| `typeCheck` | `checks.typeCheck` | [调用项目类型脚本，检查 TypeScript 或 Vue 类型错误](features/typecheck.md) | 关 | 推送、CI full/release-ready |
+| `architecture` | `checks.architecture` | [检查循环依赖、导入解析与团队模块分层边界](features/architecture.md) | 关 | 推送、CI full/release-ready |
+| `deadCode` | `checks.deadCode` | [使用 Knip 检查无效文件、导出和依赖，支持历史基线](features/dead-code.md) | 关 | 推送、CI full/release-ready |
+| `build` | `checks.build` | [执行项目构建，并检查已配置的产物预算](features/build.md) | 关 | 推送、CI full/release-ready |
+| `lighthouse` | `checks.lighthouse` | [检查 Vue 页面的性能等 Lighthouse 指标和项目断言](features/lighthouse.md) | 关 | 推送、release-ready |
+| `unitTest` | `checks.unitTest` | [执行项目 Vitest，并检查源码与测试的对应关系](features/unit-test.md) | 关 | 推送、CI full/release-ready；policy 检查资料 |
+| `componentInteraction` | `checks.componentInteraction` | [要求 Vue 组件测试包含真实操作及可观察结果断言](features/component-interaction.md) | 关 | 随单元测试及资料策略 |
+| `coverage` | `checks.coverage` | [检查测试覆盖率与本次变更行覆盖率是否达标](features/coverage.md) | 关 | 随完整单元测试执行 |
+| `accessibilityTest` | `checks.accessibilityTest` | [执行项目 axe 测试，检查实际界面的可访问性问题](features/accessibility-test.md) | 关 | 推送、CI full/release-ready |
+| `mutationTest` | `checks.mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 关 | 显式手动或受保护构建 |
+| `notification` | `reporting.notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
+| `commitAnimation` | `reporting.commitAnimation` | [用小猫或小狗展示提交检查状态，真实提交成功后播放类型道具和彩蛋](features/commit-animation.md) | 关 | 本地 `pre-commit` / `post-commit` |
 | `ci` | `ci` | [在 CI 按固定配置档复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
 
-**开关之间的联动：** `coverage`、`componentInteraction` 会启用 `unitTest`；关闭 `unitTest` 会关闭组件交互，保留 coverage 配置但不执行。`styleComplexity`、`styleGovernance` 会启用 Stylelint，关闭 Stylelint 会关闭两项增强。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
+**开关之间的联动：** `coverage`、`componentInteraction` 会启用 `unitTest`；关闭 `unitTest` 会关闭组件交互与覆盖率检查。`styleComplexity`、`styleGovernance` 会启用 Stylelint，关闭 Stylelint 会关闭两项增强。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
 
 **区分三个入口：** 自动 Hook 按功能配置执行；CI 可按 Gate 设置 `inherit/off/report/enforce`；手动专项入口按自身契约运行。例如 `path-naming`、`dead-code`、`lighthouse` 的显式手动命令即使自动开关关闭也会检查，而 `unit-test`、`typecheck`、`build` 仍读取功能开关。
 
-动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `rules` 与 `exclusions` 配置，结构化例外使用 `exceptions`，都不在 31 项功能开关中。
+动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行，Vue 专用检查只面向前端。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `repository.rules` 与 `repository.exclusions` 配置，结构化例外使用 `repository.exceptions`，都不在 31 项功能开关中。
 
 ### 初始化、迁移和诊断
 
 | 命令 | 用途 |
 |---|---|
-| `npx repo-guard init` | 首次接入并同步托管文件 |
+| `npx repo-guard init --project api --role backend --stack node --preset node-typescript` | 按明确身份首次接入并同步托管文件 |
 | `npx repo-guard install-hooks` | 安装或更新托管 Hook |
-| `npx repo-guard migrate` | 补齐配置结构，并同步 AGENTS 与交付 Skills |
+| `npx repo-guard migrate --project api --role backend --stack node --preset node-typescript` | 备份并迁移单项目 v1 配置为 v2；前端须使用对应身份与预设 |
 | `npx repo-guard doctor` | 检查配置、项目工具及托管文件的就绪状态 |
 | `npx repo-guard doctor --fix` | 修复受管配置、Hook、CI、忽略项、项目脚本、AGENTS 和交付 Skills 等受管内容 |
 | `npx repo-guard doctor --ci` | 检查 CI 接入状态 |
@@ -139,8 +152,8 @@ repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库
 - `init`、`enable`、`disable`、`migrate`、`doctor --fix` 和非预览的 `install-ci` 会同步托管区块。
 - 同步前会先校验全部当前 marker 和已知旧 marker，全部有效后才一次写入；marker 缺失、重复、倒置或嵌套时拒绝修改文件。
 - marker 外的人工内容和先后顺序保持不变；已禁用功能的陈旧说明会被删除，旧的四类策略 marker 会迁移为当前分组。
-- webhook、通知凭据和 `codePlacement.content` 等敏感值不会写入托管规范。
-- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `npx repo-guard migrate` 或 `npx repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。
+- webhook、通知凭据和 `repository.codePlacement.content` 等敏感值不会写入托管规范。
+- Git Hook 不写 `AGENTS.md`。直接编辑配置后应运行 `npx repo-guard doctor --fix`；CI 的 `repository.agent-policy` 只读门禁会阻断未同步内容。`migrate` 专用于旧配置升级。
 - 托管规范没有独立的 `enabled` 开关，不能在保留功能门禁的同时关闭对应 AI 约束。
 
 ## 固定执行顺序
@@ -157,7 +170,7 @@ repo-guard 将项目配置和固定硬门禁投影为 7 个职责区块：仓库
 
 顺序由锁定 Execution Plan 固定，消费项目不能重排：
 
-启用 `preCommit.fileHeader` 或 `preCommit.functionDocs` 后，对应内容会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它们不新增、不删除也不重排计划步骤。
+启用 `checks.fileHeader` 或 `checks.functionDocs` 后，对应内容会先在 `lint-staged` 的暂存快照中完成同步，再进入下列受保护 Execution Plan；它们不新增、不删除也不重排计划步骤。
 
 整个 pre-commit 生命周期由仓库级互斥锁保护。同一仓库已有提交或 Hook 正在运行时，重叠实例会在操作 Git 索引、工作区或 `lint-staged` 备份前以 `pre-commit/already-running` 停止；应等待当前实例结束后重试。每个实例使用包含 PID 和随机所有权令牌的唯一锁文件，进程异常退出留下的文件只按自身唯一路径清理，不需要手工删除活动锁。
 
@@ -228,16 +241,23 @@ npx repo-guard doctor
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "filePlacement": {
       "enabled": true,
       "mode": "newFiles",
       "rules": [
         {
           "name": "图片资源",
-          "patterns": ["**/*.{png,jpg,svg}"],
-          "allowedPatterns": ["src/assets/**", "docs/assets/**"],
-          "exceptions": ["public/favicon.svg"],
+          "patterns": [
+            "**/*.{png,jpg,svg}"
+          ],
+          "allowedPatterns": [
+            "src/assets/**",
+            "docs/assets/**"
+          ],
+          "exceptions": [
+            "public/favicon.svg"
+          ],
           "suggestedDirectory": "src/assets"
         }
       ]
@@ -246,7 +266,12 @@ npx repo-guard doctor
       "enabled": true,
       "mode": "strict",
       "warnAt": 0.85,
-      "rules": [{ "pattern": "**/*.vue", "maxLines": 700 }],
+      "rules": [
+        {
+          "pattern": "**/*.vue",
+          "maxLines": 700
+        }
+      ],
       "exclusions": []
     }
   }
@@ -263,12 +288,17 @@ npx repo-guard doctor
 
 ```json
 {
-  "dependencyPolicy": {
-    "enabled": true,
-    "requireExactVersions": true,
-    "requireLockfile": true,
-    "allowedProtocols": ["npm", "workspace"],
-    "bannedPackages": []
+  "repository": {
+    "dependencyPolicy": {
+      "enabled": true,
+      "requireExactVersions": true,
+      "requireLockfile": true,
+      "allowedProtocols": [
+        "npm",
+        "workspace"
+      ],
+      "bannedPackages": []
+    }
   }
 }
 ```
@@ -305,14 +335,16 @@ npx repo-guard dependencies
 
 ```json
 {
-  "rules": [
-    {
-      "pattern": "src/security/permission-map.ts",
-      "category": "不可变安全文件",
-      "level": "block"
-    }
-  ],
-  "exclusions": []
+  "repository": {
+    "exclusions": [],
+    "rules": [
+      {
+        "pattern": "src/security/permission-map.ts",
+        "category": "不可变安全文件",
+        "level": "block"
+      }
+    ]
+  }
 }
 ```
 
@@ -415,9 +447,25 @@ npx repo-guard unit-test
 
 ```json
 {
-  "typeCheck": { "enabled": true, "script": "typecheck", "timeoutMs": 180000 },
-  "architecture": { "enabled": true, "sourcePaths": ["src"], "timeoutMs": 120000 },
-  "build": { "enabled": true, "script": "build", "timeoutMs": 300000 }
+  "checks": {
+    "architecture": {
+      "enabled": true,
+      "sourcePaths": [
+        "src"
+      ],
+      "timeoutMs": 120000
+    },
+    "typeCheck": {
+      "enabled": true,
+      "script": "typecheck",
+      "timeoutMs": 180000
+    },
+    "build": {
+      "enabled": true,
+      "script": "build",
+      "timeoutMs": 300000
+    }
+  }
 }
 ```
 
@@ -429,9 +477,9 @@ npx repo-guard architecture
 npx repo-guard build
 ```
 
-架构默认检查循环依赖、无法解析的导入，以及生产代码导入测试代码。配置 `architecture.rules` 时是替换规则数组，应显式保留仍需执行的基础规则；通过 `sourcePaths`、`tsConfig`、`exclude` 对齐项目结构。
+架构默认检查循环依赖、无法解析的导入，以及生产代码导入测试代码。配置 `checks.architecture.rules` 时是替换规则数组，应显式保留仍需执行的基础规则；通过 `sourcePaths`、`tsConfig`、`exclude` 对齐项目结构。
 
-这三项不进入 pre-commit；pre-push 和 CI `full` 按配置执行。`release-ready` 有构建步骤，类型和架构不会作为独立步骤自动加入，应明确纳入项目 `check` 脚本或此前的验证流程。失败时先修正对应类型错误、依赖方向或构建原因，再复跑。
+这三项不进入 pre-commit；pre-push、CI `full` 与 `release-ready` 按配置执行类型、架构与构建检查。失败时先修正对应类型错误、依赖方向或构建原因，再复跑。
 
 ### axe 可访问性测试
 
@@ -488,19 +536,19 @@ npx repo-guard doctor --ci
 |---|---|
 | `policy` | 例外、AGENTS、提交信息、异步资源、路径命名、UI Token、安全与基础可访问性、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
 | `full` | `policy` 的步骤，加只读 Stylelint/ESLint/Prettier、类型、Knip、无效图片、完整单元测试及已启用覆盖率、axe、架构、构建 |
-| `release-ready` | `policy` 的步骤，加无效图片、项目 `check`、项目 `test`、构建、可选 Lighthouse、包一致性和最终交付证据 |
+| `release-ready` | `full` 的通用工程检查，加适用于前端且已启用的 Lighthouse，以及最后执行的交付证据复核 |
 
-`full` 与 `release-ready` 不是简单的逐级包含关系。`release-ready` 不自动逐项重跑 `full`，项目的 `check` 和 `test` 脚本需承担团队约定的发布前验证。单元测试“资料策略”只检查测试对应关系和绕过等，不运行完整测试脚本。
+v2 的 `release-ready` 按各应用已启用能力执行，不要求消费项目具备 npm 包发布专用的 `check`、`test` 或打包脚本。单元测试“资料策略”只检查测试对应关系和绕过等，不运行完整测试脚本。三种配置档均按项目身份筛选适用检查，发布就绪结论不会自动部署应用。
 
 CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](features/gitlab-ci.md)。源码修复步骤不在 CI 执行；测试、构建和报告仍会生成各自的产物。
 
 ### 托管应用交付流水线
 
-在同一 `install-ci` 入口启用 `ci.pipeline`，接入项目自己的验证和部署脚本。测试发布自动运行，生产及快速发布保留人工触发；通知使用 GitLab 配置的变量。完整配置见[托管交付流水线](features/managed-delivery-pipeline.md)。
+在独立的 `repo-guard.ops.json` 中明确声明各应用的构建脚本、产物和环境。先执行 `repo-guard ops plan` 预览，再用 `repo-guard ops install` 生成流水线；生产部署默认人工触发，每个应用绑定自己的质量结果和构建产物。完整配置见[运维发布](features/operations.md)。
 
 ### 外部门禁
 
-通过 `externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v1` 报告。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
+通过 `ci.externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v1` 报告。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
 
 ### Axios 手动接口性能外部门禁
 
@@ -516,7 +564,7 @@ CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](fe
 |---|---|---|
 | 提示找不到命令 | 本项目是否安装包，是否在项目根目录使用 `npx` | `npx repo-guard --help` |
 | Doctor 报依赖或脚本缺失 | 工具是否属于当前项目，脚本与配置文件是否存在 | 补齐后重新运行 Doctor |
-| 修改配置后 CI 提示 AGENTS 不一致 | 是否同步托管规范并将改动提交 | `migrate` 后检查差异，再暂存配置与受管文件 |
+| 修改配置后 CI 提示 AGENTS 不一致 | 是否同步托管规范并将改动提交 | `doctor --fix` 后检查差异，再暂存配置与受管文件 |
 | 启用后仍显示跳过 | 功能开关、父级开关、入口、文件范围及 CI 模式 | 确认跳过原因，再运行适用入口 |
 | 提交自动修复后仍失败 | 最终规则是否仍违规，修复内容是否已重新暂存 | 修复指定位置并重新提交 |
 | 推送检查与预期范围不同 | Git 比较范围与单项全项目检查的区别 | 确认推送目标、配置和检查报告 |
@@ -573,7 +621,7 @@ npx repo-guard lighthouse --skip-build
 
 ### Schema 与报告
 
-完整主配置以 [config.schema.json](../config.schema.json) 为准，主要顶层字段包含 `preCommit`、`rules`、`exclusions`、`exceptions`、`dependencyPolicy`、`commitMessage`、`codePlacement`、`deadCode`、`imageAssets`、`uiTokens`、`deliveryContract`、`typeCheck`、`unitTest`、`accessibilityTest`、`architecture`、`build`、`mutationTest`、`lighthouse`、`notification`、`commitAnimation`、`ci` 和 `externalGates`。
+完整主配置以 [config.schema.json](../config.schema.json) 为准。单应用包含 `version`、`project`、`checks`、`repository`、`reporting`、`ci`；多应用根用 `projects` 清单替代 `project` 和 `checks`，子应用只定义自己的身份与检查。外部门禁位于 `ci.externalGates`；部署策略使用独立的 [operations.schema.json](../operations.schema.json)。
 
 | Schema | 对应用途 |
 |---|---|

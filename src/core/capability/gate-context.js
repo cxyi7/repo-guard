@@ -49,8 +49,10 @@ export function createStructuredLogger({ log, info, warn, error } = console) {
 
 export function createGateContext({
   root,
+  repositoryRoot = root,
   environment,
   config,
+  project = config?.project ?? null,
   changes,
   revision = changes?.revision ?? null,
   signal = new AbortController().signal,
@@ -73,6 +75,8 @@ export function createGateContext({
   }
   return Object.freeze({
     root,
+    repositoryRoot,
+    project: project == null ? null : deepFreeze({ ...project }),
     environment,
     config: deepFreeze(config),
     changes,

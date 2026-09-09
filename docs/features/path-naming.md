@@ -4,36 +4,43 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 路径命名默认关闭，可通过 `npx repo-guard enable pathNaming` 启用。npm 包同时支持 `camelCase` 和 `kebab-case`，但一个消费项目只能配置一个字符串值，所有指定目录共用同一规范：
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "pathNaming": {
       "enabled": true,
       "convention": "camelCase",
-      "include": ["src/**", "utils/**"],
-      "exclude": ["**/.*", "**/.*/**", "**/generated/**"]
+      "include": [
+        "src/**",
+        "utils/**"
+      ],
+      "exclude": [
+        "**/.*",
+        "**/.*/**",
+        "**/generated/**"
+      ]
     }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.pathNaming` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否在 pre-commit 和启用的 CI 门禁中检查全部已跟踪路径 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；false 关闭自动入口；显式 path-naming 仍可检查。 |
-| `convention` | 消费项目唯一采用的路径命名规范；不能配置数组，也不能按目录覆盖 | `"camelCase"` / `"kebab-case"`<br>默认：`"camelCase"` | 只接受一个字符串，不能传数组或按目录覆盖；文件与目录使用同一风格。 |
-| `include` | 仓库相对 glob；所有命中的文件和文件夹共用同一个 convention | 字符串数组<br>默认：`["src/**","utils/**"]` | 至少 1 项；每项为非空字符串；仓库相对 glob；不能写绝对路径、.. 路径段或 ! 否定前缀；所有命中目录共用 convention。 |
-| `exclude` | 仓库相对 glob；排除优先级高于 include，适合隐藏路径、生成目录和框架特殊路径 | 字符串数组<br>默认：`["**/.*","**/.*/**","**/generated/**"]` | 允许空数组；每项为非空字符串；仓库相对 glob；不能写绝对路径、.. 路径段或 ! 否定前缀；优先于 include。 |
+| `checks.pathNaming.enabled` | 是否在 pre-commit 和启用的 CI 门禁中检查全部已跟踪路径 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；false 关闭自动入口；显式 path-naming 仍可检查。 |
+| `checks.pathNaming.convention` | 消费项目唯一采用的路径命名规范；不能配置数组，也不能按目录覆盖 | `"camelCase"` / `"kebab-case"`<br>默认：`"camelCase"` | 只接受一个字符串，不能传数组或按目录覆盖；文件与目录使用同一风格。 |
+| `checks.pathNaming.include` | 仓库相对 glob；所有命中的文件和文件夹共用同一个 convention | 字符串数组<br>默认：`["src/**","utils/**"]` | 至少 1 项；每项为非空字符串；仓库相对 glob；不能写绝对路径、.. 路径段或 ! 否定前缀；所有命中目录共用 convention。 |
+| `checks.pathNaming.exclude` | 仓库相对 glob；排除优先级高于 include，适合隐藏路径、生成目录和框架特殊路径 | 字符串数组<br>默认：`["**/.*","**/.*/**","**/generated/**"]` | 允许空数组；每项为非空字符串；仓库相对 glob；不能写绝对路径、.. 路径段或 ! 否定前缀；优先于 include。 |
 
 <!-- config-fields:end -->
 
@@ -52,4 +59,4 @@
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/gates/repository/path-naming-gate.js) · [对应测试](../../test/path-naming.test.js)
+[实现入口](../../src/gates/repository/path-naming-gate.js) · [对应测试](../../test/gates/repository/path-naming.test.js)

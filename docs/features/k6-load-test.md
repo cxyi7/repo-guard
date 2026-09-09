@@ -4,11 +4,11 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 使用消费项目本机 k6 二进制的并发压测 runner。它与 Axios 性能 runner 互补：Axios runner 验证业务客户端、拦截器和低并发真实调用链；k6 runner 验证服务在受控并发或恒定到达率下的延迟、错误率、检查成功率和丢弃迭代。k6 不是 Node.js 运行时，不能直接加载 Axios 客户端；本功能不修改业务 Axios 实例，也不进入提交、推送、CI、发布、受保护构建或打包流程。
 
@@ -18,19 +18,23 @@
 
 ```json
 {
-  "externalGates": [
-    {
-      "id": "project.k6-load",
-      "enabled": true,
-      "environments": ["manual"],
-      "script": "test:k6:runner",
-      "timeoutMs": 900000,
-      "report": {
-        "format": "repo-guard-json-v1",
-        "path": "reports/k6/k6-gate.json"
+  "ci": {
+    "externalGates": [
+      {
+        "id": "project.k6-load",
+        "enabled": true,
+        "environments": [
+          "manual"
+        ],
+        "script": "test:k6:runner",
+        "timeoutMs": 900000,
+        "report": {
+          "format": "repo-guard-json-v1",
+          "path": "reports/k6/k6-gate.json"
+        }
       }
-    }
-  ]
+    ]
+  }
 }
 ```
 
@@ -39,14 +43,14 @@
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `externalGates` | 项目自有检查的注册列表；每项声明一个门禁 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
-| `externalGates[].id` | 项目门禁唯一 ID，使用 project. 加小写连字符名称 | 字符串<br>本对象内必填，无自动代填值 | 必须使用 project. 前缀，后接小写字母开头的小写字母/数字/连字符名称 |
-| `externalGates[].enabled` | 是否启用该项目门禁 | `true` / `false`<br>本对象内必填，无自动代填值 | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `externalGates[].environments` | 允许执行的入口；manual 为手动，ci-full 为完整 CI，release-ready 为发布准备 | 数组；每项可选 `"manual"`、`"ci-full"`、`"release-ready"`<br>本对象内必填，无自动代填值 | 至少 1 项；元素不可重复；CI 仅在受信任 GitLab 受保护分支调度；Axios/k6 runner 进一步只允许 manual。 |
-| `externalGates[].script` | 项目 package.json 中的精确脚本名，不是 shell 命令 | 字符串<br>本对象内必填，无自动代填值 | 仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
-| `externalGates[].timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>本对象内必填，无自动代填值 | ≥ 1000；≤ 1800000 |
-| `externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v1"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `externalGates[].report.path` | 本轮新生成的外部门禁 JSON 报告路径 | 字符串<br>本对象内必填，无自动代填值 | 仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名，以 .json 结尾；必须在 reports/ 内、未跟踪、无符号链接、每轮新生成；命名不能使用平台保留名。 |
+| `ci.externalGates` | 项目自有检查的注册列表；每项声明一个门禁 | 对象数组；对象字段见后续行<br>默认：`[]` | 允许空数组 |
+| `ci.externalGates[].id` | 项目门禁唯一 ID，使用 project. 加小写连字符名称 | 字符串<br>本对象内必填，无自动代填值 | 必须使用 project. 前缀，后接小写字母开头的小写字母/数字/连字符名称 |
+| `ci.externalGates[].enabled` | 是否启用该项目门禁 | `true` / `false`<br>本对象内必填，无自动代填值 | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `ci.externalGates[].environments` | 允许执行的入口；manual 为手动，ci-full 为完整 CI，release-ready 为发布准备 | 数组；每项可选 `"manual"`、`"ci-full"`、`"release-ready"`<br>本对象内必填，无自动代填值 | 至少 1 项；元素不可重复；CI 仅在受信任 GitLab 受保护分支调度；Axios/k6 runner 进一步只允许 manual。 |
+| `ci.externalGates[].script` | 项目 package.json 中的精确脚本名，不是 shell 命令 | 字符串<br>本对象内必填，无自动代填值 | 仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
+| `ci.externalGates[].timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>本对象内必填，无自动代填值 | ≥ 1000；≤ 1800000 |
+| `ci.externalGates[].report.format` | 项目脚本输出的报告协议 | 只能为 `"repo-guard-json-v1"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.externalGates[].report.path` | 本轮新生成的外部门禁 JSON 报告路径 | 字符串<br>本对象内必填，无自动代填值 | 仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名，以 .json 结尾；必须在 reports/ 内、未跟踪、无符号链接、每轮新生成；命名不能使用平台保留名。 |
 
 <!-- config-fields:end -->
 
@@ -185,7 +189,7 @@ npm run guard:k6
 
 受控入口会覆盖消费者脚本的 `options` 和 `handleSummary`，所以场景不得导出这两个名称。所有阈值与报告指标都绑定当前 `scenario`，只统计正式压测迭代，不让 `setup`/`teardown` 的登录、造数和清理请求污染 p95、p99、错误率、检查率或请求量。为保留这些场景子指标，runner 不启用 k6 可选的新机器摘要格式，而是校验受控 `handleSummary` 写出的聚合指标对象。入口关闭 k6 使用情况上报和自动扩展解析，先运行 `k6 inspect`，再运行本地 `k6 run`；子进程只接收操作系统启动所需变量、`environment.pass` 白名单、基础地址和本次随机 `runId`。脚本只能导入仓库内相对模块和 k6 内置模块，不得使用远程模块、`k6/x/*`、硬编码 HTTP 地址、动态请求方法或转存 `k6/http` 绑定。
 
-默认仅允许 `GET`、`HEAD` 和 `OPTIONS`。启用 `safety.allowWrites` 后，脚本必须包含可静态识别的写方法、导出 `teardown`，并在 teardown 中使用 `__ENV.REPO_GUARD_K6_RUN_ID` 发出可静态验证的直接清理请求；进程被强制终止时 teardown 仍无法保证执行，因此写压测还必须使用测试账号、幂等或可过期数据，并由服务端提供兜底清理。`externalGates.timeoutMs` 至少覆盖负载时长、`gracefulStop`、setup、teardown 和 30 秒进程余量。
+默认仅允许 `GET`、`HEAD` 和 `OPTIONS`。启用 `safety.allowWrites` 后，脚本必须包含可静态识别的写方法、导出 `teardown`，并在 teardown 中使用 `__ENV.REPO_GUARD_K6_RUN_ID` 发出可静态验证的直接清理请求；进程被强制终止时 teardown 仍无法保证执行，因此写压测还必须使用测试账号、幂等或可过期数据，并由服务端提供兜底清理。`ci.externalGates.timeoutMs` 至少覆盖负载时长、`gracefulStop`、setup、teardown 和 30 秒进程余量。
 
 通过时退出码为 `0`；k6 阈值失败的原始退出码必须为 `99`，runner 生成 `violation` 后对外返回 `2`；其他退出码、超时、报告缺失或判定不一致均返回 `1`，且不生成可误用的主报告。报告目录必须位于已忽略、未跟踪且不穿过符号链接的 `reports/`，成功执行会保留 k6 机器摘要 `k6-summary.json`、中文 `k6-report.html` 和外部门禁 JSON；报告不会保存配置中的凭据。
 
@@ -195,4 +199,4 @@ npm run guard:k6
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/gates/testing/k6-external-runner.js) · [对应测试](../../test/k6-load.test.js)
+[实现入口](../../src/gates/testing/k6-external-runner.js) · [对应测试](../../test/gates/testing/k6-load.test.js)

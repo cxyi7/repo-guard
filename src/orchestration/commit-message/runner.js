@@ -27,7 +27,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     // post-commit 的展示失败不得把已经创建的提交报告为失败。
     try {
       cleanupCommitMessage(root);
-      const config = loadConfig(root);
+      const config = loadConfig(root, { repositoryOnly: true });
       if (!config.commitAnimation.enabled) return 0;
       const committed = runGit(['log', '-1', '--format=%P%n%s'], { allowFailure: true, cwd: root });
       if (committed.status !== 0) return 0;
@@ -45,7 +45,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     throw configurationError('hook-message/missing-file', `hook-message ${mode || '<missing>'} 需要提交消息文件`);
   }
 
-  const config = loadConfig(root);
+  const config = loadConfig(root, { repositoryOnly: true });
   if (mode === 'prepare') {
     prepareCommitMessage(root, config, messageFile, source, sourceCommit);
     return 0;

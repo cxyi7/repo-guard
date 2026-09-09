@@ -2,7 +2,7 @@
 
 **把团队的开发规范变成自动检查。**
 
-repo-guard 是安装在 Vue、JavaScript 和 TypeScript 项目中的 **团队规范与交付检查工具**，通过 npm 安装为开发依赖。你在项目里配置要求，它在 Git 提交、推送和 CI 等阶段执行相应检查，帮助团队及时发现问题。
+repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**，用于 Vue 前端和 Node.js 后端。人或 AI 明确配置项目身份与团队要求，它在 Git 提交、推送和 CI 阶段检查代码格式、目录规范、依赖、测试和构建，让不同成员和 AI 按同一套要求开发。
 
 例如，团队要求文件统一命名、代码格式一致、提交信息符合约定。配置好以后，成员照常使用 `git commit`：工具执行已启用的提交检查，自动修复可修复的格式问题；需要人工处理的问题会给出中文提示，阻断性检查未通过时，本次提交会被拦下。
 
@@ -33,12 +33,18 @@ repo-guard 是安装在 Vue、JavaScript 和 TypeScript 项目中的 **团队规
 在要接入的 Git 项目根目录执行，需要 Node.js `>=22.23.2`：
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@1.24.1
-npx repo-guard init
+npm install --save-dev --save-exact @cxyi7/repo-guard@2.0.0
+npx repo-guard init --project web --role frontend --stack node --preset vue-javascript
 npx repo-guard doctor
 ```
 
-- `init` 创建或补齐项目配置，安装 Git Hook，让相应检查在 Git 操作时自动执行；同时同步项目脚本和 `AGENTS.md` 中供开发者与 AI 阅读的团队规范。
+上面是 Vue JavaScript 前端的示例。Node TypeScript 后端将初始化命令换为：
+
+```bash
+npx repo-guard init --project api --role backend --stack node --preset node-typescript
+```
+
+- `init` 按明确选择的预设创建配置，安装 Git Hook，让相应检查在 Git 操作时自动执行；同时同步项目脚本和 `AGENTS.md` 中供开发者与 AI 阅读的团队规范。
 - `doctor` 检查配置、依赖与托管文件是否就绪，告诉你还需要补齐什么。
 
 repo-guard 使用项目已有的 ESLint、Prettier、Stylelint、测试和构建工具。安装这个包后，仍需按 `doctor` 提示准备对应依赖与配置。首次初始化会启用部分基础检查，其他能力按需开启；已有非托管 Hook 会提示冲突。详见[接入准备与默认开关](docs/usage-guide.md#快速开始)。
@@ -53,7 +59,7 @@ git commit -m "feat: 添加用户信息"
 
 检查未通过时，根据提示修复、重新暂存并提交。提交阶段的格式修复通过 `lint-staged` 处理暂存内容，保留部分暂存和未暂存改动。
 
-- 当前版本：`1.24.1`
+- 当前源码版本：`2.0.0`
 - npm 包：[`@cxyi7/repo-guard`](https://www.npmjs.com/package/@cxyi7/repo-guard)
 
 ## 配置规则
@@ -83,11 +89,24 @@ npx repo-guard disable pathNaming
 `enable` / `disable` 会保存配置并同步团队规范。直接编辑配置后，执行以下命令同步并检查就绪状态：
 
 ```bash
-npx repo-guard migrate
+npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本属于内置硬性检查，没有关闭开关，不计入上面的 31 项。
+动态代码检查属于通用硬性检查。Vue 的 `v-html`、新窗口链接、表单标签和图片替代文本检查只适用于前端，不会套用到 Node 后端；这些硬性检查不计入 31 个开关。
+
+### 前后端如何一起用
+
+单独仓库各自配置即可。同一仓库可以明确登记 `apps/web` 和 `apps/api`：团队规则放在根配置中，应用各自维护检查项与工具配置。
+
+```bash
+# 只检查后端；使用后端目录内的工具、源码与脚本
+npx repo-guard ci --project api --profile full
+```
+
+提交和推送会按清单检查各应用。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
+
+接入示例见[前后端与多应用配置](docs/features/project-workspace.md)。当前接入范围为通用工程检查，不判断接口输入输出、身份权限或业务是否正确。Java 身份与工具需求接口已预留，Java 执行器和依赖自动安装将在后续实现。
 
 ## 完整交付闭环
 
@@ -160,6 +179,7 @@ npx repo-guard animation-preview --theme dog --type perf
 | [功能说明索引](docs/features/README.md) | 各项能力的用途、字段说明和执行要求 |
 | [交付合同手册](docs/features/delivery-contract.md) | 需求到反馈的接入方式、角色分工与完整流程 |
 | [维护者架构说明](docs/project-structure-and-feature-inventory.md) | 代码结构、模块职责与依赖关系 |
+| [2.0 重构剩余工作](docs/refactor-2.0-remaining-work.md) | 当前完成范围、尚未完成的内部调整与验收标准 |
 | [更新日志](CHANGELOG.md) | 各版本的变更记录 |
 
 ## 贡献与反馈

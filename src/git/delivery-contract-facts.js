@@ -49,7 +49,7 @@ export function collectContractRevisionChanges(root, base, head = 'HEAD') {
 }
 
 export function readFileAtRevision(root, revision, filePath) {
-  const result = runGitBinary(['show', `${revision}:${filePath}`], {
+  const result = runGitBinary(['show', `${revision}:./${filePath}`], {
     allowFailure: true,
     cwd: root,
   });
@@ -61,6 +61,7 @@ export function listFilesAtRevision(root, revision, directory) {
     'ls-tree',
     '-r',
     '--name-only',
+    '-z',
     revision,
     '--',
     directory,
@@ -68,8 +69,7 @@ export function listFilesAtRevision(root, revision, directory) {
     allowFailure: true,
     cwd: root,
   }).stdout
-    .split(/\r?\n/)
-    .map((value) => value.trim())
+    .split('\0')
     .filter(Boolean);
 }
 

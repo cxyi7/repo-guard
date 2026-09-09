@@ -24,4 +24,4 @@ npx repo-guard dynamic-code
 
 ## 维护依据
 
-[实现入口](../../src/gates/security/dynamic-code-gate.js) · [对应测试](../../test/dynamic-code.test.js)
+[实现入口](../../src/gates/security/dynamic-code-gate.js) · [对应测试](../../test/gates/security/dynamic-code.test.js)

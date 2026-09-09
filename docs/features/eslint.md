@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 检查 JavaScript、TypeScript 和 Vue 代码。使用项目自己的 ESLint、解析器和配置；`preset: true` 会叠加 repo-guard 的推荐规范，包括复杂度、函数长度和部分 Vue 约定。
 
@@ -29,7 +29,7 @@ export default [
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "eslint": {
       "enabled": true,
       "preset": true,
@@ -42,15 +42,15 @@ export default [
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.eslint` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用ESLint 暂存检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `preset` | 是否在项目 Flat Config 前注入 repo-guard 维护性规则预设 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `pattern` | 选择暂存文件的 glob，使用项目相对路径匹配 | 字符串<br>默认：`"*.{js,jsx,ts,tsx,vue}"` | 至少 1 个字符 |
-| `fix` | 是否自动修复可修复项；false 使用只读检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `maxWarnings` | 允许的工具警告数上限；0 表示不允许警告 | 整数<br>默认：`0` | ≥ 0 |
+| `checks.eslint.enabled` | 是否启用ESLint 暂存检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.eslint.preset` | 是否在项目 Flat Config 前注入 repo-guard 维护性规则预设 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.eslint.pattern` | 选择暂存文件的 glob，使用项目相对路径匹配 | 字符串<br>默认：`"*.{js,jsx,ts,tsx,vue}"` | 至少 1 个字符 |
+| `checks.eslint.fix` | 是否自动修复可修复项；false 使用只读检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.eslint.maxWarnings` | 允许的工具警告数上限；0 表示不允许警告 | 整数<br>默认：`0` | ≥ 0 |
 
 <!-- config-fields:end -->
 
@@ -63,6 +63,6 @@ npx repo-guard doctor
 
 ## 执行与修复
 
-提交时在 `lint-staged` 暂存快照内修复并复核；CI `full` 只读检查项目文件。自动修复后仍有错误时，按提示修复语法、解析器或具体规则，再暂存并重新提交。不要把项目级 `eslint --fix .` 放进 Hook。
+提交时在 `lint-staged` 暂存快照内修复并复核；CI `full` / `release-ready` 只读检查项目文件。自动修复后仍有错误时，按提示修复语法、解析器或具体规则，再暂存并重新提交。不要把项目级 `eslint --fix .` 放进 Hook。
 
 源码：[ESLint 门禁](../../src/gates/quality/eslint-gate.js)、[预设](../../src/gates/quality/eslint-preset.js)。

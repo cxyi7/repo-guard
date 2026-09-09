@@ -1,7 +1,7 @@
 import { runGit } from './execution.js';
 
 function readStagedFile(root, filePath) {
-  const result = runGit(['show', `:${filePath}`], {
+  const result = runGit(['show', `:./${filePath}`], {
     allowFailure: true,
     cwd: root,
   });

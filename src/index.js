@@ -1,5 +1,12 @@
-export { loadConfig } from './config/configuration-loader.js';
-export { validateConfig } from './config/configuration-validation.js';
+export { loadConfig, loadWorkspace } from './config/configuration-loader.js';
+export {
+  normalizeProjectDocument as validateConfig,
+  normalizeProjectDocument,
+  createProjectDocument,
+  serializeProjectConfig,
+  migrateLegacyConfig,
+} from './config/project-configuration.js';
+export { getProjectToolRequirements, PROJECT_PROFILES } from './profiles/project-profiles.js';
 export { matchRule } from './config/path-matching.js';
 export {
   createChangeSet,

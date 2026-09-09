@@ -1,15 +1,15 @@
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import {
   initializeBuildArtifactBaseline,
   pruneBuildArtifactBaseline,
 } from '../../gates/quality/build-artifact-baseline-management.js';
-import { findRepositoryRoot } from '../../git/repository.js';
 
-export function runBuildArtifactBaseline(action, cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root).build.artifactBudget;
+export function runBuildArtifactBaseline(action, cwd = process.cwd(), options = {}) {
+  const target = loadExecutionTarget(cwd, options);
+  const root = target.root;
+  const config = target.config.build.artifactBudget;
   const result = action === 'init'
     ? initializeBuildArtifactBaseline(root, config)
     : action === 'prune'

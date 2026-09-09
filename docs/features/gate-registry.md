@@ -9,7 +9,7 @@
 | 名称 | 示例 | 用途 |
 |---|---|---|
 | 功能开关 | `pathNaming` | 通过 enable/disable 配置自动执行 |
-| 配置位置 | `preCommit.pathNaming` | 保存阈值、范围与其他选项 |
+| 配置位置 | `checks.pathNaming` | 保存阈值、范围与其他选项 |
 | Gate ID | `repository.path-naming` | 在计划、CI 策略和报告中定位门禁 |
 | 手动命令 | `path-naming` | 从终端显式运行该能力 |
 
@@ -27,4 +27,4 @@ Registry 声明“有哪些能力”，Execution Plan 声明“这个阶段执�
 
 ## 维护依据
 
-[实现入口](../../src/gates/registry.js) · [对应测试](../../test/gate-capability.test.js)
+[实现入口](../../src/gates/registry.js) · [对应测试](../../test/core/gate-capability.test.js)

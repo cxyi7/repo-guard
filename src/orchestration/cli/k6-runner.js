@@ -1,9 +1,8 @@
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { runK6ExternalRunner } from '../../gates/testing/k6-external-runner.js';
-import { findRepositoryRoot } from '../../git/repository.js';
 
 const AUTOMATION_ENVIRONMENT_MARKERS = Object.freeze([
   'CI',
@@ -64,6 +63,7 @@ export async function runK6Runner({
   environment = process.env,
   runtime,
   streamOutput = true,
+  projectId,
 }) {
   if (typeof gateId !== 'string' || !/^project\.[a-z][a-z0-9-]*$/.test(gateId)) {
     throw configurationError(
@@ -74,8 +74,7 @@ export async function runK6Runner({
   if (typeof configFile !== 'string' || !configFile.trim()) {
     throw configurationError('k6-load/missing-config', 'k6-runner 需要 --config 指定项目 k6 压测配置文件');
   }
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
+  const { root, config } = loadExecutionTarget(cwd, { projectId });
   const gate = manualOnlyGate(config, gateId);
   assertManualProcessEnvironment(environment);
   if (streamOutput) writeConsoleMessage('第三方 k6 原始诊断：');

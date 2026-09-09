@@ -2,36 +2,62 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-用于回答“为什么这个项目的规则没有准备好”，检查配置、工具、Hook、脚本与托管资料的接入状态。
+Doctor 检查 repo-guard 是否已经正确接入：项目身份、工具、脚本、Git Hook 和团队规范是否准备好。它按配置检查前端或 Node 后端，不猜测框架，也不代替测试与构建的实际执行。
 
 ## 入口与范围
 
+在仓库根目录执行：
+
 ```bash
 npx repo-guard doctor
+npx repo-guard doctor --project api
 npx repo-guard doctor --ci
 npx repo-guard doctor --fix
+npx repo-guard doctor --fix --project api
 ```
 
-| 入口 | 用法 |
+| 选项 | 含义与约束 |
 |---|---|
-| `doctor` | 本地接入诊断，报告缺失依赖、配置、通知环境与受管内容问题 |
-| `doctor --ci` | 检查 CI 所需配置与环境，适合验证流水线接入 |
-| `doctor --fix` | 尝试修复可安全识别的受管配置、Hook、忽略项、脚本、CI、AGENTS 和交付 Skills |
+| 不带选项 | 检查仓库公共设置及全部已声明应用 |
+| `--project <id>` | 检查指定应用的工具与受保护构建脚本；`id` 必须已经在配置中声明。仓库公共规则与 Hook 仍会检查 |
+| `--ci` | 检查 CI 所需工具和流水线集成，不要求本地 Hook 或企业微信凭据。独立 ops 已启用时检查其生成文件及引用；否则检查质量 CI 模板 |
+| `--fix` | 同步可识别的受管内容，然后再次诊断；可与 `--project` 同用，不能与 `--ci` 同用 |
 
-按已启用功能检查对应工具与资料。启用交付合同时也会检查功能登记、合同和 Skill 准备情况。托管内容比较会统一 LF、CRLF 和 CR，单纯换行差异不会被当作内容过期。
+## 多应用如何检查
 
-## 常见处理
+Doctor 先加载根配置及所有应用配置，验证应用身份、路径和公共规则，再按所选应用检查准备情况。
 
-| 报告问题 | 处理方式 |
+| 检查对象 | 使用的目录与配置 |
 |---|---|
-| 工具或配置缺失 | 在消费项目安装兼容工具，并补齐真实配置或脚本 |
-| 托管内容过期 | 检查本地差异后使用 `--fix`，再次执行 Doctor |
-| marker 损坏或人工改写受管文件 | 比较原始内容，先解决所有权冲突 |
-| 通知环境缺失 | 在本地忽略文件或系统环境中配置 |
-| 交付资料不完整 | 按[统一交付手册](delivery-contract.md)补齐当前事实与人工确认 |
+| 仓库配置、保护规则、结构化例外、交付资料 | Git 根目录，检查一次 |
+| 仓库 `AGENTS.md` | 仓库公共规则；单应用根项目同时包含该应用规范 |
+| 子应用 `AGENTS.md` | 对应应用的角色、检查开关与工程要求 |
+| ESLint、Prettier、Stylelint、类型、测试、构建等工具 | 对应应用目录和已启用配置，检查项目已安装的工具与已有脚本 |
+| Vue 专项检查 | 只适用于前端 Vue 预设；Node 后端不执行 Vue 专项 |
+| 受保护构建 | 对应应用的 `package.json`；子应用包装脚本必须包含正确的 `--project <id>` |
+| 通知 | 仓库级配置；实际启用通知规则或变异测试失败通知时才要求对应环境 |
 
-自动修复不会安装依赖、填写密钥或修复业务代码；修复后可能仍有需要人处理的问题，以再次诊断结果为准。Doctor 通过只证明接入就绪，业务正确性需通过相应测试和验收。
+配置在[前后端与多应用配置](project-workspace.md)中明确声明。启用工具不会自动安装依赖；缺少工具、插件、配置或脚本时，Doctor 会报告需要补齐的项目。
+
+## `--fix` 会修改什么
+
+`--fix` 同步仓库和所选应用的受管 `AGENTS.md`、交付流程 Skills、仓库根 Hook、换行属性、本地通知文件与忽略项，以及辅助 npm 脚本。受保护构建包装脚本写入对应应用；已有其他用途的脚本或 Hook 会提示冲突，不直接替换。
+
+以下操作需要使用各自的入口，不由 Doctor 自动完成：
+
+| 情况 | 处理方式 |
+|---|---|
+| 首次接入，没有配置 | 使用带有身份参数的 `init`，例如 `npx repo-guard init --project api --role backend --stack node --preset node-typescript` |
+| 旧版配置 | 按[配置迁移](configuration-migration.md)显式迁移并保留备份；`--fix` 不推断身份或改写 v1 配置 |
+| 工具、插件或项目配置缺失 | 在应用中准备兼容的依赖、配置和 npm 脚本，再次运行 Doctor |
+| CI 或发布流水线缺失 | 质量 CI 使用 `install-ci`；独立运维使用 `ops plan`、`ops install` |
+| 密钥或业务代码需要修复 | 在本机配置真实凭据，或修改项目代码后执行对应检查 |
+| 受管 marker 损坏、已有第三方 Hook | 比较现有内容，先明确文件归属，再处理冲突 |
+
+直接修改 v2 检查开关后，可用 `doctor --fix` 同步规范。单纯 LF、CRLF、CR 换行差异不会被当作受管正文过期。
+
+Doctor 返回成功表示接入准备满足当前检查要求。代码是否符合规范、测试是否通过、构建是否成功，仍需执行相应命令；业务正确性由项目自己的测试与验收确认。
 
 ## 维护依据
 
-[实现入口](../../src/orchestration/doctor/runner.js) · [对应测试](../../test/doctor.test.js)
+[诊断入口](../../src/orchestration/doctor/runner.js) · [修复入口](../../src/orchestration/setup/repository-repair.js) · [基础测试](../../test/setup/doctor.test.js) · [多应用回归](../../test/setup/workspace-doctor.test.js)

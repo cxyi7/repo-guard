@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 按文件类型规定允许目录，避免图片、文档和其他资源散落在任意位置。文件目录由本能力治理，指定代码文本的出现位置则由[代码位置](code-placement.md)治理。
 
@@ -18,16 +18,23 @@ npx repo-guard file-placement
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "filePlacement": {
       "enabled": true,
       "mode": "newFiles",
       "rules": [
         {
           "name": "图片资源",
-          "patterns": ["**/*.{png,jpg,svg}"],
-          "allowedPatterns": ["src/assets/**", "docs/assets/**"],
-          "exceptions": ["public/favicon.svg"],
+          "patterns": [
+            "**/*.{png,jpg,svg}"
+          ],
+          "allowedPatterns": [
+            "src/assets/**",
+            "docs/assets/**"
+          ],
+          "exceptions": [
+            "public/favicon.svg"
+          ],
           "suggestedDirectory": "src/assets"
         }
       ]
@@ -37,18 +44,18 @@ npx repo-guard file-placement
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.filePlacement` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用自动文件归位检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `mode` | newFiles 检查新增、复制和重命名路径；changedFiles 检查所有非删除变更 | `"newFiles"` / `"changedFiles"`<br>默认：`"newFiles"` | 只接受列出的值 |
-| `rules` | 按顺序匹配的文件分类规则，第一条匹配的规则生效 | 对象数组；对象字段见后续行<br>默认：内置 2 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
-| `rules[].name` | 报告中显示的文件类别名称 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `rules[].patterns` | 选择该规则治理的文件类型，匹配不区分大小写 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
-| `rules[].allowedPatterns` | 匹配文件允许存放的仓库相对位置 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
-| `rules[].exceptions` | 该条规则内允许放行的特殊文件路径 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
-| `rules[].suggestedDirectory` | 归位失败时建议移动到的具体目录，不会自动移动文件 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.filePlacement.enabled` | 是否启用自动文件归位检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.filePlacement.mode` | newFiles 检查新增、复制和重命名路径；changedFiles 检查所有非删除变更 | `"newFiles"` / `"changedFiles"`<br>默认：`"newFiles"` | 只接受列出的值 |
+| `checks.filePlacement.rules` | 按顺序匹配的文件分类规则，第一条匹配的规则生效 | 对象数组；对象字段见后续行<br>默认：内置 2 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
+| `checks.filePlacement.rules[].name` | 报告中显示的文件类别名称 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.filePlacement.rules[].patterns` | 选择该规则治理的文件类型，匹配不区分大小写 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
+| `checks.filePlacement.rules[].allowedPatterns` | 匹配文件允许存放的仓库相对位置 | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
+| `checks.filePlacement.rules[].exceptions` | 该条规则内允许放行的特殊文件路径 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
+| `checks.filePlacement.rules[].suggestedDirectory` | 归位失败时建议移动到的具体目录，不会自动移动文件 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
 
 <!-- config-fields:end -->
 
@@ -62,4 +69,4 @@ pre-commit 检查暂存变更，CI 三档按可信变更范围复核，手动命
 
 ## 维护依据
 
-[实现入口](../../src/policies/file-placement.js) · [对应测试](../../test/file-placement.test.js)
+[实现入口](../../src/policies/file-placement.js) · [对应测试](../../test/policies/file-placement.test.js)

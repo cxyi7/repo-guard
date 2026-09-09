@@ -62,7 +62,7 @@ function inspectTypecheckSetup({ root, config }) {
 
 export const typecheckGate = definePlatformGate({
   id: 'quality.typecheck', configKey: 'typeCheck', featureName: 'typeCheck',
-  featureOrder: 130, doctorOrder: 40, environments: ['manual', 'pre-push', 'ci-full'],
+  featureOrder: 130, doctorOrder: 40, environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_TYPE_CHECK_CONFIG.timeoutMs,
   manualCommand: 'typecheck', manualOrder: 50, packageScript: 'guard:typecheck',
   supportsCancellation: true,
@@ -79,7 +79,7 @@ export const typecheckGate = definePlatformGate({
 
 export const architectureGate = definePlatformGate({
   id: 'quality.architecture', configKey: 'architecture', featureName: 'architecture',
-  featureOrder: 90, doctorOrder: 20, environments: ['manual', 'pre-push', 'ci-full'],
+  featureOrder: 90, doctorOrder: 20, environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_ARCHITECTURE_CONFIG.timeoutMs,
   manualCommand: 'architecture', manualOrder: 40, packageScript: 'guard:architecture',
   requiredTools: ['dependency-cruiser'], inspectSetup: inspectArchitectureSetup,
@@ -95,7 +95,7 @@ export const architectureGate = definePlatformGate({
 
 export const deadCodeGate = definePlatformGate({
   id: 'quality.dead-code', configKey: 'deadCode', featureName: 'deadCode',
-  featureOrder: 100, doctorOrder: 25, environments: ['manual', 'pre-push', 'ci-full'],
+  featureOrder: 100, doctorOrder: 25, environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_DEAD_CODE_CONFIG.timeoutMs,
   manualCommand: 'dead-code', manualOrder: 45, packageScript: 'guard:dead-code',
   requiredTools: ['knip'], supportsCancellation: true,

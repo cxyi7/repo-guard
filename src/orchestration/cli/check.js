@@ -8,7 +8,7 @@ import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 
 export function runCheck(cwd = process.cwd()) {
   const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
+  const config = loadConfig(root, { repositoryOnly: true });
   const changes = collectWorkingTreeChanges(root);
   assertLocalEnvironmentNotStaged(
     changes.filter(({ states }) => states.includes('staged')),

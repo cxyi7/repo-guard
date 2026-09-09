@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "repo-guard 单应用配置 v2",
+  "$ref": "./config.schema.json#/$defs/singleProjectDocument"
+}

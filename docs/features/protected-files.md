@@ -2,20 +2,22 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 使用精确仓库相对路径和 `level: "block"`：
 
 ```json
 {
-  "rules": [
-    {
-      "pattern": "src/security/permission-map.ts",
-      "category": "不可变安全文件",
-      "level": "block"
-    }
-  ],
-  "exclusions": []
+  "repository": {
+    "exclusions": [],
+    "rules": [
+      {
+        "pattern": "src/security/permission-map.ts",
+        "category": "不可变安全文件",
+        "level": "block"
+      }
+    ]
+  }
 }
 ```
 
@@ -24,11 +26,11 @@
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `rules` | 保护文件规则集合，按第一条匹配项决定级别 | 对象数组；对象字段见后续行<br>默认：内置 12 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
-| `rules[].pattern` | 受保护文件的仓库相对 glob，* 匹配单层，** 可跨目录 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `rules[].category` | 报告与通知中显示的业务类别 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `rules[].level` | audit 仅记录；notify 在启用通知时要求发送成功；block 始终阻止修改、删除、重命名或移动匹配文件 | `"notify"` / `"audit"` / `"block"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `exclusions` | 保护文件排除路径，优先于所有保护规则 | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项为非空字符串 |
+| `repository.rules` | 保护文件规则集合，按第一条匹配项决定级别 | 对象数组；对象字段见后续行<br>默认：内置 12 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
+| `repository.rules[].pattern` | 受保护文件的仓库相对 glob，* 匹配单层，** 可跨目录 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `repository.rules[].category` | 报告与通知中显示的业务类别 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `repository.rules[].level` | audit 仅记录；notify 在启用通知时要求发送成功；block 始终阻止修改、删除、重命名或移动匹配文件 | `"notify"` / `"audit"` / `"block"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `repository.exclusions` | 保护文件排除路径，优先于所有保护规则 | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
@@ -55,4 +57,4 @@ npx repo-guard gate --force-notify
 
 ## 维护依据
 
-[实现入口](../../src/gates/repository/repository-policy-gates.js) · [对应测试](../../test/protected-files-gate.test.js)
+[实现入口](../../src/gates/repository/repository-policy-gates.js) · [对应测试](../../test/gates/repository/protected-files-gate.test.js)

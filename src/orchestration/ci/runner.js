@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
@@ -15,6 +16,9 @@ import {
   createGateContext,
 } from '../../core/capability/gate-context.js';
 import { createProjectGateRegistry } from '../../gates/registry.js';
+import { REPOSITORY_GATE_IDS } from '../../gates/project-applicability.js';
+import { defineExecutionPlan, validateExecutionPlan } from '../../core/capability/execution-plan.js';
+import { scopeProjectChanges } from '../workspace/targets.js';
 import {
   createProjectCiFullPlan,
   createProjectReleaseReadyPlan,
@@ -56,24 +60,57 @@ function writeCiLifecycleError(gateId, status, error) {
   return renderGateResultJson(result);
 }
 
+function scopedPlan(plan, scope, root, registry, { skipRepositoryAgentPolicy = false } = {}) {
+  if (scope === 'all') return plan;
+  const steps = plan.steps.filter(({ gateId }) => {
+    if (scope === 'evidence') return gateId === 'release.delivery-evidence';
+    if (gateId === 'release.delivery-evidence') return false;
+    if (gateId === 'repository.agent-policy') return scope === 'project' || !skipRepositoryAgentPolicy;
+    if (gateId === 'dependencies.policy') return scope === 'project' || existsSync(path.join(root, 'package.json'));
+    return scope === 'repository' ? REPOSITORY_GATE_IDS.has(gateId) : !REPOSITORY_GATE_IDS.has(gateId);
+  });
+  return validateExecutionPlan(defineExecutionPlan({ ...plan, id: `${plan.id}:${scope}`, steps }), registry);
+}
+
 export async function runCiGate({
   root,
+  repositoryRoot = root,
   config,
   base = null,
   head = null,
   profile = config.ci.profile,
   reportPath = config.ci.reportPath,
   env = process.env,
+  scope = 'all',
+  resolvedRange = null,
+  initialPriorResults = [],
+  skipRepositoryAgentPolicy = false,
+  onReport = null,
 } = {}) {
   reportPath ||= config.ci.reportPath;
   reportPath = validateCiReportPath(reportPath);
+  if (config.externalGates.some(({ report }) => report.path.toLowerCase() === reportPath.toLowerCase())) {
+    throw configurationError('ci/report-path-collision', 'CI 汇总报告路径不得与外部门禁报告路径相同。');
+  }
+  if (!['all', 'repository', 'project', 'evidence'].includes(scope)) {
+    throw configurationError('ci/invalid-scope', 'CI 执行范围必须为整个项目、仓库、应用或交付证据。');
+  }
+  const publishReport = (report) => {
+    const output = { ...report, ...(config.configVersion === 2 ? {
+      projectId: config.project?.id ?? null,
+      projectRoot: path.relative(repositoryRoot, root).replaceAll('\\', '/') || '.',
+      scope,
+    } : {}) };
+    writeCiReport(root, reportPath, output);
+    if (onReport) onReport(output);
+  };
   if (!config.ci.enabled) {
     const error = configurationError(
       'ci/disabled',
       'CI 门禁已禁用。请运行 repo-guard install-ci 或 repo-guard enable ci。',
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
-    writeCiReport(root, reportPath, {
+    publishReport({
       ...configurationErrorReport(profile, error),
       gateResult,
     });
@@ -85,7 +122,7 @@ export async function runCiGate({
       'CI 配置档必须为 policy、full 或 release-ready',
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
-    writeCiReport(root, reportPath, {
+    publishReport({
       ...configurationErrorReport(profile, error),
       gateResult,
     });
@@ -94,7 +131,11 @@ export async function runCiGate({
 
   let range;
   try {
-    range = resolveCiRange(root, { base, head, env });
+    const fullRange = resolvedRange ?? resolveCiRange(repositoryRoot, { base, head, env });
+    range = root === repositoryRoot ? fullRange : {
+      ...fullRange,
+      changes: scopeProjectChanges(fullRange.changes, path.relative(repositoryRoot, root).replaceAll('\\', '/')),
+    };
   } catch (error) {
     const report = {
       version: 1,
@@ -106,7 +147,7 @@ export async function runCiGate({
       error: error.message,
     };
     report.gateResult = writeCiLifecycleError('ci.range', 'range-error', error);
-    writeCiReport(root, reportPath, report);
+    publishReport(report);
     return gateStatusToExitCode('range-error');
   }
 
@@ -124,11 +165,12 @@ export async function runCiGate({
   };
   const registry = createProjectGateRegistry(config);
   const includeExternalGates = isTrustedExternalGateCi(env);
-  const ciPlan = profile === 'release-ready'
+  const originalPlan = profile === 'release-ready'
     ? createProjectReleaseReadyPlan(config, registry, { includeExternalGates })
     : profile === 'full'
       ? createProjectCiFullPlan(config, registry, { includeExternalGates })
       : executionPlans.get('ci-policy');
+  const ciPlan = scopedPlan(originalPlan, scope, root, registry, { skipRepositoryAgentPolicy });
   const changeSet = createChangeSet({
     source: 'ci',
     changes: range.changes,
@@ -136,6 +178,7 @@ export async function runCiGate({
   });
   const context = createGateContext({
     root,
+    repositoryRoot,
     environment: ciPlan.environment,
     config,
     changes: changeSet,
@@ -159,7 +202,7 @@ export async function runCiGate({
       'configuration-error',
       typedError,
     );
-    writeCiReport(root, reportPath, {
+    publishReport({
       ...configurationErrorReport(profile, typedError),
       base: range.base,
       head: range.head,
@@ -172,6 +215,7 @@ export async function runCiGate({
     plan: ciPlan,
     registry,
     context,
+    initialPriorResults,
     prepareStepContext: gatePolicy.prepareStepContext,
     beforeStep: gatePolicy.beforeStep,
     onResult: ({ result, step }) => recordResult(
@@ -207,7 +251,7 @@ export async function runCiGate({
     })),
     steps,
   };
-  writeCiReport(root, reportPath, report);
+  publishReport(report);
   const statusLabel = status === 'passed' ? '已通过' : '未通过';
   writeConsoleMessage(`repo-guard CI 报告：${reportPath}（${statusLabel}）。`);
   return policyExecution.exitCode;

@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import lintStaged from 'lint-staged';
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadStagedWorkspace } from '../workspace/configuration-snapshot.js';
 import {
   runStreamingProcess,
   terminalProcessOutput,
@@ -17,7 +17,7 @@ function quoteCommandArgument(value) {
 
 export async function runQualityGate({ cwd = process.cwd(), animation = null } = {}) {
   const root = findRepositoryRoot(cwd);
-  loadConfig(root);
+  loadStagedWorkspace(root);
   const stagedChanges = collectStagedChanges(root);
   const task = [
     quoteCommandArgument(process.execPath),

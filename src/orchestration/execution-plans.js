@@ -178,14 +178,17 @@ export function createProjectReleaseReadyPlan(
       includeExternalGates,
     ))
     .map(({ id }) => id);
+  const projectSteps = config.configVersion === 2
+    ? [...ciFullPlan.steps, 'quality.lighthouse', 'release.delivery-evidence']
+    : releaseReadyPlan.steps;
   return validateExecutionPlan(defineExecutionPlan({
     id: 'release-ready',
     environment: 'release-ready',
     locked: true,
     steps: [
-      ...releaseReadyPlan.steps.slice(0, -1),
+      ...projectSteps.slice(0, -1),
       ...externalSteps,
-      releaseReadyPlan.steps.at(-1),
+      projectSteps.at(-1),
     ],
   }), registry);
 }

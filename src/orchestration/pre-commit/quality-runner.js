@@ -26,6 +26,7 @@ import { orchestratePlan } from '../orchestrator.js';
 import { preCommitQualityPlan } from './protected-plan.js';
 import { synchronizeStagedFileHeaders } from './file-header-normalizer.js';
 import { synchronizeStagedFunctionDocumentation } from './function-documentation-normalizer.js';
+import { scopeProjectFiles, projectStepLabel } from '../workspace/targets.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -198,10 +199,7 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
       }
       break;
     case 'quality.eslint-verify':
-      if (
-        selection.eslintFiles.length > 0
-        && (!selection.eslintConfig.fix || selection.prettierFiles.length > 0)
-      ) {
+      if (selection.eslintFiles.length > 0) {
         return runGateWithFiles(gate, stepContext, selection.eslintFiles);
       }
       break;
@@ -248,7 +246,7 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
   return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
 }
 
-export async function runQualityExecution({ root, files, config }) {
+function prepareQualityProject({ root, repositoryRoot = root, files, config }) {
   const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
   const selection = selectQualityFiles(normalizedFiles, config);
   const stagedChanges = collectStagedChanges(root);
@@ -260,11 +258,13 @@ export async function runQualityExecution({ root, files, config }) {
     && !selection.pathNamingConfig.enabled
     && !(selection.uiTokenConfig.enabled && hasStagedDeletion)
   ) {
-    return emptyQualityExecution();
+    return null;
   }
 
-  const originalContents = captureFileContents(selection.relevantFiles);
-  try {
+  return { root, repositoryRoot, config, normalizedFiles, selection, stagedChanges };
+}
+
+function normalizeProjectContents({ root, selection, stagedChanges }) {
     synchronizeStagedFileHeaders({
       root,
       files: selection.fileHeaderFiles,
@@ -275,8 +275,12 @@ export async function runQualityExecution({ root, files, config }) {
       files: selection.functionDocFiles,
     });
     writeFunctionDocumentationWarnings(functionDocResult.warnings);
-    const context = createGateContext({
+}
+
+function qualityContext({ root, repositoryRoot, config, selection, normalizedFiles, stagedChanges }) {
+    return createGateContext({
       root,
+      repositoryRoot,
       environment: preCommitQualityPlan.environment,
       config: executionConfig(config, {
         eslintFiles: selection.eslintFiles,
@@ -291,17 +295,30 @@ export async function runQualityExecution({ root, files, config }) {
       }),
       files: normalizedFiles,
     });
+}
+
+async function executeQualityProjects(projects) {
+  const prepared = projects.map(prepareQualityProject).filter(Boolean);
+  if (prepared.length === 0) return emptyQualityExecution();
+  const originalContents = captureFileContents(prepared.flatMap(({ selection }) => selection.relevantFiles));
+  try {
+    for (const project of prepared) normalizeProjectContents(project);
+    const contexts = prepared.map(qualityContext);
+    const selections = new Map(prepared.map(({ root, selection }) => [root, selection]));
     const execution = await orchestratePlan({
       plan: preCommitQualityPlan,
       registry: gateRegistry,
-      context,
+      context: contexts[0],
+      contextsForStep: () => contexts,
       stopOnFailure: true,
       executeStep: (stepArguments) => executeQualityStep({
         ...stepArguments,
         stepContext: stepArguments.context,
-        selection,
+        selection: selections.get(stepArguments.context.root),
       }),
-      onResult: ({ result, step }) => writeGateResultConsole(result, { label: step.id }),
+      onResult: ({ context, result, step }) => writeGateResultConsole(result, {
+        label: projectStepLabel(context, step),
+      }),
     });
     if (execution.exitCode !== 0) restoreFileContents(originalContents);
     return execution;
@@ -312,4 +329,19 @@ export async function runQualityExecution({ root, files, config }) {
       code: 'pre-commit/quality-execution-failed',
     });
   }
+}
+
+export async function runQualityExecution({ root, files, config }) {
+  return await executeQualityProjects([{ root, files, config }]);
+}
+
+export async function runWorkspaceQualityExecution(workspace, files) {
+  const normalized = normalizeStagedFiles(workspace.root, files, '工作区质量门禁');
+  const projects = workspace.projects.map((project) => ({
+    root: project.root,
+    repositoryRoot: workspace.root,
+    config: project.config,
+    files: scopeProjectFiles(normalized, workspace.root, project).map(({ absolute }) => absolute),
+  }));
+  return await executeQualityProjects(projects);
 }

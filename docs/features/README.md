@@ -4,16 +4,21 @@
 
 交付相关能力统一维护在[交付合同手册](delivery-contract.md)：功能登记、合同、证据和反馈是同一条流程，下面按环节链接到同页相应位置。
 
+v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护集中在仓库公共规则中；迁移与启用命令会按应用目录补充对应保护，字段和行为见各专题。
+
+当前内部配置统一与旧 CI 发布链路清理尚未完成，进度和验收要求见 [2.0 重构剩余工作](../refactor-2.0-remaining-work.md)。下表“已维护”表示已有对应功能文档，不表示全部重构工作已完成。
+
 ## 接入与托管
 
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
 | 项目初始化 | [docs/features/project-initialization.md](project-initialization.md) | 已维护 |
+| 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，Node 后端已接入 |
 | 配置迁移 | [docs/features/configuration-migration.md](configuration-migration.md) | 已维护 |
 | Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护 |
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护 |
 | 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
-| AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护 |
+| AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护，核验仓库及所选应用规范一致性 |
 | GitLab CI 安装与配置档 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护 |
 
 ## 提交阶段质量与安全
@@ -47,11 +52,11 @@
 | 保护文件 | [docs/features/protected-files.md](protected-files.md) | 已维护 |
 | 企业微信通知 | [docs/features/wecom-notification.md](wecom-notification.md) | 已维护 |
 | 图片资源质量 | [docs/features/image-assets.md](image-assets.md) | 已维护 |
-| 图片安全优化 | [docs/features/image-optimization.md](image-optimization.md) | 已维护 |
-| 无效图片资源与 Git 基线 | [docs/features/unused-image-assets.md](unused-image-assets.md) | 已维护 |
+| 图片安全优化与应用选择 | [docs/features/image-optimization.md](image-optimization.md) | 已维护 |
+| 无效图片资源与 Git 基线 | [docs/features/unused-image-assets.md](unused-image-assets.md) | 已维护，支持应用历史配置 |
 | 依赖声明与锁文件 | [docs/features/dependency-policy.md](dependency-policy.md) | 已维护 |
 | 提交信息生命周期 | [docs/features/commit-message.md](commit-message.md) | 已维护 |
-| 结构化例外 | [docs/features/structured-exceptions.md](structured-exceptions.md) | 已维护 |
+| 结构化例外 | [docs/features/structured-exceptions.md](structured-exceptions.md) | 已维护，按应用隔离批准范围 |
 | 树形功能登记 | [交付合同手册 · 功能登记与合同规划](delivery-contract.md#功能登记与合同规划) | 已维护 |
 | 交付合同门禁 | [docs/features/delivery-contract.md](delivery-contract.md) | 已维护 |
 | 交付证据复核 | [交付合同手册 · 交付证据与两轮复核](delivery-contract.md#交付证据与两轮复核) | 已维护 |
@@ -84,6 +89,7 @@
 | GateResult 与报告 | [docs/features/gate-result-and-reporting.md](gate-result-and-reporting.md) | 已维护 |
 | 项目外部门禁 | [docs/features/external-gates.md](external-gates.md) | 已维护 |
 | GitLab 应用交付流水线 | [docs/features/managed-delivery-pipeline.md](managed-delivery-pipeline.md) | 已维护 |
+| 独立运维与各应用发布 | [docs/features/operations.md](operations.md) | 已维护，使用独立 ops 配置 |
 | 发布就绪检查 | [docs/features/release-ready.md](release-ready.md) | 已维护 |
 
 ## 单项文档约定
@@ -103,8 +109,8 @@
 ### 配置示例怎么读、怎么维护
 
 - JSON 示例保持标准 JSON，复制时不需要删除注释；紧随其后的字段表解释用途、可选值、默认值、数值范围、路径格式及字段联动。YAML 和 JavaScript 支持注释，可在字段同一行说明。
-- 表头注明字段所在对象，例如 `preCommit.pathNaming`；`entries[].reason` 表示数组中每个对象的 `reason`。中间对象用于分组，不能把子字段直接移到配置根级。
-- 默认值指省略字段时的补缺值；示例值是当前示例的选择。首次初始化可能根据项目工具是否就绪启用功能，不能把示例中的 `true` 一律写成默认开启。
+- 表头注明字段所在对象，例如 `checks.pathNaming`；`entries[].reason` 表示数组中每个对象的 `reason`。中间对象用于分组，不能把子字段直接移到配置根级。
+- 默认值指省略字段时的补缺值；示例值是当前示例的选择。首次初始化依据显式预设生成基础开关，不会根据依赖探测自动启用其他功能，不能把示例中的 `true` 一律写成默认开启。
 - `false`、`null`、`0` 和 `[]` 含义不同，不能互换；可为空、可省略、必填及“关闭检查”等语义必须按对应字段说明。数组配置会整项替换，修改主配置片段时保留其他已有字段。
 - 枚举必须列出所有允许值，数字说明单位和上下限，路径说明相对哪个目录、是否支持 glob、是否允许为空以及排除优先级。涉及脚本、报告、凭据环境变量或人工确认时，写明前置条件和绑定要求。
 - 新增或修改字段时，同时修改示例及旁边的说明；用配置 Schema、补缺默认值和实际校验逻辑交叉核对，不从字段名猜测含义。

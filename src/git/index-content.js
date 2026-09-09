@@ -10,10 +10,10 @@ export function listIndexFiles(root) {
 export function readIndexTextFiles(root, paths) {
   return paths.map((filePath) => ({
     path: filePath,
-    content: runGit(['show', `:${filePath}`], { cwd: root }).stdout,
+    content: runGit(['show', `:./${filePath}`], { cwd: root }).stdout,
   }));
 }
 
 export function readIndexFileBuffer(root, filePath) {
-  return runGitBinary(['show', `:${filePath}`], { cwd: root }).stdout;
+  return runGitBinary(['show', `:./${filePath}`], { cwd: root }).stdout;
 }

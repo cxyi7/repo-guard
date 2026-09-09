@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadWorkspace } from '../../config/configuration-loader.js';
+import { createChangeSet } from '../../core/capability/gate-context.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import {
   nodeVersionIsSupported,
@@ -11,6 +12,7 @@ import {
   renderExceptionRegistrySummary,
 } from '../../core/report/exception-registry-renderer.js';
 import { createProjectGateRegistry } from '../../gates/registry.js';
+import { gateAppliesToProject } from '../../gates/project-applicability.js';
 import { gitValue } from '../../git/execution.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { inspectExceptionLifecycle } from '../../config/exception-lifecycle.js';
@@ -30,9 +32,13 @@ import {
   isCurrentManagedHook,
   isManagedHook,
   managedHookNames,
+  guardedBuildCommand,
 } from '../setup/hook-installer.js';
 import { repairRepository } from '../setup/repository-repair.js';
 import { inspectDeliverySkills } from '../setup/delivery-skills.js';
+import { createWorkspaceTargets, selectProjects, workspaceAgentPolicyTargets, workspaceStepTargets } from '../workspace/targets.js';
+import { loadOperationsConfig } from '../../operations/config/configuration.js';
+import { inspectOperationsGitLabPipeline } from '../../operations/gitlab/installation.js';
 
 function renderDoctorResult(root, repairResult, { checks, errors, warnings }) {
   writeConsoleMessage(`repo-guard doctor 检查目录：${root}`);
@@ -43,28 +49,36 @@ function renderDoctorResult(root, repairResult, { checks, errors, warnings }) {
   return errors.length === 0 ? 0 : 1;
 }
 
-function inspectBaseConfiguration(root, { checks, errors, warnings }) {
+function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId) {
   if (nodeVersionIsSupported()) {
     checks.push(`Node.js 版本：${process.versions.node}`);
   } else {
     errors.push(`Node.js 版本：${process.versions.node} 不受支持；要求 ${REQUIRED_NODE_RANGE}`);
   }
 
-  let config;
+  let workspace;
   try {
-    config = loadConfig(root, { allowExpiredExceptions: true });
-    checks.push(`配置（${config.rules.length} 条规则，${config.exclusions.length} 条排除项）`);
+    workspace = loadWorkspace(root, { allowExpiredExceptions: true });
+    selectProjects(workspace, projectId);
+    checks.push(`配置（${workspace.projects.length} 个显式应用，${workspace.repositoryConfig.rules.length} 条仓库规则）`);
   } catch (error) {
     errors.push(error.message);
+    return null;
   }
-  if (!config) return null;
+  if (!workspace) return null;
+  const config = workspace.repositoryConfig;
 
   const exceptionResult = inspectExceptionLifecycle(config.exceptions);
-  const agentPolicy = inspectAgentPolicies(root, config);
-  if (agentPolicy.changed) {
-    errors.push(`${AGENT_POLICY_FILE} 托管规范与项目配置不一致；请运行 repo-guard doctor --fix`);
-  } else {
-    checks.push(`${AGENT_POLICY_FILE} 项目托管规范`);
+  const policyTargets = workspaceAgentPolicyTargets(workspace, projectId);
+  for (const target of policyTargets) {
+    try {
+      const agentPolicy = inspectAgentPolicies(target.root, target.config);
+      if (agentPolicy.changed) {
+        errors.push(`${target.label} ${AGENT_POLICY_FILE} 托管规范与配置不一致；请运行 repo-guard doctor --fix`);
+      } else checks.push(`${target.label} ${AGENT_POLICY_FILE} 托管规范`);
+    } catch (error) {
+      errors.push(`${target.label}：${error.message}`);
+    }
   }
   const deliverySkills = inspectDeliverySkills(root, config.deliveryContract.enabled);
   if (deliverySkills.issues.length > 0) {
@@ -90,10 +104,11 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }) {
   ) {
     warnings.push(renderExceptionRegistrySummary(exceptionResult));
   }
-  return config;
+  return workspace;
 }
 
 function inspectManagedHooks(root, { checks, errors }) {
+  const initialErrors = errors.length;
   const hooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
   if (hooksPath === '.githooks') checks.push('Git Hook 路径：core.hooksPath=.githooks');
   else errors.push(`core.hooksPath 当前为“${hooksPath || '未配置'}”`);
@@ -113,30 +128,31 @@ function inspectManagedHooks(root, { checks, errors }) {
       errors.push(`Git Hook 已过期： .githooks/${hookName}；请运行 repo-guard install-hooks`);
     }
   }
-  if (errors.every((message) => !message.includes('Git hook'))) {
+  if (errors.length === initialErrors) {
     checks.push(`${managedHookNames.length} 个托管 Git Hook`);
   }
 }
 
-export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false } = {}) {
+export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, projectId } = {}) {
   const errors = [];
   const warnings = [];
   const checks = [];
   const root = findRepositoryRoot(cwd);
   if (fix && ci) throw configurationError('doctor/conflicting-options', 'doctor --fix 与 --ci 不能同时使用');
   const repairResult = fix
-    ? repairRepository(root)
+    ? repairRepository(root, { projectId })
     : { repairErrors: [], repairs: [] };
 
   errors.push(...repairResult.repairErrors);
 
-  const config = inspectBaseConfiguration(root, { checks, errors, warnings });
+  const workspace = inspectBaseConfiguration(root, { checks, errors, warnings }, projectId);
+  const config = workspace?.repositoryConfig;
 
   if (!ci) inspectManagedHooks(root, { checks, errors });
 
   const hasNotifyRules = config?.rules.some(({ level }) => level === 'notify') ?? false;
-  const hasMutationFailureNotification = config?.mutationTest.enabled
-    && config.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure);
+  const hasMutationFailureNotification = workspace?.projects.some(({ config: appConfig }) => appConfig.mutationTest.enabled
+    && appConfig.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure));
   const notificationRequired = config?.notification.enabled
     && (hasNotifyRules || hasMutationFailureNotification);
   if (!ci) {
@@ -174,9 +190,17 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     }
   } else if (config) {
     checks.push('CI 模式不需要本地 Git Hook 或企业微信凭据');
-    const ciInspection = inspectGitLabCi(root, config);
-    if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
-    else checks.push(`GitLab CI 集成（${config.ci.profile} 配置档）`);
+    try {
+      const operations = loadOperationsConfig(root);
+      const ciInspection = operations.enabled
+        ? inspectOperationsGitLabPipeline(root, operations, workspace.projects.map((application) => ({
+          ...application.project, root: application.relativeRoot,
+        }))) : inspectGitLabCi(root, config);
+      if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
+      else checks.push(operations.enabled ? 'GitLab 独立运维集成' : `GitLab CI 集成（${config.ci.profile} 配置档）`);
+    } catch (error) {
+      errors.push(error.message);
+    }
     try {
       validateCiGatePolicy(config, createProjectGateRegistry(config));
       checks.push(
@@ -188,60 +212,70 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false }
     }
   }
 
-  if (config) {
-    try {
-      const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
-      for (const guardedBuild of config.mutationTest.guardedBuilds) {
-        const expected = `repo-guard guarded-build ${guardedBuild.script}`;
-        if (typeof packageJson.scripts?.[guardedBuild.script] !== 'string') {
-          errors.push(`受保护构建找不到原始 npm 脚本：${guardedBuild.script}`);
-        }
-        if (packageJson.scripts?.[guardedBuild.packageScript] !== expected) {
-          errors.push(
-            `受保护构建脚本 ${guardedBuild.packageScript} 必须为 "${expected}"；`
-            + '请运行 repo-guard init',
-          );
-        } else {
-          checks.push(`受保护构建：${guardedBuild.packageScript} → ${guardedBuild.script}`);
-        }
-      }
-    } catch (error) {
-      errors.push(`无法检查受保护构建脚本：${error.message}`);
+  if (workspace) {
+    for (const application of selectProjects(workspace, projectId)) {
+      inspectGuardedBuilds(application, root, { checks, errors });
     }
+    const environment = ci && config.ci.profile === 'release-ready'
+      ? 'release-ready' : ci ? `ci-${config.ci.profile}` : 'manual';
+    const targets = createWorkspaceTargets({
+      workspace, projectId, environment,
+      changes: createChangeSet({ source: 'doctor', changes: [] }),
+    });
     const doctorGates = createProjectGateRegistry(config).all
       .filter(({ doctorOrder }) => doctorOrder != null)
       .sort((left, right) => left.doctorOrder - right.doctorOrder);
     for (const gate of doctorGates) {
-      try {
-        const setup = await gate.inspectSetup({ root, config });
-        if (setup == null) continue;
-        if (setup.status === 'ready') checks.push(setup.summary);
-        else errors.push(`${gate.id} 设置状态为 ${setup.status}: ${setup.summary}`);
-      } catch (error) {
-        errors.push(error.message);
+      for (const context of workspaceStepTargets(targets, { gateId: gate.id })) {
+        if (gateAppliesToProject(gate.id, context.project)) {
+          await inspectGate(gate, context, { checks, errors });
+        }
       }
     }
-    for (const externalGate of config.externalGates) {
-      if (!externalGate.enabled) {
-        checks.push(`外部门禁 ${externalGate.id} 已禁用`);
-        continue;
-      }
-      try {
-        const gate = createProjectGateRegistry(config).get(externalGate.id);
-        const requestedEnvironment = ci && config.ci.profile === 'release-ready'
-          ? 'release-ready'
-          : ci ? `ci-${config.ci.profile}` : 'manual';
-        const environment = gate.environments.includes(requestedEnvironment)
-          ? requestedEnvironment
-          : gate.environments[0];
-        const setup = await gate.inspectSetup({ root, config, environment });
-        if (setup.status === 'ready') checks.push(setup.summary);
-        else errors.push(`${gate.id} 设置状态为 ${setup.status}: ${setup.summary}`);
-      } catch (error) {
-        errors.push(error.message);
+    for (const context of targets.projects) {
+      for (const externalGate of context.config.externalGates) {
+        if (!externalGate.enabled) {
+          checks.push(`应用 ${context.project.id} 外部门禁 ${externalGate.id} 已禁用`);
+          continue;
+        }
+        const gate = createProjectGateRegistry(context.config).get(externalGate.id);
+        await inspectGate(gate, {
+          ...context,
+          environment: gate.environments.includes(environment) ? environment : gate.environments[0],
+        }, { checks, errors });
       }
     }
   }
 
   return renderDoctorResult(root, repairResult, { checks, errors, warnings });
+}
+
+async function inspectGate(gate, context, { checks, errors }) {
+  const label = context.project?.id ? `应用 ${context.project.id}` : '仓库';
+  try {
+    const setup = await gate.inspectSetup(context);
+    if (setup == null) return;
+    if (setup.status === 'ready') checks.push(`${label}：${setup.summary}`);
+    else errors.push(`${label} ${gate.id} 设置状态为 ${setup.status}：${setup.summary}`);
+  } catch (error) {
+    errors.push(`${label}：${error.message}`);
+  }
+}
+
+function inspectGuardedBuilds(application, repositoryRoot, { checks, errors }) {
+  if (application.config.mutationTest.guardedBuilds.length === 0) return;
+  try {
+    const packageJson = JSON.parse(readFileSync(path.join(application.root, 'package.json'), 'utf8'));
+    for (const guardedBuild of application.config.mutationTest.guardedBuilds) {
+      const expected = guardedBuildCommand(guardedBuild.script, application, repositoryRoot);
+      if (typeof packageJson.scripts?.[guardedBuild.script] !== 'string') {
+        errors.push(`应用 ${application.id} 受保护构建找不到原始 npm 脚本：${guardedBuild.script}`);
+      }
+      if (packageJson.scripts?.[guardedBuild.packageScript] !== expected) {
+        errors.push(`应用 ${application.id} 受保护构建脚本 ${guardedBuild.packageScript} 必须为 "${expected}"；请运行 repo-guard doctor --fix`);
+      } else checks.push(`应用 ${application.id} 受保护构建：${guardedBuild.packageScript} → ${guardedBuild.script}`);
+    }
+  } catch (error) {
+    errors.push(`应用 ${application.id} 无法检查受保护构建脚本：${error.message}`);
+  }
 }

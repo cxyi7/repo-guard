@@ -20,14 +20,14 @@ module.exports = {
       severity: 'error',
       comment: 'Core contains stable contracts and utilities; it cannot depend on gates, orchestration, or integrations.',
       from: { path: '^src/core/' },
-      to: { path: '^src/(?:gates/|orchestration/|integrations/)' },
+      to: { path: '^src/(?:gates/|orchestration/|integrations/|operations/|profiles/)' },
     },
     {
       name: 'config-does-not-depend-on-runtime-domains',
       severity: 'error',
       comment: 'Configuration contracts and lifecycle cannot depend on Git, policies, gates, integrations, or orchestration.',
       from: { path: '^src/config/' },
-      to: { path: '^src/(?:gates/|git/|integrations/|orchestration/|policies/)' },
+      to: { path: '^src/(?:gates/|git/|integrations/|orchestration/|policies/|operations/)' },
     },
     {
       name: 'git-does-not-depend-on-policy-or-runtime-layers',
@@ -77,6 +77,20 @@ module.exports = {
       comment: 'Integrations cannot own managed policy, capability selection, or user-facing rendering.',
       from: { path: '^src/integrations/' },
       to: { path: '^src/core/(?:capability|policy|report)/' },
+    },
+    {
+      name: 'profiles-do-not-depend-on-runtime-domains',
+      severity: 'error',
+      comment: '显式项目预设只声明身份和工具需求，不执行检查、部署或安装。',
+      from: { path: '^src/profiles/' },
+      to: { path: '^src/(?:config/|gates/|git/|integrations/|orchestration/|policies/|operations/)' },
+    },
+    {
+      name: 'operations-do-not-depend-on-quality-orchestration',
+      severity: 'error',
+      comment: '运维生成器通过公共 CLI 调用质量检查，不导入质量门禁或编排实现。',
+      from: { path: '^src/operations/' },
+      to: { path: '^src/(?:gates/|orchestration/)' },
     },
     {
       name: 'orchestration-entrypoints-do-not-call-integrations-directly',

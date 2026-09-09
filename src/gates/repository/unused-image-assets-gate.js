@@ -2,6 +2,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { validateConfig } from '../../config/configuration-validation.js';
+import { loadWorkspace } from '../../config/workspace-configuration.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import {
   errorStatus,
@@ -115,11 +116,26 @@ function inspectSnapshot(snapshot, imageConfig, validateDynamicDeclarations) {
   });
 }
 
-function baselineImageConfig(root, revision, fallback) {
-  const snapshot = readFileAtRevision(root, revision, CONFIG_FILE);
+function baselineImageConfig(root, repositoryRoot, revision, config) {
+  const fallback = { root, imageConfig: config.imageAssets };
+  const snapshot = readFileAtRevision(repositoryRoot, revision, CONFIG_FILE);
   if (!snapshot.exists) return fallback;
   try {
-    return validateConfig(JSON.parse(snapshot.content), `${CONFIG_FILE}@${revision.slice(0, 12)}`).imageAssets;
+    const document = JSON.parse(snapshot.content);
+    if (document.version === 2) {
+      const workspace = loadWorkspace(repositoryRoot, {
+        allowExpiredExceptions: true,
+        readDocument(relative) {
+          const file = readFileAtRevision(repositoryRoot, revision, relative);
+          if (!file.exists) throw executionError('unused-image-assets/baseline-config-missing', `基线提交缺少应用配置：${relative}`);
+          return file.content;
+        },
+      });
+      const project = workspace.projects.find((entry) => config.project
+        ? entry.id === config.project.id : path.resolve(entry.root) === path.resolve(root));
+      return project ? { root: project.root, imageConfig: project.config.imageAssets } : fallback;
+    }
+    return { root, imageConfig: validateConfig(document, `${CONFIG_FILE}@${revision.slice(0, 12)}`).imageAssets };
   } catch (error) {
     throw executionError(
       'unused-image-assets/baseline-config-invalid',
@@ -180,7 +196,7 @@ export const unusedImageAssetsGate = defineGate({
       revision: revision ? Object.freeze({ ...revision }) : null,
     });
   },
-  run({ root, config, plan }) {
+  run({ root, repositoryRoot = root, config, plan }) {
     const startedAt = Date.now();
     if (!plan.enabled) return skippedResult(UNUSED_IMAGE_ASSETS_GATE_ID, '无效图片资源门禁已禁用');
     try {
@@ -202,12 +218,13 @@ export const unusedImageAssetsGate = defineGate({
         }
         const baselineConfig = baselineImageConfig(
           root,
+          repositoryRoot,
           plan.revision.base,
-          config.imageAssets,
+          config,
         );
         const baseline = inspectSnapshot(
-          revisionSnapshot(root, plan.revision.base, baselineConfig),
-          baselineConfig,
+          revisionSnapshot(baselineConfig.root, plan.revision.base, baselineConfig.imageConfig),
+          baselineConfig.imageConfig,
           false,
         );
         const baselineUnused = new Set(baseline.unusedPaths);

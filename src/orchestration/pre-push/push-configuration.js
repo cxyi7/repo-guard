@@ -1,10 +1,9 @@
-import { loadConfig } from '../../config/configuration-loader.js';
-import { validateConfig } from '../../config/configuration-validation.js';
+import { loadWorkspace } from '../../config/configuration-loader.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import { configurationError, rangeError } from '../../core/error/repo-guard-error.js';
 import { gitValue, runGit } from '../../git/execution.js';
-import { assertExceptionLifecycleCurrent } from '../../config/exception-lifecycle.js';
 import { parsePrePushUpdates } from './change-range.js';
+import { loadWorkspaceSnapshot } from '../workspace/configuration-snapshot.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -14,22 +13,14 @@ function loadConfigAtRevision(root, revision) {
     { allowFailure: true, cwd: root },
   );
   if (result.status !== 0) {
+    const history = runGit(['log', '-1', '--format=%H', revision, '--', CONFIG_FILE], { cwd: root });
+    if (history.stdout.trim()) {
+      throw configurationError('pre-push/pushed-config-deleted', `待推送提交删除了已接入的 ${CONFIG_FILE}；请恢复配置后重新推送。`);
+    }
     return null;
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(result.stdout);
-  } catch (error) {
-    throw configurationError(
-      'pre-push/invalid-pushed-config',
-      `无法解析 ${CONFIG_FILE}，来源为已推送提交 ${revision.slice(0, 12)}: `
-      + error.message,
-    );
-  }
-  const config = validateConfig(parsed, CONFIG_FILE);
-  assertExceptionLifecycleCurrent(config.exceptions);
-  return config;
+  return loadWorkspaceSnapshot(root, revision);
 }
 
 function usesPrePushGate(config) {
@@ -77,7 +68,8 @@ function assertExactPushSnapshot(root, revision) {
 
 export function resolvePushConfig(root, input) {
   if (!String(input || '').trim()) {
-    return { config: loadConfig(root), skip: false };
+    const workspace = loadWorkspace(root);
+    return { workspace, config: workspace.repositoryConfig, skip: false };
   }
 
   const updates = parsePrePushUpdates(input)
@@ -92,20 +84,22 @@ export function resolvePushConfig(root, input) {
 
   const revisions = [...new Set(updates.map(({ localSha }) => localSha))];
   const revisionConfigs = revisions.map((revision) => ({
-    config: loadConfigAtRevision(root, revision),
+    workspace: loadConfigAtRevision(root, revision),
     revision,
   }));
-  const gated = revisionConfigs.filter(({ config }) => usesPrePushGate(config));
+  const gated = revisionConfigs.filter(({ workspace }) => (
+    workspace?.projects.some(({ config }) => usesPrePushGate(config))
+  ));
   if (gated.length === 0) {
-    const config = revisionConfigs.find((entry) => entry.config)?.config;
-    if (!config) {
+    const workspace = revisionConfigs.find((entry) => entry.workspace)?.workspace;
+    if (!workspace) {
       return {
         config: null,
         skip: true,
         skipMessage: `待推送提交不包含 ${CONFIG_FILE}`,
       };
     }
-    return { config, skip: false };
+    return { workspace, config: workspace.repositoryConfig, skip: false };
   }
   if (revisions.length !== 1) {
     throw rangeError(
@@ -116,5 +110,6 @@ export function resolvePushConfig(root, input) {
   }
 
   assertExactPushSnapshot(root, revisions[0]);
-  return { config: revisionConfigs[0].config, skip: false };
+  const workspace = revisionConfigs[0].workspace;
+  return { workspace, config: workspace.repositoryConfig, skip: false };
 }

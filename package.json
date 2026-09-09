@@ -1,7 +1,7 @@
 {
   "name": "@cxyi7/repo-guard",
-  "version": "1.24.1",
-  "description": "Structured Git and GitLab CI policy gates with managed application delivery for Vue projects",
+  "version": "2.0.0",
+  "description": "面向 AI 与团队开发的工程质量门禁，支持显式配置前端和 Node 后端检查",
   "homepage": "https://github.com/cxyi7/repo-guard#readme",
   "bugs": {
     "url": "https://github.com/cxyi7/repo-guard/issues"
@@ -62,6 +62,8 @@
   "exports": {
     ".": "./src/index.js",
     "./config.schema.json": "./config.schema.json",
+    "./project.schema.json": "./project.schema.json",
+    "./operations.schema.json": "./operations.schema.json",
     "./ui-token-manifest.schema.json": "./ui-token-manifest.schema.json",
     "./external-report.schema.json": "./external-report.schema.json",
     "./api-performance-config.schema.json": "./api-performance-config.schema.json",
@@ -75,6 +77,8 @@
     "skills",
     "src",
     "config.schema.json",
+    "project.schema.json",
+    "operations.schema.json",
     "ui-token-manifest.schema.json",
     "external-report.schema.json",
     "api-performance-config.schema.json",
@@ -85,7 +89,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test",
+    "test": "node scripts/run-tests.mjs",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
     "architecture:check": "depcruise --config .dependency-cruiser.cjs --output-type err-long src",
@@ -183,6 +187,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "ajv": "8.20.0",
     "dependency-cruiser": "17.4.3",
     "eslint": "9.39.5",
     "globals": "16.5.0",

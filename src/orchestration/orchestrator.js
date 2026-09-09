@@ -2,6 +2,7 @@ import {
   createGateResult,
   gateResultToExitCode,
 } from '../core/result/gate-result.js';
+import { gateAppliesToProject } from '../gates/project-applicability.js';
 import {
   cancellationError,
   configurationError,
@@ -195,16 +196,26 @@ export async function orchestratePlan({
   stopOnFailure = false,
   prepareStepContext = null,
   beforeStep = null,
+  contextsForStep = null,
+  initialPriorResults = [],
 }) {
   const outcomes = [];
-  for (const step of plan.steps) {
+  const contexts = [];
+  const scheduled = plan.steps.flatMap((step) => {
+    const targets = contextsForStep ? contextsForStep({ context, step }) : [context];
+    if (!Array.isArray(targets)) {
+      throw internalError('orchestration/invalid-targets', '工作区步骤目标必须是数组');
+    }
+    return targets.map((target) => ({ step, target }));
+  });
+  for (const { step, target } of scheduled) {
     const gate = registry.get(step.gateId);
-    let stepContext = context;
+    let stepContext = target;
     let outcome;
     let result;
     try {
       if (prepareStepContext) {
-        stepContext = await prepareStepContext({ context, gate, step });
+        stepContext = await prepareStepContext({ context: target, gate, step });
         if (!stepContext || typeof stepContext !== 'object') {
           throw internalError(
             'orchestration/invalid-step-context',
@@ -214,9 +225,19 @@ export async function orchestratePlan({
       }
       stepContext = Object.freeze({
         ...stepContext,
-        priorResults: Object.freeze(outcomes.map(resultFromOutcome)),
+        priorResults: Object.freeze([
+          ...initialPriorResults,
+          ...outcomes.filter((_, index) => !contextsForStep || contexts[index] === target)
+            .map(resultFromOutcome),
+        ]),
       });
-      outcome = beforeStep
+      outcome = !gateAppliesToProject(gate.id, stepContext.project ?? stepContext.config?.project)
+        ? createGateResult({
+          gateId: gate.id,
+          status: 'skipped',
+          summary: '该前端检查不适用于已配置的后端项目',
+        })
+        : beforeStep
         ? await beforeStep({ context: stepContext, gate, step })
         : null;
       if (outcome == null) {
@@ -234,6 +255,7 @@ export async function orchestratePlan({
       result = outcome;
     }
     outcomes.push(outcome);
+    contexts.push(target);
     if (onResult) await onResult({ context: stepContext, gate, outcome, result, step });
     if (shouldStop(result, stopOnFailure)) break;
   }

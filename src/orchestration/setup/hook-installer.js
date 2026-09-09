@@ -9,7 +9,7 @@ import path from 'node:path';
 import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadWorkspace } from '../../config/configuration-loader.js';
 import { DEFAULT_UNIT_TEST_COVERAGE_CONFIG } from '../../config/defaults.js';
 import { ensureGitAttributes } from './git-attributes.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -17,6 +17,7 @@ import { gitValue, runGit } from '../../git/execution.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { ensureLocalEnvironment } from '../../policies/local-environment.js';
 import { ensureLighthouseIgnore } from './lighthouse-ignore.js';
+import { selectProjects } from '../workspace/targets.js';
 
 const MANAGED_MARKER = '# repo-guard-managed:v5';
 const LEGACY_MANAGED_MARKERS = Object.freeze([
@@ -84,7 +85,27 @@ function ensureManagedFile(target, content) {
   chmodSync(target, 0o755);
 }
 
-function ensurePackageScripts(root) {
+export function guardedBuildCommand(script, application, repositoryRoot) {
+  return `repo-guard guarded-build ${script}`
+    + (application.root === repositoryRoot ? '' : ` --project ${application.id}`);
+}
+
+function synchronizeGuardedBuildScripts(packageJson, application, repositoryRoot) {
+  for (const guardedBuild of application.config.mutationTest.guardedBuilds) {
+    const expected = guardedBuildCommand(guardedBuild.script, application, repositoryRoot);
+    const current = packageJson.scripts[guardedBuild.packageScript];
+    if (!current) packageJson.scripts[guardedBuild.packageScript] = expected;
+    else if (current !== expected) {
+      writeConsoleMessage(
+        `repo-guard 警告：应用 ${application.id} package.json 已存在非托管脚本 "${guardedBuild.packageScript}"；`
+        + `请将它改为 "${expected}"。`,
+        'stderr',
+      );
+    }
+  }
+}
+
+function ensurePackageScripts(root, workspace, projectId) {
   const target = path.join(root, 'package.json');
   if (!existsSync(target)) {
     throw configurationError('hooks/missing-package-manifest', '仓库根目录中未找到 package.json', {
@@ -102,18 +123,9 @@ function ensurePackageScripts(root) {
       packageJson.scripts[gate.packageScript] ||= `repo-guard ${gate.manualCommand}`;
     }
   }
-  const config = loadConfig(root);
-  for (const guardedBuild of config.mutationTest.guardedBuilds) {
-    const expected = `repo-guard guarded-build ${guardedBuild.script}`;
-    const current = packageJson.scripts[guardedBuild.packageScript];
-    if (!current) packageJson.scripts[guardedBuild.packageScript] = expected;
-    else if (current !== expected) {
-      writeConsoleMessage(
-        `repo-guard 警告：package.json 已存在非托管脚本 "${guardedBuild.packageScript}"；`
-        + `请将它改为 "${expected}"。`,
-        'stderr',
-      );
-    }
+  const applications = selectProjects(workspace, projectId);
+  for (const application of applications.filter((entry) => entry.root === root)) {
+    synchronizeGuardedBuildScripts(packageJson, application, root);
   }
   packageJson.scripts['guard:enable-accessibility-test'] ||= 'repo-guard enable accessibilityTest';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
@@ -152,6 +164,16 @@ function ensurePackageScripts(root) {
   }
 
   writeFileSync(target, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+  for (const application of applications.filter((entry) => entry.root !== root)) {
+    if (application.config.mutationTest.guardedBuilds.length === 0) continue;
+    const appManifestPath = path.join(application.root, 'package.json');
+    const original = readFileSync(appManifestPath, 'utf8');
+    const appManifest = JSON.parse(original);
+    appManifest.scripts ||= {};
+    synchronizeGuardedBuildScripts(appManifest, application, root);
+    const content = `${JSON.stringify(appManifest, null, 2)}\n`;
+    if (original !== content) writeFileSync(appManifestPath, content, 'utf8');
+  }
 }
 
 export function installHooks({
@@ -159,6 +181,7 @@ export function installHooks({
   updatePackageScripts = false,
   allowMissingGit = false,
   env = process.env,
+  projectId,
 } = {}) {
   if (env.REPO_GUARD_SKIP_HOOKS === '1') {
     writeConsoleMessage('repo-guard：REPO_GUARD_SKIP_HOOKS=1，已跳过 Hook 安装。');
@@ -168,6 +191,16 @@ export function installHooks({
   if (!root) {
     writeConsoleMessage('repo-guard：未检测到 Git 仓库，已跳过 Hook 安装。');
     return { skipped: true, root: null };
+  }
+
+  const workspace = existsSync(path.join(root, 'repo-guard.config.json'))
+    ? loadWorkspace(root, { allowExpiredExceptions: true }) : null;
+  if (workspace) selectProjects(workspace, projectId);
+  if (updatePackageScripts && !workspace) {
+    throw configurationError('hooks/missing-project-config', '请先通过 repo-guard init 显式声明项目身份，再同步 package 脚本。');
+  }
+  if (updatePackageScripts && !existsSync(path.join(root, 'package.json'))) {
+    throw configurationError('hooks/missing-package-manifest', '仓库根目录中未找到 package.json；当前 npm 入口必须安装在仓库根目录。');
   }
 
   const configuredHooksPath = gitValue(['config', '--local', '--get', 'core.hooksPath'], '', root);
@@ -203,27 +236,16 @@ export function installHooks({
 
   const gitAttributes = ensureGitAttributes(root);
   const localEnvironment = ensureLocalEnvironment(root);
-  let coverageDirectory = DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory;
-  let mutationReportsDirectory = null;
-  try {
-    const config = loadConfig(root);
-    const coverage = config.unitTest.coverage;
-    if (coverage && typeof coverage === 'object') {
-      coverageDirectory = coverage.reportsDirectory;
-    }
-    if (config.mutationTest.enabled) {
-      mutationReportsDirectory = config.mutationTest.reportsDirectory;
-    }
-  } catch {
-    // Hook installation also supports repositories before repo-guard config exists.
-  }
-  const lighthouseIgnore = ensureLighthouseIgnore(
-    root,
-    coverageDirectory,
-    mutationReportsDirectory,
-  );
+  const ignores = workspace ? selectProjects(workspace, projectId).map((application) => (
+    ensureLighthouseIgnore(
+      application.root,
+      application.config.unitTest.coverage?.reportsDirectory ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory,
+      application.config.mutationTest.enabled ? application.config.mutationTest.reportsDirectory : null,
+    )
+  )) : [ensureLighthouseIgnore(root)];
+  const lighthouseIgnore = { ...ignores[0], changed: ignores.some((result) => result.changed), projects: ignores };
   if (updatePackageScripts) {
-    ensurePackageScripts(root);
+    ensurePackageScripts(root, workspace, projectId);
   }
 
   if (configuredHooksPath !== HOOKS_DIRECTORY) {

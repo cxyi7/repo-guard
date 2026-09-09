@@ -1,8 +1,7 @@
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { runApiPerformanceExternalRunner } from '../../gates/testing/api-performance-external-runner.js';
-import { findRepositoryRoot } from '../../git/repository.js';
 
 const AUTOMATION_ENVIRONMENT_MARKERS = Object.freeze([
   'CI',
@@ -64,6 +63,7 @@ export async function runApiPerformanceRunner({
   configFile,
   cwd = process.cwd(),
   environment = process.env,
+  projectId,
 }) {
   if (typeof gateId !== 'string' || !/^project\.[a-z][a-z0-9-]*$/.test(gateId)) {
     throw configurationError(
@@ -77,8 +77,7 @@ export async function runApiPerformanceRunner({
       'api-performance-runner 需要 --config 指定项目性能测试配置文件',
     );
   }
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root);
+  const { root, config } = loadExecutionTarget(cwd, { projectId });
   const gate = manualOnlyGate(config, gateId);
   assertManualProcessEnvironment(environment);
   const report = await runApiPerformanceExternalRunner({

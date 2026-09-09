@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 要求组件测试包含真实操作和可观察结果，避免只有“组件能挂载”的形式化测试。
 
@@ -12,28 +12,32 @@
 
 ```json
 {
-  "unitTest": {
-    "enabled": true,
+  "checks": {
     "componentInteraction": {
       "enabled": true,
-      "componentPatterns": ["src/components/**/*.vue"]
+      "componentPatterns": [
+        "src/components/**/*.vue"
+      ]
+    },
+    "unitTest": {
+      "enabled": true
     }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `unitTest` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `componentInteraction.enabled` | 是否启用Vue 组件交互测试要求 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用命令同时启用 unitTest；组件还需进入源码范围并找到映射测试。 |
-| `componentInteraction.componentPatterns` | 需要交互测试的 Vue 组件路径；组件仍须进入 sourcePatterns 并匹配测试 | 字符串数组<br>默认：`["src/components/**/*.vue"]` | 至少 1 项；每项为非空字符串 |
+| `checks.unitTest.enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.componentInteraction.enabled` | 是否启用Vue 组件交互测试要求 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用命令同时启用 unitTest；组件还需进入源码范围并找到映射测试。 |
+| `checks.componentInteraction.componentPatterns` | 需要交互测试的 Vue 组件路径；组件仍须进入 sourcePatterns 并匹配测试 | 字符串数组<br>默认：`["src/components/**/*.vue"]` | 至少 1 项；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
-组件必须同时落在 `unitTest.sourcePatterns` 内，并有可找到的测试。以 `saveButton.vue` 点击按钮后发出 `save` 事件为例，按上述 Vue 映射保存为同目录的 `saveButton.spec.ts`：
+组件必须同时落在 `checks.unitTest.sourcePatterns` 内，并有可找到的测试。以 `saveButton.vue` 点击按钮后发出 `save` 事件为例，按上述 Vue 映射保存为同目录的 `saveButton.spec.ts`：
 
 ```js
 import { mount } from '@vue/test-utils';
@@ -65,4 +69,4 @@ pre-push、CI `full` 和手动 `unit-test` 执行测试；CI `policy` 与 `relea
 
 ## 维护依据
 
-[实现入口](../../src/integrations/vue/component-interaction.js) · [对应测试](../../test/unit-test.test.js)
+[实现入口](../../src/integrations/vue/component-interaction.js) · [对应测试](../../test/gates/testing/unit-test.test.js)

@@ -1,100 +1,73 @@
-# 托管应用交付流水线
+# 按应用管理的交付流水线
 
-生成验证、部署和通知 Job，实际部署由项目脚本实现。
+[返回使用说明](../usage-guide.md) · [功能索引](README.md) · [完整运维配置](operations.md)
 
-[返回使用说明](../usage-guide.md) · [功能索引](README.md)
+v2 将工程质量和运维发布拆开。前端、Node 后端使用同一套质量入口，各应用分别声明构建产物、部署脚本和目标环境；不同负责人可以独立维护、独立发布。
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+## 当前接入入口
 
-## 接入与配置
-
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
-
-通过 `install-ci` 受管 include 接入可选的应用交付标准，不引入另一套 CI 安装方式。npm 包负责生成和校验 GitLab Job、分支规则、阶段、Node 环境、npm 缓存、依赖安装、门禁先行以及手动发布语义；消费项目继续拥有实际构建、上传和部署实现。
-
-消费项目只需实现固定的 npm scripts：
-
-| script | 何时需要 | 项目职责 |
-|---|---|---|
-| `ci:verify` | 始终 | 对非交付分支执行项目自己的构建或验证 |
-| `ci:deploy:test` | 始终 | 发布测试环境；可读取 `CI_COMMIT_BRANCH` 区分 `dev`、`test` 或 `future/*` |
-| `ci:deploy:production` | 配置了生产分支时 | 执行人工确认后的生产发布 |
-| `ci:deploy:quick` | `quickDeploy: true` | 执行任意分支的人工快速发布 |
-
-示例配置：
-
-```json
-{
-  "ci": {
-    "enabled": true,
-    "profile": "policy",
-    "pipeline": {
-      "enabled": true,
-      "verifyStage": "build",
-      "deployStage": "deploy",
-      "verifyImage": "node:22.23.2",
-      "deployImage": "node:22.23.2",
-      "testBranches": ["dev", "future/*"],
-      "productionBranches": ["publish"],
-      "runnerTags": ["docker"],
-      "legacyPeerDeps": true,
-      "quickDeploy": true,
-      "notifications": true
-    }
-  }
-}
-```
-
-<!-- config-fields:start -->
-**字段说明**（以下字段位于 `ci` 内）：
-
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `enabled` | 是否启用CI 门禁流程 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `profile` | policy 检查仓库策略；full 加入完整质量检查；release-ready 复核发布准备 | `"policy"` / `"full"` / `"release-ready"`<br>默认：`"policy"` | 只接受列出的值 |
-| `pipeline.enabled` | 是否启用受管应用交付流水线 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `pipeline.verifyStage` | 验证 Job 所属的 GitLab stage 名称 | 字符串<br>默认：`"build"` | 仅字母、数字、下划线、点、冒号、连字符 |
-| `pipeline.deployStage` | 部署 Job 所属的 GitLab stage 名称 | 字符串<br>默认：`"deploy"` | 仅字母、数字、下划线、点、冒号、连字符 |
-| `pipeline.verifyImage` | 执行检查和构建的容器镜像 | 字符串<br>默认：`"node:22.23.2"` | 至多 255 个字符；以字母或数字开头结尾，可含镜像路径、标签或摘要使用的 . _ / : @ - 字符 |
-| `pipeline.deployImage` | 执行项目部署脚本的容器镜像，需具备 Node 与脚本所需工具 | 字符串<br>默认：`"node:22.23.2"` | 至多 255 个字符；以字母或数字开头结尾，可含镜像路径、标签或摘要使用的 . _ / : @ - 字符 |
-| `pipeline.testBranches` | 允许测试环境交付的分支或受限通配模式 | 字符串数组<br>默认：`["dev"]` | 至少 1 项；元素不可重复；每项：只用字母、数字、点、下划线、斜线、连字符和单个 *；不能含 // 或多个 *；分支列表之间不能冲突；通配符按受限匹配规则使用，不是任意正则。 |
-| `pipeline.productionBranches` | 允许生产交付的分支或受限通配模式 | 字符串数组<br>默认：`["publish"]` | 允许空数组；元素不可重复；每项：只用字母、数字、点、下划线、斜线、连字符和单个 *；不能含 // 或多个 *；生产发布保留人工触发。 |
-| `pipeline.runnerTags` | 选择 GitLab Runner 的标签集合 | 字符串数组<br>默认：`["docker"]` | 允许空数组；元素不可重复；每项：仅字母、数字、下划线、点、冒号、连字符 |
-| `pipeline.legacyPeerDeps` | 是否使用 npm ci --legacy-peer-deps 兼容旧依赖关系 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `pipeline.quickDeploy` | 是否生成可手动触发且不阻断流水线的快速部署 Job | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `pipeline.notifications` | 启用内置企业微信流水线结果通知。成功与失败由 .post 阶段互斥 Job 发送，运行中的受管 Job 被取消时由 after_script 发送已取消通知。需要将 REPO_GUARD_WECOM_WEBHOOK 和可选的 REPO_GUARD_MENTION_MOBILES 配置为受保护的 GitLab CI 变量 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-
-<!-- config-fields:end -->
-
-配置并补齐 scripts 后运行：
+1. 在质量配置中显式声明应用的 `project.id`、`role`、`stack` 和 `preset`；多应用仓库由根清单指定应用目录。
+2. 在各应用 `package.json` 中声明真实构建、部署脚本。
+3. 在仓库根目录的 `repo-guard.ops.json` 中，以相同项目标识开启对应发布单元。
+4. 先预览，再生成流水线；已有根配置时按提示合并 include。
 
 ```bash
-npx repo-guard install-ci --provider gitlab --profile policy --dry-run
-npx repo-guard install-ci --provider gitlab --profile policy
+# 检查独立运维配置与项目脚本，输出发布计划和 YAML，不执行部署
+npx repo-guard ops plan
+
+# 生成受管流水线片段；不覆盖既有根流水线
+npx repo-guard ops install
+
+# 复核当前质量/运维 CI 接入状态
 npx repo-guard doctor --ci
 ```
 
-当 `notifications: true` 时，生成器会在 GitLab 保留的 `.post` 末尾阶段增加两个互斥的通知 Job：`repo_guard_notify_success` 使用 `when: on_success`，`repo_guard_notify_failure` 使用 `when: on_failure`。GitLab 根据此前所有阶段的最终结果只执行其中一个，因此整条流水线只发送一条成功或失败通知；任何会阻断流水线的 Job 失败都会进入失败通知。受管 Job 在运行中被手动取消，或前置门禁/验证 Job 被 GitLab 自动取消时，`after_script` 会发送“已取消（canceled）”通知。业务项目不再需要提供 `ci:notify` script。
+质量检查安装命令 `install-ci` 只负责质量模板。部署通过 `ops plan / ops install` 独立接入，不再由 `ci.pipeline` 配置开启。先启用质量配置中的 `ci.enabled`；质量 CI 关闭时，运维预览和安装会提前阻止，已生成作业也不能把关闭检查当作质量通过。
 
-通知内容包含项目、流水线编号、分支、提交、提交人和流水线链接。提交标题最多显示前 10 个字符，更长时追加省略号。两个末尾通知 Job 都设置 `allow_failure: true`，因此企业微信暂时不可用不会篡改原流水线结果；GitLab 原本标记为 `allow_failure: true` 的非阻断 Job 也继续按成功处理。
+## 一次发布的顺序
 
-在 GitLab 的 CI/CD Variables 中配置：
+```text
+web：完整质量检查 → web 构建 → web 产物检查 → web/test 或手动 web/production
+api：完整质量检查 → api 构建 → api 产物检查 → api/test 或手动 api/production
+```
 
-| 变量 | 要求 | 用途 |
+| 阶段 | repo-guard 负责 | 项目或平台负责 |
 |---|---|---|
-| `REPO_GUARD_WECOM_WEBHOOK` | 必需，建议设为 Masked 与 Protected | 企业微信群机器人 Webhook；只接受官方 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...` 地址 |
-| `REPO_GUARD_MENTION_MOBILES` | 可选，建议设为 Masked 与 Protected | 逗号分隔的 11 位手机号；未配置时只发消息、不 @ 成员 |
+| 准备 | 验证显式项目、脚本名称与配置结构 | 在 Runner 准备 Node、依赖和部署工具 |
+| 质量 | 按应用调用 `repo-guard ci --project <id>` | 配置团队必需的检查项和阈值 |
+| 构建 | 依赖本应用质量通过，执行指定构建脚本并检查产物 | 脚本生成可部署文件 |
+| 部署 | 只获取本应用成功构建的产物，按允许分支和环境触发 | 脚本上传或部署；平台落实环境权限和凭据 |
 
-通知命令只允许在 `GITLAB_CI=true` 且带有受管通知标记的生成 Job 中执行。成功、失败和取消入口分别向包内命令传入受控的 `success`、`failed` 或 `canceled` 状态，不会重新加载可能已经导致流水线失败的项目配置。通知包会在 `$CI_BUILDS_DIR` 下按项目、流水线和 Job 组成的唯一目录中，从 npm 官方 tarball URL 精确安装生成流水线时对应版本的 `@cxyi7/repo-guard`；安装时禁用 lifecycle scripts，执行时使用隔离目录中的绝对 CLI 路径，不会解析消费项目的本地可执行文件。因此配置错误或前序 Job 的项目 `npm ci` 失败不会连带阻止末尾通知。
+构建和部署不得使用 `allow_failure: true`，没有绕过质量检查的快捷部署。生产环境默认且必须手动触发。完整质量档位会执行团队已配置的能力，不代表自动打开全部可选功能。
 
-GitLab 只会在运行中的 Job 被取消时执行 `after_script`。因此，取消通知覆盖手动或自动取消时正在运行的 repo-guard 受管 Job；如果 Job 尚未开始就在 pending 状态被取消，或使用 GitLab 强制取消跳过 `after_script`，则 Runner 没有可执行的通知入口。
+## 配置与环境要求
 
-启用后，`repo_guard` 固定在 GitLab 的 `.pre` stage 覆盖分支和合并请求流水线，确保受管验证与发布 Job 在门禁通过后才执行；测试发布自动执行，生产与快速发布保持手动，其中快速发布允许失败。验证作业会跳过已由测试或生产发布脚本负责构建的分支，避免重复构建。`verifyImage` 和 `deployImage` 分别控制验证与发布容器，二者都必须包含 Node.js 与 npm；Web 容器发布可以把 `deployImage` 指向项目内部维护的 Node.js + Docker CLI 镜像。`install-ci` 与 `doctor --ci` 会拒绝缺少固定 scripts、阶段未声明、保留 Job 名冲突、模板被改写或模板版本不匹配等状态。
+完整字段说明和带注释示例见[独立运维配置](operations.md#配置示例)。主要字段如下：
 
-## 执行与复核
+| 字段 | 作用与要求 |
+|---|---|
+| `version` | 必须为 `2` |
+| `enabled` | 总开关，布尔值，默认 `false` |
+| `provider` | 当前仅支持 `gitlab` |
+| `projects.<id>.enabled` | 应用发布开关，默认 `false`，`id` 必须与质量配置一致 |
+| `qualityProfile` | `full` / `release-ready`，默认 `full` |
+| `buildScript` | 应用 `package.json` 中存在的脚本名，不能填写命令 |
+| `artifactPaths` | 相对应用目录的具体文件/目录，启用时至少一个，构建后必须非空 |
+| `environments.<环境>.script` | 此环境的部署脚本名，应用必须已声明 |
+| `environments.<环境>.production` | 默认 `true`，生产手动；`false` 为测试环境 |
+| `environments.<环境>.branches` | 至少一个明确分支名，不接受通配符或表达式 |
 
-执行入口：安装后由 GitLab 按分支规则与人工触发条件执行。功能开关、CI 模式与具体文件范围仍按上文配置生效。
+配置独立于项目业务语言的目录命名，但当前 provider 仅实现 `stack: node` 应用。GitLab 生成脚本使用 Linux/POSIX Shell；根流水线需要提供 `.pre`、`build`、`deploy` 阶段，Runner 或上游准备流程提供工具和依赖。生成器不安装 npm 依赖、JDK 或系统工具，不替项目生成部署脚本。
 
-检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
+同仓可以使用多个应用发布单元，分仓由各仓库分别管理。不同应用使用独立作业名、环境名和部署互斥组；产物名带应用与提交标识。当前不自动跨仓触发、不隐式联合发布，也不为新流水线生成通知作业。
 
-[实现入口](../../src/orchestration/cli/install-ci.js) · [对应测试](../../test/ci.test.js)
+## 更新、禁用与迁移
+
+- 修改运维配置后先运行 `ops plan`，再运行 `ops install`，复核受管 YAML 差异。
+- 重复生成仅更新带受管标记的片段；同路径自定义文件和已有根配置不会被直接覆盖。
+- 禁用运维后若片段仍存在，工具会提示先移除根流水线引用，再删除片段；仅修改 JSON 开关不会自动停止 GitLab 已读取的作业。
+- `ci.pipeline` 已从 v2 质量配置移除。旧配置的固定 `ci:verify`、快速发布、通知等不能可靠推导为新应用产物模型，迁移器会保留原文件并提示人工拆分，不会静默丢失配置。
+
+## 实现与复核
+
+[CLI 入口](../../src/orchestration/cli/operations.js) · [计划](../../src/operations/pipeline/plan.js) · [生成与安装](../../src/operations/gitlab/installation.js) · [配置 Schema](../../operations.schema.json) · [专项测试](../../test/operations/pipeline.test.js)

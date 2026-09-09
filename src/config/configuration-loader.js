@@ -1,47 +1,18 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { configurationError, toRepoGuardError } from '../core/error/repo-guard-error.js';
-import { assertExceptionLifecycleCurrent } from './exception-lifecycle.js';
-import { validateConfig } from './configuration-validation.js';
-import { CONFIG_FILE } from './validation-primitives.js';
+import { configurationError } from '../core/error/repo-guard-error.js';
+import { loadWorkspace } from './workspace-configuration.js';
 
-export function loadConfig(root, {
-  allowExpiredExceptions = false,
-  now = new Date(),
-} = {}) {
-  const configPath = path.join(root, CONFIG_FILE);
-  let parsed;
+export { loadWorkspace, readConfigurationDocument } from './workspace-configuration.js';
 
-  try {
-    parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    throw configurationError(
-      'config/read-failed',
-      `无法读取 ${CONFIG_FILE}：${error.message}`,
-      {
-        details: { location: { path: CONFIG_FILE } },
-        expected: `${CONFIG_FILE} 必须位于仓库根目录，并包含有效的 JSON。`,
-        remediation: {
-          goal: `恢复可读取且有效的 ${CONFIG_FILE}.`,
-          steps: ['按照文档中的 schema 创建或修正配置文件。'],
-          constraints: ['不得通过删除必需的策略配置来绕过校验。'],
-          verification: ['运行 npm run guard:check。'],
-        },
-        cause: error,
-      },
-    );
+export function loadConfig(root, options = {}) {
+  const workspace = loadWorkspace(root, options);
+  if (options.repositoryOnly) return workspace.repositoryConfig;
+  if (options.projectId !== undefined) {
+    const project = workspace.projects.find((entry) => entry.id === options.projectId);
+    if (!project) throw configurationError('project/not-found', `未配置项目：${options.projectId}。`);
+    return project.config;
   }
-
-  try {
-    const config = validateConfig(parsed, CONFIG_FILE);
-    if (!allowExpiredExceptions) {
-      assertExceptionLifecycleCurrent(config.exceptions, { now });
-    }
-    return config;
-  } catch (error) {
-    throw toRepoGuardError(error, {
-      kind: 'configuration',
-      code: 'config/invalid',
-    });
+  if (workspace.projects.length !== 1) {
+    throw configurationError('project/selection-required', '当前仓库配置了多个应用；请使用 --project 显式选择应用，或通过工作区入口分别执行。');
   }
+  return workspace.projects[0].config;
 }

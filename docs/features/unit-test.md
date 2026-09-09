@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 用项目自己的 Vitest 执行测试，并检查源码与测试的对应关系。可以进一步要求 Vue 组件具有真实交互测试、全量覆盖率和变更行覆盖率达到阈值。
 
@@ -48,47 +48,66 @@ test('两数相加', () => {
 
 ```json
 {
-  "unitTest": {
-    "enabled": true,
-    "script": "test:unit",
-    "timeoutMs": 120000,
-    "requireTests": "newFiles",
-    "sourcePatterns": ["src/utils/**/*.js", "src/components/**/*.vue"],
-    "testPatterns": ["**/*.{spec,test}.{js,ts}"],
-    "mappings": [
-      {
-        "sourcePattern": "**/*.js",
-        "testTemplates": ["{path}.spec.js"]
-      },
-      {
-        "sourcePattern": "**/*.vue",
-        "testTemplates": ["{path}.spec.ts"]
-      }
-    ],
-    "exclusions": ["src/generated/**"]
+  "checks": {
+    "unitTest": {
+      "enabled": true,
+      "script": "test:unit",
+      "timeoutMs": 120000,
+      "requireTests": "newFiles",
+      "sourcePatterns": [
+        "src/utils/**/*.js",
+        "src/components/**/*.vue"
+      ],
+      "testPatterns": [
+        "**/*.{spec,test}.{js,ts}"
+      ],
+      "mappings": [
+        {
+          "sourcePattern": "**/*.js",
+          "testTemplates": [
+            "{path}.spec.js"
+          ]
+        },
+        {
+          "sourcePattern": "**/*.vue",
+          "testTemplates": [
+            "{path}.spec.ts"
+          ]
+        }
+      ],
+      "exclusions": [
+        "src/generated/**"
+      ]
+    }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `unitTest` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"test:unit"` | 至少 1 个字符 |
-| `timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`120000` | ≥ 1 |
-| `requireTests` | newFiles 要求新增/复制源码有测试；changedFiles 要求变更源码有测试 | `"newFiles"` / `"changedFiles"`<br>默认：`"newFiles"` | 只接受列出的值 |
-| `sourcePatterns` | 需要映射测试的 JS、TS、JSX、TSX 或 Vue 源码范围 | 字符串数组<br>默认：内置 5 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；每项为非空字符串 |
-| `testPatterns` | 扫描空测试以及 skip、todo、only 等绕过写法的测试路径 | 字符串数组<br>默认：`["**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"]` | 至少 1 项；每项为非空字符串 |
-| `mappings` | 源码到测试文件的映射；按第一条匹配项确定候选测试路径 | 对象数组；对象字段见后续行<br>默认：内置 5 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
-| `mappings[].sourcePattern` | 该映射覆盖的仓库相对源码 glob | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `mappings[].testTemplates` | 测试路径模板，支持 {dir}、{name}、{path}、{ext}；每项须包含 {name} 或 {path} | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
-| `exclusions` | 不要求补齐对应测试的源码范围，例如入口或生成代码 | 字符串数组<br>默认：`["src/main.{js,ts}","src/**/index.{js,ts}","src/generated/**"]` | 允许空数组；每项为非空字符串 |
+| `checks.unitTest.enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.unitTest.script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"test:unit"` | 至少 1 个字符 |
+| `checks.unitTest.timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`120000` | ≥ 1 |
+| `checks.unitTest.requireTests` | newFiles 要求新增/复制源码有测试；changedFiles 要求变更源码有测试 | `"newFiles"` / `"changedFiles"`<br>默认：`"newFiles"` | 只接受列出的值 |
+| `checks.unitTest.sourcePatterns` | 需要映射测试的 JS、TS、JSX、TSX 或 Vue 源码范围 | 字符串数组<br>默认：内置 5 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；每项为非空字符串 |
+| `checks.unitTest.testPatterns` | 扫描空测试以及 skip、todo、only 等绕过写法的测试路径 | 字符串数组<br>默认：`["**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"]` | 至少 1 项；每项为非空字符串 |
+| `checks.unitTest.mappings` | 源码到测试文件的映射；按第一条匹配项确定候选测试路径 | 对象数组；对象字段见后续行<br>默认：内置 5 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
+| `checks.unitTest.mappings[].sourcePattern` | 该映射覆盖的仓库相对源码 glob | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.unitTest.mappings[].testTemplates` | 测试路径模板，支持 {dir}、{name}、{path}、{ext}；每项须包含 {name} 或 {path} | 字符串数组<br>本对象内必填，无自动代填值 | 至少 1 项；每项为非空字符串 |
+| `checks.unitTest.exclusions` | 不要求补齐对应测试的源码范围，例如入口或生成代码 | 字符串数组<br>默认：`["src/main.{js,ts}","src/**/index.{js,ts}","src/generated/**"]` | 允许空数组；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
 `newFiles` 要求新增源码有测试；`changedFiles` 要求变更源码有测试。映射中的 `{path}` 是不含扩展名的相对路径，例如 `src/utils/add`。示例只覆盖 JS 与 Vue，实际项目需保留 TS 等相应映射。
+
+## Node 后端范围
+
+`node-javascript` 与 `node-typescript` 预设默认将 `checks.unitTest.sourcePatterns` 设为 `src/**/*.{js,mjs,cjs,ts,mts,cts}`，覆盖整个后端源码目录。默认排除类型声明、测试文件、`__tests__` 和生成代码；不会沿用前端的 `src/main`、`index` 入口豁免。上面的来源范围与排除项表展示前端基线值，后端以预设生成的配置为准。
+
+测试运行器仍为消费项目已有的 Vitest。repo-guard 只校验测试资料与执行结果，不生成接口、身份权限或其他业务测试；业务用例由项目维护。后端不支持 `checks.componentInteraction`。
 
 ```bash
 npx repo-guard enable unitTest
@@ -104,14 +123,14 @@ npx repo-guard unit-test
 
 ## 覆盖率
 
-可进一步检查行、语句、函数、分支及本次变更行的覆盖率。启用 `coverage` 会同步启用单元测试；关闭 `unitTest` 时保留覆盖率子配置但不执行。
+可进一步检查行、语句、函数、分支及本次变更行的覆盖率。启用 `coverage` 会同步启用单元测试；通过命令关闭 `unitTest` 时也会关闭覆盖率开关，并保留阈值和报告配置。
 
 provider、阈值、报告与复核方式见[覆盖率与变更行覆盖率](coverage.md)。
 
 ## 执行范围与失败处理
 
-pre-push、CI `full` 和手动单元测试入口会执行项目测试脚本。CI `policy` 及 `release-ready` 的 `quality.unit-test-policy` 步骤检查测试资料策略，不执行完整 Vitest；`release-ready` 另行调用项目 `test` 脚本，是否包含覆盖率取决于该脚本。
+pre-push、CI `full` / `release-ready` 和手动单元测试入口执行 `checks.unitTest.script` 指定的真实测试。CI `policy` 只运行测试资料策略；完整 CI 与发布就绪先检查资料策略，再执行完整 Vitest，并在启用 `checks.coverage` 时复核覆盖率。
 
 单元测试不进入 pre-commit。缺少测试、空测试、`skip`/`todo`/`only`、交互证据不完整或阈值不达标时，修复后重新运行相同入口；检查报告是否来自当前代码。
 
-源码：[测试策略](../../src/gates/testing/unit-test-policy.js)、[测试执行](../../src/gates/testing/unit-test-gate.js)。测试：[单元测试](../../test/unit-test.test.js)、[覆盖率](../../test/coverage.test.js)。
+源码：[测试策略](../../src/gates/testing/unit-test-policy.js)、[测试执行](../../src/gates/testing/unit-test-gate.js)。测试：[单元测试](../../test/gates/testing/unit-test.test.js)、[覆盖率](../../test/gates/testing/coverage.test.js)。

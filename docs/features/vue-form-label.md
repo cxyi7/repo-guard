@@ -29,4 +29,4 @@ npx repo-guard form-labels
 
 ## 维护依据
 
-[实现入口](../../src/policies/vue-form-label.js) · [对应测试](../../test/vue-form-label.test.js)
+[实现入口](../../src/policies/vue-form-label.js) · [对应测试](../../test/gates/quality/vue-form-label.test.js)

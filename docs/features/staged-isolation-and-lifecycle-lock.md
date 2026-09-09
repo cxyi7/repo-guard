@@ -27,4 +27,4 @@
 
 ## 维护依据
 
-[实现入口](../../src/orchestration/pre-commit/lifecycle-lock.js) · [对应测试](../../test/pre-commit-lifecycle-lock.test.js)
+[实现入口](../../src/orchestration/pre-commit/lifecycle-lock.js) · [对应测试](../../test/hooks/pre-commit-lifecycle-lock.test.js)

@@ -25,7 +25,7 @@ export async function runGate({
   context = null,
 } = {}) {
   const root = context?.root ?? findRepositoryRoot(cwd);
-  const config = context?.config ?? loadConfig(root);
+  const config = context?.config ?? loadConfig(root, { repositoryOnly: true });
   const changes = context?.changes ?? createChangeSet({
     source: 'manual',
     changes: collectStagedChanges(root),

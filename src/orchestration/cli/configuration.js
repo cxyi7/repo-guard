@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadWorkspace } from '../../config/configuration-loader.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import {
   migrateProjectConfig,
@@ -10,9 +10,9 @@ import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { syncAgentPolicies } from '../../policies/agent-policies.js';
 import { syncDeliverySkills } from '../setup/delivery-skills.js';
 
-export function runMigrate(cwd = process.cwd()) {
+export function runMigrate(cwd = process.cwd(), options = {}) {
   const root = findRepositoryRoot(cwd);
-  const result = migrateProjectConfig(root);
+  const result = migrateProjectConfig(root, options);
   const agentPolicy = syncAgentPolicies(root, result.config);
   const deliverySkills = syncDeliverySkills(root, result.config.deliveryContract.enabled);
   writeConsoleMessage(`repo-guard 配置： ${path.join(root, CONFIG_FILE)}`);
@@ -22,11 +22,14 @@ export function runMigrate(cwd = process.cwd()) {
   return 0;
 }
 
-function runFeatureToggle(requestedFeatures, enabled, cwd) {
+function runFeatureToggle(requestedFeatures, enabled, cwd, options) {
   const root = findRepositoryRoot(cwd);
-  const result = setFeaturesEnabled(root, requestedFeatures, enabled);
-  const config = loadConfig(root);
-  const agentPolicy = syncAgentPolicies(root, config);
+  const result = setFeaturesEnabled(root, requestedFeatures, enabled, options);
+  const workspace = loadWorkspace(root);
+  const config = workspace.repositoryConfig;
+  const policies = workspace.projects.map((application) => syncAgentPolicies(application.root, application.config));
+  if (!workspace.projects.some((application) => application.root === root)) policies.push(syncAgentPolicies(root, config));
+  const agentPolicy = { changed: policies.some((policy) => policy.changed) };
   const deliverySkills = syncDeliverySkills(root, config.deliveryContract.enabled);
   writeConsoleMessage(
     `repo-guard 托管规范文件 AGENTS.md：${agentPolicy.changed ? '已同步' : '已是最新状态'}`,
@@ -49,10 +52,10 @@ function runFeatureToggle(requestedFeatures, enabled, cwd) {
   return 0;
 }
 
-export function runEnable(requestedFeatures, cwd = process.cwd()) {
-  return runFeatureToggle(requestedFeatures, true, cwd);
+export function runEnable(requestedFeatures, cwd = process.cwd(), options = {}) {
+  return runFeatureToggle(requestedFeatures, true, cwd, options);
 }
 
-export function runDisable(requestedFeatures, cwd = process.cwd()) {
-  return runFeatureToggle(requestedFeatures, false, cwd);
+export function runDisable(requestedFeatures, cwd = process.cwd(), options = {}) {
+  return runFeatureToggle(requestedFeatures, false, cwd, options);
 }

@@ -75,7 +75,7 @@ export function expectedUnitTestPath(sourcePath) {
 function readPolicyFile(root, filePath, headSha) {
   if (headSha) {
     try {
-      return runGit(['show', `${headSha}:${filePath}`], { cwd: root }).stdout;
+      return runGit(['show', `${headSha}:./${filePath}`], { cwd: root }).stdout;
     } catch {
       return null;
     }
@@ -100,9 +100,9 @@ function interactionSourceChanges(root, changes, config) {
     if (isDeleted(change) || !matches(change.path, config.testPatterns)) continue;
     const projectFiles = change.headSha
       ? runGit(
-        ['ls-tree', '-r', '--name-only', change.headSha],
+        ['ls-tree', '-r', '--name-only', '-z', change.headSha],
         { cwd: root },
-      ).stdout.split(/\r?\n/).filter(Boolean)
+      ).stdout.split('\0').filter(Boolean)
       : collectProjectFiles(root);
     for (const sourcePath of projectFiles) {
       if (!sourcePath.toLowerCase().endsWith('.vue')

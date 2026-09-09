@@ -60,7 +60,7 @@ export function selectMaxFileLineFiles(files, config) {
 }
 
 function readRevisionContent(root, revision, relativePath) {
-  const result = runGit(['show', `${revision}:${relativePath}`], {
+  const result = runGit(['show', `${revision}:./${relativePath}`], {
     allowFailure: true,
     cwd: root,
   });

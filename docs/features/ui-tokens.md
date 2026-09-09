@@ -4,58 +4,79 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 UI Token 门禁默认关闭。项目必须先在 `repo-guard.config.json` 中声明实际使用的适配器，再执行 `npx repo-guard enable uiTokens`；repo-guard 不会根据文件扩展名猜测语言。当前版本只支持 `sass` 和 `unocss`，可以只启用其中一个，也可以同时启用：
 
+启用命令会在根配置 `repository.rules` 中为 Manifest 补充 `notify` 保护；多应用需要使用 `--project <id>`，保护路径会加上应用目录。例如 `apps/web` 的 `design/tokens.json` 对应根规则 `apps/web/design/tokens.json`。已有同路径规则不会被降低，关闭检查也不会移除保护。
+
 ```json
 {
-  "uiTokens": {
-    "enabled": false,
-    "manifestFile": "ui-tokens.manifest.json",
-    "include": ["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"],
-    "exclude": ["**/generated/**", "**/dist/**", "**/coverage/**", "**/reports/**"],
-    "adapters": {
-      "sass": {
-        "enabled": true
+  "checks": {
+    "uiTokens": {
+      "enabled": false,
+      "manifestFile": "ui-tokens.manifest.json",
+      "include": [
+        "src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"
+      ],
+      "exclude": [
+        "**/generated/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/reports/**"
+      ],
+      "adapters": {
+        "sass": {
+          "enabled": true
+        },
+        "unocss": {
+          "enabled": true,
+          "configFiles": [
+            "uno.config.ts"
+          ],
+          "attributify": true,
+          "variantGroups": true
+        }
       },
-      "unocss": {
-        "enabled": true,
-        "configFiles": ["uno.config.ts"],
-        "attributify": true,
-        "variantGroups": true
+      "icon": {
+        "components": [
+          "UiIcon",
+          "SvgIcon"
+        ],
+        "nativeSvg": true,
+        "sassSelectors": [
+          "svg",
+          ".icon",
+          ".ui-icon",
+          ".svg-icon"
+        ]
       }
-    },
-    "icon": {
-      "components": ["UiIcon", "SvgIcon"],
-      "nativeSvg": true,
-      "sassSelectors": ["svg", ".icon", ".ui-icon", ".svg-icon"]
     }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `uiTokens` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用时至少选择一个适配器，Manifest 与来源文件必须已跟踪并通过指纹复核。 |
-| `manifestFile` | 仓库内由项目生成并提交的 UI Token Manifest | 字符串<br>默认：`"ui-tokens.manifest.json"` | 至少 1 个字符 |
-| `include` | 参与 Sass 或 UnoCSS 静态检查的仓库相对 glob | 字符串数组<br>默认：`["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"]` | 至少 1 项；每项为非空字符串 |
-| `exclude` | 优先于 include 的排除 glob | 字符串数组<br>默认：`["**/generated/**","**/dist/**","**/coverage/**","**/reports/**"]` | 允许空数组；每项为非空字符串 |
-| `adapters.sass.enabled` | 使用消费项目自身的 Stylelint 与自定义语法解析 Sass 和 Vue style | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `adapters.unocss.enabled` | 是否启用UnoCSS Token 静态检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `adapters.unocss.configFiles` | 必须同时列入 Manifest sources 的 UnoCSS 配置文件 | 字符串数组<br>默认：`["uno.config.ts"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
-| `adapters.unocss.attributify` | 是否检查 UnoCSS Attributify 写法 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `adapters.unocss.variantGroups` | 是否展开并检查 UnoCSS variant group 写法 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `icon.components` | 在这些组件上将 size、w、h utility 识别为 icon-size | 字符串数组<br>默认：`["UiIcon","SvgIcon"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
-| `icon.nativeSvg` | 是否在原生 svg 元素上约束 icon-size utility | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `icon.sassSelectors` | 在这些 Sass/CSS 选择器上下文中将 width、height、inline-size、block-size 识别为 icon-size | 字符串数组<br>默认：`["svg",".icon",".ui-icon",".svg-icon"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
+| `checks.uiTokens.enabled` | 是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用时至少选择一个适配器，Manifest 与来源文件必须已跟踪并通过指纹复核。 |
+| `checks.uiTokens.manifestFile` | 应用目录内由项目生成并提交的 UI Token Manifest | 字符串<br>默认：`"ui-tokens.manifest.json"` | 至少 1 个字符 |
+| `checks.uiTokens.include` | 参与 Sass 或 UnoCSS 静态检查的仓库相对 glob | 字符串数组<br>默认：`["src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"]` | 至少 1 项；每项为非空字符串 |
+| `checks.uiTokens.exclude` | 优先于 include 的排除 glob | 字符串数组<br>默认：`["**/generated/**","**/dist/**","**/coverage/**","**/reports/**"]` | 允许空数组；每项为非空字符串 |
+| `checks.uiTokens.adapters.sass.enabled` | 使用消费项目自身的 Stylelint 与自定义语法解析 Sass 和 Vue style | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.uiTokens.adapters.unocss.enabled` | 是否启用UnoCSS Token 静态检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.uiTokens.adapters.unocss.configFiles` | 必须同时列入 Manifest sources 的 UnoCSS 配置文件 | 字符串数组<br>默认：`["uno.config.ts"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
+| `checks.uiTokens.adapters.unocss.attributify` | 是否检查 UnoCSS Attributify 写法 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.uiTokens.adapters.unocss.variantGroups` | 是否展开并检查 UnoCSS variant group 写法 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.uiTokens.icon.components` | 在这些组件上将 size、w、h utility 识别为 icon-size | 字符串数组<br>默认：`["UiIcon","SvgIcon"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
+| `checks.uiTokens.icon.nativeSvg` | 是否在原生 svg 元素上约束 icon-size utility | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.uiTokens.icon.sassSelectors` | 在这些 Sass/CSS 选择器上下文中将 width、height、inline-size、block-size 识别为 icon-size | 字符串数组<br>默认：`["svg",".icon",".ui-icon",".svg-icon"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
@@ -160,4 +181,4 @@ Manifest 启用后会自动加入 `notify` 级受保护文件规则。Manifest �
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/gates/quality/ui-token-gate.js) · [对应测试](../../test/ui-tokens.test.js)
+[实现入口](../../src/gates/quality/ui-token-gate.js) · [对应测试](../../test/gates/quality/ui-tokens.test.js)

@@ -49,7 +49,7 @@ function normalizeTarget(root, requestedPath, config) {
   const absolute = path.resolve(root, requestedPath);
   const relative = path.relative(root, absolute).replaceAll('\\', '/');
   if (!relative || relative === '..' || relative.startsWith('../') || path.isAbsolute(relative)) {
-    throw configurationError('image-optimize/path-outside-repository', `图片路径必须位于仓库内：${requestedPath}`);
+    throw configurationError('image-optimize/path-outside-repository', `图片路径必须位于所选应用目录内：${requestedPath}`);
   }
   if (!existsSync(absolute)) {
     throw configurationError('image-optimize/file-missing', `图片文件不存在：${relative}`);
@@ -206,9 +206,11 @@ export async function executeImageOptimization({
   write = false,
   allowLossy = false,
   cwd = process.cwd(),
+  root: applicationRoot,
+  config: projectConfig,
 }) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root).imageAssets;
+  const root = applicationRoot ?? findRepositoryRoot(cwd);
+  const config = (projectConfig ?? loadConfig(root)).imageAssets;
   if (!config.enabled) {
     throw configurationError('image-optimize/feature-disabled', '图片资源治理尚未启用');
   }

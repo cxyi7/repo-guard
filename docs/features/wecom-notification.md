@@ -33,4 +33,4 @@ npx repo-guard dry-run
 
 ## 维护依据
 
-[实现入口](../../src/integrations/wecom/notification.js) · [对应测试](../../test/notification-gate.test.js)
+[实现入口](../../src/integrations/wecom/notification.js) · [对应测试](../../test/gates/release/notification-gate.test.js)

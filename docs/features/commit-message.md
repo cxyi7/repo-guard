@@ -4,11 +4,11 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 提交信息门禁默认关闭。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
 
@@ -18,52 +18,65 @@ npx repo-guard enable commitMessage
 
 ```json
 {
-  "commitMessage": {
-    "enabled": true,
-    "types": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"],
-    "requireScope": false,
-    "allowedScopes": [],
-    "headerMaxLength": 100,
-    "breakingChange": {
-      "allowed": true,
-      "requireMarker": true,
-      "requireFooter": true,
-      "requireMajorVersionOnRelease": true
-    },
-    "merge": {
-      "allowed": true
-    },
-    "revert": {
-      "allowed": true
-    },
-    "fixup": {
-      "allowLocal": true,
-      "allowPush": false,
-      "allowCi": false
+  "repository": {
+    "commitMessage": {
+      "enabled": true,
+      "types": [
+        "feat",
+        "fix",
+        "docs",
+        "style",
+        "refactor",
+        "perf",
+        "test",
+        "build",
+        "ci",
+        "chore"
+      ],
+      "requireScope": false,
+      "allowedScopes": [],
+      "headerMaxLength": 100,
+      "breakingChange": {
+        "allowed": true,
+        "requireMarker": true,
+        "requireFooter": true,
+        "requireMajorVersionOnRelease": true
+      },
+      "merge": {
+        "allowed": true
+      },
+      "revert": {
+        "allowed": true
+      },
+      "fixup": {
+        "allowLocal": true,
+        "allowPush": false,
+        "allowCi": false
+      }
     }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `commitMessage` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用提交信息强制门禁 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `types` | 普通提交允许使用的 type 白名单 | 字符串数组<br>默认：`["feat","fix","docs","style","refactor","perf","test","build","ci","chore"]` | 至少 1 项；元素不可重复；每项：以小写字母开头，后续仅小写字母、数字、连字符 |
-| `requireScope` | 普通提交是否必须提供 scope | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `allowedScopes` | scope 白名单；空数组表示允许任意合法 scope | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项：匹配格式 `"^[a-z0-9][a-z0-9._/@-]*$"` |
-| `headerMaxLength` | 提交标题允许的最大 Unicode 字符数 | 整数<br>默认：`100` | ≥ 10 |
-| `breakingChange.allowed` | 是否允许不兼容变更提交 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `breakingChange.requireMarker` | 不兼容变更标题是否必须在冒号前包含 ! | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `breakingChange.requireFooter` | 不兼容变更是否必须包含 BREAKING CHANGE: 迁移说明 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `breakingChange.requireMajorVersionOnRelease` | release-ready 是否要求包含不兼容变更的发布提升 major 版本 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `merge.allowed` | 是否允许合并提交格式 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `revert.allowed` | 是否允许回退提交格式 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `fixup.allowLocal` | 是否允许本地创建 fixup!/squash! 临时整理提交 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `fixup.allowPush` | pre-push 是否允许临时整理提交 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `fixup.allowCi` | CI 是否允许临时整理提交 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.enabled` | 是否启用提交信息强制门禁 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.types` | 普通提交允许使用的 type 白名单 | 字符串数组<br>默认：`["feat","fix","docs","style","refactor","perf","test","build","ci","chore"]` | 至少 1 项；元素不可重复；每项：以小写字母开头，后续仅小写字母、数字、连字符 |
+| `repository.commitMessage.requireScope` | 普通提交是否必须提供 scope | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.allowedScopes` | scope 白名单；空数组表示允许任意合法 scope | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项：匹配格式 `"^[a-z0-9][a-z0-9._/@-]*$"` |
+| `repository.commitMessage.headerMaxLength` | 提交标题允许的最大 Unicode 字符数 | 整数<br>默认：`100` | ≥ 10 |
+| `repository.commitMessage.breakingChange.allowed` | 是否允许不兼容变更提交 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.breakingChange.requireMarker` | 不兼容变更标题是否必须在冒号前包含 ! | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.breakingChange.requireFooter` | 不兼容变更是否必须包含 BREAKING CHANGE: 迁移说明 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.breakingChange.requireMajorVersionOnRelease` | release-ready 是否要求包含不兼容变更的发布提升 major 版本 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.merge.allowed` | 是否允许合并提交格式 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.revert.allowed` | 是否允许回退提交格式 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.fixup.allowLocal` | 是否允许本地创建 fixup!/squash! 临时整理提交 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.fixup.allowPush` | pre-push 是否允许临时整理提交 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.commitMessage.fixup.allowCi` | CI 是否允许临时整理提交 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 
 <!-- config-fields:end -->
 
@@ -79,4 +92,4 @@ Git 自动生成的 merge commit 在本地通过 `MERGE_HEAD` 还原待提交父
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/policies/commit-message.js) · [对应测试](../../test/commit-message.test.js)
+[实现入口](../../src/policies/commit-message.js) · [对应测试](../../test/gates/repository/commit-message.test.js)

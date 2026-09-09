@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 按项目自己的 Prettier 配置统一格式。初始化默认启用，并要求项目存在格式配置。
 
@@ -35,7 +35,7 @@ npm install --save-dev --save-exact "prettier@>=3 <4"
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "prettier": {
       "enabled": true,
       "pattern": "*.{js,jsx,ts,tsx,vue,json,css,scss,html,md,yml,yaml}",
@@ -47,14 +47,14 @@ npm install --save-dev --save-exact "prettier@>=3 <4"
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.prettier` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用Prettier 暂存格式处理 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `pattern` | 选择暂存文件的 glob，使用项目相对路径匹配 | 字符串<br>默认：`"*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}"` | 至少 1 个字符 |
-| `fix` | 是否自动修复可修复项；false 使用只读检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `requireConfig` | 是否要求消费项目提供适用的工具配置 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.prettier.enabled` | 是否启用Prettier 暂存格式处理 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.prettier.pattern` | 选择暂存文件的 glob，使用项目相对路径匹配 | 字符串<br>默认：`"*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}"` | 至少 1 个字符 |
+| `checks.prettier.fix` | 是否自动修复可修复项；false 使用只读检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.prettier.requireConfig` | 是否要求消费项目提供适用的工具配置 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 
 <!-- config-fields:end -->
 
@@ -67,6 +67,6 @@ npx repo-guard doctor
 
 ## 执行与修复
 
-提交阶段在 Stylelint、ESLint 修复后格式化暂存文件，随后执行 Stylelint、ESLint 只读复核。CI `full` 只读验证格式。找不到配置或解析器时，先补齐项目工具；格式失败时修复对应文件、重新暂存，再提交。部分暂存和未暂存内容由 `lint-staged` 保留。
+提交阶段在 Stylelint、ESLint 修复后格式化暂存文件，随后执行 Stylelint、ESLint 只读复核。CI `full` / `release-ready` 只读验证格式。找不到配置或解析器时，先补齐项目工具；格式失败时修复对应文件、重新暂存，再提交。部分暂存和未暂存内容由 `lint-staged` 保留。
 
 源码：[Prettier 门禁](../../src/gates/quality/prettier-gate.js)。

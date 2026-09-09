@@ -4,21 +4,27 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 文件头默认关闭，可通过 `npx repo-guard enable fileHeader` 启用，再在 `repo-guard.config.json` 中调整作用范围：
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "fileHeader": {
       "enabled": true,
-      "include": ["src/**", "scripts/**"],
-      "exclude": ["src/generated/**", "src/vendor/**"],
+      "include": [
+        "src/**",
+        "scripts/**"
+      ],
+      "exclude": [
+        "src/generated/**",
+        "src/vendor/**"
+      ],
       "extensions": [
         ".vue",
         ".html",
@@ -39,14 +45,14 @@
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.fileHeader` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否在 pre-commit 的 lint-staged 隔离环境中同步暂存文件头 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `include` | 仓库相对 glob；文件至少命中一项才进入文件头同步范围 | 字符串数组<br>默认：`["**/*"]` | 至少 1 项；每项为非空字符串 |
-| `exclude` | 仓库相对 glob；排除优先级高于 include，适合忽略生成目录、第三方代码或特殊文件 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
-| `extensions` | 允许同步文件头的扩展名白名单；当前仅支持 Vue、HTML、JavaScript、TypeScript 和样式源文件 | 数组；每项可选 `".vue"`、`".html"`、`".js"`、`".jsx"`、`".ts"`、`".tsx"`、`".mjs"`、`".cjs"`、`".css"`、`".less"`、`".scss"`、`".sass"`<br>默认：`[".vue",".html",".js",".jsx",".ts",".tsx",".mjs",".cjs",".css",".less",".scss",".sass"]` | 至少 1 项；元素不可重复 |
+| `checks.fileHeader.enabled` | 是否在 pre-commit 的 lint-staged 隔离环境中同步暂存文件头 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.fileHeader.include` | 仓库相对 glob；文件至少命中一项才进入文件头同步范围 | 字符串数组<br>默认：`["**/*"]` | 至少 1 项；每项为非空字符串 |
+| `checks.fileHeader.exclude` | 仓库相对 glob；排除优先级高于 include，适合忽略生成目录、第三方代码或特殊文件 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
+| `checks.fileHeader.extensions` | 允许同步文件头的扩展名白名单；当前仅支持 Vue、HTML、JavaScript、TypeScript 和样式源文件 | 数组；每项可选 `".vue"`、`".html"`、`".js"`、`".jsx"`、`".ts"`、`".tsx"`、`".mjs"`、`".cjs"`、`".css"`、`".less"`、`".scss"`、`".sass"`<br>默认：`[".vue",".html",".js",".jsx",".ts",".tsx",".mjs",".cjs",".css",".less",".scss",".sass"]` | 至少 1 项；元素不可重复 |
 
 <!-- config-fields:end -->
 
@@ -68,4 +74,4 @@
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/policies/file-header.js) · [对应测试](../../test/file-header.test.js)
+[实现入口](../../src/policies/file-header.js) · [对应测试](../../test/policies/file-header.test.js)

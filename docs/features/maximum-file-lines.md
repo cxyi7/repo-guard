@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 控制单个文件的规模，在接近上限时提示拆分，避免职责持续堆积。
 
@@ -12,7 +12,7 @@
 
 ```json
 {
-  "preCommit": {
+  "checks": {
     "maxFileLines": {
       "enabled": true,
       "mode": "strict",
@@ -34,17 +34,17 @@
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `preCommit.maxFileLines` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用单文件行数限制 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `mode` | strict 超限即失败；noRegression 允许历史超限不再增长，新文件仍严格检查 | `"strict"` / `"noRegression"`<br>默认：`"strict"` | 只接受列出的值 |
-| `warnAt` | 达到 maxLines 的该比例时提醒；0.85 表示 85%，提醒本身不阻断 | 数值<br>默认：`0.85` | > 0；≤ 1 |
-| `rules` | 按文件类型声明物理行数上限，使用第一条匹配规则 | 对象数组；对象字段见后续行<br>默认：内置 3 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
-| `rules[].pattern` | 需要限制行数的仓库相对文件 glob | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `rules[].maxLines` | 允许的物理行数上限，包含注释和空行 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
-| `exclusions` | 匹配后不参与行数检查的路径，优先于行数规则 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
+| `checks.maxFileLines.enabled` | 是否启用单文件行数限制 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.maxFileLines.mode` | strict 超限即失败；noRegression 允许历史超限不再增长，新文件仍严格检查 | `"strict"` / `"noRegression"`<br>默认：`"strict"` | 只接受列出的值 |
+| `checks.maxFileLines.warnAt` | 达到 maxLines 的该比例时提醒；0.85 表示 85%，提醒本身不阻断 | 数值<br>默认：`0.85` | > 0；≤ 1 |
+| `checks.maxFileLines.rules` | 按文件类型声明物理行数上限，使用第一条匹配规则 | 对象数组；对象字段见后续行<br>默认：内置 3 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
+| `checks.maxFileLines.rules[].pattern` | 需要限制行数的仓库相对文件 glob | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
+| `checks.maxFileLines.rules[].maxLines` | 允许的物理行数上限，包含注释和空行 | 整数<br>本对象内必填，无自动代填值 | ≥ 1 |
+| `checks.maxFileLines.exclusions` | 匹配后不参与行数检查的路径，优先于行数规则 | 字符串数组<br>默认：`[]` | 允许空数组；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
@@ -63,4 +63,4 @@
 
 ## 维护依据
 
-[实现入口](../../src/policies/max-file-lines.js) · [对应测试](../../test/max-file-lines.test.js)
+[实现入口](../../src/policies/max-file-lines.js) · [对应测试](../../test/policies/max-file-lines.test.js)

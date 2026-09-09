@@ -1,11 +1,10 @@
-import { loadConfig } from '../../config/configuration-loader.js';
+import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import {
   initializeDeadCodeBaseline,
   pruneDeadCodeBaseline,
 } from '../../gates/quality/dead-code-baseline-management.js';
-import { findRepositoryRoot } from '../../git/repository.js';
 
 function renderResult(result) {
   if (result.action === 'initialized') {
@@ -24,9 +23,10 @@ function renderResult(result) {
   );
 }
 
-export async function runDeadCodeBaseline(action, cwd = process.cwd()) {
-  const root = findRepositoryRoot(cwd);
-  const config = loadConfig(root).deadCode;
+export async function runDeadCodeBaseline(action, cwd = process.cwd(), options = {}) {
+  const target = loadExecutionTarget(cwd, options);
+  const root = target.root;
+  const config = target.config.deadCode;
   let result;
   if (action === 'init') result = await initializeDeadCodeBaseline(root, config);
   else if (action === 'prune') result = await pruneDeadCodeBaseline(root, config);

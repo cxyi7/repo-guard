@@ -28,4 +28,4 @@ npx repo-guard target-blank
 
 ## 维护依据
 
-[实现入口](../../src/policies/vue-target-blank.js) · [对应测试](../../test/vue-target-blank.test.js)
+[实现入口](../../src/policies/vue-target-blank.js) · [对应测试](../../test/gates/security/vue-target-blank.test.js)

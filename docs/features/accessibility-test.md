@@ -2,7 +2,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 通过项目自己的测试脚本对真实组件或页面运行 axe 扫描，并要求零违规断言。它与提交阶段的表单标签、图片替代文本静态检查分别执行。
 
@@ -47,24 +47,28 @@ test('表单不存在 axe 违规', async () => {
 
 ```json
 {
-  "accessibilityTest": {
-    "enabled": true,
-    "script": "test:a11y",
-    "timeoutMs": 180000,
-    "testPatterns": ["test/accessibility/**/*.a11y.spec.js"]
+  "checks": {
+    "accessibilityTest": {
+      "enabled": true,
+      "script": "test:a11y",
+      "timeoutMs": 180000,
+      "testPatterns": [
+        "test/accessibility/**/*.a11y.spec.js"
+      ]
+    }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `accessibilityTest` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用axe 测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 首次 init 会按项目就绪探测启用；表中是补缺默认值。 |
-| `script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"test:a11y"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
-| `timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`180000` | ≥ 1 |
-| `testPatterns` | 应直接执行 axe 并断言无违规的测试文件范围 | 字符串数组<br>默认：内置 2 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；每项为非空字符串 |
+| `checks.accessibilityTest.enabled` | 是否启用axe 测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.accessibilityTest.script` | 消费项目 package.json 中要执行的 npm 脚本名 | 字符串<br>默认：`"test:a11y"` | 至少 1 个字符；仅字母、数字、冒号、下划线、连字符；必须对应真实 npm 脚本，不带参数或 shell 片段 |
+| `checks.accessibilityTest.timeoutMs` | 本项检查或脚本允许的最大运行时间，单位毫秒 | 整数<br>默认：`180000` | ≥ 1 |
+| `checks.accessibilityTest.testPatterns` | 应直接执行 axe 并断言无违规的测试文件范围 | 字符串数组<br>默认：内置 2 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
@@ -76,8 +80,8 @@ npx repo-guard accessibility-test
 
 ## 执行与修复
 
-手动、pre-push 和 CI `full` 可执行；不进入 pre-commit，当前固定 `release-ready` 计划也不单独调度此 Gate。发布前是否重跑 axe，应明确放入项目 `test` 脚本或此前约定的验证流程。
+前端应用可通过手动、pre-push 和 CI `full` / `release-ready` 执行已启用的可访问性测试；不进入 pre-commit。后端预设明确不适用此项检查。
 
 缺少集成、扫描或零违规断言时先修正测试；扫描失败则修复界面并重新验证。`skip`、`only`、关闭 axe 规则、过滤影响级别或排除 DOM 的绕过写法会被检查。
 
-源码：[就绪检查](../../src/gates/testing/accessibility-test-setup.js)。测试：[可访问性测试](../../test/accessibility-test.test.js)。
+源码：[就绪检查](../../src/gates/testing/accessibility-test-setup.js)。测试：[可访问性测试](../../test/gates/testing/accessibility-test.test.js)。

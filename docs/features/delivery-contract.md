@@ -4,7 +4,7 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；首次初始化可能按工具就绪情况启用。主配置片段需合并到原文件，数组整项替换。
+> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
 [接入](#接入与配置) · [角色分工](#角色分工与交付时序) · [功能登记](#功能登记与合同规划) · [证据复核](#交付证据与两轮复核) · [反馈升级](#真实测试反馈与反向升级) · [字段格式](#字段与文件参考)
 
@@ -12,32 +12,40 @@
 
 ## 接入与配置
 
-以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑配置后运行 `npx repo-guard migrate` 和 `npx repo-guard doctor`。
+以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`；`migrate` 仅用于旧版本显式迁移。
 
 合同驱动交付默认关闭。启用后，项目用树形功能登记表记录人工确认的功能归属，并用当前分支唯一的 `schemaVersion: 2` 多文件活动合同约束本地需求快照、资料计划、Git 历史修订、目标分支、Worktree、路径边界、执行清单、并行协调和发布证据：
 
 ```json
 {
-  "deliveryContract": {
-    "enabled": true,
-    "registryPath": "docs/delivery/feature-registry.json",
-    "contractsDirectory": "docs/delivery/contracts",
-    "requiredFor": ["src/**", "test/**", "package.json"],
-    "exclude": ["reports/**"]
+  "repository": {
+    "deliveryContract": {
+      "enabled": true,
+      "registryPath": "docs/delivery/feature-registry.json",
+      "contractsDirectory": "docs/delivery/contracts",
+      "requiredFor": [
+        "src/**",
+        "test/**",
+        "package.json"
+      ],
+      "exclude": [
+        "reports/**"
+      ]
+    }
   }
 }
 ```
 
 <!-- config-fields:start -->
-**字段说明**（以下字段位于 `deliveryContract` 内）：
+**字段说明**（以下使用完整的 v2 配置路径）：
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `enabled` | 是否启用 repository.delivery-contract 和 release.delivery-evidence | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `registryPath` | 仓库相对的树形功能登记表 JSON 路径 | 字符串<br>默认：`"docs/delivery/feature-registry.json"` | 仓库相对路径；不能是绝对路径或含 .. 越界，使用 / 分隔；以 .json 结尾 |
-| `contractsDirectory` | 保存 Markdown 交付合同、Evidence Run、执行报告及本地需求快照的仓库相对目录 | 字符串<br>默认：`"docs/delivery/contracts"` | 仓库相对路径；不能是绝对路径或含 .. 越界，使用 / 分隔 |
-| `requiredFor` | 命中任一 glob 的当前变更必须由唯一交付合同覆盖；空数组表示不自动要求合同 | 字符串数组<br>默认：`["**/*"]` | 允许空数组；元素不可重复；每项为非空字符串 |
-| `exclude` | 不触发合同选择的生成物范围；选定合同后不会因此绕过 allowedPaths 或 forbiddenPaths | 字符串数组<br>默认：`["reports/**"]` | 允许空数组；元素不可重复；每项为非空字符串 |
+| `repository.deliveryContract.enabled` | 是否启用 repository.delivery-contract 和 release.delivery-evidence | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `repository.deliveryContract.registryPath` | 仓库相对的树形功能登记表 JSON 路径 | 字符串<br>默认：`"docs/delivery/feature-registry.json"` | 仓库相对路径；不能是绝对路径或含 .. 越界，使用 / 分隔；以 .json 结尾 |
+| `repository.deliveryContract.contractsDirectory` | 保存 Markdown 交付合同、Evidence Run、执行报告及本地需求快照的仓库相对目录 | 字符串<br>默认：`"docs/delivery/contracts"` | 仓库相对路径；不能是绝对路径或含 .. 越界，使用 / 分隔 |
+| `repository.deliveryContract.requiredFor` | 命中任一 glob 的当前变更必须由唯一交付合同覆盖；空数组表示不自动要求合同 | 字符串数组<br>默认：`["**/*"]` | 允许空数组；元素不可重复；每项为非空字符串 |
+| `repository.deliveryContract.exclude` | 不触发合同选择的生成物范围；选定合同后不会因此绕过 allowedPaths 或 forbiddenPaths | 字符串数组<br>默认：`["reports/**"]` | 允许空数组；元素不可重复；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
@@ -637,6 +645,6 @@ regressionCoverage: # 受影响合同的回归覆盖对象
 
 ## 维护依据
 
-[合同与反馈策略](../../src/policies/delivery-contract) · [合同门禁适配](../../src/gates/repository/repository-policy-gates.js) · [合同与证据测试](../../test/delivery-contract.test.js) · [托管流程 Skill 源文件](../../skills)
+[合同与反馈策略](../../src/policies/delivery-contract) · [合同门禁适配](../../src/gates/repository/repository-policy-gates.js) · [合同与证据测试](../../test/policies/delivery-contract.test.js) · [托管流程 Skill 源文件](../../skills)
 
 字段、证据或流程变化时，在本页同步接入、时序、反馈图与字段参考；对应 Skill 模板和实现也需保持一致。图中的业务确认必须与代码可验证的事实区分。
