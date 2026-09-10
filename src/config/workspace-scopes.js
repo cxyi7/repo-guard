@@ -21,14 +21,20 @@ export function applicationDocument(document, shared) {
   if (document.reporting !== undefined) throw configValidationError('子应用不得覆盖仓库统一的 reporting 配置');
   assertSection(document.repository, APPLICATION_REPOSITORY_FIELDS, '子应用 repository');
   assertSection(document.ci, APPLICATION_CI_FIELDS, '子应用 ci');
+  const gatePolicy = document.ci?.gatePolicy;
+  assertSection(gatePolicy, ['defaultMode', 'gates'], '子应用 ci.gatePolicy');
   return {
     ...document,
     reporting: shared.reporting,
     ci: {
       enabled: shared.ci?.enabled,
       profile: shared.ci?.profile,
-      gatePolicy: { defaultMode: shared.ci?.gatePolicy?.defaultMode },
       ...document.ci,
+      gatePolicy: {
+        ...gatePolicy,
+        defaultMode: gatePolicy?.defaultMode === undefined
+          ? shared.ci?.gatePolicy?.defaultMode : gatePolicy.defaultMode,
+      },
     },
   };
 }

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { sanitizeProcessOutput } from '../../core/execution/output-safety.js';
 import {
   executeProjectStylelintRules,
   inspectProjectStylelintRuleInputs,
@@ -13,6 +14,33 @@ const LANGUAGE_BY_EXTENSION = Object.freeze({
   '.css': 'css', '.scss': 'sass', '.sass': 'sass', '.less': 'less',
 });
 const LANGUAGE_BY_ATTRIBUTE = Object.freeze({ css: 'css', scss: 'sass', sass: 'sass', less: 'less' });
+
+function stylelintDiagnostic(value, root) {
+  let redacted = false;
+  let truncated = false;
+  // 序列化前处理路径，避免 JSON 转义后的反斜杠使仓库根目录无法脱敏。
+  const text = typeof value === 'string' ? value : JSON.stringify(value, (_key, item) => {
+    if (typeof item !== 'string') return item;
+    const safe = sanitizeProcessOutput(item, { root });
+    redacted ||= safe.redacted;
+    truncated ||= safe.truncated;
+    return safe.text;
+  }, 2);
+  const safe = sanitizeProcessOutput(text, { root });
+  return {
+    source: 'stylelint',
+    stream: 'stderr',
+    level: 'error',
+    message: safe.text,
+    redacted: redacted || safe.redacted,
+    truncated: truncated || safe.truncated,
+  };
+}
+
+function failureDiagnostic(result, root) {
+  const { source, ignored, errored, warnings, parseErrors, invalidOptionWarnings, deprecations } = result;
+  return stylelintDiagnostic({ source, ignored, errored, warnings, parseErrors, invalidOptionWarnings, deprecations }, root);
+}
 
 function vueRanges(source) {
   return findVueStyleBlocks(source).map((block) => {
@@ -150,7 +178,7 @@ function assertParsed(report, inputs, parsed, root) {
   throw configurationError(
     'ui-token/style-parse-failed',
     `UI Token 无法完整解析样式文件：${files.join('、')}。请修正样式语法或项目 Stylelint 的 customSyntax 配置后重试。`,
-    { details: { diagnosticSource: 'Stylelint 原始诊断', diagnostics: failures } },
+    { details: { diagnostics: failures.map((result) => failureDiagnostic(result, root)) } },
   );
 }
 
@@ -171,7 +199,7 @@ export async function collectStyleFacts({ project, root, files, languages }) {
       kind: 'configuration',
       code: 'ui-token/style-parse-failed',
       message: 'UI Token 样式解析失败；请检查项目 Stylelint 配置、customSyntax 安装情况和样式语法。',
-      details: { diagnosticSource: 'Stylelint 原始诊断', diagnostic: error.message },
+      details: { diagnostics: [stylelintDiagnostic(error.message ?? String(error), root)] },
     });
   }
   return Object.freeze(facts.map((fact) => Object.freeze(fact)));

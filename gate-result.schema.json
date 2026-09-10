@@ -30,6 +30,7 @@
     },
     "diagnostics": {
       "type": "array",
+      "description": "合并门禁显式诊断和领域错误携带的诊断；第三方原文独立于中文问题与证据，控制台按 source/stream 标记来源。进程清理失败仍保留原始诊断并归为 execution-error。",
       "items": { "$ref": "#/$defs/diagnostic" }
     },
     "durationMs": { "type": "number", "minimum": 0 },

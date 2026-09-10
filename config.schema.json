@@ -612,7 +612,7 @@
                 "release-ready"
               ],
               "default": "policy",
-              "description": "policy 执行仓库策略检查；full 在此基础上执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 执行通用工程检查、适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
+              "description": "policy 执行仓库策略检查；full 复用 policy 完整步骤，再执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 复用 full 通用工程检查，再执行适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
             },
             "reportPath": {
               "type": "string",
@@ -636,7 +636,7 @@
             },
             "gatePolicy": {
               "type": "object",
-              "description": "CI-only Gate activation and blocking policy. It is never read by pre-commit or pre-push. Registry-declared CI Gates are controlled automatically; report and enforce activate configurable Gates only in an isolated CI context.",
+              "description": "仅控制 CI 中的 Gate 启用与阻断，不由 pre-commit 或 pre-push 读取。report 和 enforce 只在独立 CI 上下文启用适用检查。多应用的默认模式按字段继承，具体 Gate 覆盖按应用独立配置。",
               "additionalProperties": false,
               "properties": {
                 "defaultMode": {
@@ -648,12 +648,12 @@
                     "enforce"
                   ],
                   "default": "inherit",
-                  "description": "inherit preserves pre-1.7 behavior; off skips; report executes without blocking CI; enforce executes and blocks CI on failure."
+                  "description": "inherit 沿用功能开关；off 跳过；report 执行但不阻断；enforce 执行且失败阻断。单应用未指定时为 inherit；多应用子配置未指定时继承仓库默认模式，只有显式填写才覆盖，局部 gates 覆盖不会重置默认模式。"
                 },
                 "gates": {
                   "type": "object",
                   "default": {},
-                  "description": "Per-Gate overrides keyed by the stable Registry Gate id. The generic key contract automatically accepts future Registry Gate ids without a hand-maintained schema enum.",
+                  "description": "以 Registry 的稳定 Gate ID 为键的独立覆盖。仓库具体 Gate 的覆盖不向应用继承；子应用配置此对象不会重置共同默认模式。实际 Gate 身份由 Registry 校验。",
                   "propertyNames": {
                     "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
                   },
@@ -3228,7 +3228,7 @@
                 "release-ready"
               ],
               "default": "policy",
-              "description": "policy 执行仓库策略检查；full 在此基础上执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 执行通用工程检查、适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
+              "description": "policy 执行仓库策略检查；full 复用 policy 完整步骤，再执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 复用 full 通用工程检查，再执行适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
             },
             "reportPath": {
               "type": "string",
@@ -3252,7 +3252,7 @@
             },
             "gatePolicy": {
               "type": "object",
-              "description": "CI-only Gate activation and blocking policy. It is never read by pre-commit or pre-push. Registry-declared CI Gates are controlled automatically; report and enforce activate configurable Gates only in an isolated CI context.",
+              "description": "仅控制 CI 中的 Gate 启用与阻断，不由 pre-commit 或 pre-push 读取。report 和 enforce 只在独立 CI 上下文启用适用检查。多应用的默认模式按字段继承，具体 Gate 覆盖按应用独立配置。",
               "additionalProperties": false,
               "properties": {
                 "defaultMode": {
@@ -3264,12 +3264,12 @@
                     "enforce"
                   ],
                   "default": "inherit",
-                  "description": "inherit preserves pre-1.7 behavior; off skips; report executes without blocking CI; enforce executes and blocks CI on failure."
+                  "description": "inherit 沿用功能开关；off 跳过；report 执行但不阻断；enforce 执行且失败阻断。未指定时为 inherit；子应用未指定时继承这里的默认模式，只有显式填写才覆盖，局部 gates 覆盖不会重置默认模式。"
                 },
                 "gates": {
                   "type": "object",
                   "default": {},
-                  "description": "Per-Gate overrides keyed by the stable Registry Gate id. The generic key contract automatically accepts future Registry Gate ids without a hand-maintained schema enum.",
+                  "description": "以 Registry 的稳定 Gate ID 为键的独立覆盖。此处的具体 Gate 覆盖只作用于公共仓库，不向应用继承。实际 Gate 身份由 Registry 校验。",
                   "propertyNames": {
                     "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
                   },

@@ -124,6 +124,8 @@ repo/
 
 根 `ci.enabled/profile` 管理公共执行流程，根 `gatePolicy.defaultMode` 提供共同执行模式；具体 Gate 覆盖与外部门禁在应用中配置。应用不得覆盖根 CI 开关、档案或汇总报告路径。同名外部门禁可分别存在于不同应用，命令和报告在各自目录运行。
 
+子应用只填写 `gatePolicy.gates` 或空的 `gatePolicy` 时，仍继承根 `defaultMode`；只有显式填写子应用 `defaultMode` 才覆盖。比如根设置 `enforce`，api 只将 `quality.build` 设为 `off`，其他适用 Gate 仍按 `enforce` 执行；根设置 `report` 时，其他 Gate 仍只报告。根的具体 `gates` 覆盖不会继承到应用，非法的 `gatePolicy` 对象也不会被默认值掩盖。
+
 ```bash
 # 应用检查与开关明确选择目标
 npx repo-guard enable unitTest coverage --project api
@@ -153,14 +155,28 @@ npx repo-guard ci --profile release-ready
 - CI 分别记录各应用结果，任一阻断性失败都会让汇总失败。子应用成功不能覆盖另一应用失败。具体报告路径见[CI 报告](gate-result-and-reporting.md)。
 - CI 同时检查仓库公共 `AGENTS.md` 和所选应用各自的 `AGENTS.md`；只选择 web 时不会检查 api 的规范。唯一应用使用 `root: "."` 时，共用根文件按该应用配置核验一次，避免重复要求不同内容。
 
+## 应用工具如何定位
+
+ESLint、Prettier、Stylelint、dependency-cruiser 等工具从所选应用开始，按 Node 的就近顺序查找本目录及祖先目录的 `node_modules`，支持工作区提升安装、作用域包、符号链接和 Windows 目录联接。不会退回全局 `NODE_PATH` 或 repo-guard 自身的工具安装。包未公开导出 `package.json` 时仍可读取已定位安装的清单。
+
+最近的安装存在但清单损坏或不可读时，会报告对应配置错误；不会继续使用更远的另一份安装掩盖问题。清单与入口必须属于同一安装；保留符号链接的 Node 运行方式也按真实文件归属校验。修复依赖安装后，重新运行 Doctor 和实际门禁。
+
+CLI 适配器可以只读取清单中的命令入口；以库方式加载工具时仍需该适配器支持的 Node 可解析入口。仅提供 `import` 条件、没有可解析库入口的包会明确报错，不代表所有 ESM 导出形式都已支持。Hook 和检查入口不会自动安装或升级依赖。
+
 ## 后续扩展
 
 前后端也可放在两个独立 Git 仓库、不同磁盘或不同电脑上。每个仓库运行自己的检查，不把 `../另一个仓库` 填入应用清单。跨仓库协作使用[独立交付合同](delivery-contract.md#独立交付与跨仓库协作)，通过稳定的仓库、参与方标识及签名证据关联。同仓不同目录可绑定同一合同中的多个参与方；前后端文件混在同一目录不支持。
 
 `profiles` 提供明确的项目预设和工具需求描述，`integrations` 承担执行器，`operations/providers` 承担发布命令映射。未来 Java 执行器通过 Node CLI 调用 JDK 和 Maven/Gradle；目前选择 Java 会报尚未支持，不会产生通过结果。
 
+Java 项目目前可通过独立交付合同运行自己的 Maven / Gradle 检查命令；接入步骤、质量基线及原生适配的后续范围见[Java 检查接入说明](../java-quality-integration.md)。
+
 自动安装与基础配置尚未执行。后续接入会在专门的准备阶段验证宿主 Node、项目运行环境、依赖 engines/peerDependencies 与现有配置，生成可审阅的变更计划；检查和提交 Hook 本身不会安装、升级依赖。
 
 ## 维护依据
 
 [配置入口](../../src/config/workspace-configuration.js) · [应用预设](../../src/profiles/project-profiles.js) · [工作区调度](../../src/orchestration/workspace/targets.js) · [配置测试](../../test/config/project-configuration.test.js)
+
+[工具定位](../../src/core/project/package.js) · [依赖提升与目录链接回归](../../test/core/project-package.test.js)
+
+[应用策略组合](../../src/config/workspace-scopes.js) · [CI 默认模式继承回归](../../test/ci/workspace-gate-policy.test.js)

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { configurationError } from '../error/repo-guard-error.js';
@@ -19,6 +19,81 @@ function dependencyRemediation(packageName) {
       '确认原门禁返回 passed 或只剩独立的规则违规',
     ],
   };
+}
+
+function isWithinDirectory(directory, target) {
+  const relative = path.relative(directory, target);
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function manifestError(root, packageName, displayName, manifestPath, reason, cause) {
+  const unreadable = reason === 'unreadable';
+  return configurationError(
+    `project-package/dependency-manifest-${reason}`,
+    unreadable
+      ? `无法读取 ${displayName} 的包清单：${packageName}`
+      : `${displayName} 的包清单必须是有效的 JSON 对象：${packageName}`,
+    {
+      cause,
+      details: {
+        location: { path: path.relative(root, manifestPath).replaceAll('\\', '/') },
+      },
+      expected: `${packageName} 的 package.json 是可读取的 JSON 对象。`,
+      remediation: dependencyRemediation(packageName),
+    },
+  );
+}
+
+function findDependencyManifest(root, packageName, displayName, requireFromProject) {
+  // Node supplies lookup order; only consumer ancestor node_modules directories are allowed.
+  const searchPaths = (requireFromProject.resolve.paths(packageName) ?? []).filter((directory) => (
+    path.basename(directory) === 'node_modules'
+    && isWithinDirectory(path.dirname(directory), root)
+  ));
+  for (const directory of searchPaths) {
+    const packageRoot = path.join(directory, packageName);
+    const manifestPath = path.join(packageRoot, 'package.json');
+    try {
+      if (!statSync(packageRoot).isDirectory()) continue;
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') continue;
+      throw manifestError(root, packageName, displayName, manifestPath, 'unreadable', error);
+    }
+    try {
+      return realpathSync(manifestPath);
+    } catch (error) {
+      throw manifestError(root, packageName, displayName, manifestPath, 'unreadable', error);
+    }
+  }
+  return null;
+}
+
+function readDependencyManifest(root, packageName, displayName, manifestPath) {
+  let manifestStat;
+  try {
+    manifestStat = statSync(manifestPath);
+  } catch (error) {
+    throw manifestError(root, packageName, displayName, manifestPath, 'unreadable', error);
+  }
+  if (!manifestStat.isFile()) {
+    throw manifestError(root, packageName, displayName, manifestPath, 'unreadable');
+  }
+  let source;
+  try {
+    source = readFileSync(manifestPath, 'utf8');
+  } catch (error) {
+    throw manifestError(root, packageName, displayName, manifestPath, 'unreadable', error);
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(source);
+  } catch (error) {
+    throw manifestError(root, packageName, displayName, manifestPath, 'invalid', error);
+  }
+  if (manifest === null || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    throw manifestError(root, packageName, displayName, manifestPath, 'invalid');
+  }
+  return manifest;
 }
 
 export function resolveProjectPackageMetadata(
@@ -46,17 +121,13 @@ export function resolveProjectPackageMetadata(
   }
 
   const requireFromProject = createRequire(packageJsonPath);
-  let dependencyPackagePath;
+  const dependencyPackagePath = findDependencyManifest(
+    root,
+    packageName,
+    displayName,
+    requireFromProject,
+  );
   let entryPath = null;
-
-  try {
-    dependencyPackagePath = requireFromProject.resolve(`${packageName}/package.json`);
-  } catch {
-    const directPackagePath = path.join(root, 'node_modules', packageName, 'package.json');
-    if (existsSync(directPackagePath)) {
-      dependencyPackagePath = directPackagePath;
-    }
-  }
 
   if (!dependencyPackagePath) {
     throw configurationError(
@@ -77,33 +148,43 @@ export function resolveProjectPackageMetadata(
     );
   }
 
+  const packageJson = readDependencyManifest(root, packageName, displayName, dependencyPackagePath);
+
   if (requireEntry) {
+    let entryResolutionError;
+    let physicalEntryPath;
     try {
       entryPath = requireFromProject.resolve(packageName);
+      physicalEntryPath = realpathSync(entryPath);
     } catch (error) {
+      entryResolutionError = error;
+    }
+    if (
+      entryResolutionError
+      || !isWithinDirectory(path.dirname(dependencyPackagePath), physicalEntryPath)
+    ) {
       throw configurationError(
         'project-package/dependency-entry-unresolvable',
         `已找到 ${displayName} 的包清单，但无法解析 ${packageName} 的运行入口`,
         {
-          cause: error,
+          cause: entryResolutionError,
           details: {
             location: { path: 'package.json' },
             evidence: [{
               type: 'dependency-entry-resolution',
-              message: `已解析包清单，但无法解析运行时入口： ${packageName}`,
+              message: `已解析最近安装的包清单，但无法定位该安装内的运行入口： ${packageName}`,
               location: {
                 path: path.relative(root, dependencyPackagePath).replaceAll('\\', '/'),
               },
             }],
           },
-          expected: `${packageName} 提供可由消费项目解析的运行入口。`,
+          expected: `${packageName} 在同一安装内提供可由消费项目通过 Node.js require 解析条件定位的运行入口。`,
           remediation: dependencyRemediation(packageName),
         },
       );
     }
   }
 
-  const packageJson = JSON.parse(readFileSync(dependencyPackagePath, 'utf8'));
   return {
     entryPath,
     packagePath: dependencyPackagePath,

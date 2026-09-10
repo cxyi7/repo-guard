@@ -86,7 +86,9 @@ export function renderGateResultConsole(result, { label = result.gateId } = {}) 
     : 'stderr';
   const lines = result.diagnostics.map((diagnostic) => ({
     stream: failureStream ?? STREAM_BY_LEVEL[diagnostic.level],
-    message: diagnostic.message,
+    message: diagnostic.source === 'repo-guard'
+      ? diagnostic.message
+      : `第三方原始诊断（${diagnostic.source} ${diagnostic.stream}）：\n${diagnostic.message}`,
   }));
   const issues = result.issues;
   issues.forEach((issue, index) => lines.push(...renderIssue(issue, index, issues.length)));

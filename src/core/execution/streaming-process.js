@@ -4,8 +4,14 @@ import {
   executionError,
 } from '../error/repo-guard-error.js';
 import { sanitizeProcessOutput } from './output-safety.js';
+import {
+  processTerminationFailure,
+  releaseProcessHandles,
+  terminateProcessTree,
+} from './process-tree.js';
 
 const DEFAULT_CAPTURE_LIMIT = 1024 * 1024;
+const MAX_LIVE_LINE_BYTES = 1024 * 1024;
 const PRIVATE_KEY_START_PATTERN = /-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH PRIVATE KEY)-----/i;
 const PRIVATE_KEY_END_PATTERN = /-----END [^-]*(?:PRIVATE KEY|OPENSSH PRIVATE KEY)-----/i;
 
@@ -19,6 +25,16 @@ function timeoutError(timeoutMs) {
   return executionError('project-process/timeout', `子进程执行超过 ${timeoutMs}ms`);
 }
 
+function startError(cause) {
+  return executionError('project-process/start-failed', '无法启动子进程。', {
+    cause,
+    details: {
+      processCode: cause.code ?? null,
+      evidence: [{ type: 'process-start', message: `子进程启动失败，系统错误代码：${cause.code ?? '未知'}。` }],
+    },
+  });
+}
+
 function appendCaptured(current, chunk, limit) {
   if (Buffer.byteLength(current, 'utf8') >= limit) return current;
   const remaining = limit - Buffer.byteLength(current, 'utf8');
@@ -26,8 +42,45 @@ function appendCaptured(current, chunk, limit) {
   return current + value;
 }
 
+/** 丢弃长行时只保存固定长度标记状态，私钥头尾跨 chunk 或超长仍可辨认。 */
+function createDiscardedLineScanner(initialRedaction) {
+  let redacting = initialRedaction;
+  let prefix = '';
+  let marker = null;
+  let suffix = '';
+  let hyphens = 0;
+  return {
+    redacting: () => redacting,
+    push(text) {
+      for (const character of text.toUpperCase()) {
+        if (marker) {
+          if (character === '-') {
+            hyphens += 1;
+            if (hyphens === 5) {
+              if (suffix.endsWith('PRIVATE KEY')) redacting = marker === 'BEGIN';
+              marker = null;
+            }
+          } else if (hyphens > 0) {
+            marker = null;
+          } else {
+            suffix = (suffix + character).slice(-11);
+          }
+        }
+        prefix = (prefix + character).slice(-11);
+        if (prefix.endsWith('-----BEGIN ') || prefix.endsWith('-----END ')) {
+          marker = prefix.endsWith('-----BEGIN ') ? 'BEGIN' : 'END';
+          suffix = '';
+          hyphens = 0;
+        }
+      }
+    },
+  };
+}
+
 function createLiveWriter(target, root) {
   let pending = '';
+  let pendingBytes = 0;
+  let discardedLine = null;
   let redactingPrivateKey = false;
 
   function writeSegment(segment) {
@@ -50,48 +103,53 @@ function createLiveWriter(target, root) {
     }).text);
   }
 
-  function flushCompleteSegments() {
-    let boundary = pending.search(/[\r\n]/);
-    while (boundary !== -1) {
-      let end = boundary + 1;
-      while (end < pending.length && /[\r\n]/.test(pending[end])) end += 1;
-      writeSegment(pending.slice(0, end));
-      pending = pending.slice(end);
-      boundary = pending.search(/[\r\n]/);
+  function appendSegment(segment) {
+    if (discardedLine) {
+      discardedLine.push(segment);
+      return;
     }
+    const size = Buffer.byteLength(segment, 'utf8');
+    if (pendingBytes + size > MAX_LIVE_LINE_BYTES) {
+      discardedLine = createDiscardedLineScanner(redactingPrivateKey);
+      discardedLine.push(pending);
+      discardedLine.push(segment);
+      pending = '';
+      pendingBytes = 0;
+      target.write(`[输出行超过 ${MAX_LIVE_LINE_BYTES} 字节，已丢弃该行]\n`);
+      return;
+    }
+    pending += segment;
+    pendingBytes += size;
+  }
+
+  function finishLine(separator) {
+    if (discardedLine) {
+      redactingPrivateKey = discardedLine.redacting();
+      target.write(separator);
+    } else writeSegment(pending + separator);
+    pending = '';
+    pendingBytes = 0;
+    discardedLine = null;
   }
 
   return Object.freeze({
     push(chunk) {
-      pending += chunk.toString('utf8');
-      flushCompleteSegments();
+      const text = chunk.toString('utf8');
+      let offset = 0;
+      for (const match of text.matchAll(/[\r\n]+/g)) {
+        appendSegment(text.slice(offset, match.index));
+        finishLine(match[0]);
+        offset = match.index + match[0].length;
+      }
+      appendSegment(text.slice(offset));
     },
     flush() {
       if (pending) writeSegment(pending);
       pending = '';
+      pendingBytes = 0;
+      discardedLine = null;
     },
   });
-}
-
-async function terminateProcessTree(child) {
-  if (!child.pid || child.exitCode != null || child.signalCode != null) return;
-  if (process.platform === 'win32') {
-    await new Promise((resolve) => {
-      const killer = spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
-        shell: false,
-        stdio: 'ignore',
-        windowsHide: true,
-      });
-      killer.on('error', () => resolve());
-      killer.on('close', () => resolve());
-    });
-    return;
-  }
-  try {
-    process.kill(-child.pid, 'SIGKILL');
-  } catch {
-    child.kill('SIGKILL');
-  }
 }
 
 export async function runStreamingProcess({
@@ -103,16 +161,30 @@ export async function runStreamingProcess({
   signal = null,
   output = null,
   captureLimit = DEFAULT_CAPTURE_LIMIT,
-}) {
+}, { spawnProcess = spawn, terminateProcess = terminateProcessTree } = {}) {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : cancellationError('project-process/cancelled', '子进程执行已取消');
+  }
   return await new Promise((resolve, reject) => {
-    const child = spawn(command, argumentsList, {
-      cwd: root,
-      detached: process.platform !== 'win32',
-      env,
-      shell: false,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let child;
+    try {
+      child = spawnProcess(command, argumentsList, {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env,
+        shell: false,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (error) {
+      resolve(Object.freeze({
+        status: null, signal: null, stdout: '', stderr: '', timedOut: false,
+        error: startError(error),
+      }));
+      return;
+    }
     const stdoutWriter = output?.stdout ? createLiveWriter(output.stdout, root) : null;
     const stderrWriter = output?.stderr ? createLiveWriter(output.stderr, root) : null;
     let stdout = '';
@@ -121,21 +193,40 @@ export async function runStreamingProcess({
     let cancellationReason = null;
     let timedOut = false;
     let settled = false;
+    let terminating = false;
 
     const finish = (handler, value) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       signal?.removeEventListener('abort', abort);
+      releaseProcessHandles(child);
       stdoutWriter?.flush();
       stderrWriter?.flush();
       handler(value);
     };
-    const stop = (reason, { cancelled = false } = {}) => {
-      if (settled || cancellationReason || processError) return;
+    const complete = (status = child.exitCode, closeSignal = child.signalCode) => {
+      if (cancellationReason) {
+        finish(reject, cancellationReason);
+        return;
+      }
+      finish(resolve, Object.freeze({
+        status, signal: closeSignal, error: processError, stdout, stderr, timedOut,
+      }));
+    };
+    const stop = async (reason, { cancelled = false } = {}) => {
+      if (settled || terminating) return;
+      terminating = true;
       if (cancelled) cancellationReason = reason;
       else processError = reason;
-      void terminateProcessTree(child);
+      try {
+        await terminateProcess(child);
+      } catch (error) {
+        const failure = processTerminationFailure(reason, error, 'project-process/termination-failed');
+        if (cancelled) cancellationReason = failure;
+        else processError = failure;
+      }
+      complete();
     };
     const abort = () => stop(
       signal.reason instanceof Error
@@ -145,7 +236,7 @@ export async function runStreamingProcess({
     );
     const timeout = setTimeout(() => {
       timedOut = true;
-      stop(timeoutError(timeoutMs));
+      void stop(timeoutError(timeoutMs));
     }, timeoutMs);
 
     child.stdout.on('data', (chunk) => {
@@ -157,21 +248,12 @@ export async function runStreamingProcess({
       stderrWriter?.push(chunk);
     });
     child.on('error', (error) => {
-      processError = error;
+      if (settled || terminating) return;
+      processError = startError(error);
+      complete();
     });
     child.on('close', (status, closeSignal) => {
-      if (cancellationReason) {
-        finish(reject, cancellationReason);
-        return;
-      }
-      finish(resolve, Object.freeze({
-        status,
-        signal: closeSignal,
-        error: processError,
-        stdout,
-        stderr,
-        timedOut,
-      }));
+      if (!terminating) complete(status, closeSignal);
     });
     if (signal?.aborted) abort();
     else signal?.addEventListener('abort', abort, { once: true });

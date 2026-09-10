@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { createGitProjectFixture, fixtureGit, writeProjectFile } from '../helpers/git-project.js';
 import { loadConfig, loadWorkspace } from '../../src/config/configuration-loader.js';
+import { normalizeProjectDocument } from '../../src/config/project-configuration.js';
 import { createChangeSet } from '../../src/core/capability/gate-context.js';
 import { createWorkspaceTargets, workspaceStepTargets, scopeRepositoryProtectionChanges } from '../../src/orchestration/workspace/targets.js';
 import { repairRepository } from '../../src/orchestration/setup/repository-repair.js';
@@ -110,4 +111,65 @@ test('Doctor 汇总所选应用的过期例外和通知需要，不读取其他�
   assert.match(output, /应用 web：[\s\S]*expired-web-exception/);
   assert.match(output, /缺少本地通知模板/);
   assert.doesNotMatch(output, /api.*无法读取配置|无法读取配置.*api/);
+});
+
+function applicationPolicyDocument(gatePolicy) {
+  return {
+    version: 2,
+    project: { id: 'api', role: 'backend', stack: 'node', preset: 'node-javascript' },
+    ci: { gatePolicy },
+  };
+}
+
+function sharedPolicy(defaultMode) {
+  return { ci: { enabled: true, profile: 'full', gatePolicy: {
+    defaultMode,
+    gates: { 'quality.typecheck': { mode: 'off' } },
+  } } };
+}
+
+for (const defaultMode of ['report', 'enforce', 'off']) {
+  test(`应用局部门禁覆盖保留仓库共同 ${defaultMode} 模式，不继承根 gates`, () => {
+    const document = applicationPolicyDocument({ gates: { 'quality.build': { mode: 'off' } } });
+    const shared = sharedPolicy(defaultMode);
+    const before = structuredClone({ document, shared });
+    const normalized = normalizeProjectDocument(document, { shared });
+
+    assert.deepEqual(normalized.ci.gatePolicy, {
+      defaultMode,
+      gates: { 'quality.build': { mode: 'off', scope: 'all-files' } },
+    });
+    assert.equal(normalized.ci.enabled, true);
+    assert.equal(normalized.ci.profile, 'full');
+    assert.deepEqual({ document, shared }, before);
+  });
+}
+
+test('应用明确的默认模式覆盖仓库模式，省略或空策略仍继承共同模式', () => {
+  for (const defaultMode of ['inherit', 'report', 'enforce', 'off']) {
+    const normalized = normalizeProjectDocument(applicationPolicyDocument({ defaultMode }), {
+      shared: sharedPolicy('report'),
+    });
+    assert.deepEqual(normalized.ci.gatePolicy, { defaultMode, gates: {} });
+  }
+  for (const gatePolicy of [undefined, {}, { gates: {} }, { defaultMode: undefined }]) {
+    const normalized = normalizeProjectDocument(applicationPolicyDocument(gatePolicy), {
+      shared: sharedPolicy('report'),
+    });
+    assert.deepEqual(normalized.ci.gatePolicy, { defaultMode: 'report', gates: {} });
+  }
+});
+
+test('应用策略合并前后均拒绝非法容器、空值及未知字段', () => {
+  const invalidPolicies = [null, [], ['report'], 'report', false, 0,
+    { unknown: true }, { defaultMode: null }, { defaultMode: [] }, { defaultMode: false },
+    { gates: null }, { gates: [] }, { gates: 'off' },
+    { gates: { 'quality.build': null } }, { gates: { 'quality.build': { mode: null } } }];
+  for (const gatePolicy of invalidPolicies) {
+    const document = applicationPolicyDocument(gatePolicy);
+    const before = structuredClone(document);
+    assert.throws(() => normalizeProjectDocument(document, { shared: sharedPolicy('report') }),
+      (error) => error.kind === 'configuration');
+    assert.deepEqual(document, before);
+  }
 });

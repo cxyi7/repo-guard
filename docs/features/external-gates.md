@@ -70,4 +70,10 @@ npx repo-guard external project.engineering-review
 
 项目脚本原始退出码用于核对报告，不直接透传为 repo-guard 退出码。有效报告与进程状态必须一致；正常检查发现违规最终返回 `2`，工具启动、超时或协议错误返回对应的配置/执行错误 `1`。CI 只报告模式可以保留失败报告而最终不阻断，多应用按[统一退出码规则](gate-result-and-reporting.md)汇总。
 
-[实现入口](../../src/gates/testing/external-gate.js) · [对应测试](../../test/gates/testing/external-gate.test.js) · [前后端同名门禁隔离回归](../../test/ci/application-external-gates.test.js)
+外部 npm 执行与内置流式工具执行共用[进程树清理模块](../../src/core/execution/process-tree.js)。达到 `timeoutMs`、收到取消信号，或 stdout 与 stderr 累计输出超过 `1 MiB`（`1048576` 字节）时，外部门禁中止执行并进入最长 `2000ms` 的清理阶段；清理时间在检查运行时限之外，不会把已超时的执行改判为成功。正常清理保留原始超时、取消或输出超限原因；已取消的调用不会启动新的 npm 进程。输出仍按既有规则脱敏。
+
+内置流式工具的终端展示为每个未换行行设置 `1 MiB` 缓冲上限。超限后整行丢弃并显示一次中文截断提示，遇到换行后恢复正常展示；丢弃阶段仍持续辨认跨数据块的私钥开始和结束标记，避免后续私钥内容泄露。该展示限制不改变进程结果或已存在的输出捕获上限。
+
+Windows 使用 `taskkill /t /f`，Unix 使用进程组终止。清理命令无法启动、非零退出、超过清理时限或父进程未确认退出时，返回可追溯的终止失败，外部门禁错误码为 `external-gate/termination-failed`。证据同时记录原始中止原因和清理失败原因，原始系统诊断单独标注并脱敏；启动失败使用 `external-gate/process-start-failed`，保留系统错误代码。终止失败会尽力直接终止父进程、关闭输出管道并释放本进程引用，防止持有管道的后代让调用方无限等待；这些处理不能保证所有后代已经退出。遇到终止失败，应根据进程证据人工检查遗留父进程和后代，修复工具可用性或终止权限，再复核同一门禁。
+
+[实现入口](../../src/gates/testing/external-gate.js) · [对应测试](../../test/gates/testing/external-gate.test.js) · [进程树清理回归](../../test/core/process-tree.test.js) · [流式执行回归](../../test/core/streaming-process.test.js) · [外部进程回归](../../test/integrations/npm/external-script.test.js) · [前后端同名门禁隔离回归](../../test/ci/application-external-gates.test.js)

@@ -364,6 +364,10 @@ export function createGateResult({
     throw new TypeError('GateResult error 必须是在领域边界创建的 RepoGuardError');
   }
   const normalizedError = normalizeError(error, { gateId, fallbackKind });
+  const errorDiagnostics = error?.details?.diagnostics ?? [];
+  if (!Array.isArray(errorDiagnostics)) {
+    throw new TypeError('GateResult error.details.diagnostics 必须是数组');
+  }
   if (status.endsWith('-error') && normalizedError == null) {
     throw new TypeError(`GateResult status 为 ${status} 时必须包含 error`);
   }
@@ -395,6 +399,6 @@ export function createGateResult({
     metrics: normalizeMetrics(metrics),
     durationMs: requireNonNegativeNumber(durationMs, '门禁结果的 durationMs'),
     error: normalizedError,
-    diagnostics: Object.freeze(diagnostics.map(normalizeDiagnostic)),
+    diagnostics: Object.freeze([...diagnostics, ...errorDiagnostics].map(normalizeDiagnostic)),
   });
 }

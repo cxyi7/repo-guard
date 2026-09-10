@@ -7,6 +7,11 @@ import path from 'node:path';
 import test from 'node:test';
 import { DEFAULT_EXCEPTIONS_CONFIG, DEFAULT_UI_TOKENS_CONFIG } from '../../../src/config/defaults.js';
 import { uiTokenGate } from '../../../src/gates/quality/ui-token-gate.js';
+import { defineExecutionPlan } from '../../../src/core/capability/execution-plan.js';
+import { createGateRegistry } from '../../../src/core/capability/gate-registry.js';
+import { renderGateResultConsole } from '../../../src/core/report/console-renderer.js';
+import { renderGateResultJson } from '../../../src/core/report/json-renderer.js';
+import { orchestratePlan } from '../../../src/orchestration/orchestrator.js';
 
 const require = createRequire(import.meta.url);
 const temporaryRoot = path.resolve('test/.tmp');
@@ -154,4 +159,33 @@ test('只含不支持的 Vue 样式块时不计为已检查样式文件', async 
   const result = await project.run(['src/App.vue']);
   assert.equal(result.status, 'passed');
   assert.equal(result.metrics.checkedFiles, 0);
+});
+
+test('真实样式解析失败保留配置错误与标准第三方诊断，不被 GateResult 校验覆盖', async (context) => {
+  const project = fixture(context);
+  project.write('src/broken.css', '.card { color: red;');
+  const execution = await orchestratePlan({
+    registry: createGateRegistry([uiTokenGate]),
+    plan: defineExecutionPlan({
+      id: 'manual:ui-token-parse-regression',
+      environment: 'manual',
+      steps: [{ id: uiTokenGate.id, gateId: uiTokenGate.id, mutation: 'read-only' }],
+    }),
+    context: { root: project.root, config: project.config, files: ['src/broken.css'], changes: { entries: [] } },
+  });
+  assert.equal(execution.status, 'configuration-error');
+  assert.equal(execution.exitCode, 1);
+  const result = execution.results[0];
+  assert.equal(result.error.code, 'ui-token/style-parse-failed');
+  assert.match(result.summary, /无法完整解析样式文件/);
+  assert.ok(result.diagnostics.some(({ source, stream, level, message, redacted }) => (
+    source === 'stylelint' && stream === 'stderr' && level === 'error'
+    && message.includes('CssSyntaxError') && message.includes('broken.css') && redacted
+  )));
+  const report = renderGateResultJson(result);
+  const output = renderGateResultConsole(result).map(({ message }) => message).join('\n');
+  assert.equal(report.status, 'configuration-error');
+  assert.match(output, /第三方原始诊断（stylelint stderr）/);
+  assert.doesNotMatch(JSON.stringify(report.error), /Unclosed block/);
+  assert.ok(!JSON.stringify(report).includes(project.root.replaceAll('\\', '/')));
 });

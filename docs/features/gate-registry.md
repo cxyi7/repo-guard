@@ -19,6 +19,8 @@
 
 Registry 声明“有哪些能力”，Execution Plan 声明“这个阶段执行哪些、按什么顺序”。能力支持某环境，不代表它一定进入该环境的每一份固定计划。
 
+CI 计划逐级组合：`full` 复用 `policy` 的完整步骤，再追加项目质量检查；`release-ready` 复用 `full`，追加 Lighthouse 与最终交付证据复核。公共步骤、报告名称和顺序只维护一份，避免新增策略时不同配置档遗漏检查。外部门禁仍按配置环境追加，最终证据复核保持在最后。
+
 消费项目通过公开配置管理能力，用 CI gatePolicy 调整允许的模式；不能替换官方 Gate 或重排计划。自有检查使用[项目外部门禁](external-gates.md)，以 `project.*` ID 追加，并遵守项目脚本和报告契约。
 
 ## 维护与复核
@@ -28,3 +30,5 @@ Registry 声明“有哪些能力”，Execution Plan 声明“这个阶段执�
 ## 维护依据
 
 [实现入口](../../src/gates/registry.js) · [对应测试](../../test/core/gate-capability.test.js)
+
+[执行计划](../../src/orchestration/execution-plans.js) · [计划顺序回归](../../test/core/execution-plan.test.js)

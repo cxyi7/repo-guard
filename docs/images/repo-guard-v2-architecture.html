@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>repo-guard v2 工程检查与运维架构</title>
+  <title>repo-guard v2 工程检查、独立运维与交付协作架构</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
@@ -186,7 +186,7 @@
     <div class="header">
       <div class="header-row">
         <div class="pulse-dot"></div>
-        <h1>repo-guard v2 · 工程检查与运维架构</h1>
+        <h1>repo-guard v2 · 工程检查、独立运维与交付协作</h1>
         <div class="toolbar">
           <div class="toolbar-actions">
             <button onclick="copyAsImage(this)">复制图片</button>
@@ -196,17 +196,17 @@
           <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="导出选项" aria-label="导出选项">⋯</button>
         </div>
       </div>
-      <p class="subtitle">前端与 Node 后端共享质量底座，运维按应用独立管理。</p>
+      <p class="subtitle">前端与 Node 后端共享质量底座，运维按应用独立管理，交付按共同合同交换证据与验收。</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1130" role="img" aria-labelledby="architecture-title architecture-description">
-<title id="architecture-title">repo-guard v2：显式项目、统一工程检查、独立应用发布</title>
-<desc id="architecture-description">前端与 Node 后端由人或 AI 显式配置，共用工作区调度、固定门禁计划与结果契约。运维通过独立配置按应用生成 GitLab 质量、构建和部署任务。Java 校验及自动安装仅为后续扩展。</desc>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1510" role="img" aria-labelledby="architecture-title architecture-description">
+<title id="architecture-title">repo-guard v2：显式项目、统一工程检查、独立运维与交付协作</title>
+<desc id="architecture-description">前端与 Node 后端由人或 AI 显式配置，共用工作区调度、固定门禁计划与结果契约。运维通过独立配置按应用生成 GitLab 质量、构建和部署任务。独立交付从共同合同绑定，经工程 Gate 或命令生成签名证据，支持跨仓交换、联合验证与人工验收。Java 校验、自动接入 provisioning 及跨仓自动协调发布尚未实现。</desc>
 <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/></marker><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern></defs>
 <style>text { font-family: 'JetBrains Mono', 'Microsoft YaHei', monospace; }</style>
-<rect width="1200" height="1130" fill="#020617"/><rect width="1200" height="1130" fill="url(#grid)"/>
+<rect width="1200" height="1510" fill="#020617"/><rect width="1200" height="1510" fill="url(#grid)"/>
 <rect x="28" y="222" width="728" height="680" rx="12" fill="#071221" stroke="#334155"/>
 <rect x="790" y="222" width="382" height="680" rx="12" fill="#15140f" stroke="#fbbf24" stroke-dasharray="8,4"/>
 <path d="M392 182V263H214V283" fill="none" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M392 263H570V283" fill="none" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead)"/>
@@ -215,7 +215,7 @@
 <path d="M981 182V283" fill="none" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M981 375V423" fill="none" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M981 515V563" fill="none" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M981 673V721" fill="none" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <path d="M814 630H734" fill="none" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <text x="30" y="44" fill="#f8fafc" font-size="27" text-anchor="start" font-weight="700">一份团队规范 · 前端与 Node 后端分别执行</text>
-<text x="30" y="77" fill="#94a3b8" font-size="16" text-anchor="start" font-weight="400">显式声明项目身份，检查通用工程要求；不猜框架，不生成业务验收规则。</text>
+<text x="30" y="77" fill="#94a3b8" font-size="16" text-anchor="start" font-weight="400">工程检查、应用发布与合同交付分别启用；检查要求由团队显式声明。</text>
 <g><rect x="28" y="112" width="728" height="70" rx="9" fill="#0f172a"/><rect x="28" y="112" width="728" height="70" rx="9" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5"/><text x="48" y="142" fill="#94a3b8" font-size="18" text-anchor="start" font-weight="600">原生 v2 · checks / repository / reporting / ci</text><text x="48" y="166" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">文件与执行共用同一模型；旧配置直接拒绝，不再转换</text></g>
 <g><rect x="790" y="112" width="382" height="70" rx="9" fill="#0f172a"/><rect x="790" y="112" width="382" height="70" rx="9" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/><text x="810" y="142" fill="#fbbf24" font-size="18" text-anchor="start" font-weight="600">repo-guard.ops.json</text><text x="810" y="166" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">独立启用 · 以同一 projectId 绑定应用</text></g>
 <text x="52" y="248" fill="#e2e8f0" font-size="17" text-anchor="start" font-weight="600">工程质量 · 已实现</text>
@@ -232,25 +232,36 @@
 <g><rect x="814" y="565" width="334" height="108" rx="9" fill="#0f172a"/><rect x="814" y="565" width="334" height="108" rx="9" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/><text x="834" y="595" fill="#fbbf24" font-size="18" text-anchor="start" font-weight="600">质量 → 构建 → 部署</text><text x="834" y="619" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">调用公共质量 CLI，阻断失败结果</text><text x="834" y="641" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">本应用构建产物必须存在且非空</text><text x="834" y="663" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">部署只接收本应用成功构建的产物</text></g>
 <g><rect x="814" y="723" width="334" height="154" rx="9" fill="#0f172a"/><rect x="814" y="723" width="334" height="154" rx="9" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/><text x="834" y="753" fill="#fbbf24" font-size="18" text-anchor="start" font-weight="600">前后端分别管理、分别发布</text><text x="834" y="777" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">独立作业名与环境，互不混用产物</text><text x="834" y="799" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">生产默认手动触发，失败仍会阻断</text><text x="834" y="821" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">运维通知：成功 / 失败 / 取消，显式启用</text><text x="834" y="843" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">分仓不自动触发，不自动联合发布</text></g>
 <text x="774" y="615" fill="#fbbf24" font-size="11" text-anchor="middle" font-weight="400">公共 CLI</text>
-<rect x="28" y="942" width="1144" height="120" rx="12" fill="#0b1020" stroke="#64748b" stroke-dasharray="6,5"/>
-<text x="52" y="970" fill="#94a3b8" font-size="17" text-anchor="start" font-weight="600">后续扩展 · 当前不会自动执行</text>
-<text x="52" y="1001" fill="#cbd5e1" font-size="17" text-anchor="start" font-weight="600">Java 校验</text><text x="52" y="1029" fill="#94a3b8" font-size="14" text-anchor="start" font-weight="400">预留 java-maven / java-gradle；需要 Node 宿主 + JDK</text>
-<text x="658" y="1001" fill="#cbd5e1" font-size="17" text-anchor="start" font-weight="600">自动接入 provisioning</text><text x="658" y="1029" fill="#94a3b8" font-size="14" text-anchor="start" font-weight="400">预设已声明工具需求；安装、配置、就绪验证待实现</text>
-<text x="30" y="1100" fill="#cbd5e1" font-size="13" text-anchor="start" font-weight="600">图例</text>
-<rect x="86" y="1088" width="16" height="13" rx="3" fill="#083344" stroke="#22d3ee"/><text x="112" y="1100" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">前端</text>
-<rect x="193" y="1088" width="16" height="13" rx="3" fill="#064e3b" stroke="#34d399"/><text x="219" y="1100" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">Node 后端</text>
-<rect x="346" y="1088" width="16" height="13" rx="3" fill="#881337" stroke="#fb7185"/><text x="372" y="1100" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">工程门禁</text>
-<rect x="490" y="1088" width="16" height="13" rx="3" fill="#78350f" stroke="#fbbf24"/><text x="516" y="1100" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">独立运维</text>
-<rect x="637" y="1088" width="16" height="13" rx="3" fill="none" stroke="#94a3b8" stroke-dasharray="3,2"/><text x="663" y="1100" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">后续扩展</text>
-<text x="1170" y="1100" fill="#64748b" font-size="13" text-anchor="end" font-weight="400">repo-guard 2.0 · 实现结构</text>
+<rect x="28" y="942" width="1144" height="300" rx="12" fill="#100f24" stroke="#a78bfa"/>
+<path d="M296 1101H324" fill="none" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M570 1101H598" fill="none" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#arrowhead)"/><path d="M844 1101H872" fill="none" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<text x="52" y="970" fill="#a78bfa" font-size="17" text-anchor="start" font-weight="600">独立交付 · 已实现 · 显式启用</text>
+<text x="52" y="1000" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">同仓多应用或不同仓库共享已确认合同；各参与方保留自己的工程配置与工作分支。</text>
+<g><rect x="52" y="1040" width="244" height="122" rx="9" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/><text x="72" y="1070" fill="#a78bfa" font-size="17" text-anchor="start" font-weight="600">独立绑定</text><text x="72" y="1094" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">人确认共同合同修订</text><text x="72" y="1116" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">各方绑定本仓参与者</text><text x="72" y="1138" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">repo-guard.delivery.json</text></g>
+<g><rect x="326" y="1040" width="244" height="122" rx="9" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/><text x="346" y="1070" fill="#a78bfa" font-size="17" text-anchor="start" font-weight="600">工程 Gate 或命令</text><text x="346" y="1094" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">复用工程 Gate 执行入口</text><text x="346" y="1116" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">或运行团队已有检查命令</text><text x="346" y="1138" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">合同不要求 Node 工程预设</text></g>
+<g><rect x="600" y="1040" width="244" height="122" rx="9" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/><text x="620" y="1070" fill="#a78bfa" font-size="17" text-anchor="start" font-weight="600">生成签名证据</text><text x="620" y="1094" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">绑定合同修订与代码提交</text><text x="620" y="1116" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">记录检查结果与证据指纹</text><text x="620" y="1138" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">失败与跳过不能成为通过证据</text></g>
+<g><rect x="874" y="1040" width="274" height="122" rx="9" fill="#0f172a" stroke="#a78bfa" stroke-width="1.5"/><text x="894" y="1070" fill="#a78bfa" font-size="17" text-anchor="start" font-weight="600">交换、联合验证与验收</text><text x="894" y="1094" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">同仓汇总 / 跨仓导出与导入</text><text x="894" y="1116" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">联合验证通过 → 人工验收</text><text x="894" y="1138" fill="#cbd5e1" font-size="14" text-anchor="start" font-weight="400">证据变化使旧验证与验收失效</text></g>
+<text x="600" y="1216" fill="#94a3b8" font-size="14" text-anchor="middle" font-weight="400">执行与存储：orchestration/delivery · 合同策略与签名：policies/delivery-contract · 公共结果：core</text>
+<rect x="28" y="1282" width="1144" height="154" rx="12" fill="#0b1020" stroke="#64748b" stroke-dasharray="6,5"/>
+<text x="52" y="1310" fill="#94a3b8" font-size="17" text-anchor="start" font-weight="600">后续扩展 · 当前尚未实现</text>
+<text x="52" y="1341" fill="#cbd5e1" font-size="17" text-anchor="start" font-weight="600">Java 校验</text><text x="52" y="1369" fill="#94a3b8" font-size="14" text-anchor="start" font-weight="400">预留 java-maven / java-gradle；需要 Node 宿主 + JDK</text>
+<text x="658" y="1341" fill="#cbd5e1" font-size="17" text-anchor="start" font-weight="600">自动接入 provisioning</text><text x="658" y="1369" fill="#94a3b8" font-size="14" text-anchor="start" font-weight="400">预设已声明工具需求；安装、配置、就绪验证待实现</text>
+<text x="52" y="1413" fill="#94a3b8" font-size="14" text-anchor="start" font-weight="400">跨仓自动协调发布尚未实现；现有交付协议交换签名证据，不自动触发其他仓库部署。</text>
+<text x="30" y="1480" fill="#cbd5e1" font-size="13" text-anchor="start" font-weight="600">图例</text>
+<rect x="86" y="1468" width="16" height="13" rx="3" fill="#083344" stroke="#22d3ee"/><text x="112" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">前端</text>
+<rect x="181" y="1468" width="16" height="13" rx="3" fill="#064e3b" stroke="#34d399"/><text x="207" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">Node 后端</text>
+<rect x="326" y="1468" width="16" height="13" rx="3" fill="#881337" stroke="#fb7185"/><text x="352" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">工程门禁</text>
+<rect x="460" y="1468" width="16" height="13" rx="3" fill="#78350f" stroke="#fbbf24"/><text x="486" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">独立运维</text>
+<rect x="594" y="1468" width="16" height="13" rx="3" fill="#100f24" stroke="#a78bfa"/><text x="620" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">独立交付</text>
+<rect x="728" y="1468" width="16" height="13" rx="3" fill="none" stroke="#94a3b8" stroke-dasharray="3,2"/><text x="754" y="1480" fill="#94a3b8" font-size="13" text-anchor="start" font-weight="400">后续扩展</text>
+<text x="1170" y="1480" fill="#64748b" font-size="13" text-anchor="end" font-weight="400">repo-guard 2.0 · 实现结构</text>
 </svg>
     </div>
 
     <!-- Info Cards -->
-<div class="cards"><div class="card"><div class="card-header"><div class="card-dot cyan"></div><h3>身份明确</h3></div><ul><li>人或 AI 直接配置前端、后端与预设。</li><li>工具只校验环境，不猜测项目类型。</li></ul></div><div class="card"><div class="card-header"><div class="card-dot rose"></div><h3>约束一致</h3></div><ul><li>一个仓库可拥有多个应用。</li><li>共用固定计划，各自执行，统一报告。</li></ul></div><div class="card"><div class="card-header"><div class="card-dot amber"></div><h3>发布独立</h3></div><ul><li>前后端可以由不同负责人维护。</li><li>质量通过后按应用构建和部署。</li></ul></div></div>
+<div class="cards"><div class="card"><div class="card-header"><div class="card-dot cyan"></div><h3>身份明确</h3></div><ul><li>人或 AI 直接配置前端、后端与预设。</li><li>工具只校验环境，不猜测项目类型。</li></ul></div><div class="card"><div class="card-header"><div class="card-dot rose"></div><h3>约束一致</h3></div><ul><li>一个仓库可拥有多个应用。</li><li>共用固定计划，各自执行，统一报告。</li></ul></div><div class="card"><div class="card-header"><div class="card-dot amber"></div><h3>发布独立</h3></div><ul><li>前后端可以由不同负责人维护。</li><li>质量通过后按应用构建和部署。</li></ul></div><div class="card"><div class="card-header"><div class="card-dot violet"></div><h3>交付协作</h3></div><ul><li>同仓或跨仓交换绑定版本的签名证据。</li><li>联合验证后人工验收；跨仓自动发布待实现。</li></ul></div></div>
 <!-- Footer -->
     <p class="footer">
-      repo-guard 2.0 · 与实际模块结构一致 · Java 与自动安装属于后续扩展
+      repo-guard 2.0 · 证据协作已实现 · Java、自动接入与跨仓自动协调发布属于后续扩展
     </p>
   </div>
 

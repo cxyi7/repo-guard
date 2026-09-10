@@ -5,6 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 import stylelint from 'stylelint';
 import { collectStyleFacts, isUiTokenStyleFile } from '../../../src/integrations/ui-tokens/styles.js';
+import { createGateResult } from '../../../src/core/result/gate-result.js';
+import { processOutputLimit } from '../../../src/core/execution/output-safety.js';
 
 const require = createRequire(import.meta.url);
 const temporaryRoot = path.resolve('test/.tmp');
@@ -152,4 +154,30 @@ test('语法解析错误必须阻断而不是返回空事实', async (context) =
 test('Vue CSS 语法错误不能被宽松解析器静默修复后放行', async (context) => {
   const project = fixture(context);
   await assert.rejects(project.facts('App.vue', '<style>.card { color: red;</style>'), { code: 'ui-token/style-parse-failed' });
+});
+
+test('Stylelint 抛出的原始错误进入标准诊断并在报告前脱敏限长', async (context) => {
+  const project = fixture(context);
+  const file = project.write('page.css', '.card { color: red; }');
+  const raw = `${project.root} token=fake-stylelint-secret\n${'x'.repeat(processOutputLimit + 10)}`;
+  const failingStylelint = { resolveConfig() { throw new TypeError(raw); } };
+  let failure;
+  await assert.rejects(collectStyleFacts({
+    project: { stylelint: failingStylelint }, root: project.root, files: [file], languages: ['css'],
+  }), (error) => {
+    failure = error;
+    return error.code === 'ui-token/style-parse-failed';
+  });
+  const result = createGateResult({
+    gateId: 'quality.ui-tokens', status: 'configuration-error', summary: failure.message, error: failure,
+  });
+  assert.equal(result.diagnostics.length, 1);
+  assert.equal(result.diagnostics[0].source, 'stylelint');
+  assert.equal(result.diagnostics[0].stream, 'stderr');
+  assert.equal(result.diagnostics[0].redacted, true);
+  assert.equal(result.diagnostics[0].truncated, true);
+  assert.match(result.summary, /UI Token 样式解析失败/);
+  assert.doesNotMatch(JSON.stringify(result), /fake-stylelint-secret/);
+  assert.ok(!JSON.stringify(result).includes(project.root.replaceAll('\\', '/')));
+  assert.ok(Buffer.byteLength(result.diagnostics[0].message) < processOutputLimit + 100);
 });

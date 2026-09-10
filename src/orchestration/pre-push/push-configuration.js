@@ -2,6 +2,7 @@ import { loadWorkspace } from '../../config/configuration-loader.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import { configurationError, rangeError } from '../../core/error/repo-guard-error.js';
 import { gitValue, runGit } from '../../git/execution.js';
+import { readOptionalSnapshotFile } from '../../git/snapshot-content.js';
 import { parsePrePushUpdates } from './change-range.js';
 import { loadWorkspaceSnapshot } from '../workspace/configuration-snapshot.js';
 import { DELIVERY_CONFIG_FILE } from '../../config/delivery-workspace.js';
@@ -9,17 +10,14 @@ import { DELIVERY_CONFIG_FILE } from '../../config/delivery-workspace.js';
 const ZERO_SHA = /^0+$/;
 
 function loadConfigAtRevision(root, revision) {
-  const result = runGit(
-    ['show', `${revision}:${CONFIG_FILE}`],
-    { allowFailure: true, cwd: root },
-  );
-  if (result.status !== 0) {
+  const content = readOptionalSnapshotFile(root, revision, CONFIG_FILE);
+  if (content === null) {
     const history = runGit(['log', '-1', '--format=%H', revision, '--', CONFIG_FILE], { cwd: root });
     if (history.stdout.trim()) {
       throw configurationError('pre-push/pushed-config-deleted', `待推送提交删除了已接入的 ${CONFIG_FILE}；请恢复配置后重新推送。`);
     }
-    const binding = runGit(['show', `${revision}:${DELIVERY_CONFIG_FILE}`], { cwd: root, allowFailure: true });
-    if (binding.status === 0) return loadWorkspaceSnapshot(root, revision, { lazyProjects: true });
+    const binding = readOptionalSnapshotFile(root, revision, DELIVERY_CONFIG_FILE);
+    if (binding !== null) return loadWorkspaceSnapshot(root, revision, { lazyProjects: true });
     const deliveryHistory = runGit(['log', '-1', '--format=%H', revision, '--', DELIVERY_CONFIG_FILE], { cwd: root });
     if (deliveryHistory.stdout.trim()) {
       throw configurationError('pre-push/pushed-delivery-config-deleted', `待推送提交删除了已接入的 ${DELIVERY_CONFIG_FILE}；请恢复交付配置后重新推送。`);

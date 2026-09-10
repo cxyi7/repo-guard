@@ -19,26 +19,26 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
 | 项目初始化 | [docs/features/project-initialization.md](project-initialization.md) | 已维护 |
-| 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，Node 后端已接入；应用目录等价写法统一后分配变更 |
+| 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，统一目录与工具定位，局部 Gate 覆盖保留仓库默认模式 |
 | 配置管理与规则启停 | [docs/features/configuration-management.md](configuration-management.md) | 已维护 |
-| Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护 |
-| 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护 |
+| Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护，共用应用工具定位与损坏安装诊断 |
+| 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护，区分快照缺失与 Git 执行失败 |
 | 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
 | AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护，核验仓库及所选应用规范一致性 |
-| GitLab CI 安装与配置档 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护 |
+| GitLab CI 安装与配置档 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护，默认模式继承与应用显式覆盖分别处理 |
 
 ## 提交阶段质量与安全
 
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
-| 暂存隔离与跨进程重入保护 | [docs/features/staged-isolation-and-lifecycle-lock.md](staged-isolation-and-lifecycle-lock.md) | 已维护 |
+| 暂存隔离与跨进程重入保护 | [docs/features/staged-isolation-and-lifecycle-lock.md](staged-isolation-and-lifecycle-lock.md) | 已维护，索引与对象损坏保留执行错误 |
 | Stylelint | [docs/features/stylelint.md](stylelint.md) | 已维护 |
 | ESLint | [docs/features/eslint.md](eslint.md) | 已维护 |
 | Prettier | [docs/features/prettier.md](prettier.md) | 已维护 |
 | 文件头同步 | [docs/features/file-header.md](file-header.md) | 已维护 |
 | 函数文档同步 | [docs/features/function-documentation.md](function-documentation.md) | 已维护 |
 | Vue 异步资源清理 | [docs/features/async-resource-cleanup.md](async-resource-cleanup.md) | 已维护 |
-| 样式 Token 检查：CSS、SCSS/Sass、Less | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护 |
+| 样式 Token 检查：CSS、SCSS/Sass、Less | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护，解析失败保留配置错误及独立 Stylelint 诊断 |
 | 样式复杂度 | [docs/features/style-complexity.md](style-complexity.md) | 已维护 |
 | 样式治理 | [docs/features/style-governance.md](style-governance.md) | 已维护 |
 | 动态代码 | [docs/features/dynamic-code.md](dynamic-code.md) | 已维护 |
@@ -91,9 +91,9 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
-| 官方 Gate Registry | [docs/features/gate-registry.md](gate-registry.md) | 已维护 |
-| GateResult 与报告 | [docs/features/gate-result-and-reporting.md](gate-result-and-reporting.md) | 已维护 |
-| 项目外部门禁 | [docs/features/external-gates.md](external-gates.md) | 已维护 |
+| 官方 Gate Registry | [docs/features/gate-registry.md](gate-registry.md) | 已维护，CI 计划逐级复用公共步骤 |
+| GateResult 与报告 | [docs/features/gate-result-and-reporting.md](gate-result-and-reporting.md) | 已维护，中文问题与第三方诊断独立保留和展示 |
+| 项目外部门禁 | [docs/features/external-gates.md](external-gates.md) | 已维护，共用有时限的进程树清理 |
 | GitLab 应用交付流水线 | [docs/features/managed-delivery-pipeline.md](managed-delivery-pipeline.md) | 已维护 |
 | 独立运维与各应用发布 | [docs/features/operations.md](operations.md) | 已维护，独立 ops 配置，通知覆盖 MR 与分支流水线 |
 | 发布就绪检查 | [docs/features/release-ready.md](release-ready.md) | 已维护 |

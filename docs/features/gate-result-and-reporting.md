@@ -41,6 +41,16 @@ npx repo-guard ci --profile full --report-json reports/repo-guard.json
 
 单项结果以 `gateId` 标识来源；`findings` 和统一 `issues` 描述问题，`artifacts` 指向产物，`metrics` 保存数值，`durationMs` 记录耗时，`diagnostics` 保存标明来源/输出流的原始工具诊断。问题包含位置、证据、预期、修复与复核指导，中文主结论与第三方原始诊断分开。
 
+## 执行失败与原始诊断
+
+Git 非零退出、无法启动或被信号终止时，主错误说明、退出事实及修复指导使用中文。第三方原文保存到 `diagnostics`，携带 `source / stream / level` 以及脱敏、截断标记；控制台明确标记“第三方原始诊断”。领域错误携带的诊断进入 GateResult 后继续保留，重复规范化结果不会重复添加；问题的 `evidence` 不混入第三方原文。
+
+读取配置快照时，只有成功检查索引或提交树后才能确认文件不存在。Git 对象缺失、索引损坏和命令执行失败保留为执行错误，不能误报为需要补建配置，也不能因此跳过工程检查。真实删除已接入配置仍被阻断。排查时先检查对应 Git 诊断和仓库状态，保留暂存及未暂存修改。
+
+流式工具执行与外部 npm 门禁共用进程树清理。超时、取消或外部门禁输出超限触发中止后，额外清理等待最多 2000ms；Windows 使用 `taskkill`，其他平台终止进程组。清理失败会尝试直接终止父进程、释放当前进程的管道和引用，并返回执行错误 `1`，不再无限等待后代关闭输出管道。此错误不证明后代已全部退出：按报告检查遗留进程和终止权限，解决原始失败原因后重新执行。
+
+实时展示的单行缓冲最多 1 MiB，长时间不换行且超过上限时丢弃整行并提示，换行后恢复展示；跨数据块的私钥仍受脱敏保护。展示截断不改变门禁结果，外部门禁自身的总输出上限仍按原规则阻断。
+
 ## 多应用报告
 
 显式 `projects` 工作区使用聚合报告版本 2。`selectedProjects` 明确列出本轮选择的应用；`targets` 保留公共仓库、各应用和最终交付证据的独立报告。每个目标包含 `projectId`、`projectRoot`、`scope`、`reportPath` 和 `exitCode`，不会把一个应用的结果当作另一个应用的结果。
@@ -73,3 +83,5 @@ npx repo-guard ci --profile full --report-json reports/repo-guard.json
 ## 维护依据
 
 [结果结构](../../src/core/result/gate-result.js) · [统一退出码](../../src/core/result/exit-code.js) · [工作区报告聚合](../../src/orchestration/ci/workspace-runner.js) · [对应测试](../../test/ci/workspace-ci.test.js) · [出口边界测试](../../test/architecture/exit-code-boundary.test.js)
+
+[Git 错误诊断](../../src/git/command-error.js) · [进程树清理](../../src/core/execution/process-tree.js) · [结果与呈现回归](../../test/core/gate-result.test.js) · [Git 执行回归](../../test/core/git-execution.test.js)

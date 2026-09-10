@@ -53,7 +53,9 @@ Hook 保留 repo-guard 的[统一退出码](gate-result-and-reporting.md)：规�
 
 ## 配置快照与推送检查
 
-提交检查读取同一份 Git 暂存快照中的根配置和子应用配置。尚未提交到索引的配置变更不会悄悄改变本次规则；删除已接入的根配置或应用配置会报错，不能通过删除配置跳过门禁。首次初始化时尚未被 Git 跟踪的配置有专门的接入路径。
+提交检查读取同一份 Git 暂存快照中的根配置和受影响应用配置，推送检查读取待推送提交中的配置。读取时先通过索引或提交树确认目标存在且是可读取的文件，再按固定的 blob 对象读取内容；尚未提交到索引的配置变更不会悄悄改变本次规则。
+
+只有成功检查快照后才能认定配置缺失。索引损坏、对象丢失或 Git 读取失败保留为 `execution-error`，中文主说明与独立的第三方原始诊断分别呈现，不会误报配置已删除或跳过检查。真正删除已接入的根配置或所需应用配置仍会被阻断。首次初始化时尚未被 Git 跟踪的配置保留专门的接入路径，包括尚无 HEAD 提交的初始分支。读取失败会停止本次检查，不会自动重试或重置工作区。
 
 真实 `git push` 通过 Git 提供的参数确定待推送提交。启用的重型检查执行前，需要工作树干净、HEAD 对应待验证提交，并且不能混用多个不同的待推送代码版本；不满足时会阻止并提示处理方式。仅删除远端引用不会运行源码检查。
 
@@ -79,4 +81,4 @@ Hook 本身不会自动安装、升级工具或修改业务配置。当前 Java 
 
 ## 维护依据
 
-[安装器](../../src/orchestration/setup/hook-installer.js) · [工作区调度](../../src/orchestration/workspace/targets.js) · [基础测试](../../test/hooks/hook-installer.test.js) · [多应用与真实 Git 回归](../../test/hooks/workspace-hooks.test.js)
+[安装器](../../src/orchestration/setup/hook-installer.js) · [工作区调度](../../src/orchestration/workspace/targets.js) · [配置快照读取](../../src/git/snapshot-content.js) · [暂存配置入口](../../src/orchestration/workspace/configuration-snapshot.js) · [推送配置入口](../../src/orchestration/pre-push/push-configuration.js) · [基础测试](../../test/hooks/hook-installer.test.js) · [多应用与真实 Git 回归](../../test/hooks/workspace-hooks.test.js) · [快照错误分类回归](../../test/config/snapshot-errors.test.js) · [索引与提交树读取回归](../../test/core/snapshot-content.test.js)

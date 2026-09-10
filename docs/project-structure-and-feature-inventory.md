@@ -150,6 +150,9 @@ repo-guard/
 | Registry / Execution Plan | 维护稳定能力 ID 与不可随意重排的执行顺序 |
 | `GateResult` | 区分通过、跳过、违规、配置错误、执行错误及范围错误，提供中文修复建议 |
 | `core/result/exit-code.js` | 唯一退出码、状态映射、第三方进程归类与多结果优先级；各入口共用 |
+| `core/project/package.js` | 按应用解析最近的本地或提升安装，统一清单、入口与链接归属 |
+| `core/execution/process-tree.js` | 流式执行与外部 npm 共用有时限的进程树清理及失败处理 |
+| `git/command-error.js` / `git/snapshot-content.js` | 中文执行错误与独立原始诊断；区分快照文件缺失和 Git 读取失败 |
 | 运维发布计划 | 绑定同一应用的质量、构建、产物、分支和环境 |
 | Delivery Contract / Evidence Run | 为团队启用的交付资料与反馈流程提供可核验依据 |
 
@@ -160,6 +163,8 @@ repo-guard/
 可选提交动画位于 `core/report/commit-animation`，配置归属 `reporting.commitAnimation`，不注册为 Gate。动画不改变失败状态，成功庆祝只在真实 `post-commit` 后发生。详细说明见[提交动画](features/commit-animation.md)。
 
 退出码在 `core/result/exit-code.js` 收口：`0` 成功或非阻断，`1` 配置/执行错误，`2` 违规或交付条件未满足，`3` 范围错误。编排先确定阻断策略，再调用公共汇总，按执行错误、配置错误、范围错误、违规确定结果；不取首个非零值、不压缩 Hook 失败类型、不透传第三方退出码。原始进程状态保留为诊断。只有 CLI 的 `bin` 写入主进程退出码，生成的运维子脚本注入同一常量；[出口边界测试](../test/architecture/exit-code-boundary.test.js)防止新入口再次分散实现。详细使用语义见[结果与报告](features/gate-result-and-reporting.md)。
+
+CI 计划通过 `policy → full → release-ready` 逐级复用公共步骤，保留报告名和固定顺序；不在多份计划中重复登记公共策略。领域错误的第三方诊断由 GateResult 统一收集、脱敏和冻结，再由报告层分别输出；Git 与进程适配器不拼装终端展示文本。原有依赖方向和生命周期保持不变，具体约束见[官方 Gate Registry](features/gate-registry.md)与[执行失败处理](features/gate-result-and-reporting.md#执行失败与原始诊断)。
 
 ## 测试组织与扩展边界
 
@@ -172,7 +177,7 @@ repo-guard/
 | Node 后端 | 已有 JS/TS 显式预设，共用工程检查 | 扩展工具时继续依赖项目自身安装与配置，不引入业务接口校验 |
 | Java | 已预留 `java-maven` / `java-gradle` 身份，但执行明确拒绝 | 新增 Java 工具、报告和构建适配；Node 运行 repo-guard，JDK 运行 Java 检查 |
 | 自动接入 | 已声明预设需要的运行环境与工具 | 独立建设准备计划、兼容性、安装、配置和就绪验证；日常 Hook 不负责安装 |
-| 分仓协作 | 各仓库独立检查、生成本仓发布任务 | 后续显式增加跨仓协调，不能默认触发其他团队部署 |
+| 分仓协作 | 已支持跨仓签名证据交换、联合验证与人工验收；各仓库独立检查、生成本仓发布任务 | 跨仓自动协调发布尚未实现；后续必须显式配置，不能默认触发其他团队部署 |
 
 ## 文档职责与维护规则
 

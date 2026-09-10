@@ -10,6 +10,8 @@
 
 本页 JSON 是单应用配置片段，合并到已有 `repo-guard.config.json`。多应用时，根 `ci` 保存流程开关、配置档、聚合报告路径和公共 Gate 策略；应用 `ci` 保存自己的 `protectedFiles / gatePolicy / externalGates`。根 `gatePolicy.defaultMode` 提供默认模式，应用可明确覆盖本方模式；根目录针对具体 Gate 的覆盖不会自动套用到应用。直接编辑 v2 配置后运行 `npx repo-guard doctor`。
 
+子应用只添加具体 Gate 覆盖，或填写空的 `gatePolicy`，都不会重置继承的默认模式。根为 `enforce` 时，子应用只关闭 build，其他适用检查仍强制执行；根为 `report` 时，其他检查仍不阻断。应用显式填写 `defaultMode` 后才使用本方默认模式；这一覆盖不会修改根配置或其他应用。`null`、数组或字符串等非法 `gatePolicy` 仍作为配置错误拒绝。
+
 安装或检查 CI：
 
 ```bash
@@ -105,7 +107,7 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 | `ci.profile` | policy 检查仓库策略；full 加入完整质量检查；release-ready 复核发布准备 | `"policy"` / `"full"` / `"release-ready"`<br>默认：`"policy"` | 只接受列出的值 |
 | `ci.reportPath` | 整体 CI JSON 报告的仓库相对路径 | 字符串<br>默认：`"reports/repo-guard.json"` | 仓库相对 reports/*.json 路径；必须在 reports/ 下以 .json 结尾，不覆盖已跟踪文件，不经过符号链接。 |
 | `ci.protectedFiles.action` | report 报告受保护变更；fail 阻断此类变更；block 级规则始终阻断 | `"report"` / `"fail"`<br>默认：`"report"` | 只接受列出的值 |
-| `ci.gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>默认：`"inherit"` | 只接受列出的值 |
+| `ci.gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>单应用默认：`"inherit"`；多应用未指定时继承根默认模式 | 只接受列出的值；填写其他 Gate 覆盖不会重置本字段 |
 | `ci.gatePolicy.gates.security.dynamic-code.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `ci.gatePolicy.gates.security.dynamic-code.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
 | `ci.gatePolicy.gates.accessibility.vue-image-alt.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |

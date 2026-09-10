@@ -52,7 +52,8 @@
           "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/protectedFiles"
         },
         "gatePolicy": {
-          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/gatePolicy"
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/gatePolicy",
+          "description": "应用 CI 策略。未填写 defaultMode 时继承仓库默认模式，仅覆盖 gates 不会重置默认模式；明确填写 defaultMode 后使用本方模式，具体 Gate 的覆盖不从根配置继承。"
         },
         "externalGates": {
           "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/externalGates"

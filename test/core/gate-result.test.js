@@ -205,3 +205,35 @@ test('normalizes native errors for both renderers', () => {
   assert.equal(normalizedError.code, 'ETOOL');
   assert.equal(normalizedError.kind, 'execution');
 });
+
+test('preserves isolated error diagnostics across result normalization and both renderers', () => {
+  const result = createGateResult({
+    gateId: 'repository.example',
+    status: 'execution-error',
+    summary: '工具执行失败。',
+    diagnostics: [{ level: 'info', message: '已读取配置。' }],
+    error: executionError('tool/failed', '外部工具无法完成检查。', {
+      details: {
+        diagnostics: [{
+          source: 'example-tool',
+          stream: 'stderr',
+          level: 'error',
+          message: 'fatal: token=private-example-token',
+        }],
+      },
+    }),
+  });
+  assert.equal(result.diagnostics.length, 2);
+  assert.equal(Object.isFrozen(result.diagnostics[1]), true);
+  assert.equal(result.diagnostics[1].redacted, true);
+  assert.doesNotMatch(result.diagnostics[1].message, /private-example-token/);
+  assert.deepEqual(createGateResult(result), result);
+  const json = renderGateResultJson(result);
+  assert.equal(json.error.message, '外部工具无法完成检查。');
+  assert.deepEqual(json.error.evidence, []);
+  assert.deepEqual(json.diagnostics, result.diagnostics);
+  const lines = renderGateResultConsole(result);
+  assert.equal(lines[0].message, '已读取配置。');
+  assert.match(lines[1].message, /^第三方原始诊断（example-tool stderr）：\nfatal:/);
+  assert.equal(lines[1].stream, 'stderr');
+});

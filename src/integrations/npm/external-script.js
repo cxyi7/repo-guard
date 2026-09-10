@@ -4,14 +4,28 @@ import path from 'node:path';
 import {
   cancellationError,
   executionError,
-  toRepoGuardError,
 } from '../../core/error/repo-guard-error.js';
 import {
   containsSensitiveOutput,
   redactOutput,
 } from '../../core/execution/output-safety.js';
+import {
+  processTerminationFailure,
+  releaseProcessHandles,
+  terminateProcessTree,
+} from '../../core/execution/process-tree.js';
 
 const OUTPUT_LIMIT = 1024 * 1024;
+
+function startError(cause) {
+  return executionError('external-gate/process-start-failed', '无法启动外部门禁子进程。', {
+    cause,
+    details: {
+      processCode: cause.code ?? null,
+      evidence: [{ type: 'process-start', message: `子进程启动失败，系统错误代码：${cause.code ?? '未知'}。` }],
+    },
+  });
+}
 
 function npmCliPath() {
   const candidates = [
@@ -19,38 +33,6 @@ function npmCliPath() {
     path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
   ].filter(Boolean);
   return candidates.find((candidate) => existsSync(candidate)) ?? null;
-}
-
-async function terminateProcessTree(child) {
-  if (!child.pid) return;
-  if (process.platform === 'win32') {
-    await new Promise((resolve, reject) => {
-      const killer = spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
-        shell: false,
-        stdio: 'ignore',
-        windowsHide: true,
-      });
-      killer.on('error', reject);
-      killer.on('close', (status) => {
-        if (status === 0 || child.exitCode != null || child.signalCode != null) resolve();
-        else reject(executionError(
-          'external-gate/process-tree-termination-failed',
-          `无法终止外部门禁进程树（taskkill 退出码为 ${status}）`,
-        ));
-      });
-    });
-    return;
-  }
-  try {
-    process.kill(-child.pid, 'SIGKILL');
-  } catch (error) {
-    if (child.exitCode == null && child.signalCode == null && !child.kill('SIGKILL')) {
-      throw toRepoGuardError(error, {
-        kind: 'execution',
-        code: 'external-gate/process-tree-termination-failed',
-      });
-    }
-  }
 }
 
 export function redactExternalOutput(value) {
@@ -61,7 +43,15 @@ export function containsSensitiveExternalData(value) {
   return containsSensitiveOutput(value);
 }
 
-async function runExactNpmInvocation({ root, argumentsList, signal, env = process.env }) {
+async function runExactNpmInvocation({ root, argumentsList, signal, env = process.env }, {
+  spawnProcess = spawn,
+  terminateProcess = terminateProcessTree,
+} = {}) {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : cancellationError('external-gate/cancelled', '外部门禁执行已取消');
+  }
   const npmCli = npmCliPath();
   if (!npmCli) throw executionError('npm/cli-not-found', '找不到当前 Node.js 安装所使用的 npm CLI');
   return await new Promise((resolve, reject) => {
@@ -70,16 +60,24 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
     const finish = (handler, value) => {
       if (settled) return;
       settled = true;
+      signal?.removeEventListener('abort', abort);
+      releaseProcessHandles(child);
       handler(value);
     };
-    const child = spawn(process.execPath, [npmCli, ...argumentsList], {
-      cwd: root,
-      detached: process.platform !== 'win32',
-      env,
-      shell: false,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let child;
+    try {
+      child = spawnProcess(process.execPath, [npmCli, ...argumentsList], {
+        cwd: root,
+        detached: process.platform !== 'win32',
+        env,
+        shell: false,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (error) {
+      reject(startError(error));
+      return;
+    }
     let stdout = '';
     let stderr = '';
     let size = 0;
@@ -87,17 +85,10 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
       if (settled || terminating) return;
       terminating = true;
       try {
-        await terminateProcessTree(child);
+        await terminateProcess(child);
         finish(reject, reason);
       } catch (error) {
-        finish(reject, executionError(
-          'external-gate/termination-failed',
-          `${reason.message}; ${error.message}`,
-          {
-            cause: error,
-            details: { evidence: [{ type: 'termination-reason', message: reason.message }] },
-          },
-        ));
+        finish(reject, processTerminationFailure(reason, error, 'external-gate/termination-failed'));
       }
     };
     const collect = (stream) => (chunk) => {
@@ -116,10 +107,7 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
     child.stdout.on('data', collect('stdout'));
     child.stderr.on('data', collect('stderr'));
     child.on('error', (error) => {
-      if (!terminating) finish(reject, toRepoGuardError(error, {
-        kind: 'execution',
-        code: 'external-gate/process-start-failed',
-      }));
+      if (!terminating) finish(reject, startError(error));
     });
     child.on('close', (status, closeSignal) => {
       if (terminating) return;
@@ -136,20 +124,19 @@ async function runExactNpmInvocation({ root, argumentsList, signal, env = proces
         : cancellationError('external-gate/cancelled', '外部门禁执行已取消');
       void terminate(error);
     };
-    if (signal.aborted) abort();
-    else signal.addEventListener('abort', abort, { once: true });
-    child.on('close', () => signal.removeEventListener('abort', abort));
+    if (signal?.aborted) abort();
+    else signal?.addEventListener('abort', abort, { once: true });
   });
 }
 
-export async function runExactNpmScript({ root, script, signal, env }) {
-  return await runExactNpmInvocation({ root, argumentsList: ['run', script], signal, env });
+export async function runExactNpmScript({ root, script, signal, env }, runtime) {
+  return await runExactNpmInvocation({ root, argumentsList: ['run', script], signal, env }, runtime);
 }
 
-export async function runExactNpmCommand({ root, argumentsList, signal, env }) {
+export async function runExactNpmCommand({ root, argumentsList, signal, env }, runtime) {
   if (!Array.isArray(argumentsList) || argumentsList.length === 0
     || argumentsList.some((argument) => typeof argument !== 'string' || argument === '')) {
     throw new TypeError('npm argumentsList 必须包含非空字符串');
   }
-  return await runExactNpmInvocation({ root, argumentsList, signal, env });
+  return await runExactNpmInvocation({ root, argumentsList, signal, env }, runtime);
 }
