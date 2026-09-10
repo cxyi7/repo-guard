@@ -8,6 +8,8 @@
 
 ## 接入与配置
 
+多应用仓库在各应用中分别配置 `repository.codePlacement`；`allowedFiles` 和 `scanPatterns` 相对于所属应用目录。根公共入口不能给所有应用设置同一代码位置规则，前后端的约束与例外互不继承。
+
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 `codePlacement` 使用精确文本匹配。pre-commit 检查格式化完成后的最终 Git 索引，未暂存内容不会误阻断本次提交。

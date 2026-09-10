@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { validateCommitAnimationConfiguration } from '../../config/commit-animation-validation.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { createCommitAnimation } from '../../core/report/commit-animation/presenter.js';
@@ -87,7 +88,7 @@ export async function runAnimationPreview(argumentsList) {
       await animation.celebrate(`${type}: 预览`, { previewEgg });
       writeConsoleMessage('模拟提交成功。真实功能只在 post-commit 阶段庆祝。');
     }
-    return 0;
+    return EXIT_CODES.success;
   } finally {
     animation.close();
   }

@@ -4,6 +4,7 @@ import { findingFromPolicy, passedResult, skippedResult, violationResult } from 
 import { inspectDeliveryContract } from '../../policies/delivery-contract/repository.js';
 import { inspectDeliveryEvidence } from '../../policies/delivery-contract/evidence.js';
 import { inspectDeliveryContractSetup } from '../../policies/delivery-contract/setup.js';
+import { inspectCollaborativeDelivery } from '../../policies/delivery-contract/collaboration.js';
 
 function finding(item) {
   return findingFromPolicy(item, {
@@ -30,7 +31,6 @@ export const deliveryEvidenceGate = defineGate({
   environments: ['manual', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
-  after: ['quality.build', 'quality.lighthouse'],
   manualCommand: 'delivery-evidence',
   manualOrder: 28,
   packageScript: 'guard:delivery-evidence',
@@ -53,6 +53,13 @@ export const deliveryEvidenceGate = defineGate({
     priorResults,
   }),
   run({ root, plan }) {
+    const collaboration = inspectCollaborativeDelivery(root, { changes: plan.changes, evidence: true });
+    if (collaboration) {
+      if (collaboration.status === 'skipped') return skippedResult('release.delivery-evidence', '独立交付合同已关闭');
+      return collaboration.status === 'passed'
+        ? passedResult('release.delivery-evidence', '所有必需参与方、联合验证与人工验收通过')
+        : violationResult('release.delivery-evidence', `整体交付待完成：${collaboration.pending.join('；')}`);
+    }
     if (!plan.enabled) return skippedResult('release.delivery-evidence', '交付证据门禁已禁用');
     const inspection = inspectDeliveryContract({
       root,

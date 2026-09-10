@@ -1,18 +1,63 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard 子应用配置 v2",
-  "description": "多应用工作区的子配置仅声明自身身份与检查；仓库规则、报告和 CI 策略统一写入根配置。",
+  "description": "应用工程检查、保护规则、依赖限制、豁免及外部门禁独立配置；提交规范、通知动画和 CI 流程由仓库统一管理。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "project"],
+  "required": [
+    "version",
+    "project"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "version": {
       "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/version"
     },
-    "project": { "$ref": "./config.schema.json#/$defs/projectDescriptor" },
+    "project": {
+      "$ref": "./config.schema.json#/$defs/projectDescriptor"
+    },
     "checks": {
       "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/checks"
+    },
+    "repository": {
+      "type": "object",
+      "description": "本应用的保护、依赖、例外与代码位置规则；路径相对应用目录，独立于根公共规则和其他应用。",
+      "additionalProperties": false,
+      "properties": {
+        "rules": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/repository/properties/rules"
+        },
+        "exclusions": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/repository/properties/exclusions"
+        },
+        "exceptions": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/repository/properties/exceptions"
+        },
+        "dependencyPolicy": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/repository/properties/dependencyPolicy"
+        },
+        "codePlacement": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/repository/properties/codePlacement"
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "description": "本应用门禁的执行方式与外部检查；不覆盖公共 CI 开关、档案和报告入口。",
+      "additionalProperties": false,
+      "properties": {
+        "protectedFiles": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/protectedFiles"
+        },
+        "gatePolicy": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/gatePolicy"
+        },
+        "externalGates": {
+          "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/externalGates"
+        }
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ import { changeSetEntries } from '../../core/capability/gate-context.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
 import { inspectDeliveryContract } from '../../policies/delivery-contract/repository.js';
 import { inspectDeliveryContractSetup } from '../../policies/delivery-contract/setup.js';
+import { inspectCollaborativeDelivery } from '../../policies/delivery-contract/collaboration.js';
 
 function deliveryFinding(item, severity = 'error') {
   return findingFromPolicy(item, {
@@ -30,7 +31,7 @@ export const deliveryContractGate = defineGate({
   featureName: 'deliveryContract',
   featureOrder: 85,
   configVersions: [2],
-  environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
+  environments: ['manual', 'pre-commit', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'],
   mutation: 'read-only',
   defaultTimeoutMs: 120000,
   manualCommand: 'delivery-contract',
@@ -54,6 +55,11 @@ export const deliveryContractGate = defineGate({
     environment,
   }),
   run({ root, plan }) {
+    const collaboration = inspectCollaborativeDelivery(root, { changes: plan.changes, source: plan.environment });
+    if (collaboration) return collaboration.status === 'skipped'
+      ? skippedResult('repository.delivery-contract', '独立交付合同已关闭')
+      : passedResult('repository.delivery-contract', '独立交付合同的确认、版本与本方任务边界通过');
+    if (plan.environment === 'pre-push') return skippedResult('repository.delivery-contract', '当前仓库未接入独立交付合同');
     if (!plan.enabled) return skippedResult('repository.delivery-contract', '交付合同门禁已禁用');
     const result = inspectDeliveryContract({
       root,

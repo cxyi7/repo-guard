@@ -148,6 +148,8 @@ const REVIEWED_PACKAGE_FILES = Object.freeze([
   'CHANGELOG.md',
   'LICENSE',
   'README.md',
+  'delivery.schema.json',
+  'delivery-contract.schema.json',
 ]);
 
 const REVIEWED_PACKED_ROOTS = Object.freeze([
@@ -157,6 +159,8 @@ const REVIEWED_PACKED_ROOTS = Object.freeze([
   'api-performance-config.schema.json',
   'bin',
   'config.schema.json',
+  'delivery-contract.schema.json',
+  'delivery.schema.json',
   'docs',
   'external-report.schema.json',
   'gate-result.schema.json',
@@ -189,14 +193,15 @@ const REVIEWED_SOURCE_FILES = Object.freeze([
 const REVIEWED_CLI_LAUNCHER = `#!/usr/bin/env node
 
 import { runCli } from '../src/orchestration/cli/runner.js';
+import { EXIT_CODES, validateExitCode } from '../src/core/result/exit-code.js';
 
 runCli(process.argv.slice(2))
   .then((exitCode) => {
-    process.exitCode = exitCode;
+    process.exitCode = validateExitCode(exitCode);
   })
   .catch((error) => {
-    console.error(\`repo-guard failed: \${error.message}\`);
-    process.exitCode = 1;
+    console.error(\`repo-guard 未能完成执行：\${error.message}\`);
+    process.exitCode = EXIT_CODES.error;
   });
 `;
 
@@ -1898,6 +1903,8 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     './api-performance-config.schema.json': './api-performance-config.schema.json',
     './k6-load-config.schema.json': './k6-load-config.schema.json',
     './gate-result.schema.json': './gate-result.schema.json',
+    './delivery.schema.json': './delivery.schema.json',
+    './delivery-contract.schema.json': './delivery-contract.schema.json',
   });
 
   const publicEntry = readFileSync(path.join(SOURCE_ROOT, 'index.js'), 'utf8');

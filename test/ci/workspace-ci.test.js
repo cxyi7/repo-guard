@@ -35,13 +35,14 @@ function fixture(t, { otherId = 'worker' } = {}) {
         ? { id, role: 'frontend', stack: 'node', preset: 'vue-javascript' }
         : { ...descriptor, id },
       checks: { eslint: { enabled: false }, prettier: { enabled: false } },
+      repository: { dependencyPolicy: { enabled: false } },
+      ci: { gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
     });
     writeFileSync(path.join(app, 'src', 'service.js'), 'export const ready = true;\n');
   }
   json(path.join(root, 'repo-guard.config.json'), {
     version: 2,
     projects: [{ id: 'api', root: 'api' }, { id: otherId, root: otherId }],
-    repository: { dependencyPolicy: { enabled: false } },
     reporting: { notification: { enabled: false } },
     ci: { enabled: true, profile: 'full', gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
   });
@@ -49,6 +50,7 @@ function fixture(t, { otherId = 'worker' } = {}) {
   git(root, '-c', 'core.hooksPath=', 'commit', '-m', 'chore: 初始化测试仓库');
   const base = git(root, 'rev-parse', 'HEAD');
   writeFileSync(path.join(root, 'api', 'src', 'service.js'), 'export const ready = false;\n');
+  writeFileSync(path.join(root, otherId, 'src', 'service.js'), 'export const ready = false;\n');
   git(root, 'add', '.');
   git(root, '-c', 'core.hooksPath=', 'commit', '-m', 'fix: 调整通用实现');
   return { root, base, head: git(root, 'rev-parse', 'HEAD') };
@@ -65,6 +67,12 @@ function enableAndSynchronizeAgentPolicies(root) {
   const document = JSON.parse(readFileSync(file, 'utf8'));
   document.ci.gatePolicy = { defaultMode: 'inherit', gates: {} };
   json(file, document);
+  for (const entry of document.projects) {
+    const file = path.join(root, entry.root, entry.config ?? 'repo-guard.config.json');
+    const application = JSON.parse(readFileSync(file, 'utf8'));
+    application.ci = { ...application.ci, gatePolicy: { defaultMode: 'inherit', gates: {} } };
+    json(file, application);
+  }
   const workspace = loadWorkspace(root);
   const rootApplication = workspace.projects.find((application) => application.root === root);
   syncAgentPolicies(root, rootApplication?.config ?? workspace.repositoryConfig);
@@ -120,6 +128,7 @@ test('清单声明 root 为点时，AGENTS 只按该应用配置核验一次', a
   json(path.join(repo.root, 'custom.json'), {
     version: 2, project: { ...descriptor, id: 'repository' },
     checks: { eslint: { enabled: false }, prettier: { enabled: false } },
+    repository: { dependencyPolicy: { enabled: false } },
   });
   enableAndSynchronizeAgentPolicies(repo.root);
   const options = { base: repo.base, head: repo.head, profile: 'policy', env: {} };
@@ -156,6 +165,8 @@ test('清单声明仓库根应用时，应用标识也不能与公共报告命�
   json(path.join(repo.root, 'root-project.json'), {
     version: 2, project: { ...descriptor, id: 'repository' },
     checks: { eslint: { enabled: false }, prettier: { enabled: false } },
+    repository: { dependencyPolicy: { enabled: false } },
+    ci: { gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
   });
   assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
   const targets = report(repo.root).targets;
@@ -173,6 +184,54 @@ test('明确选择应用时仅运行该应用，其他应用失败不伪装为�
   assert.notEqual(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
   assert.equal(report(repo.root).status, 'failed');
   assert.equal(report(repo.root).targets.find((target) => target.projectId === 'worker').exitCode, 2);
+});
+
+test('多应用违规和工具配置错误按统一优先级汇总，不受应用顺序影响且保留仅报告策略', async (t) => {
+  const repo = fixture(t);
+  const rootFile = path.join(repo.root, 'repo-guard.config.json');
+  const rootDocument = JSON.parse(readFileSync(rootFile, 'utf8'));
+  const applicationFile = path.join(repo.root, 'worker/repo-guard.config.json');
+  const application = JSON.parse(readFileSync(applicationFile, 'utf8'));
+  application.checks.typeCheck = { enabled: true, script: 'missing-typecheck' };
+  json(applicationFile, application);
+  writeFileSync(path.join(repo.root, 'api/src/service.js'), 'eval("unknown()");\n');
+  const options = { base: repo.base, head: repo.head, env: {} };
+  for (const projects of [rootDocument.projects, [...rootDocument.projects].reverse()]) {
+    json(rootFile, { ...rootDocument, projects });
+    assert.equal(await runCiCommand(repo.root, options), 1);
+    const targets = report(repo.root).targets;
+    assert.equal(targets.find(({ projectId }) => projectId === 'api').exitCode, 2);
+    assert.equal(targets.find(({ projectId }) => projectId === 'worker').exitCode, 1);
+  }
+  application.ci.gatePolicy.gates['quality.typecheck'] = { mode: 'report' };
+  json(applicationFile, application);
+  assert.equal(await runCiCommand(repo.root, options), 2);
+  writeFileSync(path.join(repo.root, 'api/src/service.js'), 'export const ready = false;\n');
+  assert.equal(await runCiCommand(repo.root, options), 0);
+  assert.equal(report(repo.root).gateResults.find(({ gateId }) => gateId === 'quality.typecheck').status, 'configuration-error');
+});
+
+test('CI 单选应用跳过损坏的其他配置，目标配置错误返回结构化结果', async (t) => {
+  const repo = fixture(t);
+  writeFileSync(path.join(repo.root, 'worker/repo-guard.config.json'), '{无效配置');
+  const options = { base: repo.base, head: repo.head, env: {}, projectId: 'api' };
+  assert.equal(await runCiCommand(repo.root, options), 0);
+  assert.deepEqual(report(repo.root).selectedProjects, ['api']);
+  assert.equal(await runCiCommand(repo.root, { ...options, projectId: 'worker' }), 1);
+  assert.equal(report(repo.root).status, 'configuration-error');
+  assert.match(report(repo.root).error, /无法读取配置文件/);
+  assert.equal(await runCiCommand(repo.root, { ...options, projectId: 'unknown' }), 1);
+  assert.equal(report(repo.root).gateResult.error.code, 'project/not-found');
+});
+
+test('CI 根目录的宽泛保护规则不越界拦截应用源码', async (t) => {
+  const repo = fixture(t);
+  const file = path.join(repo.root, 'repo-guard.config.json');
+  const document = JSON.parse(readFileSync(file, 'utf8'));
+  document.repository = { rules: [{ pattern: '**/*', category: '仓库文件', level: 'block' }] };
+  json(file, document);
+  assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
+  assert.deepEqual(report(repo.root).targets.find(({ scope }) => scope === 'repository').report.protectedFiles, []);
 });
 
 test('v2 发布就绪执行通用工程检查且最后复核证据，不要求 npm 包发布脚本', async (t) => {
@@ -250,7 +309,10 @@ test('自定义汇总路径和内部报告不能覆盖外部结果，错误报�
   mkdirSync(path.join(repo.root, 'reports'), { recursive: true });
   const original = '独立工具的原始结果';
   writeFileSync(path.join(repo.root, external.report.path), original);
-  current.ci.externalGates = [external];
+  current.projects = [{ id: 'api', root: '.', config: 'app-config.json' }];
+  const application = JSON.parse(readFileSync(path.join(repo.root, 'api/repo-guard.config.json'), 'utf8'));
+  application.ci.externalGates = [external];
+  json(path.join(repo.root, 'app-config.json'), application);
   json(configPath, current);
   const options = { base: repo.base, head: repo.head, env: {}, reportPath: external.report.path };
   assert.equal(await runCiCommand(repo.root, options), 1);
@@ -260,6 +322,7 @@ test('自定义汇总路径和内部报告不能覆盖外部结果，错误报�
   external.report.path = 'reports/repo-guard-workspace/repository.json';
   mkdirSync(path.dirname(path.join(repo.root, external.report.path)), { recursive: true });
   writeFileSync(path.join(repo.root, external.report.path), original);
+  json(path.join(repo.root, 'app-config.json'), application);
   json(configPath, current);
   assert.equal(await runCiCommand(repo.root, { ...options, reportPath: undefined }), 1);
   assert.equal(readFileSync(path.join(repo.root, external.report.path), 'utf8'), original);

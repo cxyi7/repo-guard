@@ -130,8 +130,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       'ui-token/unknown-token',
       'ui-token/category-mismatch',
       'ui-token/stale-manifest',
-      'ui-token/untracked-unocss-config',
-      'ui-token/unapproved-shortcut',
+      'ui-token/unapproved-definition',
       'ui-token/unapproved-breakpoint',
       'ui-token/unprovable-dynamic-usage',
     ],
@@ -306,7 +305,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       ciScopes: ['all-files', 'changed-files'],
     },
   ),
-  reviewedGateDescriptor('repository.delivery-contract', POLICY_ENVIRONMENTS, {
+  reviewedGateDescriptor('repository.delivery-contract', ['manual', 'pre-commit', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'], {
     configKey: 'repository.deliveryContract',
     featureName: 'deliveryContract',
     featureOrder: 85,
@@ -332,7 +331,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     'release.delivery-evidence',
     ['manual', 'release-ready'],
     {
-      after: ['quality.build', 'quality.lighthouse'],
+      after: [],
       manualCommand: 'delivery-evidence',
       manualOrder: 28,
       packageScript: 'guard:delivery-evidence',

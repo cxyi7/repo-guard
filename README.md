@@ -4,7 +4,19 @@
 
 repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**，用于 Vue 前端和 Node.js 后端。人或 AI 明确配置项目身份与团队要求，它在 Git 提交、推送和 CI 阶段检查代码格式、目录规范、依赖、测试和构建，让不同成员和 AI 按同一套要求开发。
 
+**前后端各管自己的工程规则，共同遵循一份交付合同。** 同仓不同目录、独立仓库都可以接入；前端的格式、依赖和测试要求不会自动套用到后端。交付合同可以单独开启，也可以与工程检查同时开启，Java、Python 后端也能参与需求、任务、联调与验收；这些语言的内置工程预设仍待接入。
+
+| 使用方式 | 检查内容 |
+|---|---|
+| 只开启工程检查 | 应用自己的代码规范、保护规则、测试和构建 |
+| 只开启独立交付合同 | 共同需求、本方任务、代码版本、完成证据、联合验证与人工验收 |
+| 两者同时开启 | 实际工程检查结果进入交付证据；关闭或跳过必需检查不能冒充完成 |
+
+接入示例见[前后端隔离配置](docs/features/project-workspace.md)和[独立交付与跨仓库协作](docs/features/delivery-contract.md#独立交付与跨仓库协作)。
+
 例如，团队要求文件统一命名、代码格式一致、提交信息符合约定。配置好以后，成员照常使用 `git commit`：工具执行已启用的提交检查，自动修复可修复的格式问题；需要人工处理的问题会给出中文提示，阻断性检查未通过时，本次提交会被拦下。
+
+检查结果使用统一退出码：`0` 成功或无需阻断，`1` 配置或工具运行错误，`2` 规则或交付条件未满足，`3` Git 范围不可信。手动检查、Hook、CI 和交付入口采用相同含义，多应用结果按固定优先级汇总，便于 AI 判断下一步该修代码、补证据还是修环境。详见[结果与退出码](docs/features/gate-result-and-reporting.md)。
 
 无论代码由开发者还是 AI 编写，都按同一套约定接受检查。你可以用它做三件事：
 
@@ -74,7 +86,7 @@ git commit -m "feat: 添加用户信息"
 
 *上图为使用说明能力开关表的完整截图，点击图片可查看大图。可复制的功能名、各项用法和开关联动见[使用说明 · 能力开关表](docs/usage-guide.md#启用或关闭能力)。*
 
-团队约定保存在项目根目录的 `repo-guard.config.json` 中。提交这份配置，让团队成员使用同一套要求。
+单应用的团队约定保存在项目根目录的 `repo-guard.config.json` 中。多应用分别维护自己的工程规则，根配置只保存公共约定。提交这些配置，让同一应用的成员和 AI 使用同一套要求。
 
 例如，按项目需要启用或关闭文件命名检查：
 
@@ -101,14 +113,16 @@ npx repo-guard doctor
 
 ### 前后端如何一起用
 
-单独仓库各自配置即可。同一仓库可以明确登记 `apps/web` 和 `apps/api`：团队规则放在根配置中，应用各自维护检查项与工具配置。
+单独仓库各自配置即可。同一仓库明确登记 `apps/web` 和 `apps/api`：前后端各自配置代码规则、依赖、例外、保护文件和外部门禁。根目录统一提交信息、CI 流程、通知与动画，并保护必要的公共配置。不同应用的源码目录不能重叠。
+
+应用目录的 `apps/web`、`./apps/web`、`apps//web` 等价写法会统一后再匹配 Git 变更，避免因路径写法不同漏掉提交检查；配置文件保留原写法。
 
 ```bash
 # 只检查后端；使用后端目录内的工具、源码与脚本
 npx repo-guard ci --project api --profile full
 ```
 
-提交和推送会按清单检查各应用。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
+提交、推送及普通 CI 根据变更选择受影响应用；根清单变化触发所有应用，共享文件可用 `sharedPaths` 指定影响范围。只改前端时不会读取无关后端的工具与工程规则。`release-ready` 默认复核全部应用，也可以用 `--project` 明确只验证本方。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
 
 独立运维可显式开启整条流水线的成功、失败通知，覆盖合并请求与分支流水线；升级后需重新生成托管片段，见[运维通知与更新说明](docs/features/operations.md#流水线通知)。
 
@@ -135,11 +149,9 @@ npx repo-guard ci --project api --profile full
 
 **人负责确认需求、验收和改进决定，开发者与 AI 负责实现和修复，repo-guard 负责检查约定及证据，Git 保存代码与资料的版本记录。**
 
-交付合同默认关闭。需要时按[交付合同手册](docs/features/delivery-contract.md)准备资料，再启用：
+交付合同默认关闭。跨仓协作用独立的 `repo-guard.delivery.json`：前后端绑定同一合同的固定版本，各自执行检查、交换签名证据，再针对明确的代码版本组合完成联合验证与人工验收。Java、Python 项目也可只使用此入口，运行 CLI 仍需 Node。
 
-```bash
-npx repo-guard enable deliveryContract
-```
+本仓库内的多文件合同包使用 `repository.deliveryContract`，通过 `enable deliveryContract` 启用。两种组织方式任选一种；不能在同一仓库同时启用。初始化、字段和完整操作见[交付合同手册](docs/features/delivery-contract.md)。
 
 <a id="提交时的小伙伴"></a>
 
@@ -168,7 +180,8 @@ npx repo-guard animation-preview --theme dog --type perf
 |---|---|---|
 | 每个人的代码格式、文件命名和目录习惯不同 | 格式检查与修复、路径命名、文件归位、行数限制 | [代码与团队规范](docs/usage-guide.md#常用使用方式) |
 | 提交信息不统一，AI 缺少明确的项目约定 | 提交信息检查、AGENTS 规范同步 | [提交信息](docs/features/commit-message.md) · [团队规范](docs/features/managed-agent-policies.md) |
-| Vue 代码容易遗漏资源清理、界面规范和安全要求 | 异步资源清理、UI Token、安全与可访问性检查 | [能力索引](docs/features/README.md#提交阶段质量与安全) |
+| 页面颜色、间距、字号各写各的，AI 随意使用数值 | 样式 Token 检查，支持原生 CSS、SCSS/Sass、Less | [样式 Token](docs/features/ui-tokens.md) |
+| Vue 代码容易遗漏资源清理和安全要求 | 异步资源清理、安全与可访问性检查 | [能力索引](docs/features/README.md#提交阶段质量与安全) |
 | 图片重复、文件无效、依赖声明混乱 | 图片治理、无效图片与代码检查、依赖策略 | [仓库与代码治理](docs/features/README.md#仓库与代码治理) |
 | 测试、构建和性能要求靠人工记忆执行 | 类型检查、测试与覆盖率、架构、构建预算、Lighthouse、接口压测 | [测试与性能](docs/features/README.md#测试构建与性能) |
 | CI 与本地规范脱节，交付依据难以追踪 | CI 规则复核、GitLab 流水线、交付合同与发布前检查 | [GitLab CI](docs/features/gitlab-ci.md) · [交付合同](docs/features/delivery-contract.md) |

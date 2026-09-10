@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "独立交付配置 v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "enabled",
+    "contract",
+    "contractDigest",
+    "participants",
+    "keyFile",
+    "evidenceDirectory"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "contract": {
+      "type": "string",
+      "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "participants": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      }
+    },
+    "keyFile": {
+      "allOf": [
+        {
+          "type": "string",
+          "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+        },
+        {
+          "pattern": "^\\.repo-guard/local/"
+        }
+      ]
+    },
+    "evidenceDirectory": {
+      "allOf": [
+        {
+          "type": "string",
+          "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+        },
+        {
+          "pattern": "^reports/"
+        }
+      ]
+    }
+  },
+  "$id": "https://cxyi7.github.io/repo-guard/delivery.schema.json"
+}

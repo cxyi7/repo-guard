@@ -1,7 +1,7 @@
 import {
   createGateResult,
-  gateResultToExitCode,
 } from '../core/result/gate-result.js';
+import { aggregateGateResults } from '../core/result/exit-code.js';
 import { gateAppliesToProject } from '../gates/project-applicability.js';
 import {
   cancellationError,
@@ -52,15 +52,6 @@ function validateResult(gate, result) {
 function withValidatedResult(outcome, result) {
   if (outcome?.result) return Object.freeze({ ...outcome, result });
   return result;
-}
-
-function aggregateStatus(results) {
-  for (const status of ['execution-error', 'configuration-error', 'range-error']) {
-    if (results.some((result) => result.status === status)) return status;
-  }
-  if (results.some(({ status }) => status === 'violation')) return 'violation';
-  if (results.length > 0 && results.every(({ status }) => status === 'skipped')) return 'skipped';
-  return 'passed';
 }
 
 function shouldStop(result, stopOnFailure) {
@@ -165,22 +156,11 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
 
 function finish(plan, outcomes) {
   const results = Object.freeze(outcomes.map(resultFromOutcome));
-  const status = aggregateStatus(results);
-  const decisiveResult = results.find(({ status: value }) => value === 'execution-error')
-    ?? results.find(({ status: value }) => value === 'configuration-error')
-    ?? results.find(({ status: value }) => value === 'range-error')
-    ?? results.find(({ status: value }) => value === 'violation')
-    ?? results.at(-1)
-    ?? null;
   return Object.freeze({
     planId: plan.id,
-    status,
     outcomes: Object.freeze([...outcomes]),
     results,
-    decisiveResult,
-    exitCode: decisiveResult == null
-      ? 0
-      : gateResultToExitCode(decisiveResult),
+    ...aggregateGateResults(results),
   });
 }
 

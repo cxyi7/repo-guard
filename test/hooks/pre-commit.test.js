@@ -328,7 +328,7 @@ test('动画模式质量失败保留退出码并恢复原始暂存和未暂存�
       failures += 1;
     },
   };
-  assert.equal(await runQualityGate({ cwd: root, animation }), 1);
+  assert.equal(await runQualityGate({ cwd: root, animation }), 2);
   assert.ok(failures > 0, '失败诊断必须通知展示层停止角色');
   assert.equal(git(root, ['show', ':sample.js']), originalIndex);
   assert.equal(readFileSync(file, 'utf8'), originalWorktree);
@@ -426,7 +426,7 @@ test('blocks unfixable syntax errors without committing partial fixes', async (c
   writeFileSync(path.join(root, 'sample.js'), invalid);
   git(root, ['add', 'sample.js']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), invalid);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')),
@@ -450,7 +450,7 @@ test('rejects overlapping pre-commit runs without changing staged or unstaged co
     runPreCommit(root),
     (error) => error?.code === 'pre-commit/already-running',
   );
-  assert.equal(await firstRun, 1);
+  assert.equal(await firstRun, 2);
 
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), staged);
   assert.equal(
@@ -473,7 +473,7 @@ test('restores fixes on a failing initial commit without a Git stash', async (co
   writeFileSync(path.join(root, 'broken.js'), invalid);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'fixable.js'), 'utf8')),
     fixable,
@@ -503,7 +503,7 @@ test('still blocks parseable eval when the project disables ESLint', async (cont
   writeFileSync(path.join(root, 'runtime.js'), unsafe);
   git(root, ['add', 'runtime.js']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':runtime.js'])), unsafe);
 });
 
@@ -521,7 +521,7 @@ test('启用异步资源清理后以 error 阻断未释放资源', async (contex
   writeFileSync(path.join(root, 'src', 'App.vue'), source);
   git(root, ['add', 'src/App.vue']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':src/App.vue'])), source);
 });
 
@@ -538,7 +538,7 @@ test('启用路径命名后检查全部已跟踪范围而不只检查本次暂�
   writeFileSync(path.join(root, 'sample.js'), 'export const changed = true;\n');
   git(root, ['add', 'sample.js']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });
 
 test('automatically applies the repo-guard ESLint preset from the JSON switch', async (context) => {
@@ -556,7 +556,7 @@ test('automatically applies the repo-guard ESLint preset from the JSON switch', 
   writeFileSync(path.join(root, 'sample.js'), 'console.log("automatic");\n');
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(
     normalizeEol(git(root, ['show', ':sample.js'])),
     'console.log("automatic");\n',
@@ -607,7 +607,7 @@ test('checks the staged file line count and ignores unstaged lines', async (cont
   assert.doesNotMatch(git(root, ['show', ':sample.js']), /unstaged/);
 
   git(root, ['add', 'sample.js']);
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });
 
 test('blocks newly staged resources outside configured asset folders', async (context) => {
@@ -622,7 +622,7 @@ test('blocks newly staged resources outside configured asset folders', async (co
   writeFileSync(path.join(root, 'src', 'components', 'logo.png'), 'fixture');
   git(root, ['add', 'src/components/logo.png']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.match(git(root, ['show', ':src/components/logo.png']), /fixture/);
 });
 
@@ -679,7 +679,7 @@ test('blocks restricted code in a staged disallowed file but ignores an unstaged
   assert.equal(await runPreCommit(root), 0);
 
   git(root, ['add', 'src/orders/submit.js']);
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.match(
     git(root, ['show', ':src/orders/submit.js']),
     /createPaymentSignature/,
@@ -801,7 +801,7 @@ test('blocks unformatted staged files when Prettier fixes are disabled', async (
   writeFileSync(path.join(root, 'style.css'), unformatted);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), unformatted);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
@@ -821,7 +821,7 @@ test('rolls back the whole quality pipeline when Prettier conflicts with ESLint'
   writeFileSync(path.join(root, 'sample.js'), original);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':sample.js'])), original);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'sample.js'), 'utf8')),
@@ -876,7 +876,7 @@ test('enforces repo-owned selector complexity despite project overrides and disa
   writeFileSync(path.join(root, 'style.css'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), content);
 });
 
@@ -896,7 +896,7 @@ test('enforces repo-owned nesting depth', async (context) => {
   writeFileSync(path.join(root, 'style.css'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });
 
 test('enforces selector specificity, ID, and important governance despite bypasses', async (context) => {
@@ -924,7 +924,7 @@ test('enforces selector specificity, ID, and important governance despite bypass
   writeFileSync(path.join(root, 'sample.module.css'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(
     normalizeEol(git(root, ['show', ':sample.module.css'])),
     content,
@@ -950,7 +950,7 @@ test('preserves the project declaration-no-important rule when repo governance a
   writeFileSync(path.join(root, 'sample.module.css'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(
     normalizeEol(git(root, ['show', ':sample.module.css'])),
     content,
@@ -978,7 +978,7 @@ test('allows CSS Module styles but blocks unexpected globals', async (context) =
   const unsafe = '.unsafe { color: red; }\n';
   writeFileSync(path.join(root, 'src', 'unsafe.css'), unsafe);
   git(root, ['add', 'src/unsafe.css']);
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':src/unsafe.css'])), unsafe);
 });
 
@@ -1004,7 +1004,7 @@ test('allows intentional global styles only in configured locations', async (con
   const unexpected = '.button { color: red; }\n';
   writeFileSync(path.join(root, 'src', 'components', 'button.css'), unexpected);
   git(root, ['add', 'src/components/button.css']);
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });
 
 test('auto-fixes only staged Stylelint content and restores unstaged edits', async (context) => {
@@ -1062,7 +1062,7 @@ test('rolls back Stylelint fixes when a later quality gate fails', async (contex
   writeFileSync(path.join(root, 'sample.js'), javascript);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), css);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
@@ -1088,7 +1088,7 @@ test('blocks unfixable Stylelint problems without keeping partial fixes', async 
   writeFileSync(path.join(root, 'style.css'), original);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':style.css'])), original);
   assert.equal(
     normalizeEol(readFileSync(path.join(root, 'style.css'), 'utf8')),
@@ -1135,7 +1135,7 @@ test('blocks staged Vue v-html even when optional quality gates are disabled', a
   writeFileSync(path.join(root, 'App.vue'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':App.vue'])), content);
 });
 
@@ -1153,7 +1153,7 @@ test('blocks staged dynamic code execution when optional gates are disabled', as
   writeFileSync(path.join(root, 'runtime.ts'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':runtime.ts'])), content);
 });
 
@@ -1175,7 +1175,7 @@ test('keeps CI Gate policy independent from the pre-commit Gate policy', async (
   writeFileSync(path.join(root, 'runtime.ts'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':runtime.ts'])), content);
 });
 
@@ -1192,7 +1192,7 @@ test('blocks unsafe staged Vue target blank links when optional gates are disabl
   writeFileSync(path.join(root, 'Links.vue'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':Links.vue'])), content);
 });
 
@@ -1219,7 +1219,7 @@ test('blocks staged dependency declarations when dependency governance is enable
   writeFileSync(path.join(root, 'package.json'), packageJson);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':package.json'])), packageJson);
 });
 
@@ -1255,7 +1255,7 @@ test('blocks staged deletion of a required dependency lockfile', async (context)
   rmSync(path.join(root, 'package-lock.json'));
   git(root, ['add', '-u']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });
 
 test('blocks staged unlabeled Vue form controls when optional gates are disabled', async (context) => {
@@ -1271,7 +1271,7 @@ test('blocks staged unlabeled Vue form controls when optional gates are disabled
   writeFileSync(path.join(root, 'Form.vue'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':Form.vue'])), content);
 });
 
@@ -1288,7 +1288,7 @@ test('blocks staged Vue images without alt when optional gates are disabled', as
   writeFileSync(path.join(root, 'Status.vue'), content);
   git(root, ['add', '.']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
   assert.equal(normalizeEol(git(root, ['show', ':Status.vue'])), content);
 });
 
@@ -1339,5 +1339,5 @@ test('blocks a staged rename of an immutable protected file', async (context) =>
 
   git(root, ['mv', 'sample.js', 'moved.js']);
 
-  assert.equal(await runPreCommit(root), 1);
+  assert.equal(await runPreCommit(root), 2);
 });

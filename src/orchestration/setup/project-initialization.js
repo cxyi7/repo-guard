@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { CONFIG_FILE } from '../../config/validation-primitives.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -28,5 +29,5 @@ export function runInit(cwd = process.cwd(), options = {}) {
   }
   writeConsoleMessage('- 已按显式预设生成基础检查配置；运行 repo-guard doctor 查看依赖与配置缺项。');
   writeConsoleMessage('- 检查工具使用项目安装的版本；本版本不会自动安装依赖或覆盖工具配置。');
-  return 0;
+  return EXIT_CODES.success;
 }

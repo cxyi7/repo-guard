@@ -43,7 +43,6 @@ function workspaceFixture(
   writeJson(root, 'repo-guard.config.json', {
     version: 2,
     projects: ids.map((id) => ({ id, root: `apps/${id}` })),
-    repository: { dependencyPolicy: { enabled: false } },
     reporting: { notification: { enabled: false } },
   });
   for (const id of ids) {
@@ -84,6 +83,7 @@ function workspaceFixture(
             }
           : {}),
       },
+      repository: { dependencyPolicy: { enabled: false } },
     });
   }
   return root;
@@ -137,7 +137,6 @@ test('根目录应用的初始化、修复、安装 CI 与 Doctor 使用同一�
   writeJson(root, 'repo-guard.config.json', {
     version: 2,
     projects: [{ id: 'api', root: '.', config: 'guard.project.json' }],
-    repository: { dependencyPolicy: { enabled: false } },
     reporting: { notification: { enabled: false } },
   });
   writeJson(root, 'guard.project.json', {
@@ -149,6 +148,7 @@ test('根目录应用的初始化、修复、安装 CI 与 Doctor 使用同一�
       preset: 'node-javascript',
     },
     checks: { eslint: { enabled: false }, prettier: { enabled: false } },
+    repository: { dependencyPolicy: { enabled: false } },
   });
   assert.equal(runInit(root), 0);
   assert.match(

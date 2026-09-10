@@ -164,7 +164,7 @@ test('磁盘旧版本明确拒绝执行，不转换保护规则、阈值或运�
   assert.equal(readFileSync(file, 'utf8'), original);
 });
 
-test('多应用隔离身份、继承仓库规则并要求明确选应用', (t) => {
+test('多应用隔离身份和应用策略，并要求明确选应用', (t) => {
   const root = fixture(t);
   for (const project of [backend, frontend]) {
     mkdirSync(path.join(root, project.id));
@@ -195,9 +195,44 @@ test('多应用隔离身份、继承仓库规则并要求明确选应用', (t) =
   write(path.join(root, 'api'), {
     version: 2,
     project: backend,
-    repository: { rules: [] },
+    repository: { rules: [{ pattern: 'api-only.txt', category: '应用独立规则', level: 'block' }] },
   });
-  assert.throws(() => loadWorkspace(root), /子应用不得覆盖/);
+  assert.equal(loadWorkspace(root).projects[0].config.repository.rules[0].pattern, 'api-only.txt');
+});
+
+test('磁盘和快照中的等价应用目录统一归属，保留原配置字节', (t) => {
+  const root = fixture(t);
+  mkdirSync(path.join(root, 'apps/api'), { recursive: true });
+  write(path.join(root, 'apps/api'), { version: 2, project: backend });
+  for (const directory of ['apps/api', './apps/api', 'apps//api', './apps/./api//']) {
+    write(root, { version: 2, projects: [{ id: 'api', root: directory }] });
+    const original = readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8');
+    for (const options of [{}, {
+      readDocument: (file) => readFileSync(path.join(root, file), 'utf8'),
+    }]) {
+      const workspace = loadWorkspace(root, options);
+      assert.equal(workspace.projects[0].relativeRoot, 'apps/api', directory);
+      assert.equal(workspace.projects[0].root, path.join(root, 'apps/api'));
+      assert.equal(workspace.document.projects[0].root, directory);
+    }
+    assert.equal(readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'), original);
+  }
+});
+
+test('根目录应用的等价写法统一为点号，快照目录无需存在', (t) => {
+  const root = fixture(t);
+  for (const directory of ['.', './', '././']) {
+    const readDocument = (file) => file === 'repo-guard.config.json'
+      ? { version: 2, projects: [{ id: 'api', root: directory, config: 'repo-guard.project.json' }] }
+      : { version: 2, project: backend };
+    const application = loadWorkspace(root, { readDocument }).projects[0];
+    assert.equal(application.relativeRoot, '.', directory);
+    assert.equal(application.root, root);
+  }
+  const readDocument = (file) => file === 'repo-guard.config.json'
+    ? { version: 2, projects: [{ id: 'api', root: './apps//api/' }] }
+    : { version: 2, project: backend };
+  assert.equal(loadWorkspace(root, { readDocument }).projects[0].relativeRoot, 'apps/api');
 });
 
 test('所有配置从同一快照读取，拒绝目录越界和项目归属重叠', (t) => {

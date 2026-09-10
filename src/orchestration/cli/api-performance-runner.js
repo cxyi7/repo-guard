@@ -1,5 +1,6 @@
 import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { gateStatusToExitCode } from '../../core/result/exit-code.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { runApiPerformanceExternalRunner } from '../../gates/testing/api-performance-external-runner.js';
 
@@ -88,5 +89,5 @@ export async function runApiPerformanceRunner({
     environment,
   });
   writeConsoleMessage(report.summary, report.status === 'passed' ? 'stdout' : 'stderr');
-  return report.status === 'passed' ? 0 : 2;
+  return gateStatusToExitCode(report.status);
 }

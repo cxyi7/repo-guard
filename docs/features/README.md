@@ -4,9 +4,13 @@
 
 每项能力都提供用途、接入或调用方式、执行范围、判断依据、失败处理以及实现和测试入口。安装与日常操作从[使用说明](../usage-guide.md)开始；内部模块职责见[维护者架构说明](../project-structure-and-feature-inventory.md)。
 
+所有命令、Hook、CI 和交付入口复用[统一结果与退出码](gate-result-and-reporting.md)：`0` 成功或非阻断，`1` 配置/执行错误，`2` 违规或交付条件未满足，`3` 范围错误。多应用按固定优先级汇总，查询成功、只报告和跳过仍需按各自语义阅读，不能仅凭 `0` 判定交付完成。
+
 交付相关能力统一维护在[交付合同手册](delivery-contract.md)：功能登记、合同、证据和反馈是同一条流程，下面按环节链接到同页相应位置。
 
-v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护集中在仓库公共规则中；启停命令会按应用目录补充对应保护，字段和行为见各专题。子应用使用 `project.schema.json`，只声明身份与 `checks`；仓库公共分区使用根目录的 `config.schema.json`。
+v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.externalGates` 独立配置。构建基线和 UI Token 契约保护写入所属应用；仓库公共配置只管理提交信息、公共 CI 流程、通知动画和基础文件保护。子应用使用 `project.schema.json`，完整归属见[前后端与多应用配置](project-workspace.md)。
+
+[独立交付合同](delivery-contract.md#独立交付与跨仓库协作)使用 `repo-guard.delivery.json`，既可单独开启，也可与工程检查同时开启。同仓或分仓的前后端共同遵循合同，Java、Python 参与方不需要声明 Node 工程预设。合同绑定实际代码、检查证据、联合验证、人工验收和反馈改进。
 
 当前配置加载、功能启停和各执行入口共同使用原生 v2 模型；质量检查与运维发布独立维护。具体改动与验收依据见 [2.0 重构工作清单](../refactor-2.0-remaining-work.md)。下表“已维护”表示已有对应功能文档，不表示已发布到 npm。
 
@@ -15,7 +19,7 @@ v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护�
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
 | 项目初始化 | [docs/features/project-initialization.md](project-initialization.md) | 已维护 |
-| 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，Node 后端已接入 |
+| 显式前后端身份与多应用工作区 | [docs/features/project-workspace.md](project-workspace.md) | 已维护，Node 后端已接入；应用目录等价写法统一后分配变更 |
 | 配置管理与规则启停 | [docs/features/configuration-management.md](configuration-management.md) | 已维护 |
 | Doctor 诊断与受管修复 | [docs/features/doctor.md](doctor.md) | 已维护 |
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护 |
@@ -34,7 +38,7 @@ v2 功能配置按应用维护，构建基线和 UI Token 契约的文件保护�
 | 文件头同步 | [docs/features/file-header.md](file-header.md) | 已维护 |
 | 函数文档同步 | [docs/features/function-documentation.md](function-documentation.md) | 已维护 |
 | Vue 异步资源清理 | [docs/features/async-resource-cleanup.md](async-resource-cleanup.md) | 已维护 |
-| UI Token 契约 | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护 |
+| 样式 Token 检查：CSS、SCSS/Sass、Less | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护 |
 | 样式复杂度 | [docs/features/style-complexity.md](style-complexity.md) | 已维护 |
 | 样式治理 | [docs/features/style-governance.md](style-governance.md) | 已维护 |
 | 动态代码 | [docs/features/dynamic-code.md](dynamic-code.md) | 已维护 |

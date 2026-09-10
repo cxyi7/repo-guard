@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 
 export function validateNodeReleaseScripts(repositoryRoot, project, unit) {
   const projectRoot = path.resolve(repositoryRoot, project.root);
@@ -30,7 +31,7 @@ export function nodeArtifactVerificationProgram() {
   return [
     "const fs = require('node:fs');",
     "const path = require('node:path');",
-    "function fail(message) { fs.writeSync(2, message + '\\n'); process.exit(1); }",
+    `function fail(message) { fs.writeSync(2, message + '\\n'); process.exit(${EXIT_CODES.error}); }`,
     'function count(file) {',
     'const stat = fs.lstatSync(file);',
     "if (stat.isSymbolicLink()) fail('构建产物不得使用符号链接：' + file);",

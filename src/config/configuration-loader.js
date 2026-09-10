@@ -4,7 +4,7 @@ import { loadWorkspace } from './workspace-configuration.js';
 export { loadWorkspace, readConfigurationDocument } from './workspace-configuration.js';
 
 export function loadConfig(root, options = {}) {
-  const workspace = loadWorkspace(root, options);
+  const workspace = loadWorkspace(root, { ...options, lazyProjects: options.repositoryOnly || options.projectId !== undefined });
   if (options.repositoryOnly) return workspace.repositoryConfig;
   if (options.projectId !== undefined) {
     const project = workspace.projects.find((entry) => entry.id === options.projectId);

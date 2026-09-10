@@ -36,9 +36,10 @@ test('子应用 Schema 与工作区归属规则一致且复用主配置字段定
     validate({ version: 2, project, checks: { unitTest: { enabled: true } } }),
     true,
   );
-  for (const field of ['repository', 'reporting', 'ci']) {
-    assert.equal(validate({ version: 2, project, [field]: {} }), false, field);
-  }
+  for (const field of ['repository', 'ci']) assert.equal(validate({ version: 2, project, [field]: {} }), true, field);
+  assert.equal(validate({ version: 2, project, reporting: {} }), false);
+  assert.equal(validate({ version: 2, project, repository: { commitMessage: { enabled: true } } }), false);
+  assert.equal(validate({ version: 2, project, ci: { profile: 'full' } }), false);
   assert.equal(
     validate({ version: 2, project, checks: { unitTest: { coverage: {} } } }),
     false,

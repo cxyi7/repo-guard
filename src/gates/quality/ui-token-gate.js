@@ -2,10 +2,8 @@ import path from 'node:path';
 import micromatch from 'micromatch';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
-import { collectSassStyleFacts } from '../../integrations/ui-tokens/sass.js';
+import { collectStyleFacts, isUiTokenStyleFile } from '../../integrations/ui-tokens/styles.js';
 import { loadUiTokenManifest } from '../../integrations/ui-tokens/manifest.js';
-import { collectUnoCssFacts } from '../../integrations/ui-tokens/unocss.js';
-import { collectUnoCssConfigurationFacts } from '../../integrations/ui-tokens/unocss-configuration.js';
 import {
   inspectUiTokens,
   UI_TOKEN_RULES,
@@ -19,8 +17,6 @@ import { findingFromPolicy, passedResult, skippedResult, violationResult } from 
 import { definePlatformGate, readyGateSetup } from '../platform-gate.js';
 
 export const UI_TOKEN_GATE_ID = 'quality.ui-tokens';
-const SASS_FILE = /\.(?:scss|sass|vue)$/i;
-const UNOCSS_FILE = /\.(?:vue|html|js|jsx|ts|tsx)$/i;
 
 function relativePath(root, file) {
   if (typeof file !== 'string') return file.relative;
@@ -53,7 +49,6 @@ function deletedContractPaths(config, manifest, changes) {
   const contractPaths = new Set([
     config.manifestFile,
     ...manifest.sources.map(({ path: source }) => source),
-    ...(config.adapters.unocss.enabled ? config.adapters.unocss.configFiles : []),
   ]);
   return (changes?.entries ?? []).flatMap(({ path: changedPath, oldPath, status }) => {
     if (typeof status !== 'string') return [];
@@ -65,29 +60,21 @@ function deletedContractPaths(config, manifest, changes) {
 
 function contractChanged(config, manifest, changes) {
   const changed = changedPaths(changes);
-  return changed.has('repo-guard.config.json')
-    || changed.has(config.manifestFile)
-    || manifest.sources.some(({ path: source }) => changed.has(source))
-    || (
-      config.adapters.unocss.enabled
-      && config.adapters.unocss.configFiles.some((file) => changed.has(file))
-    );
+  return changed.has(config.manifestFile)
+    || manifest.sources.some(({ path: source }) => changed.has(source));
 }
 
 function inspectSetup({ root, config }) {
   if (!config.checks.uiTokens.enabled) return readyGateSetup('UI Token 门禁已禁用');
   loadUiTokenManifest(root, config.checks.uiTokens);
-  if (config.checks.uiTokens.adapters.sass.enabled) {
-    const stylelint = resolveProjectStylelintMetadata(root);
-    if (!findProjectStylelintConfig(root)) {
-      throw configurationError(
-        'ui-token/missing-stylelint-config',
-        'UI Token 的 Sass 适配器要求消费项目提供 Stylelint 配置',
-      );
-    }
-    return readyGateSetup(`UI Token 门禁（Sass 使用 Stylelint ${stylelint.version}）`);
+  const stylelint = resolveProjectStylelintMetadata(root);
+  if (!findProjectStylelintConfig(root)) {
+    throw configurationError(
+      'ui-token/missing-stylelint-config',
+      'UI Token 样式检查要求消费项目提供 Stylelint 配置',
+    );
   }
-  return readyGateSetup('UI Token 门禁（UnoCSS 适配器）');
+  return readyGateSetup(`UI Token 门禁（${config.checks.uiTokens.languages.join('、')} 使用 Stylelint ${stylelint.version}）`);
 }
 
 export const uiTokenGate = definePlatformGate({
@@ -103,10 +90,10 @@ export const uiTokenGate = definePlatformGate({
   packageScript: 'guard:ui-tokens',
   rules: UI_TOKEN_RULES,
   inspectSetup,
-  plan({ root, config, files, changes }) {
+  plan({ root, config, files, changes, configurationChanged = false }) {
     if (!config.checks.uiTokens.enabled) return Object.freeze({ enabled: false, files: [] });
     const manifest = loadUiTokenManifest(root, config.checks.uiTokens);
-    const projectFiles = contractChanged(
+    const projectFiles = configurationChanged || contractChanged(
       config.checks.uiTokens,
       manifest,
       changes,
@@ -124,48 +111,29 @@ export const uiTokenGate = definePlatformGate({
   },
   async run({ root, config, plan }) {
     if (!plan.enabled) return skippedResult(UI_TOKEN_GATE_ID, 'UI Token 门禁已禁用');
-    const sassFiles = plan.files
-      .filter(({ relative }) => config.checks.uiTokens.adapters.sass.enabled && SASS_FILE.test(relative))
+    const styleFiles = plan.files
+      .filter(({ absolute }) => isUiTokenStyleFile(absolute, config.checks.uiTokens.languages))
       .map(({ absolute }) => absolute);
-    const unoFiles = plan.files.filter(({ relative }) => (
-      config.checks.uiTokens.adapters.unocss.enabled && UNOCSS_FILE.test(relative)
-    ));
-    const project = sassFiles.length > 0 ? await loadProjectStylelint(root) : null;
-    const manifestSourcePaths = new Set(plan.manifest.sources.map(({ path: source }) => source));
-    const unoConfigFiles = config.checks.uiTokens.adapters.unocss.enabled
-      ? config.checks.uiTokens.adapters.unocss.configFiles.filter((file) => manifestSourcePaths.has(file))
-      : [];
-    const [sassFacts, unocssFacts, unocssConfigurationFacts] = await Promise.all([
-      project
-        ? collectSassStyleFacts({ project, root, files: sassFiles })
-        : [],
-      collectUnoCssFacts({
-        root,
-        files: unoFiles,
-        config: config.checks.uiTokens.adapters.unocss,
-      }),
-      collectUnoCssConfigurationFacts({ root, files: unoConfigFiles }),
-    ]);
+    const project = styleFiles.length > 0 ? await loadProjectStylelint(root) : null;
+    const styleFacts = project ? await collectStyleFacts({
+      project, root, files: styleFiles, languages: config.checks.uiTokens.languages,
+    }) : [];
     const result = inspectUiTokens({
       config: { ...config.checks.uiTokens, exceptions: config.repository.exceptions },
       manifest: plan.manifest,
       deletedContractPaths: plan.deletedContractPaths,
-      sassFacts,
-      unocssFacts,
-      unocssConfigurationFacts,
+      styleFacts,
     });
     const metrics = {
-      checkedFiles: plan.files.length,
-      checkedSassFacts: result.checkedSassFacts,
-      checkedUnoCssFacts: result.checkedUnoCssFacts,
-      checkedUnoCssConfigurationFacts: result.checkedUnoCssConfigurationFacts,
+      checkedFiles: styleFiles.length,
+      checkedStyleFacts: result.checkedStyleFacts,
       approvedExceptions: result.approved.length,
       violations: result.violations.length,
     };
     if (result.violations.length === 0) {
       return passedResult(
         UI_TOKEN_GATE_ID,
-        `UI Token 门禁已通过，共检查 ${plan.files.length} 个文件`,
+        `UI Token 门禁已通过，共检查 ${styleFiles.length} 个文件`,
         { metrics },
       );
     }

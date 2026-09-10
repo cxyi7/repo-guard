@@ -48,6 +48,26 @@ function entry({ id, groupId, gates = [], features = [], capabilities = [], when
 
 const entries = [
   entry({
+    id: 'workspace-isolation',
+    groupId: 'repository-governance-policy',
+    when: ({ config }) => !config.project,
+    lines: () => [
+      '- 仓库公共配置只管理提交信息、交付流程、CI 公共流程、通知、动画和仓库基础文件保护；应用工程规则、依赖、例外与外部门禁必须配置在所属应用中。',
+      '- 前后端位于不同且不重叠的目录，各应用只遵循自己的工程配置；不得把前端规则复制为后端的强制要求。公共文件触发哪些应用，由 sharedPaths 显式声明。',
+    ],
+  }),
+  entry({
+    id: 'independent-delivery',
+    groupId: 'repository-governance-policy',
+    when: () => true,
+    lines: () => [
+      '- 如果仓库启用了 `repo-guard.delivery.json`，使用独立交付流程及 `.agents/skills/` 下五个交付 Skill；每个参与方绑定同一权威合同的明确修订和指纹，工程配置可以同时启用，语言与目录不决定交付义务。',
+      '- 独立交付先运行 `repo-guard delivery check`，按本方任务边界开发，再通过 `delivery run` 取得真实执行证据；关闭、跳过或手填成功状态不能代替必需检查。',
+      '- 各仓库使用自己的基线、分支和提交号；联合验证必须核对实际验证的完整代码版本组合。代码、合同或反馈修订后必须重新复测，不能沿用旧验收。',
+      '- AI 可以规划任务、执行检查并登记真实失败反馈；合同确认与最终验收由人工执行 `delivery approve` 和 `delivery accept`，AI 不得读取、保管或使用验收人的签名私钥。',
+    ],
+  }),
+  entry({
     id: 'project-identity',
     groupId: 'repository-governance-policy',
     when: ({ config }) => config.project != null,
@@ -187,17 +207,12 @@ const entries = [
     gates: ['quality.ui-tokens'],
     features: ['uiTokens'],
     when: enabled('checks.uiTokens'),
-    lines: ({ config }) => {
-      const adapters = Object.entries(config.checks.uiTokens.adapters)
-        .filter(([, adapter]) => adapter.enabled)
-        .map(([name]) => name);
-      return [
-        `- UI Token 门禁启用 ${list(adapters)} 适配器；检查范围为 ${list(config.checks.uiTokens.include)}，排除 ${list(config.checks.uiTokens.exclude)}。`,
-        `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.checks.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
-        `- Sass 只检查 .scss、.sass 和 Vue 中显式声明的 Sass style，必须使用 Manifest 中完整且类别匹配的别名，图标尺寸只在 ${list(config.checks.uiTokens.icon.sassSelectors)} 选择器中检查；UnoCSS 的 class、Attributify、variant group、shortcut 与断点展开后都必须可静态证明，禁止任意值、不可枚举动态 class、项目自定义 rules 及其他样式生成扩展。`,
-        `- ${code(config.checks.uiTokens.manifestFile)} 不得自引用；UnoCSS theme.breakpoints 与静态 shortcut 必须和 Manifest 双向一致，Manifest、来源文件或已启用配置不得从提交快照中被直接删除。`,
-      ];
-    },
+    lines: ({ config }) => [
+      `- UI Token 门禁检查 ${list(config.checks.uiTokens.languages)} 样式；sass 包含 .scss 与 .sass；检查范围为 ${list(config.checks.uiTokens.include)}，排除 ${list(config.checks.uiTokens.exclude)}。`,
+      `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.checks.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
+      `- CSS、Sass、Less 文件及 Vue 中对应语言的 style 块必须使用完整且类别匹配的别名，图标尺寸只在 ${list(config.checks.uiTokens.iconSelectors)} 选择器中检查；普通 CSS var(--name) 别名也可用于 Sass 与 Less，CSS 断点长度别名只用于 CSS，且必须是大于零的 px、em 或 rem。`,
+      `- ${code(config.checks.uiTokens.manifestFile)} 不得自引用；清单声明的 CSS、Sass、Less 变量只能在来源文件定义；Manifest、来源文件或已启用配置不得从提交快照中被直接删除，来源文件变更后必须重新生成清单指纹。`,
+    ],
   }),
   entry({
     id: 'pre-commit-order',
@@ -457,8 +472,8 @@ export function renderAgentPolicyGroups(context) {
 
 function entryAppliesToProject(item, config) {
   if (!config.project) {
-    return ['commit-animation', 'structured-exceptions', 'protected-files', 'delivery-contract',
-      'commit-message', 'pre-commit-order', 'code-placement', 'dependency-policy', 'ci',
+    return ['workspace-isolation', 'independent-delivery', 'commit-animation', 'protected-files', 'delivery-contract',
+      'commit-message', 'pre-commit-order', 'ci',
       'notification', 'release-readiness'].includes(item.id);
   }
   return config.project.role !== 'backend'

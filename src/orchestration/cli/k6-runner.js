@@ -1,5 +1,6 @@
 import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { gateStatusToExitCode } from '../../core/result/exit-code.js';
 import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { runK6ExternalRunner } from '../../gates/testing/k6-external-runner.js';
@@ -89,5 +90,5 @@ export async function runK6Runner({
     output: terminalProcessOutput(streamOutput),
   });
   writeConsoleMessage(report.summary, report.status === 'passed' ? 'stdout' : 'stderr');
-  return report.status === 'passed' ? 0 : 2;
+  return gateStatusToExitCode(report.status);
 }

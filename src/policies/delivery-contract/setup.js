@@ -6,6 +6,7 @@ import { inspectFeatureRegistry } from './feature-registry.js';
 import { loadDeliveryContractBundle } from './contract-bundle.js';
 import { createDeliveryContractLoader } from './loader.js';
 import { commitExists, resolveBranchCommit } from '../../git/delivery-contract-facts.js';
+import { hasDeliveryBinding, loadDeliveryWorkspace } from './collaboration.js';
 
 function loadPackageScripts(root, errors) {
   try {
@@ -102,7 +103,14 @@ function validateBindings(root, registry, contracts, errors) {
   }
 }
 
-export function inspectDeliveryContractSetup({ root, config }) {
+export function inspectDeliveryContractSetup({ root, config, environment }) {
+  if (hasDeliveryBinding(root)) {
+    try {
+      loadDeliveryWorkspace(root, { source: environment });
+      return { status: 'ready', summary: '独立交付合同绑定与人工确认有效' };
+    } catch (error) { return { status: 'incomplete', summary: error.message }; }
+  }
+  if (environment === 'pre-push') return { status: 'ready', summary: '当前仓库未接入独立交付合同' };
   if (!config.repository.deliveryContract.enabled) {
     return { status: 'ready', summary: '交付合同与交付证据门禁已禁用' };
   }

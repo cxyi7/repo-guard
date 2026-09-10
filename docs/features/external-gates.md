@@ -8,6 +8,8 @@
 
 ## 接入与配置
 
+多应用仓库的 `ci.externalGates` 只配置在所属应用中，根入口不能定义外部门禁。命令在该应用目录执行、从该应用读取脚本和报告；前后端可以使用相同的门禁 ID，但各自独立执行，CI 汇总保留应用标识。执行范围遵循显式 `--project` 或本次受影响应用。
+
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
 消费项目可以通过严格的 npm script 和 `repo-guard-json-v2` 报告接入项目自有检查：
@@ -66,4 +68,6 @@ npx repo-guard external project.engineering-review
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
-[实现入口](../../src/gates/testing/external-gate.js) · [对应测试](../../test/gates/testing/external-gate.test.js)
+项目脚本原始退出码用于核对报告，不直接透传为 repo-guard 退出码。有效报告与进程状态必须一致；正常检查发现违规最终返回 `2`，工具启动、超时或协议错误返回对应的配置/执行错误 `1`。CI 只报告模式可以保留失败报告而最终不阻断，多应用按[统一退出码规则](gate-result-and-reporting.md)汇总。
+
+[实现入口](../../src/gates/testing/external-gate.js) · [对应测试](../../test/gates/testing/external-gate.test.js) · [前后端同名门禁隔离回归](../../test/ci/application-external-gates.test.js)

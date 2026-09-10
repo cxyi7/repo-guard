@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { installHooks } from '../setup/hook-installer.js';
 
@@ -10,5 +11,5 @@ export function runInstallHooks(cwd = process.cwd()) {
   if (!result.skipped) {
     writeConsoleMessage(`repo-guard Hook 已安装到 ${result.root}`);
   }
-  return 0;
+  return EXIT_CODES.success;
 }

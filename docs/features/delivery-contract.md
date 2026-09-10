@@ -8,9 +8,159 @@
 
 [接入](#接入与配置) · [角色分工](#角色分工与交付时序) · [功能登记](#功能登记与合同规划) · [证据复核](#交付证据与两轮复核) · [反馈升级](#真实测试反馈与反向升级) · [字段格式](#字段与文件参考)
 
-本页统一维护功能登记、合同门禁、交付证据和真实反馈，覆盖当前 `schemaVersion: 2` 多文件合同包。它们是一套交付流程中的不同环节，共用 `deliveryContract` 配置。目录分文件用于控制规模和保存历史，阅读与维护入口集中在本页。
+本页统一维护独立交付、跨仓库协作，以及仓库内的 `schemaVersion: 2` 多文件合同包。工程检查和交付合同可以分别开启，也可以组合使用。独立交付使用下面的 `repo-guard.delivery.json`；已有仓库内合同包的详细资料继续在本页维护。同一仓库需明确选择一种交付入口，不能启用独立合同后静默跳过已有合同包约束。
 
-## 接入与配置
+## 独立交付与跨仓库协作
+
+一份共同合同描述需求、参与方、任务和验收。前后端的工程配置各自独立，合同本身不要求 Node 工程预设、`package.json`、JDK 或 Python；运行 npm CLI 仍需要 Node。实际执行 Java、Python 或 Node 检查时，需要对应工具及团队已有检查命令。
+
+| 组织方式 | 配置方式 |
+|---|---|
+| 同仓不同目录 | 一份合同，本仓库 `participants` 绑定多个参与方；各参与方声明不重叠的目录 |
+| 分仓、不同磁盘或不同电脑 | 各仓库保存同一合同版本的固定副本，只绑定本方参与者；交换带签名的执行证据 |
+| 只用交付合同 | 不创建工程配置，使用合同声明的检查命令 |
+| 合同与工程检查同时开启 | 保留应用工程配置，合同检查使用 `kind: gate` 引用实际 Gate；跳过或禁用不算通过 |
+
+团队指定一个权威合同来源，放在某个现有仓库或独立交付仓库中。变更需求、参与方或检查义务后，提高 `revision`，重新确认，再同步各方固定副本并执行 `bind`。Hook 不自动拉取远端、不访问另一人的本机目录。工作分支与基线按参与方分别声明，不要求前后端分支同名。
+
+### 初始化与独立开关
+
+以下命令在已有 Git 提交的仓库中执行。验收密钥由验收负责人持有，执行方使用自己的 runner 密钥。`keygen` 不输出私钥，也不会覆盖已有密钥；本地私钥目录与报告目录加入 `.gitignore`。
+
+```bash
+# 验收负责人准备密钥；分仓时只向执行方分发公钥
+npx repo-guard delivery keygen --name reviewer
+
+# 创建合同草案、执行密钥和绑定，不自动判定需求已经确认
+npx repo-guard delivery init --id report-export --participant web --repository web-repo --role frontend --reviewer-public-key .repo-guard/reviewer.pub
+
+# 完善生成的需求、任务、目录和必需检查后重新绑定
+npx repo-guard delivery bind --contract docs/delivery/report-export.json --participant web
+
+# 验收负责人确认当前合同定义
+npx repo-guard delivery approve --key-file .repo-guard/local/reviewer.pem
+
+# 只切换交付能力，工程配置和已有交付资料保留
+npx repo-guard delivery disable
+npx repo-guard delivery enable
+```
+
+同仓多个参与方绑定时使用 `--participant web,api`，必须列出合同中同一 `repositoryId` 的全部参与方，不能遗漏另一端来跳过其约束。不同仓库分别执行 `keygen --name runner`，将各自公钥登记到权威合同，再复制已确认合同和绑定本方。`init` / `bind` 会同步五个交付 Skill；需要提交和推送时自动检查，可再执行 `repo-guard install-hooks`。纯 Java / Python 仓库可通过全局安装的 CLI 运行，无需创建 `package.json`。私钥不进入 Git；CI 使用受信执行环境注入对应私钥。签名用于识别配置的执行方并防止传输篡改，不能代替对检查命令、验收负责人公钥和 CI 权限的审查。
+
+生成执行证据、联合验证、人工验收与最终复核要求本地工作区干净；未提交或未跟踪的代码不能沿用某个已验证提交的结果。独立合同关闭后跳过约束，关闭状态不能生成完成证据。
+
+`repo-guard.delivery.json` 示例结构如下。注释用于阅读，实际文件保存标准 JSON；指纹由 `bind` 生成，不能把占位值直接用于执行。
+
+```jsonc
+{
+  "version": 2, // 当前格式，只接受数字 2
+  "enabled": true, // 独立交付开关，不会开启或关闭应用工程检查
+  "contract": "docs/delivery/report-export.json", // 本仓库固定合同副本，相对仓库路径
+  "contractDigest": "由 bind 生成的 SHA-256 指纹", // 必须与合同定义一致
+  "participants": ["web"], // 本仓库参与方；同仓前后端可填 ["web", "api"]
+  "keyFile": ".repo-guard/local/runner.pem", // 仅接受本地忽略目录内的签名私钥路径
+  "evidenceDirectory": "reports/delivery" // 证据目录，必须在 reports/ 下
+}
+```
+
+完整字段结构见 [交付绑定 Schema](../../delivery.schema.json) 与 [共同合同 Schema](../../delivery-contract.schema.json)。所有相对路径禁止越出所属目录和通过链接跨仓访问。
+
+### 共同合同的字段
+
+| 字段 | 用途、取值与约束 |
+|---|---|
+| `version / documentType` | 固定为 `2` / `delivery-contract` |
+| `id / revision / title` | 稳定合同标识、正整数修订号、非空标题；修改定义后必须重新确认 |
+| `requirements[]` | 至少一个需求，包含唯一 `id`、非空 `description` 和非空验收标准数组 `acceptance` |
+| `participants[].id / repositoryId` | 稳定参与方和仓库标识，小写字母开头，允许数字与短横线；不使用机器绝对路径 |
+| `participants[].role / root` | `frontend` 或 `backend`；目录相对该仓库，同一仓库各参与方目录不得重叠，大小写别名也视为重叠 |
+| `baselineCommit / workingBranch` | 本方完整 Git 基线提交号和工作分支；基线必须属于本仓库当前历史 |
+| `participants[].publicKey` | 本方受信执行者的 Ed25519 公钥，验证导入证据的来源 |
+| `tasks[]` | 本方任务：唯一 `id`、`description`、已有需求 `requirementIds`、允许修改的 `allowedPaths`、必需检查 `checks`；每个需求必须分配任务 |
+| `tasks[].allowedPaths` | 相对参与方目录的 glob；重命名同时检查源路径和目标路径，不允许 `..` |
+| `checks[].id / kind` | 检查标识和 `gate` / `command` 类型；同一参与方标识唯一 |
+| `checks[].gateId` | `kind: gate` 时引用支持只读执行的 CI 工程 Gate，例如 `quality.unit-test`；不能递归引用交付 Gate |
+| `checks[].command / args` | `kind: command` 时指定程序及字符串参数数组，不经隐式 shell 展开；Java 可声明 Maven，Python 可声明现有测试入口 |
+| `checks[].timeoutMs` | 命令检查必填整数，范围 `1000～1800000` 毫秒 |
+| `checks[].testFiles` | 可选的非空测试文件路径数组，相对参与方目录；登记实现缺陷时必填，用于验证红绿测试内容一致 |
+| `integration.publicKey / checks` | 联合验证执行者及命令；多个参与方必须声明联合验证，各项 `participants` 合计覆盖全部参与方 |
+| `reviewerPublicKey / approval` | 人工确认公钥和合同定义签名；草案 `approval: null`，通过 `approve` 写入签名 |
+| `findings[]` | 实现缺陷、责任方、关联需求、回归检查、原始失败证据和反向改进义务；通过 `feedback` 登记 |
+
+合同可以声明业务需求和人工确认的协作约定；repo-guard 不自动判断接口输入输出、鉴权或业务设计是否正确。
+
+命令按操作系统明确配置。Windows 的 `.cmd` / `.bat` 需要显式使用 `command: "cmd.exe"` 和 `args: ["/d", "/s", "/c", "mvnw.cmd test"]` 这样的团队命令；Linux / macOS 可直接声明可执行的 `./mvnw`。工具不会自动把参数拼成 shell 脚本，也不会安装 Maven、Python 或第三方测试工具。
+
+### 执行、联调与验收
+
+先提交代码、合同和绑定，再记录证据。执行前后要求代码保持干净且 HEAD 不变，不能把未提交代码的测试结果登记到另一个提交上。工程与合同同时使用时，普通 CI 会把本方合同引用的实际 Gate 结果记录为证据；必需检查被关闭、跳过或失败都会阻止完成。
+
+`ci --profile full` 用于收集本轮新证据，随后进行联合验证与人工验收。验收后的 `ci --profile release-ready` 会重新执行必需检查，但成功复核不会仅因耗时等运行信息变化而替换已验收的通过证据；本次完整结果仍保存在 CI 报告中。任何新的失败、关闭或跳过会更新失败证据，在最终交付检查前撤销原通过状态，即使普通 CI 策略将该检查设为观察模式，也不能据此完成交付。
+
+```bash
+# 本方边界检查；同仓 run 必须明确选择参与方
+npx repo-guard delivery check
+npx repo-guard delivery run --participant web --check unit-tests
+npx repo-guard delivery status
+
+# 从对方导出的文件导入证据；也可使用其他磁盘上的文件路径
+npx repo-guard delivery import --from ../backend/reports/delivery/participants/api.json
+
+# 合同中已声明的联合检查；程序必须验证目标版本并输出本轮结果
+npx repo-guard delivery integrate --check joint-test --key-file .repo-guard/local/runner.pem
+
+# 负责人完成实际验收后签署；技术证据不全时命令拒绝执行
+npx repo-guard delivery accept --key-file .repo-guard/local/reviewer.pem --by 交付负责人
+npx repo-guard delivery verify
+```
+
+`unit-tests`、`joint-test` 是团队在合同中声明的检查标识，不是自动生成的测试。联合命令通过环境变量接收 `REPO_GUARD_DELIVERY_BASELINE`（合同指纹及参与方代码版本）、`REPO_GUARD_DELIVERY_BASELINE_DIGEST` 和 `REPO_GUARD_DELIVERY_REPORT`（本轮新报告路径）。程序应针对指定版本进行联调，并把实际观察到的版本写入报告。报告包含 `version: 2`、`status: "passed"`、`baselineDigest` 和完整 `subjects`；与目标不一致、无报告或旧报告都不能通过。协议见共同合同 Schema 中的 `integrationReport`。
+
+前端可以先提交并通过自己的检查。整体状态仍等待合同要求的后端、联调或人工验收。验收绑定确切版本组合与证据指纹；更换参与方版本并导入新证据后，旧联合验证和验收自动失效。本机 `verify` 不声称知道尚未同步的远端最新提交，它复核本次明确收集的版本组合。
+
+交付入口遵循[统一退出码](gate-result-and-reporting.md)：`status` 成功读取状态返回 `0`，不代表交付完成；`verify`、`accept` 在必需证据、联合验证或验收条件未满足时返回 `2`。`run`、`integrate` 区分检查未通过和运行异常：普通命令正常结束但非零返回 `2`，无法启动、超时或信号终止返回 `1`；工程 Gate 保留原始分类。配置错误为 `1`，不可信 Git 范围为 `3`。签名证据仍使用 `passed / failed`，跳过与运行异常不会生成通过证据；需要同时读取本次命令结果和诊断判断失败原因。
+
+### 真实反馈反向改进
+
+```bash
+# 先用合同声明的回归检查取得真实失败证据，再登记实现缺陷
+npx repo-guard delivery feedback --participant api --id export-bug --requirement export --description 导出结果缺少末页 --check export-regression --improvement 保留分页边界回归测试 --improvement-check export-regression
+```
+
+反馈写入共同合同，保留带执行签名的失败证据，提高修订号并清除旧确认。团队在权威来源评审修订、同步各参与方后重新确认；修复后必须以相同检查定义、相同 `testFiles` 内容在新代码提交上通过，并完成声明的反向改进检查，才能重新验收。需求或设计变化直接修订共同需求与任务，不伪造实现缺陷的红绿记录。发现问题后不能删除检查、只改复选框或重复使用旧验收来通过。
+
+```mermaid
+sequenceDiagram
+  participant 人 as 负责人
+  participant AI as 前后端 AI
+  participant 工具 as repo-guard
+  participant Git as 各仓库 Git
+  人->>AI: 确认共同需求、分工和验收标准
+  人->>工具: 签署合同定义
+  AI->>Git: 分别提交本方实现与配置
+  AI->>工具: 执行本方工程检查或现有命令
+  工具->>Git: 读取本方基线与确切提交
+  工具-->>AI: 记录签名证据，显示等待其他参与方
+  AI->>工具: 汇总各方证据并执行联合验证
+  人->>工具: 完成实际验收后签署版本组合
+  工具-->>人: 整体完成或明确列出待处理事项
+```
+
+```mermaid
+flowchart LR
+  A[真实测试发现问题] --> B[关联需求与责任方]
+  B --> C[保留失败证据并修订合同]
+  C --> D[人确认修订并同步前后端]
+  D --> E[修复代码 / 同一回归测试通过]
+  E --> F[验证测试或规则改进]
+  F --> G[重新联调与人工验收]
+```
+
+实现与测试：[字段校验](../../src/config/delivery-workspace.js)、[交付策略](../../src/policies/delivery-contract/collaboration.js)、[独立执行器](../../src/orchestration/delivery/execution.js)、[真实仓库回归](../../test/e2e/delivery-workflow.test.js)、[CI 签名证据回归](../../test/ci/delivery-receipts.test.js)。
+
+## 仓库内合同包：接入与配置
+
+**以下章节仅适用于仓库内 Markdown 多文件合同包。** 独立 `repo-guard.delivery.json` 模式使用上节的命令、Schema、执行签名和联合验证协议；不要混用两种组织方式的字段、证据或验收步骤。
 
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 

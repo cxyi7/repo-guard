@@ -17,6 +17,7 @@ import {
 } from './argument-parsing.js';
 import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { createGateResult, gateResultToExitCode } from '../../core/result/gate-result.js';
+import { EXIT_CODES, validateExitCode } from '../../core/result/exit-code.js';
 import { writeConsoleMessage, writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { runGate } from './gate.js';
 import { runHookMessage } from '../commit-message/runner.js';
@@ -24,7 +25,7 @@ import { runInstallHooks } from './install-hooks.js';
 import { runInit } from '../setup/project-initialization.js';
 import { runInstallCiCommand } from './install-ci.js';
 import { runPrePush } from '../pre-push/runner.js';
-import { runQualityFileCommand } from '../pre-commit/quality-command.js';
+import { runQualityFileArguments } from '../pre-commit/quality-command.js';
 import { runPreCommit } from '../pre-commit/runner.js';
 import { runGuardedBuild } from './guarded-build.js';
 import { runApiPerformanceRunner } from './api-performance-runner.js';
@@ -33,6 +34,7 @@ import { runDeadCodeBaseline } from './dead-code-baseline.js';
 import { runBuildArtifactBaseline } from './build-artifact-baseline.js';
 import { runImageOptimize } from './image-optimize.js';
 import { runOperations } from './operations.js';
+import { runDeliveryCommand } from './delivery.js';
 
 const registeredManualGates = gateRegistry.all
   .filter(({ manualCommand }) => manualCommand)
@@ -72,6 +74,7 @@ repo-guard - 仓库保护门禁
   repo-guard ci-notify [--status success|failed|canceled]
   repo-guard ops plan
   repo-guard ops install [--dry-run]
+  repo-guard delivery <init|keygen|bind|enable|disable|approve|check|run|import|integrate|feedback|status|accept|verify> [选项]
 ${EARLY_MANUAL_HELP}
   repo-guard check
   repo-guard gate [--dry-run] [--force-notify]
@@ -91,7 +94,8 @@ ${REGISTERED_MANUAL_HELP}
 
 应用选择：
   doctor、ci、enable、disable 和应用检查支持 --project <id>。
-  多应用工作区中的提交与推送按配置清单依次检查全部应用。
+  多应用工作区中的提交与推送只检查受影响的应用；release-ready 检查全部必需目标。
+  delivery 独立于工程检查，可用于 Node、Java、Python 仓库；详细选项见交付合同文档。
   预设：vue-javascript、vue-typescript、node-javascript、node-typescript。
 
 退出码：
@@ -129,7 +133,7 @@ function requireSingleArgument(argumentsList, { allowed = null, code, message })
 
 const helpCommand = () => {
   writeConsoleMessage(HELP_TEXT);
-  return 0;
+  return EXIT_CODES.success;
 };
 
 function projectDeclaration(argumentsList, projectId) {
@@ -139,6 +143,7 @@ function projectDeclaration(argumentsList, projectId) {
 }
 
 const COMMAND_HANDLERS = Object.freeze({
+  delivery: (argumentsList) => runDeliveryCommand(argumentsList),
   help: helpCommand,
   '--help': helpCommand,
   '-h': helpCommand,
@@ -198,7 +203,7 @@ const COMMAND_HANDLERS = Object.freeze({
     input: process.stdin.isTTY ? '' : readFileSync(0, 'utf8'),
     remoteName: argumentsList[0] || 'origin',
   }),
-  'quality-files': (argumentsList) => runQualityFileCommand(argumentsList),
+  'quality-files': (argumentsList) => runQualityFileArguments(argumentsList),
   check: withoutOptions(runCheck),
   gate: async (argumentsList) => {
     ensureSupportedOptions(argumentsList, new Set(['--dry-run', '--force-notify']));
@@ -300,7 +305,7 @@ export async function runCli(argumentsList) {
   const [command = 'help', ...rest] = argumentsList;
 
   try {
-    return await runKnownCommand(command, rest);
+    return validateExitCode(await runKnownCommand(command, rest));
   } catch (error) {
     const typedError = toRepoGuardError(error, {
       kind: 'execution',

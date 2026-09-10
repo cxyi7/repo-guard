@@ -1,11 +1,10 @@
 import path from 'node:path';
-import { existsSync } from 'node:fs';
-import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { resolveCiRange } from './change-range.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
 import { classifyChanges } from '../../policies/change-classification.js';
 import { collectProjectFiles } from '../../policies/file-placement.js';
-import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
+import { createGateResult, gateResultToExitCode } from '../../core/result/gate-result.js';
 import {
   writeConsoleMessage,
   writeGateResultConsole,
@@ -16,7 +15,7 @@ import {
   createGateContext,
 } from '../../core/capability/gate-context.js';
 import { createProjectGateRegistry } from '../../gates/registry.js';
-import { REPOSITORY_GATE_IDS } from '../../gates/project-applicability.js';
+import { REPOSITORY_GATE_IDS, SHARED_AND_APPLICATION_GATE_IDS } from '../../gates/project-applicability.js';
 import { defineExecutionPlan, validateExecutionPlan } from '../../core/capability/execution-plan.js';
 import { scopeProjectChanges } from '../workspace/targets.js';
 import {
@@ -27,6 +26,8 @@ import {
 import { orchestratePlan } from '../orchestrator.js';
 import { CI_REPORT_VERSION, writeCiReport } from './report.js';
 import { createCiGatePolicyController } from './gate-policy.js';
+import { deliveryDigest, deliveryTestDigest, hasDeliveryBinding, loadDeliveryWorkspace } from '../../policies/delivery-contract/collaboration.js';
+import { assertCleanSubject, recordDeliveryGateResults } from '../delivery/execution.js';
 
 function isTrustedExternalGateCi(env) {
   return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
@@ -52,7 +53,7 @@ function writeCiLifecycleError(gateId, status, error) {
   });
   const result = createGateResult({
     gateId,
-    status,
+    status: errorStatus(typedError),
     summary: typedError.message,
     error: typedError,
   });
@@ -66,7 +67,7 @@ function scopedPlan(plan, scope, root, registry, { skipRepositoryAgentPolicy = f
     if (scope === 'evidence') return gateId === 'release.delivery-evidence';
     if (gateId === 'release.delivery-evidence') return false;
     if (gateId === 'repository.agent-policy') return scope === 'project' || !skipRepositoryAgentPolicy;
-    if (gateId === 'dependencies.policy') return scope === 'project' || existsSync(path.join(root, 'package.json'));
+    if (SHARED_AND_APPLICATION_GATE_IDS.has(gateId)) return true;
     return scope === 'repository' ? REPOSITORY_GATE_IDS.has(gateId) : !REPOSITORY_GATE_IDS.has(gateId);
   });
   return validateExecutionPlan(defineExecutionPlan({ ...plan, id: `${plan.id}:${scope}`, steps }), registry);
@@ -86,6 +87,8 @@ export async function runCiGate({
   initialPriorResults = [],
   skipRepositoryAgentPolicy = false,
   onReport = null,
+  repositoryProtectedChanges = null,
+  configurationChanged = null,
 } = {}) {
   reportPath ||= config.ci.reportPath;
   reportPath = validateCiReportPath(reportPath);
@@ -114,7 +117,7 @@ export async function runCiGate({
       ...configurationErrorReport(profile, error),
       gateResult,
     });
-    return gateStatusToExitCode('configuration-error');
+    return gateResultToExitCode(gateResult);
   }
   if (!['policy', 'full', 'release-ready'].includes(profile)) {
     const error = configurationError(
@@ -126,7 +129,7 @@ export async function runCiGate({
       ...configurationErrorReport(profile, error),
       gateResult,
     });
-    return gateStatusToExitCode('configuration-error');
+    return gateResultToExitCode(gateResult);
   }
 
   let range;
@@ -137,18 +140,19 @@ export async function runCiGate({
       changes: scopeProjectChanges(fullRange.changes, path.relative(repositoryRoot, root).replaceAll('\\', '/')),
     };
   } catch (error) {
+    const gateResult = writeCiLifecycleError('ci.range', 'range-error', error);
     const report = {
       version: CI_REPORT_VERSION,
-      status: 'range-error',
+      status: gateResult.status,
       profile,
       base: base ?? null,
       head: head ?? null,
       steps: [],
       error: error.message,
+      gateResult,
     };
-    report.gateResult = writeCiLifecycleError('ci.range', 'range-error', error);
     publishReport(report);
-    return gateStatusToExitCode('range-error');
+    return gateResultToExitCode(gateResult);
   }
 
   const reportPaths = new Set([reportPath, ...config.ci.externalGates.map(({ report }) => report.path)]);
@@ -164,6 +168,13 @@ export async function runCiGate({
     writeGateResultConsole(result, { label: name });
   };
   const registry = createProjectGateRegistry(config);
+  const delivery = hasDeliveryBinding(repositoryRoot) ? loadDeliveryWorkspace(repositoryRoot) : null;
+  if (delivery?.binding.enabled) config = { ...config, ci: { ...config.ci, gatePolicy: {
+    ...config.ci.gatePolicy, gates: { ...config.ci.gatePolicy.gates,
+      'repository.delivery-contract': { mode: 'enforce', scope: 'all-files' },
+      'release.delivery-evidence': { mode: 'enforce', scope: 'all-files' },
+    },
+  } } };
   const includeExternalGates = isTrustedExternalGateCi(env);
   const originalPlan = profile === 'release-ready'
     ? createProjectReleaseReadyPlan(config, registry, { includeExternalGates })
@@ -181,6 +192,9 @@ export async function runCiGate({
     repositoryRoot,
     environment: ciPlan.environment,
     config,
+    configurationChanged: configurationChanged ?? range.changes.some(({ path: current, oldPath }) => (
+      current === 'repo-guard.config.json' || oldPath === 'repo-guard.config.json'
+    )),
     changes: changeSet,
     files: projectFiles,
     artifactDirectory: path.dirname(path.join(root, reportPath)),
@@ -204,31 +218,50 @@ export async function runCiGate({
     );
     publishReport({
       ...configurationErrorReport(profile, typedError),
+      status: gateResult.status,
       base: range.base,
       head: range.head,
       gateResult,
     });
-    return gateStatusToExitCode('configuration-error');
+    return gateResultToExitCode(gateResult);
   }
-  const protectedChanges = classifyChanges(changeSet.entries, config);
+  const protectionChangeSet = repositoryProtectedChanges == null ? changeSet
+    : createChangeSet({ source: changeSet.source, revision: changeSet.revision, changes: repositoryProtectedChanges });
+  const protectedChanges = classifyChanges(protectionChangeSet.entries, config);
+  const deliveryTargets = delivery?.binding.enabled && ['all', 'project'].includes(scope)
+    ? delivery.localParticipants.filter((participant) => path.resolve(repositoryRoot, participant.root) === path.resolve(root)
+      && participant.checks.some((check) => check.kind === 'gate' && ciPlan.steps.some(({ gateId }) => gateId === check.gateId)))
+      .map((participant) => loadDeliveryWorkspace(repositoryRoot, { participantId: participant.id }))
+    : [];
+  for (const workspace of deliveryTargets) assertCleanSubject(workspace, range.head);
   const execution = await orchestratePlan({
     plan: ciPlan,
     registry,
     context,
     initialPriorResults,
-    prepareStepContext: gatePolicy.prepareStepContext,
+    prepareStepContext: (options) => gatePolicy.prepareStepContext(options.gate.id === 'repository.protected-files'
+      ? { ...options, context: { ...options.context, changes: protectionChangeSet } } : options),
     beforeStep: gatePolicy.beforeStep,
-    onResult: ({ result, step }) => recordResult(
-      step.reportName ?? step.id,
-      result,
-      {
+    onResult: ({ result, step }) => {
+      recordResult(step.reportName ?? step.id, result, {
         includeGateResult: true,
         gatePolicy: gatePolicy.describe(step),
-      },
-    ),
+      });
+      // 同一门禁可能先检查策略、再执行工具；只记录最后一次实际执行结果。
+      if (ciPlan.steps.findLast(({ gateId }) => gateId === result.gateId)?.id !== step.id) return;
+      for (const workspace of deliveryTargets) {
+        const checks = workspace.participant.checks.filter((check) => check.kind === 'gate' && check.gateId === result.gateId)
+          .map((check) => ({ id: check.id, definitionDigest: deliveryDigest(check),
+            testDigest: deliveryTestDigest(workspace, check), status: result.status === 'passed' ? 'passed' : 'failed', resultDigest: deliveryDigest(result) }));
+        if (checks.length) {
+          assertCleanSubject(workspace, range.head);
+          recordDeliveryGateResults(workspace, checks, { preservePassed: profile === 'release-ready' });
+        }
+      }
+    },
   });
   const policyExecution = gatePolicy.evaluate(execution);
-
+  for (const workspace of deliveryTargets) assertCleanSubject(workspace, range.head);
   const status = policyExecution.status === 'execution-error'
     ? 'error'
     : policyExecution.status === 'configuration-error'

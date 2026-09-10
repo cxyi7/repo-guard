@@ -112,7 +112,7 @@ test('多应用只改所选应用，公共 CI 独立写根', (t) => {
   assert.equal(read(root).ci.pipeline, undefined);
 });
 
-test('多应用 UI 契约与构建基线保护写入仓库公共规则并使用应用相对路径', (t) => {
+test('多应用 UI 契约与构建基线保护写入应用策略，保留既有仓库规则', (t) => {
   const root = fixture(t);
   mkdirSync(path.join(root, 'apps/web'), { recursive: true });
   write(path.join(root, 'apps/web'), {
@@ -127,7 +127,7 @@ test('多应用 UI 契约与构建基线保护写入仓库公共规则并使用�
       uiTokens: {
         enabled: false,
         manifestFile: 'design/tokens.json',
-        adapters: { sass: { enabled: true } },
+        languages: ['sass'],
       },
       build: {
         enabled: true,
@@ -152,17 +152,13 @@ test('多应用 UI 契约与构建基线保护写入仓库公共规则并使用�
     repository: { rules: [existing] },
   });
   setFeaturesEnabled(root, ['uiTokens'], true, { projectId: 'web' });
-  assert.deepEqual(read(root).repository.rules, [
-    existing,
-    {
-      pattern: 'apps/web/design/tokens.json',
-      category: 'UI Token 契约',
-      level: 'notify',
-    },
-  ]);
-  assert.equal(read(path.join(root, 'apps/web')).repository, undefined);
+  assert.deepEqual(read(root).repository.rules, [existing]);
+  const rules = read(path.join(root, 'apps/web')).repository.rules;
+  assert.ok(rules.some((rule) => rule.pattern === 'design/tokens.json' && rule.level === 'notify'));
+  assert.ok(rules.some((rule) => rule.pattern === '.repo-guard/budget.json'));
   setFeaturesEnabled(root, ['uiTokens'], false, { projectId: 'web' });
-  assert.equal(read(root).repository.rules.length, 2);
+  assert.equal(read(root).repository.rules.length, 1);
+  assert.deepEqual(read(path.join(root, 'apps/web')).repository.rules, rules);
 });
 
 for (const version of [1, 0, 3, '2', null, undefined]) {

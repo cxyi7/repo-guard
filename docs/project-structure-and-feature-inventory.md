@@ -20,7 +20,8 @@
 
 | 范围 | 明确由谁配置 | 当前执行方式 |
 |---|---|---|
-| 仓库公共规范 | 团队统一配置 `repository`、`reporting`、`ci` | 仓库级规则在公共上下文执行；依赖策略覆盖根包及应用包 |
+| 仓库公共规范 | 提交信息、公共 CI 流程、通知动画、基础文件保护 | 公共上下文执行，不向应用继承依赖、保护和豁免规则 |
+| 独立交付 | 人确认共同合同，各参与方绑定同一修订 | 独立于工程预设；同仓多应用或跨仓库汇总签名证据与联合验收 |
 | 前端应用 | 人或 AI 声明 `project.id / role / stack / preset` | 使用前端预设和应用目录中的工具与配置 |
 | Node 后端应用 | 人或 AI 声明 `role: backend`、`stack: node` 及 Node 预设 | 复用工程检查，跳过 Vue 专项，不绑定具体后端框架 |
 | 运维发布 | 运维或应用负责人配置独立的 `repo-guard.ops.json` | 按项目标识生成 GitLab 质量、构建和部署作业 |
@@ -29,7 +30,22 @@
 
 ### 2 单应用与多应用
 
-单应用将身份、检查与公共规则放在根目录 `repo-guard.config.json`。多应用由根配置的 `projects` 列表声明各应用目录和配置文件；子应用配置声明自己的 `project` 和 `checks`，不得覆盖仓库统一的 `repository / reporting / ci`。
+单应用将身份、检查与公共规则放在根目录 `repo-guard.config.json`。多应用由根配置的 `projects` 声明目录和配置；子应用声明 `project`、`checks`、应用 `repository` 策略以及 `ci` 检查选项。依赖策略、规则豁免、代码归位和外部门禁都归应用所有。`sharedPaths` 显式描述共享文件对应用的影响。
+
+独立交付配置为 `repo-guard.delivery.json`，不要求工程配置或 `package.json` 存在。`delivery-workspace.js` 验证合同身份与字段；`policies/delivery-contract/collaboration.js` 校验边界、签名、版本组合和反馈；`orchestration/delivery/` 执行明确声明的检查并保存证据。工程检查通过 Gate 适配接入，合同校验不依赖 Node、Java 或 Python 预设。
+
+```mermaid
+flowchart TD
+  A[人工确认共同交付合同] --> B[仓库 A / 前端参与方]
+  A --> C[仓库 A 或 B / 后端参与方]
+  B --> D[前端独立工程配置]
+  C --> E[后端独立工程配置或现有检查命令]
+  D --> F[绑定代码版本的签名证据]
+  E --> F
+  F --> G[联合验证与人工验收]
+  G --> H[反馈 / 同一测试红绿证据 / 反向改进]
+  H --> A
+```
 
 ```text
 消费项目/
@@ -50,6 +66,8 @@
 
 这些目录名称只是示例，实际位置由配置声明。应用目录不得重叠，配置路径不得越出所属目录；符号链接和目录联接也需满足实际路径边界。同仓各应用共用一个 Git Hook 入口，按应用建立 `GateContext`；从仓库根目录执行需要单个目标的命令时使用 `--project <id>`。
 
+配置加载层从已验证的应用绝对路径计算规范的仓库相对路径；`./`、重复分隔符与尾部分隔符不影响 Git 变更归属，根目录应用统一为 `.`。这一处理同时适用于磁盘和 Git 快照，不改写原配置。
+
 ### 3 源码目录
 
 ```text
@@ -68,6 +86,7 @@ repo-guard/
 │  │  ├─ pre-commit/            单次 lint-staged 隔离与固定检查顺序
 │  │  ├─ pre-push/              真实推送范围、快照验证与重型检查
 │  │  ├─ ci/                    CI 中的质量执行与结果汇总
+│  │  ├─ delivery/              独立交付检查执行、签名及证据交换
 │  │  ├─ doctor/                按仓库及应用诊断接入状态
 │  │  ├─ setup/                 写入前格式预检、初始化与托管资料同步
 │  │  └─ cli/                   命令参数及各流程入口
@@ -84,7 +103,9 @@ repo-guard/
 ├─ .agents/skills/              本仓库维护者 Skill
 ├─ scripts/                     本仓库的检查、测试收集与打包验证
 ├─ config.schema.json           项目和工作区质量配置
-├─ project.schema.json          仅允许子应用身份与检查，不接受公共分区
+├─ project.schema.json          应用身份、检查与本方策略
+├─ delivery.schema.json         独立交付绑定配置
+├─ delivery-contract.schema.json 共同需求、参与方、任务、联合验证和反馈
 ├─ operations.schema.json       独立运维配置
 └─ package.json                 npm 入口、导出和维护命令
 ```
@@ -111,6 +132,8 @@ repo-guard/
 
 `core`、`profiles` 和 `config` 的底层边界、运维与质量编排的独立边界、Gate 领域边界、循环依赖及不可解析导入，由 `.dependency-cruiser.cjs` 和架构测试共同约束。结构调整应先判断职责归属，再修改依赖。
 
+样式 Token 检查沿用这些边界：`config` 校验 `checks.uiTokens.languages` 与 v2 清单；`integrations/ui-tokens/` 使用消费项目的 Stylelint 和语法配置提取 CSS、SCSS/Sass、Less 及 Vue 内联样式事实；`policies/ui-tokens.js` 检查 12 类 Token 的完整别名、类别与变量定义归属；`quality.ui-tokens` 组合清单指纹、扫描范围和只读报告。CSS 断点采用清单允许值，普通 CSS 变量也可在 Sass/Less 声明中使用。UnoCSS 类名、配置与 shortcut 分析已移除；不新增编译器执行、语言自动探测或工具安装职责。该能力仅归前端应用，其清单保护和例外都使用所属应用规则，详见[样式 Token 检查](features/ui-tokens.md)。
+
 ## 执行与可信结果
 
 - **提交前**：根配置和子应用配置一起从索引读取；同一次 `lint-staged` 隔离两个应用的部分暂存内容。依次对各应用执行 Stylelint 修复、ESLint 修复、Prettier、只读复核和适用策略，仓库受保护文件门禁最后执行。
@@ -125,7 +148,8 @@ repo-guard/
 | `project` / `profiles` | 固定项目身份、预设和适用范围 |
 | `GateContext` / `ChangeSet` | 同时携带仓库根目录、应用根目录、项目身份和可信变更 |
 | Registry / Execution Plan | 维护稳定能力 ID 与不可随意重排的执行顺序 |
-| `GateResult` | 区分通过、跳过、违规、配置错误及执行错误，提供中文修复建议 |
+| `GateResult` | 区分通过、跳过、违规、配置错误、执行错误及范围错误，提供中文修复建议 |
+| `core/result/exit-code.js` | 唯一退出码、状态映射、第三方进程归类与多结果优先级；各入口共用 |
 | 运维发布计划 | 绑定同一应用的质量、构建、产物、分支和环境 |
 | Delivery Contract / Evidence Run | 为团队启用的交付资料与反馈流程提供可核验依据 |
 
@@ -134,6 +158,8 @@ repo-guard/
 项目配置只支持 `version: 2`。旧解析器、冻结旧默认值、迁移 CLI/API 和字段转换已删除；读取旧配置直接拒绝且不改写原文件，接入时由人工按新架构重新建立。功能登记表、托管 Skill 清单、UI Token、基线及报告也统一使用 v2；外部门禁标识为 `repo-guard-json-v2`。Hook 仅接受当前 v5 标记，AGENTS 仅接受当前职责区块，不再转换旧托管文件。格式清单见[配置管理与规则启停](features/configuration-management.md)。
 
 可选提交动画位于 `core/report/commit-animation`，配置归属 `reporting.commitAnimation`，不注册为 Gate。动画不改变失败状态，成功庆祝只在真实 `post-commit` 后发生。详细说明见[提交动画](features/commit-animation.md)。
+
+退出码在 `core/result/exit-code.js` 收口：`0` 成功或非阻断，`1` 配置/执行错误，`2` 违规或交付条件未满足，`3` 范围错误。编排先确定阻断策略，再调用公共汇总，按执行错误、配置错误、范围错误、违规确定结果；不取首个非零值、不压缩 Hook 失败类型、不透传第三方退出码。原始进程状态保留为诊断。只有 CLI 的 `bin` 写入主进程退出码，生成的运维子脚本注入同一常量；[出口边界测试](../test/architecture/exit-code-boundary.test.js)防止新入口再次分散实现。详细使用语义见[结果与报告](features/gate-result-and-reporting.md)。
 
 ## 测试组织与扩展边界
 

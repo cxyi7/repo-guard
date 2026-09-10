@@ -20,10 +20,10 @@ function approval(id, file) {
   };
 }
 
-function fixture(context, declarations, entries) {
+function fixture(context, declarations, entriesByApplication) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'repo-guard-app-exceptions-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  const document = { version: 2, projects: declarations, repository: { exceptions: { entries } } };
+  const document = { version: 2, projects: declarations };
   writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify(document));
   for (const project of declarations) {
     const directory = path.join(root, project.root);
@@ -31,6 +31,7 @@ function fixture(context, declarations, entries) {
     writeFileSync(path.join(directory, 'src/runtime.js'), "eval('legacy');\n");
     writeFileSync(path.join(directory, project.config), JSON.stringify({
       version: 2, project: { id: project.id, role: 'backend', stack: 'node', preset: 'node-javascript' },
+      repository: { exceptions: { entries: entriesByApplication[project.id] ?? [] } },
     }));
   }
   return root;
@@ -42,13 +43,13 @@ function inspect(project) {
   return dynamicCodeGate.run({ root: project.root, config: project.config, plan });
 }
 
-test('仓库例外只放行指定应用，同名文件与根目录例外不能跨应用套用', (context) => {
-  const entries = [approval('api-approved', 'apps/api/src/runtime.js'), approval('root-approved', 'src/runtime.js')];
-  const root = fixture(context, ['api', 'worker'].map((id) => ({ id, root: `apps/${id}`, config: 'guard.project.json' })), entries);
+test('应用例外只放行本应用，同名文件不能跨应用套用且根入口不接受例外', (context) => {
+  const entries = [approval('api-approved', 'src/runtime.js')];
+  const root = fixture(context, ['api', 'worker'].map((id) => ({ id, root: `apps/${id}`, config: 'guard.project.json' })), { api: entries });
   const original = readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8');
   for (const options of [{}, { readDocument: (relative) => readFileSync(path.join(root, relative), 'utf8') }]) {
     const workspace = loadWorkspace(root, options);
-    assert.deepEqual(workspace.repositoryConfig.repository.exceptions.entries.map(({ path: file }) => file), entries.map(({ path: file }) => file));
+    assert.deepEqual(workspace.repositoryConfig.repository.exceptions.entries, []);
     const [api, worker] = workspace.projects;
     assert.deepEqual(api.config.repository.exceptions.entries.map(({ id, path: file }) => ({ id, path: file })), [{ id: 'api-approved', path: 'src/runtime.js' }]);
     assert.deepEqual(worker.config.repository.exceptions.entries, []);
@@ -59,11 +60,15 @@ test('仓库例外只放行指定应用，同名文件与根目录例外不能�
     assert.equal(inspect(worker).status, 'violation');
   }
   assert.equal(readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'), original);
+  writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify({ ...JSON.parse(original), repository: { exceptions: { entries } } }));
+  assert.throws(() => loadWorkspace(root), /仓库公共 repository 包含不支持的属性： exceptions/);
 });
 
 test('根目录应用保留完整相对路径，例外的单应用语义不变', (context) => {
-  const root = fixture(context, [{ id: 'api', root: '.', config: 'guard.project.json' }], [approval('api-approved', 'src/runtime.js')]);
+  const entries = [approval('api-approved', 'src/runtime.js')];
+  const root = fixture(context, [{ id: 'api', root: '.', config: 'guard.project.json' }], { api: entries });
   const { projects, repositoryConfig } = loadWorkspace(root);
-  assert.deepEqual(projects[0].config.repository.exceptions, repositoryConfig.repository.exceptions);
+  assert.deepEqual(projects[0].config.repository.exceptions.entries, entries);
+  assert.deepEqual(repositoryConfig.repository.exceptions.entries, []);
   assert.equal(inspect(projects[0]).status, 'passed');
 });

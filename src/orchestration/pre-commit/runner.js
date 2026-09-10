@@ -62,7 +62,7 @@ async function runPreCommitLifecycle(root, animation) {
       },
     );
   }
-  return execution.exitCode === 0 ? 0 : 1;
+  return execution.exitCode;
 }
 
 export async function runPreCommit(cwd = process.cwd()) {

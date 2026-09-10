@@ -11,6 +11,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { securityError } from '../../core/error/repo-guard-error.js';
+import { DELIVERY_CONFIG_FILE, validateDeliveryBinding } from '../../config/delivery-workspace.js';
 
 const SKILL_NAMES = Object.freeze([
   'repo-guard-feature-registry',
@@ -179,6 +180,9 @@ export function assertDeliverySkillManifestFormat(root, expectedFiles = sourceFi
 }
 
 export function syncDeliverySkills(root, enabled) {
+  if (existsSync(path.join(root, DELIVERY_CONFIG_FILE))) {
+    enabled ||= validateDeliveryBinding(JSON.parse(readFileSync(path.join(root, DELIVERY_CONFIG_FILE), 'utf8'))).enabled;
+  }
   const expectedFiles = sourceFiles();
   const previous = assertDeliverySkillManifestFormat(root, expectedFiles);
   const previousFiles = new Map((previous?.files ?? []).map((file) => [file.path, file]));
@@ -233,6 +237,9 @@ export function syncDeliverySkills(root, enabled) {
 }
 
 export function inspectDeliverySkills(root, enabled) {
+  if (existsSync(path.join(root, DELIVERY_CONFIG_FILE))) {
+    enabled ||= validateDeliveryBinding(JSON.parse(readFileSync(path.join(root, DELIVERY_CONFIG_FILE), 'utf8'))).enabled;
+  }
   const expectedFiles = sourceFiles();
   const manifest = readManifest(root, expectedFiles);
   const hasManifest = manifestExists(root);

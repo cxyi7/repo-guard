@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -32,5 +33,5 @@ export async function runDeadCodeBaseline(action, cwd = process.cwd(), options =
   else if (action === 'prune') result = await pruneDeadCodeBaseline(root, config);
   else throw configurationError('dead-code/unknown-baseline-action', '基线操作必须为 init 或 prune');
   renderResult(result);
-  return 0;
+  return EXIT_CODES.success;
 }

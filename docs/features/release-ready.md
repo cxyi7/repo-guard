@@ -47,7 +47,7 @@
 
 <!-- config-fields:end -->
 
-多应用仓库的 `checks` 分别写入子应用配置，`ci` 写入仓库根配置。执行：
+多应用仓库的 `checks` 分别写入子应用配置；`ci.enabled / profile / reportPath` 写入仓库根配置，本方 `ci.protectedFiles / gatePolicy / externalGates` 写入应用配置。执行：
 
 ```bash
 npx repo-guard ci --profile release-ready --base <sha> --head <sha>
@@ -55,6 +55,8 @@ npx repo-guard ci --profile release-ready --project api --base <sha> --head <sha
 ```
 
 ## 检查顺序
+
+不传 `--project` 时，`release-ready` 复核清单中全部应用；这与普通 `policy / full` 按变更选择受影响应用不同。指定应用时只加载本方工程配置并复核公共规则，未选择应用不会显示为通过。
 
 仓库公共规则 → 各应用的完整工程检查、测试和构建 → 适用且启用的 Lighthouse 与外部门禁 → 最终交付证据复核。
 
@@ -68,11 +70,13 @@ npx repo-guard ci --profile release-ready --project api --base <sha> --head <sha
 
 聚合报告位于根目录 `ci.reportPath`；应用报告位于各自目录的 `reports/repo-guard-workspace/projects/<项目 id>.json`，交付证据报告位于根目录 `reports/repo-guard-workspace/evidence.json`。每个目标包含 `projectId`、`projectRoot`、检查范围和退出码。以上报告及错误报告统一使用 `version: 2`，内部 `GateResult` 使用 `schemaVersion: 2`；写入和汇总拒绝旧报告，需重新运行生成当前结果。
 
-同名门禁在多个目标执行时，聚合结果保留最严重状态及每个目标的结果指纹。交付合同的证据应绑定聚合报告中的 `gateResults`；原始应用报告仍保留，便于定位与复测。`--project` 只证明被选择应用及公共仓库的结果，不表示整个仓库的全部应用通过。
+同名门禁在多个目标执行时，`gateResults` 保留最严重状态及各目标的结果指纹，`scopedGateResults` 另外保留具体应用来源。仓库内合同包的 Evidence Run 使用聚合结果；独立合同为对应参与方记录签名证据，不能把前端同名 Gate 的通过当作后端通过。原始应用报告继续保留，便于定位与复测。
 
-关闭交付合同仍可执行工程质量验证。开启后按[统一交付手册](delivery-contract.md#交付证据与两轮复核)完成技术结果采集、人工验收、证据元数据提交与最终复核。首次运行末尾证据检查尚未完成时，不能把前序通过报告成整体通过。
+关闭交付合同仍可执行工程质量验证。仓库内合同包按[两轮复核](delivery-contract.md#交付证据与两轮复核)完成技术结果采集、人工验收、证据元数据提交与最终复核。独立合同按[跨仓交付流程](delivery-contract.md#执行联调与验收)收集各方签名证据、针对明确版本组合执行联合检查，再由人签署验收。两个入口不能在同一仓库同时启用。
 
-代码、定义、目标基线或 GateResult 变化会使旧证据失效。失败后修复并重新运行，不通过删除用例、降低阈值或手工改报告获得通过。
+独立合同的检查必须实际通过，`skipped` 或禁用不能满足必需项；所有参与方及联合验证、人工验收未齐全时，前端自己的工程检查通过也不表示整体交付完成。验收绑定本轮收集的合同与代码版本组合；本机复核不自动获知未同步的远端提交。
+
+代码、合同定义或目标基线变化会使旧证据失效。独立合同在普通 `ci full` 中收集新证据，人工验收后使用 `release-ready` 复核；已有通过证据不因复核耗时变化被覆盖，本轮详细结果另存 CI 报告。失败、关闭或跳过必需检查会在最终证据检查前更新失败状态，观察模式不能使交付通过。仓库内合同包继续按其技术与执行指纹规则复核。失败后修复并重新运行，不通过删除用例、降低阈值或手工改报告获得通过。
 
 此命令只输出质量与证据结论，不上传 npm 包或部署应用。发布权限、环境与应用产物由[独立运维模块](managed-delivery-pipeline.md)管理。
 

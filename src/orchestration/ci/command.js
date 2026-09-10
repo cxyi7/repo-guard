@@ -10,6 +10,8 @@ import { writeGateResultConsole } from '../../core/report/console-renderer.js';
 import { renderGateResultJson } from '../../core/report/json-renderer.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import path from 'node:path';
+import { selectProjects, projectAffected } from '../workspace/targets.js';
+import { resolveCiRange } from './change-range.js';
 
 function errorReport(options, error, {
   gateId = 'ci.configuration',
@@ -83,18 +85,17 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
 
   let workspace;
   try {
-    workspace = loadWorkspace(root, { allowExpiredExceptions: true });
+    workspace = loadWorkspace(root, { allowExpiredExceptions: true, lazyProjects: true });
+    const range = workspace.document.projects ? resolveCiRange(root, options) : null;
+    if (range) options = { ...options, resolvedRange: range };
   } catch (error) {
-    tryWriteErrorReport(root, reportPath, errorReport(options, error));
-    writeCommandError('ci.configuration', error);
-    return gateStatusToExitCode('configuration-error');
+    tryWriteErrorReport(root, null, errorReport(options, error, { status: errorStatus(error) }));
+    writeCommandError('ci.configuration', error, errorStatus(error));
+    return gateStatusToExitCode(errorStatus(error));
   }
   const config = workspace.repositoryConfig;
   const forbiddenReports = new Set([
     ...workspace.repositoryConfig.ci.externalGates.map(({ report }) => path.resolve(root, report.path).toLowerCase()),
-    ...workspace.projects.flatMap((project) => project.config.ci.externalGates.map(({ report }) => (
-      path.resolve(project.root, report.path).toLowerCase()
-    ))),
     ...(workspace.document.projects ? [
       path.resolve(root, 'reports/repo-guard-workspace/repository.json').toLowerCase(),
       path.resolve(root, 'reports/repo-guard-workspace/evidence.json').toLowerCase(),
@@ -102,6 +103,14 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     ] : []),
   ]);
   try {
+    const selected = selectProjects(workspace, options.projectId).filter((project) => !options.resolvedRange
+      || options.projectId !== undefined || (options.profile ?? config.ci.profile) === 'release-ready'
+      || projectAffected(workspace, project, options.resolvedRange.changes));
+    for (const project of selected) {
+      for (const { report } of project.config.ci.externalGates) {
+        forbiddenReports.add(path.resolve(project.root, report.path).toLowerCase());
+      }
+    }
     if (workspace.document.projects) {
       return await runWorkspaceCi({ workspace, options: { ...options, ...(reportPath ? { reportPath } : {}) } });
     }
@@ -115,7 +124,7 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
       reportPath ?? config.ci.reportPath,
       errorReport(options, error, {
         gateId: 'ci.execution',
-        status: 'execution-error',
+        status: errorStatus(error),
       }),
       forbiddenReports,
     );

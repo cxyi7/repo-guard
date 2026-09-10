@@ -2,15 +2,10 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { errorStatus, isRepoGuardError, toRepoGuardError } from '../error/repo-guard-error.js';
 import { sanitizeProcessOutput } from '../execution/output-safety.js';
+import { GATE_STATUSES } from './exit-code.js';
+export { GATE_STATUSES, gateResultToExitCode, gateStatusToExitCode } from './exit-code.js';
 
-const GATE_STATUS_VALUES = [
-  'passed',
-  'skipped',
-  'violation',
-  'configuration-error',
-  'execution-error',
-  'range-error',
-];
+const GATE_STATUS_VALUES = GATE_STATUSES;
 
 const FINDING_SEVERITY_VALUES = ['info', 'warning', 'error'];
 const DIAGNOSTIC_LEVEL_VALUES = ['log', 'info', 'warn', 'error'];
@@ -24,7 +19,6 @@ const ISSUE_KIND_VALUES = [
   'cancellation',
 ];
 
-export const GATE_STATUSES = Object.freeze([...GATE_STATUS_VALUES]);
 export const FINDING_SEVERITIES = Object.freeze([...FINDING_SEVERITY_VALUES]);
 
 function requireNonEmptyString(value, label) {
@@ -403,18 +397,4 @@ export function createGateResult({
     error: normalizedError,
     diagnostics: Object.freeze(diagnostics.map(normalizeDiagnostic)),
   });
-}
-
-export function gateStatusToExitCode(status) {
-  if (!GATE_STATUSES.includes(status)) {
-    throw new TypeError(`未知的 GateStatus： ${status}`);
-  }
-  if (status === 'passed' || status === 'skipped') return 0;
-  if (status === 'violation') return 2;
-  if (status === 'range-error') return 3;
-  return 1;
-}
-
-export function gateResultToExitCode(result) {
-  return gateStatusToExitCode(result.status);
 }

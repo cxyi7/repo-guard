@@ -7,6 +7,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { configurationError, securityError } from '../../core/error/repo-guard-error.js';
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { fileURLToPath } from 'node:url';
 import { loadWorkspace } from '../../config/configuration-loader.js';
@@ -52,13 +53,16 @@ function createHookContent(argumentsList, packageName) {
     '',
     'if ! command -v node >/dev/null 2>&1; then',
     '  echo "repo-guard 失败：未安装 Node.js。" >&2',
-    '  exit 1',
+    `  exit ${EXIT_CODES.error}`,
     'fi',
     '',
     `repo_guard_cli="$repo_root/${packageCliPath(packageName)}"`,
     'if [ ! -f "$repo_guard_cli" ]; then',
+    '  if command -v repo-guard >/dev/null 2>&1; then',
+    `    exec repo-guard ${argumentsList.join(' ')}`,
+    '  fi',
     '  echo "repo-guard 失败：未安装依赖包。请运行 npm install。" >&2',
-    '  exit 1',
+    `  exit ${EXIT_CODES.error}`,
     'fi',
     '',
     `exec node "$repo_guard_cli" ${argumentsList.join(' ')}`,
@@ -211,8 +215,8 @@ export function installHooks({
   }
 
   const workspace = existsSync(path.join(root, 'repo-guard.config.json'))
-    ? loadWorkspace(root, { allowExpiredExceptions: true }) : null;
-  if (workspace) selectProjects(workspace, projectId);
+    ? loadWorkspace(root, { allowExpiredExceptions: true, lazyProjects: true }) : null;
+  if (workspace) selectProjects(workspace, projectId).forEach((application) => application.config);
   if (updatePackageScripts && !workspace) {
     throw configurationError('hooks/missing-project-config', '请先通过 repo-guard init 显式声明项目身份，再同步 package 脚本。');
   }

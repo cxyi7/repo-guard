@@ -5,8 +5,8 @@ import {
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import {
   createGateResult,
-  gateResultToExitCode,
 } from '../../core/result/gate-result.js';
+import { aggregateGateResults } from '../../core/result/exit-code.js';
 
 const BLOCKING_MODES = new Set(['inherit', 'enforce']);
 
@@ -93,22 +93,6 @@ function validatePolicies(config, registry) {
   }
 }
 
-function aggregateBlockingResults(results) {
-  for (const status of ['execution-error', 'configuration-error', 'range-error']) {
-    if (results.some((result) => result.status === status)) return status;
-  }
-  if (results.some(({ status }) => status === 'violation')) return 'violation';
-  return 'passed';
-}
-
-function decisiveBlockingResult(results) {
-  return results.find(({ status }) => status === 'execution-error')
-    ?? results.find(({ status }) => status === 'configuration-error')
-    ?? results.find(({ status }) => status === 'range-error')
-    ?? results.find(({ status }) => status === 'violation')
-    ?? null;
-}
-
 export function validateCiGatePolicy(config, registry) {
   validatePolicies(config, registry);
   return config.ci.gatePolicy;
@@ -170,12 +154,9 @@ export function createCiGatePolicyController({ config, registry, plan }) {
     const results = execution.results.filter((result, index) => (
       BLOCKING_MODES.has(get(plan.steps[index]).mode)
     ));
-    const decisiveResult = decisiveBlockingResult(results);
     return Object.freeze({
       ...execution,
-      status: aggregateBlockingResults(results),
-      decisiveResult,
-      exitCode: decisiveResult == null ? 0 : gateResultToExitCode(decisiveResult),
+      ...aggregateGateResults(results),
     });
   };
   return Object.freeze({

@@ -19,11 +19,21 @@ Node 后端使用 `--role backend --stack node --preset node-javascript` 或 `no
 |---|---|
 | `project` | 应用标识、前后端角色、技术栈与预设 |
 | `checks` | 当前应用的代码、测试与构建检查 |
-| `repository` | 团队规则、受保护文件、例外与交付合同 |
+| `repository` | 单应用保存本方规则；多应用按公共规则与应用规则分工，见下文 |
 | `reporting` | 通知和提交动画 |
-| `ci` | 质量检查策略与外部门禁，不含部署设置 |
+| `ci` | 公共质量流程与本方 Gate 策略、外部门禁，不含部署设置 |
 
-单应用配置由 [config.schema.json](../../config.schema.json) 校验。多应用根配置登记应用并维护公共分区，子应用仅声明身份与检查，使用 [project.schema.json](../../project.schema.json)。部署使用独立的 `repo-guard.ops.json`，见[独立运维](operations.md)。
+单应用配置由 [config.schema.json](../../config.schema.json) 校验。多应用子配置使用 [project.schema.json](../../project.schema.json)，不会把根目录的代码规则复制到应用：
+
+| 所属配置 | 可配置内容 |
+|---|---|
+| 根 `repository` | 提交信息、仓库内合同包、公共基础文件的 `rules / exclusions` |
+| 应用 `repository` | 本方 `rules / exclusions / exceptions / dependencyPolicy / codePlacement`，路径相对应用目录 |
+| 根 `ci` | `enabled / profile / reportPath` 及公共 Gate 策略；`gatePolicy.defaultMode` 作为应用默认模式 |
+| 应用 `ci` | 本方 `protectedFiles / gatePolicy / externalGates`，不覆盖全仓流程开关和报告路径 |
+| 根 `reporting / sharedPaths` | 统一通知与动画；共享文件变化应触发哪些应用 |
+
+根目录不接受应用依赖策略、例外和外部门禁；子应用不能覆盖提交信息、交付合同和通知。部署使用独立的 `repo-guard.ops.json`，见[独立运维](operations.md)。完整示例见[前后端隔离配置](project-workspace.md)。
 
 ## 日常修改与启停
 
@@ -35,7 +45,7 @@ npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-`enable` / `disable` 接受[完整开关表](../usage-guide.md#启用或关闭能力)中的名字。开关名、配置路径与 Gate ID 是不同概念。多应用可使用 `repo-guard enable unitTest --project api`；应用检查只修改所选应用，公共规则写入仓库根配置，修改前验证所有应用仍然有效。
+`enable` / `disable` 接受[完整开关表](../usage-guide.md#启用或关闭能力)中的名字。开关名、配置路径与 Gate ID 是不同概念。多应用使用 `repo-guard enable unitTest --project api` 或 `repo-guard enable dependencies --project api`：应用检查及本方策略只修改所选配置，同步该应用和公共规范，不读取无关应用的工程配置。修改根公共设置时会重新验证全部应用。
 
 | 操作 | 联动结果 |
 |---|---|
@@ -45,9 +55,15 @@ npx repo-guard doctor
 | 关闭 Stylelint | 同时关闭两项样式增强 |
 | 启用 `unusedImageAssets` | 同时启用图片治理 |
 | 关闭图片治理 | 同时关闭无效图片检查 |
-| 启停 `deliveryContract` | 按托管指纹同步或移除对应 Skill；人工修改导致冲突时拒绝覆盖 |
+| 启停 `deliveryContract` | 控制仓库内合同包，按托管指纹同步对应 Skill；仍有独立交付启用时保留流程 Skill，人工修改导致冲突时拒绝覆盖 |
 
 启用检查仍需准备对应项目工具。启停命令和 Doctor 不代表完整质量测试已通过；应使用实际提交、专项命令或对应 CI 配置档验证。
+
+## 独立交付开关
+
+`repo-guard.delivery.json` 独立于工程配置。`delivery init` 创建未确认草案，`delivery bind` 固定合同副本及本仓参与方；它们同步交付流程 Skills。`delivery enable / disable` 只改变独立交付开关，保留合同、证据及应用检查配置。只用交付合同的仓库不需要创建 Node 工程身份或 `package.json`。
+
+独立交付可以与工程检查同时开启，但同一仓库不能同时启用 `repository.deliveryContract` 仓库内合同包。合同指纹、确认和跨仓操作见[独立交付与跨仓库协作](delivery-contract.md#独立交付与跨仓库协作)。
 
 ## 旧配置与失败处理
 
@@ -64,6 +80,7 @@ npx repo-guard doctor
 | 数据或文件 | 只接受的格式 |
 |---|---|
 | 项目、工作区和独立运维配置 | `version: 2` |
+| 独立交付绑定、共同合同与签名证据载荷 | `version: 2`，按各自 Schema 和执行协议校验 |
 | 功能登记表、合同包及 Evidence Run | `schemaVersion: 2` |
 | 托管 Skill 清单 | `schemaVersion: 2` |
 | UI Token 清单、构建产物基线 | `version: 2` |

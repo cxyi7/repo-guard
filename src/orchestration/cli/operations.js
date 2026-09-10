@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -32,7 +33,7 @@ export function runOperations(command, cwd = process.cwd(), { dryRun = false } =
   const result = installOperationsGitLabPipeline(root, operations, projects, { dryRun: preview });
   if (!result.enabled) {
     writeConsoleMessage('运维发布未启用。请在独立的 repo-guard.ops.json 中声明应用、构建产物与部署脚本。');
-    return 0;
+    return EXIT_CODES.success;
   }
   writeConsoleMessage(preview ? '运维流水线预览：' : '运维流水线文件已生成；各应用独立构建和发布。');
   if (preview) writeConsoleMessage(renderOperationsGitLabPipeline(result.plan));
@@ -40,5 +41,5 @@ export function runOperations(command, cwd = process.cwd(), { dryRun = false } =
     writeConsoleMessage(result.guidance);
     writeConsoleMessage(result.manualSnippet);
   }
-  return 0;
+  return EXIT_CODES.success;
 }

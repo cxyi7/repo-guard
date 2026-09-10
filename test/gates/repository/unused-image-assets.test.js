@@ -251,9 +251,13 @@ test('多应用图片增量检查从基线清单读取自定义子配置，忽�
   enforcement: 'changedFiles'
 }));
   const { repository, reporting, ci, ...appDocument } = document;
+  const { rules, exclusions, commitMessage, deliveryContract, ...applicationRepository } = repository;
+  const { externalGates, ...sharedCi } = ci;
+  appDocument.repository = { rules, exclusions, ...applicationRepository };
+  appDocument.ci = { protectedFiles: ci.protectedFiles, gatePolicy: ci.gatePolicy, externalGates };
   writeFileSync(path.join(root, 'repo-guard.config.json'), JSON.stringify({
     version: 2, projects: [{ id: 'web', root: 'apps/web', config: 'guard.project.json' }],
-    repository, reporting, ci,
+    repository: { commitMessage, deliveryContract }, reporting, ci: sharedCi,
   }));
   writeFileSync(appConfigFile, JSON.stringify(appDocument));
   writeFileSync(path.join(appRoot, 'src', 'assets', 'logo.png'), 'logo');

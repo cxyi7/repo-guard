@@ -155,7 +155,8 @@ test('inherit preserves the existing Gate enabled setting', async () => {
   const value = fixture('inherit');
   const evaluated = value.controller.evaluate(await executeFixture(value));
 
-  assert.equal(evaluated.status, 'passed');
+  assert.equal(evaluated.status, 'skipped');
+  assert.equal(evaluated.results[0].status, 'skipped');
   assert.equal(evaluated.exitCode, 0);
   assert.equal(
     value.observations[1].context.config.checks.example.enabled,

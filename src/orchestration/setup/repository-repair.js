@@ -7,16 +7,17 @@ import { assertHookInstallationSupported, installHooks } from './hook-installer.
 import { syncDeliverySkills } from './delivery-skills.js';
 import { workspaceAgentPolicyTargets } from '../workspace/targets.js';
 import { assertManagedDocumentFormats } from './managed-format-preflight.js';
+import { DELIVERY_CONFIG_FILE } from '../../config/delivery-workspace.js';
 
 export function repairRepository(root, { projectId } = {}) {
   const repairs = [];
   const repairErrors = [];
 
   try {
-    if (!existsSync(path.join(root, 'repo-guard.config.json'))) {
+    if (!existsSync(path.join(root, 'repo-guard.config.json')) && !existsSync(path.join(root, DELIVERY_CONFIG_FILE))) {
       throw configurationError('doctor/missing-project-config', '缺少 repo-guard.config.json；请使用 repo-guard init --role <frontend|backend> --stack node --preset <预设> --project <标识> 显式声明项目，不会通过 doctor --fix 猜测身份。');
     }
-    const workspace = loadWorkspace(root, { allowExpiredExceptions: true });
+    const workspace = loadWorkspace(root, { allowExpiredExceptions: true, lazyProjects: true });
     const config = workspace.repositoryConfig;
     const targets = workspaceAgentPolicyTargets(workspace, projectId);
     assertManagedDocumentFormats(root, { workspace, projectId });
@@ -39,7 +40,7 @@ export function repairRepository(root, { projectId } = {}) {
   }
 
   try {
-    installHooks({ cwd: root, updatePackageScripts: true, projectId });
+    installHooks({ cwd: root, updatePackageScripts: existsSync(path.join(root, 'repo-guard.config.json')), projectId });
     repairs.push('已协调托管 Hook、仓库文件和 package 脚本');
   } catch (error) {
     repairErrors.push(`安装修复失败：${error.message}`);

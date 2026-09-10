@@ -13,7 +13,7 @@ import {
   securityError,
 } from '../../core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
-import { createGateResult } from '../../core/result/gate-result.js';
+import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
 import { skippedResult } from '../native-result.js';
 import { runExactNpmScript, containsSensitiveExternalData } from '../../integrations/npm/external-script.js';
 import { assertReleaseScriptReadOnly } from '../../integrations/npm/release-environment.js';
@@ -154,7 +154,7 @@ function validateReport(config, raw, root, startedAt, execution) {
   if (!['passed', 'violation'].includes(report.status)) {
     throw externalReportError('invalid-status', `外部门禁 ${config.id} 报告的 status 必须为 passed 或 violation`);
   }
-  const expectedExitCode = report.status === 'passed' ? 0 : 2;
+  const expectedExitCode = gateStatusToExitCode(report.status);
   if (execution.status !== expectedExitCode) {
     throw externalReportError(
       'exit-status-mismatch',

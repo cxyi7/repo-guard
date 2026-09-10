@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { sendWecomNotification } from '../../integrations/wecom/notification.js';
 import {
@@ -45,7 +46,7 @@ export async function runGitLabCiNotification({
   const resolvedStatus = gitLabNotificationStatus(notificationEnvironment);
   if (!shouldNotifyGitLabPipeline(notificationEnvironment)) {
     write(`当前 GitLab 流水线通知状态为 ${resolvedStatus}，无需发送通知。`);
-    return 0;
+    return EXIT_CODES.success;
   }
 
   const { webhook, mentionMobiles } = loadNotificationConfig(environment, {
@@ -55,5 +56,5 @@ export async function runGitLabCiNotification({
   await send(webhook, content, mentionMobiles);
   const statusText = NOTIFICATION_STATUS_TEXT[resolvedStatus];
   write(`GitLab 流水线${statusText}通知已发送。`);
-  return 0;
+  return EXIT_CODES.success;
 }

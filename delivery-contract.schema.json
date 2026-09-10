@@ -1,0 +1,558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "跨应用联合交付合同 v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "documentType",
+    "id",
+    "revision",
+    "title",
+    "requirements",
+    "participants",
+    "integration",
+    "reviewerPublicKey",
+    "approval"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "documentType": {
+      "const": "delivery-contract"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "acceptance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          }
+        }
+      }
+    },
+    "participants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "repositoryId",
+          "role",
+          "root",
+          "baselineCommit",
+          "workingBranch",
+          "publicKey",
+          "tasks",
+          "checks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "repositoryId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "role": {
+            "enum": [
+              "frontend",
+              "backend"
+            ]
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+          },
+          "baselineCommit": {
+            "type": "string",
+            "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+          },
+          "workingBranch": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "publicKey": {
+            "type": "string",
+            "pattern": "^\\s*-----BEGIN PUBLIC KEY-----"
+          },
+          "tasks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "description",
+                "requirementIds",
+                "allowedPaths",
+                "checks"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "requirementIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                  }
+                },
+                "allowedPaths": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+                  }
+                },
+                "checks": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                  }
+                }
+              }
+            }
+          },
+          "checks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "kind"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                },
+                "kind": {
+                  "enum": [
+                    "gate",
+                    "command"
+                  ]
+                },
+                "gateId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 1800000
+                },
+                "testFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+                  }
+                }
+              },
+              "oneOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "gate"
+                    }
+                  },
+                  "required": [
+                    "gateId"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "command"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "args"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "timeoutMs"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "command"
+                    }
+                  },
+                  "required": [
+                    "command",
+                    "args",
+                    "timeoutMs"
+                  ],
+                  "not": {
+                    "required": [
+                      "gateId"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "publicKey",
+        "checks"
+      ],
+      "properties": {
+        "publicKey": {
+          "type": "string",
+          "pattern": "^\\s*-----BEGIN PUBLIC KEY-----"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "participants"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,63}$"
+              },
+              "kind": {
+                "const": "command"
+              },
+              "gateId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "timeoutMs": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 1800000
+              },
+              "participants": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                }
+              },
+              "testFiles": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(?![\\s/])(?!.*[\\\\:\\x00-\\x1f])(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)(?!.*[/\\s]$).+$"
+                }
+              }
+            },
+            "oneOf": [
+              {
+                "properties": {
+                  "kind": {
+                    "const": "gate"
+                  }
+                },
+                "required": [
+                  "gateId"
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "command"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "args"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "timeoutMs"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "command"
+                  }
+                },
+                "required": [
+                  "command",
+                  "args",
+                  "timeoutMs"
+                ],
+                "not": {
+                  "required": [
+                    "gateId"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "reviewerPublicKey": {
+      "type": "string",
+      "pattern": "^\\s*-----BEGIN PUBLIC KEY-----"
+    },
+    "approval": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "description": "实现缺陷、同一测试的失败证据和反向改进义务；新增反馈提升合同修订并重新确认。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "participant",
+          "requirementId",
+          "description",
+          "regressionCheck",
+          "redReceipt",
+          "improvement"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "participant": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "requirementId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "regressionCheck": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          },
+          "redReceipt": {
+            "type": "object",
+            "required": [
+              "payload",
+              "signature"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "payload": {
+                "type": "object"
+              },
+              "signature": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "improvement": {
+            "type": "object",
+            "required": [
+              "description",
+              "checkId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "checkId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,63}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "integrationReport": {
+      "type": "object",
+      "required": [
+        "version",
+        "status",
+        "baselineDigest",
+        "subjects"
+      ],
+      "properties": {
+        "version": {
+          "const": 2
+        },
+        "status": {
+          "const": "passed"
+        },
+        "baselineDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "subjects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "participant",
+              "repositoryId",
+              "commit"
+            ],
+            "properties": {
+              "participant": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,63}$"
+              },
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,63}$"
+              },
+              "commit": {
+                "type": "string",
+                "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$id": "https://cxyi7.github.io/repo-guard/delivery-contract.schema.json",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "participants": {
+            "minItems": 2
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "integration": {
+            "properties": {
+              "checks": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

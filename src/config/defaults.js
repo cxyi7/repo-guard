@@ -85,7 +85,7 @@ export const DEFAULT_PATH_NAMING_CONFIG = Object.freeze({
     '**/generated/**',
   ]),
 });
-export const UI_TOKEN_ADAPTERS = Object.freeze(['sass', 'unocss']);
+export const UI_TOKEN_LANGUAGES = Object.freeze(['css', 'sass', 'less']);
 export const UI_TOKEN_CATEGORIES = Object.freeze([
   'color',
   'spacing',
@@ -102,9 +102,10 @@ export const UI_TOKEN_CATEGORIES = Object.freeze([
 ]);
 export const DEFAULT_UI_TOKENS_CONFIG = Object.freeze({
   enabled: false,
+  languages: Object.freeze(['css']),
   manifestFile: 'ui-tokens.manifest.json',
   include: Object.freeze([
-    'src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}',
+    'src/**/*.{vue,css,scss,sass,less}',
   ]),
   exclude: Object.freeze([
     '**/generated/**',
@@ -112,20 +113,7 @@ export const DEFAULT_UI_TOKENS_CONFIG = Object.freeze({
     '**/coverage/**',
     '**/reports/**',
   ]),
-  adapters: Object.freeze({
-    sass: Object.freeze({ enabled: false }),
-    unocss: Object.freeze({
-      enabled: false,
-      configFiles: Object.freeze(['uno.config.ts']),
-      attributify: true,
-      variantGroups: true,
-    }),
-  }),
-  icon: Object.freeze({
-    components: Object.freeze(['UiIcon', 'SvgIcon']),
-    nativeSvg: true,
-    sassSelectors: Object.freeze(['svg', '.icon', '.ui-icon', '.svg-icon']),
-  }),
+  iconSelectors: Object.freeze(['svg', '.icon', '.ui-icon', '.svg-icon']),
 });
 export const SUPPORTED_IMAGE_ASSET_EXTENSIONS = Object.freeze([
   'png',

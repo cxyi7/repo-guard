@@ -21,12 +21,13 @@ import {
   createGateContext,
 } from '../../core/capability/gate-context.js';
 import { createGateResult } from '../../core/result/gate-result.js';
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { internalError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { orchestratePlan } from '../orchestrator.js';
 import { preCommitQualityPlan } from './protected-plan.js';
 import { synchronizeStagedFileHeaders } from './file-header-normalizer.js';
 import { synchronizeStagedFunctionDocumentation } from './function-documentation-normalizer.js';
-import { scopeProjectFiles, projectStepLabel } from '../workspace/targets.js';
+import { scopeProjectFiles, projectStepLabel, projectAffected, projectConfigurationChanged } from '../workspace/targets.js';
 
 function selectFiles(files, pattern) {
   return files
@@ -155,7 +156,7 @@ function emptyQualityExecution() {
     outcomes: Object.freeze([]),
     results: Object.freeze([]),
     decisiveResult: null,
-    exitCode: 0,
+    exitCode: EXIT_CODES.success,
   });
 }
 
@@ -208,6 +209,7 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
         selection.uiTokenConfig.enabled
         && (
           selection.uiTokenFiles.length > 0
+          || stepContext.configurationChanged
           || stepContext.changes.entries.some(({ status }) => status.startsWith('D'))
         )
       ) {
@@ -246,7 +248,7 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
   return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
 }
 
-function prepareQualityProject({ root, repositoryRoot = root, files, config }) {
+function prepareQualityProject({ root, repositoryRoot = root, files, config, configurationChanged = false }) {
   const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
   const selection = selectQualityFiles(normalizedFiles, config);
   const stagedChanges = collectStagedChanges(root);
@@ -256,12 +258,12 @@ function prepareQualityProject({ root, repositoryRoot = root, files, config }) {
     selection.relevantFiles.length === 0
     && !selection.filePlacementConfig.enabled
     && !selection.pathNamingConfig.enabled
-    && !(selection.uiTokenConfig.enabled && hasStagedDeletion)
+    && !(selection.uiTokenConfig.enabled && (hasStagedDeletion || configurationChanged))
   ) {
     return null;
   }
 
-  return { root, repositoryRoot, config, normalizedFiles, selection, stagedChanges };
+  return { root, repositoryRoot, config, configurationChanged, normalizedFiles, selection, stagedChanges };
 }
 
 function normalizeProjectContents({ root, selection, stagedChanges }) {
@@ -277,10 +279,11 @@ function normalizeProjectContents({ root, selection, stagedChanges }) {
     writeFunctionDocumentationWarnings(functionDocResult.warnings);
 }
 
-function qualityContext({ root, repositoryRoot, config, selection, normalizedFiles, stagedChanges }) {
+function qualityContext({ root, repositoryRoot, config, configurationChanged, selection, normalizedFiles, stagedChanges }) {
     return createGateContext({
       root,
       repositoryRoot,
+      configurationChanged,
       environment: preCommitQualityPlan.environment,
       config: executionConfig(config, {
         eslintFiles: selection.eslintFiles,
@@ -332,15 +335,20 @@ async function executeQualityProjects(projects) {
 }
 
 export async function runQualityExecution({ root, files, config }) {
-  return await executeQualityProjects([{ root, files, config }]);
+  const configurationChanged = collectStagedChanges(root).some(({ path: current, oldPath }) => (
+    current === 'repo-guard.config.json' || oldPath === 'repo-guard.config.json'
+  ));
+  return await executeQualityProjects([{ root, files, config, configurationChanged }]);
 }
 
 export async function runWorkspaceQualityExecution(workspace, files) {
   const normalized = normalizeStagedFiles(workspace.root, files, '工作区质量门禁');
-  const projects = workspace.projects.map((project) => ({
+  const changes = collectStagedChanges(workspace.root);
+  const projects = workspace.projects.filter((project) => projectAffected(workspace, project, changes)).map((project) => ({
     root: project.root,
     repositoryRoot: workspace.root,
     config: project.config,
+    configurationChanged: projectConfigurationChanged(workspace, project, changes),
     files: scopeProjectFiles(normalized, workspace.root, project).map(({ absolute }) => absolute),
   }));
   return await executeQualityProjects(projects);

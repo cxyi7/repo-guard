@@ -6,7 +6,7 @@ import { selectProjects } from './targets.js';
 
 export function loadExecutionTarget(cwd = process.cwd(), { projectId, repositoryOnly = false } = {}) {
   const repositoryRoot = findRepositoryRoot(cwd);
-  const workspace = loadWorkspace(repositoryRoot);
+  const workspace = loadWorkspace(repositoryRoot, { lazyProjects: true });
   if (projectId !== undefined) selectProjects(workspace, projectId);
   if (repositoryOnly) return { root: repositoryRoot, repositoryRoot, config: workspace.repositoryConfig };
   const candidates = projectId === undefined ? workspace.projects : selectProjects(workspace, projectId);

@@ -9,7 +9,7 @@
   "properties": {
     "schemaVersion": { "const": 2 },
     "gateId": { "type": "string", "pattern": "\\S" },
-    "status": { "enum": ["passed", "skipped", "violation", "configuration-error", "execution-error", "range-error"] },
+    "status": { "enum": ["passed", "skipped", "violation", "configuration-error", "execution-error", "range-error"], "description": "单项结果统一映射为退出码：passed/skipped=0，configuration-error/execution-error=1，violation=2，range-error=3。按阻断策略筛选后，以执行错误、配置错误、范围错误、违规的顺序汇总；跳过不代表实际验证通过。" },
     "summary": { "type": "string", "pattern": "\\S", "description": "面向开发者和 AI 的中文执行结论。" },
     "findings": {
       "type": "array",

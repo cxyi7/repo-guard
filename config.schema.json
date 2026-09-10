@@ -120,7 +120,7 @@
         "repository": {
           "type": "object",
           "additionalProperties": false,
-          "description": "仓库统一规则；子应用不得覆盖。",
+          "description": "公共提交与交付流程、应用目录外的基础文件保护。根保护规则不继承到应用；应用自己的规则在子配置中维护。",
           "properties": {
             "rules": {
               "type": "array",
@@ -1962,7 +1962,7 @@
             },
             "uiTokens": {
               "type": "object",
-              "description": "以语言无关的 Manifest 约束 UI Token 使用；当前提供 Sass 与 UnoCSS 两个静态适配器。",
+              "description": "按项目声明的 CSS、Sass、Less 语言和 Manifest 检查样式 Token。",
               "additionalProperties": false,
               "properties": {
                 "enabled": {
@@ -1970,11 +1970,27 @@
                   "default": false,
                   "description": "是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁。"
                 },
+                "languages": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "css",
+                      "sass",
+                      "less"
+                    ]
+                  },
+                  "default": [
+                    "css"
+                  ],
+                  "description": "显式选择样式语言；sass 同时覆盖 SCSS 与缩进式 Sass，当前不支持 Stylus。"
+                },
                 "manifestFile": {
                   "type": "string",
                   "minLength": 1,
                   "default": "ui-tokens.manifest.json",
-                  "description": "仓库内由项目生成并提交的 UI Token Manifest。"
+                  "description": "应用目录内由项目生成并提交的 UI Token Manifest。"
                 },
                 "include": {
                   "type": "array",
@@ -1984,9 +2000,9 @@
                     "minLength": 1
                   },
                   "default": [
-                    "src/**/*.{vue,html,scss,sass,js,jsx,ts,tsx}"
+                    "src/**/*.{vue,css,scss,sass,less}"
                   ],
-                  "description": "参与 Sass 或 UnoCSS 静态检查的仓库相对 glob。"
+                  "description": "参与 CSS、Sass 或 Less 静态检查的应用相对 glob。"
                 },
                 "exclude": {
                   "type": "array",
@@ -2002,157 +2018,24 @@
                   ],
                   "description": "优先于 include 的排除 glob。"
                 },
-                "adapters": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "sass": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "properties": {
-                        "enabled": {
-                          "type": "boolean",
-                          "default": false,
-                          "description": "使用消费项目自身的 Stylelint 与自定义语法解析 Sass 和 Vue style。"
-                        }
-                      }
-                    },
-                    "unocss": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "properties": {
-                        "enabled": {
-                          "type": "boolean",
-                          "default": false
-                        },
-                        "configFiles": {
-                          "type": "array",
-                          "minItems": 1,
-                          "uniqueItems": true,
-                          "items": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "default": [
-                            "uno.config.ts"
-                          ],
-                          "description": "必须同时列入 Manifest sources 的 UnoCSS 配置文件。"
-                        },
-                        "attributify": {
-                          "type": "boolean",
-                          "default": true,
-                          "description": "是否检查 UnoCSS Attributify 写法。"
-                        },
-                        "variantGroups": {
-                          "type": "boolean",
-                          "default": true,
-                          "description": "是否展开并检查 UnoCSS variant group 写法。"
-                        }
-                      }
-                    }
-                  }
-                },
-                "icon": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "components": {
-                      "type": "array",
-                      "minItems": 1,
-                      "uniqueItems": true,
-                      "items": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "default": [
-                        "UiIcon",
-                        "SvgIcon"
-                      ],
-                      "description": "在这些组件上将 size、w、h utility 识别为 icon-size。"
-                    },
-                    "nativeSvg": {
-                      "type": "boolean",
-                      "default": true,
-                      "description": "是否在原生 svg 元素上约束 icon-size utility。"
-                    },
-                    "sassSelectors": {
-                      "type": "array",
-                      "minItems": 1,
-                      "uniqueItems": true,
-                      "items": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "default": [
-                        "svg",
-                        ".icon",
-                        ".ui-icon",
-                        ".svg-icon"
-                      ],
-                      "description": "在这些 Sass/CSS 选择器上下文中将 width、height、inline-size、block-size 识别为 icon-size。"
-                    }
-                  }
-                }
-              },
-              "allOf": [
-                {
-                  "if": {
-                    "required": [
-                      "enabled"
-                    ],
-                    "properties": {
-                      "enabled": {
-                        "const": true
-                      }
-                    }
+                "iconSelectors": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": ".*\\S.*"
                   },
-                  "then": {
-                    "required": [
-                      "adapters"
-                    ],
-                    "properties": {
-                      "adapters": {
-                        "anyOf": [
-                          {
-                            "required": [
-                              "sass"
-                            ],
-                            "properties": {
-                              "sass": {
-                                "required": [
-                                  "enabled"
-                                ],
-                                "properties": {
-                                  "enabled": {
-                                    "const": true
-                                  }
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "required": [
-                              "unocss"
-                            ],
-                            "properties": {
-                              "unocss": {
-                                "required": [
-                                  "enabled"
-                                ],
-                                "properties": {
-                                  "enabled": {
-                                    "const": true
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  }
+                  "default": [
+                    "svg",
+                    ".icon",
+                    ".ui-icon",
+                    ".svg-icon"
+                  ],
+                  "description": "在这些选择器上下文中将 width、height、inline-size、block-size 按 icon-size 检查。"
                 }
-              ]
+              }
             },
             "architecture": {
               "type": "object",
@@ -3113,165 +2996,6 @@
               },
               "default": []
             },
-            "exceptions": {
-              "type": "object",
-              "description": "Human-reviewed, exact-location exceptions shared by repo-guard rules. Expired entries block normal commands.",
-              "additionalProperties": false,
-              "properties": {
-                "warningDays": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 14,
-                  "description": "Number of days before expiry when an active exception enters warning state. Must be less than maxDays."
-                },
-                "maxDays": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 365,
-                  "default": 90,
-                  "description": "Maximum allowed number of days between createdOn and expiresOn."
-                },
-                "entries": {
-                  "type": "array",
-                  "default": [],
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "id",
-                      "rule",
-                      "path",
-                      "line",
-                      "column",
-                      "reason",
-                      "owner",
-                      "approvedBy",
-                      "ticket",
-                      "createdOn",
-                      "expiresOn"
-                    ],
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "pattern": "^[a-z][a-z0-9-]*$",
-                        "description": "Unique kebab-case exception identifier."
-                      },
-                      "rule": {
-                        "type": "string",
-                        "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)+$",
-                        "description": "Namespaced repo-guard rule id, for example vue/no-v-html, vue/form-control-label, or vue/img-alt."
-                      },
-                      "path": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "One exact repository-relative file; globs and parent traversal are forbidden."
-                      },
-                      "line": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "column": {
-                        "type": "integer",
-                        "minimum": 1
-                      },
-                      "reason": {
-                        "type": "string",
-                        "minLength": 10,
-                        "description": "Concrete technical and business justification."
-                      },
-                      "owner": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Person or team responsible for removing the exception."
-                      },
-                      "approvedBy": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "Independent human approver; runtime validation rejects the owner."
-                      },
-                      "ticket": {
-                        "type": "string",
-                        "minLength": 3,
-                        "description": "Reviewable issue, risk-acceptance, or remediation ticket."
-                      },
-                      "createdOn": {
-                        "type": "string",
-                        "format": "date"
-                      },
-                      "expiresOn": {
-                        "type": "string",
-                        "format": "date"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "dependencyPolicy": {
-              "type": "object",
-              "description": "Govern package.json declarations and npm package-lock root metadata.",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Run dependency governance when root package.json or package-lock.json is staged."
-                },
-                "requireExactVersions": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Require exact versions outside peerDependencies; approved npm aliases and workspace protocols remain supported."
-                },
-                "requireLockfile": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Require package-lock.json v2+ and exact agreement between its root declaration and package.json."
-                },
-                "allowedProtocols": {
-                  "type": "array",
-                  "default": [
-                    "npm",
-                    "workspace"
-                  ],
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9+.-]*$"
-                  },
-                  "description": "Explicit dependency source protocols allowed outside normal registry versions. Use protocol names without colons."
-                },
-                "bannedPackages": {
-                  "type": "array",
-                  "default": [],
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "name",
-                      "reason"
-                    ],
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "reason": {
-                        "type": "string",
-                        "minLength": 10
-                      },
-                      "replacement": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "minLength": 1
-                      }
-                    }
-                  },
-                  "description": "Project-owned denylist with reviewable reasons and optional replacements."
-                }
-              }
-            },
             "commitMessage": {
               "type": "object",
               "description": "强制使用可审计的 Conventional Commit 标题，并在本地 Hook、pre-push 和 CI 中使用同一策略。",
@@ -3440,62 +3164,6 @@
                   "description": "不触发合同选择的生成物范围；选定合同后不会因此绕过 allowedPaths 或 forbiddenPaths。"
                 }
               }
-            },
-            "codePlacement": {
-              "type": "object",
-              "description": "限制指定代码文本只能出现在业务允许的文件中。pre-commit 检查格式化完成后的最终 Git 索引，CI 重新检查完整提交。",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "是否在 pre-commit 和 CI policy 中强制执行代码位置策略。"
-                },
-                "rules": {
-                  "type": "array",
-                  "default": [],
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "name",
-                      "content",
-                      "allowedFiles",
-                      "scanPatterns"
-                    ],
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "用于中文问题说明和修复指引的规则名称。"
-                      },
-                      "content": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": "需要限制位置的精确代码文本；检查时只统一 CRLF/CR 换行。"
-                      },
-                      "allowedFiles": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": "允许出现该代码的一个或多个仓库相对文件 glob。"
-                      },
-                      "scanPatterns": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "description": "需要搜索该代码的仓库相对文件 glob。"
-                      }
-                    }
-                  }
-                }
-              }
             }
           }
         },
@@ -3634,81 +3302,13 @@
                   }
                 }
               }
-            },
-            "externalGates": {
-              "type": "array",
-              "default": [],
-              "description": "项目自有只读检查，仅通过精确 npm 脚本名执行；可手动运行或追加至 CI full、release-ready 的固定末尾，必须在 reports/ 下生成 schemaVersion 为 2 的 repo-guard-json-v2 报告，不支持旧协议。",
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "enabled",
-                  "environments",
-                  "script",
-                  "timeoutMs",
-                  "report"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "pattern": "^project\\.[a-z][a-z0-9-]*$",
-                    "description": "Stable project-owned gate id in the reserved project.<kebab-case> namespace."
-                  },
-                  "enabled": {
-                    "type": "boolean"
-                  },
-                  "environments": {
-                    "type": "array",
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "manual",
-                        "ci-full",
-                        "release-ready"
-                      ]
-                    }
-                  },
-                  "script": {
-                    "type": "string",
-                    "pattern": "^[A-Za-z0-9:_-]+$",
-                    "description": "Exact package.json npm script name. Shell fragments and arguments are forbidden."
-                  },
-                  "timeoutMs": {
-                    "type": "integer",
-                    "minimum": 1000,
-                    "maximum": 1800000
-                  },
-                  "report": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "format",
-                      "path"
-                    ],
-                    "properties": {
-                      "format": {
-                        "const": "repo-guard-json-v2"
-                      },
-                      "path": {
-                        "type": "string",
-                        "pattern": "^reports/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))(?:(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?/)*[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?\\.json$",
-                        "description": "Fresh untracked report path inside reports/."
-                      }
-                    }
-                  }
-                }
-              }
             }
           }
         },
         "projects": {
           "type": "array",
           "minItems": 1,
-          "description": "显式应用清单，目录不得互相重叠；子配置仅包含 version、project、checks。",
+          "description": "显式声明应用目录和配置；子应用可独立配置 checks、repository 应用策略及 ci 检查选项。",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -3725,7 +3325,7 @@
               "root": {
                 "type": "string",
                 "minLength": 1,
-                "description": "仓库内的应用相对目录，不得包含上级目录或越界链接。"
+                "description": "仓库内的应用相对目录，不得包含上级目录或越界链接。运行时统一 ./、重复分隔符及尾部分隔符等价写法后匹配 Git 变更；根目录统一为 .，不改写配置原文。"
               },
               "config": {
                 "type": "string",
@@ -3735,8 +3335,37 @@
               }
             }
           }
+        },
+        "sharedPaths": {
+          "type": "array",
+          "description": "共享文件或目录变化时，显式触发受影响的应用；不继承其规则。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "projects"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$",
+                "description": "仓库内的文件或目录，不使用 glob 或上级目录。"
+              },
+              "projects": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                },
+                "description": "应用清单中已有的标识。"
+              }
+            }
+          }
         }
-      }
+      },
+      "description": "仓库入口声明应用清单、公共流程和基础文件保护；应用工程规则独立配置。"
     }
   },
   "oneOf": [

@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { findRepositoryRoot } from '../../git/repository.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -33,5 +34,5 @@ export function runInstallCiCommand(cwd = process.cwd(), {
     writeConsoleMessage('请将以下已审查片段添加到现有 GitLab CI 配置中：', 'stderr');
     writeConsoleMessage(result.manualSnippet, 'stderr');
   }
-  return 0;
+  return EXIT_CODES.success;
 }

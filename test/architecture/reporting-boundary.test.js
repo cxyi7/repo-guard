@@ -117,6 +117,7 @@ test('forbids untyped Error and AggregateError construction across project bound
     'core/error/repo-guard-error.js',
     'core/policy/managed-policy.js',
     'core/result/gate-result.js',
+    'core/result/exit-code.js',
     'gates/security/dynamic-code-gate.js',
     'integrations/npm/external-script.js',
   ]);

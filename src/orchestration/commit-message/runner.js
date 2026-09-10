@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { loadConfig } from '../../config/configuration-loader.js';
 import {
   cleanupCommitMessage,
@@ -20,7 +21,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
 
   if (mode === 'cleanup') {
     cleanupCommitMessage(root);
-    return 0;
+    return EXIT_CODES.success;
   }
 
   if (mode === 'success') {
@@ -28,15 +29,15 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
     try {
       cleanupCommitMessage(root);
       const config = loadConfig(root, { repositoryOnly: true });
-      if (!config.reporting.commitAnimation.enabled) return 0;
+      if (!config.reporting.commitAnimation.enabled) return EXIT_CODES.success;
       const committed = runGit(['log', '-1', '--format=%P%n%s'], { allowFailure: true, cwd: root });
-      if (committed.status !== 0) return 0;
+      if (committed.status !== 0) return EXIT_CODES.success;
       const [parentLine = '', ...subject] = committed.stdout.split(/\r?\n/);
       const parents = parentLine.trim().split(/\s+/).filter(Boolean);
       const message = subject.join('\n').trim();
       return createCommitAnimation(config.reporting.commitAnimation).celebrate(message, { parents }).then(() => {
         writeConsoleMessage('提交成功，Git 已创建提交。');
-        return 0;
+        return EXIT_CODES.success;
       }).catch(() => 0);
     } catch (error) {
       if (error?.code === 'commit-message/unsupported-state-version') {
@@ -44,7 +45,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
           writeConsoleMessage(`警告：Git 提交已完成，但临时状态清理已拒绝 [${error.code}]：${error.message}`, 'stderr');
         } catch { /* 终端输出异常不影响已经创建的提交。 */ }
       }
-      return 0;
+      return EXIT_CODES.success;
     }
   }
 
@@ -55,7 +56,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
   const config = loadConfig(root, { repositoryOnly: true });
   if (mode === 'prepare') {
     prepareCommitMessage(root, config, messageFile, source, sourceCommit);
-    return 0;
+    return EXIT_CODES.success;
   }
   if (mode === 'finalize') {
     if (config.repository.commitMessage.enabled) {
@@ -76,7 +77,7 @@ export function runHookMessage(argumentsList, cwd = process.cwd()) {
       }
     }
     finalizeCommitMessage(root, config, messageFile);
-    return 0;
+    return EXIT_CODES.success;
   }
 
   throw configurationError('hook-message/unsupported-mode', `不支持的 hook-message 模式： ${mode || '<missing>'}`);

@@ -60,9 +60,15 @@ git commit -m "feat: 添加用户信息"
 
 将示例路径换成当前变更。检查失败时根据中文提示修复、重新暂存并提交；通过后才能说明本次实际执行的规则已满足。随后推送时，已启用的重型检查由 pre-push 执行。
 
+### 读取检查结果
+
+手动命令、Hook、CI 和交付检查采用相同退出码：`0` 成功或无需阻断；`1` 配置/工具运行错误；`2` 规则违规或交付条件未满足；`3` Git 范围不可信。多个阻断结果按执行错误、配置错误、范围错误、违规汇总，结果不受应用排列影响。
+
+先阅读中文问题和修复建议，再用相同入口复核。`delivery status` 的 `0` 只说明状态查询成功，CI 的只报告模式也可以返回 `0`；跳过不等于检查通过，更不能作为交付证据。完整状态、第三方原始退出码与聚合规则见[结果与报告](features/gate-result-and-reporting.md)。
+
 ## 配置团队规则
 
-单应用配置保存在项目根目录 `repo-guard.config.json`。多应用仓库在根配置登记应用清单及公共规范，各应用保存自己的检查配置。本手册的 JSON 标为“配置片段”时，应合并到对应配置，保留 `version`、项目身份、其他规则与团队已有选择；不要用片段覆盖整个文件。
+单应用配置保存在项目根目录 `repo-guard.config.json`。多应用仓库在根配置登记应用清单、提交信息、公共 CI 流程、通知与动画以及必要的基础文件保护；各应用保存自己的代码检查、依赖、例外、文件归位、保护规则和外部门禁。本手册的 JSON 标为“配置片段”时，应合并到对应配置，保留 `version`、项目身份、其他规则与团队已有选择；不要用片段覆盖整个文件。
 
 ### Node 后端与前后端协作
 
@@ -75,7 +81,9 @@ npx repo-guard doctor
 
 Node 后端复用 ESLint、Prettier、命名、目录、依赖、类型、架构、测试、覆盖率、变异测试及构建等通用工程检查。团队准备自己的工具和脚本，再开启所需能力；Vue、组件交互和页面检查不适用于后端。当前不会新增接口输入输出、身份权限或业务规则校验。
 
-前后端分仓时，各仓库独立初始化；同仓时用 `projects` 明确应用目录，提交 Hook 按文件归属调用各应用的工具，公共仓库规则统一执行。专项命令和 CI 可通过 `--project api` 选择应用，省略选择的仓库级 CI 检查全部应用。完整目录、字段约束及示例见[项目身份与多应用工作区](features/project-workspace.md)。Java 校验和自动安装工具将在后续适配，本版尚未提供。
+前后端分仓时，各仓库独立初始化；同仓时用 `projects` 明确不重叠的应用目录，不支持前后端源码混在同一目录。提交、推送及普通 `policy / full` CI 按变更选择受影响应用，使用本方工具和规则。根清单变化触发全部应用，共享文件通过 `sharedPaths` 声明影响范围。`release-ready` 默认复核全部应用；专项命令和 CI 可通过 `--project api` 明确选择本方，无关应用的工程配置和工具不加载。
+
+完整目录、公共与应用字段约束及示例见[项目身份与多应用工作区](features/project-workspace.md)。Java 内置工程校验和自动安装工具将在后续适配，本版尚未提供；Java、Python 项目现在可通过独立交付合同参与共同需求、检查证据与验收，运行 CLI 仍需要 Node。
 
 ### 启用或关闭能力
 
@@ -92,7 +100,7 @@ npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-下表列出全部 31 个可配置功能名。默认状态指首次按显式预设生成配置。Vue 专用功能不能用于后端；启用检查后必须准备项目工具与配置。CI 还有独立策略，自动执行范围见后文。
+下表列出全部 31 个可配置功能名。默认状态指首次按显式预设生成配置。Vue 专用功能不能用于后端；启用检查后必须准备项目工具与配置。多应用的 `checks`、`dependencies` 和 `codePlacement` 等本方功能用 `--project <id>` 选择；提交信息、通知、动画和全仓流程保存在根配置。CI 还有独立策略，自动执行范围见后文。
 
 | 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
 |---|---|---|---|---|
@@ -105,7 +113,7 @@ npx repo-guard doctor
 | `functionDocs` | `checks.functionDocs` | [随函数签名同步文档标签，保留业务说明](features/function-documentation.md) | 关 | 提交 |
 | `asyncResourceCleanup` | `checks.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 关 | 提交、CI 三档 |
 | `pathNaming` | `checks.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 关 | 提交、CI 三档 |
-| `uiTokens` | `checks.uiTokens` | [要求受控颜色、间距、字号等使用项目声明的设计 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
+| `uiTokens` | `checks.uiTokens` | [要求 CSS、SCSS/Sass、Less 中的受控颜色、间距、字号等使用团队登记的 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
 | `filePlacement` | `checks.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
 | `maxFileLines` | `checks.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
 | `codePlacement` | `repository.codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
@@ -181,7 +189,7 @@ Stylelint fix
   → Prettier
   → Stylelint read-only verify
   → ESLint read-only verify
-  → UI Token（启用时按项目声明的 Sass/UnoCSS 适配器检查）
+  → UI Token（启用时检查明确选择的 CSS、SCSS/Sass、Less）
   → Vue async-resource-cleanup（启用时阻断）
   → path-naming（启用时检查全部已跟踪路径）
   → dynamic-code
@@ -403,7 +411,7 @@ REPO_GUARD_MENTION_MOBILES=
 
 ### 配置 UI Token 门禁
 
-按项目 Manifest 检查 Sass 与 UnoCSS 的设计 Token 使用。 接入配置、执行范围与修复说明见[UI Token 契约](features/ui-tokens.md)。
+用 `checks.uiTokens.languages` 明确选择 `css`、`sass`、`less`，支持多选；默认仅选择 `css`，功能仍默认关闭。根据项目清单检查设计变量的使用，覆盖对应样式文件和 Vue 内联样式块。CSS 断点使用清单中允许的具体值，其他受控 CSS 声明使用 `var(--name)`；不再提供 UnoCSS 检查。项目自行准备 Stylelint、相应语法配置及真实来源指纹，完整配置与字段说明见[样式 Token 检查](features/ui-tokens.md)。
 
 ### 配置图片资源治理与 WebP 转换
 
@@ -508,7 +516,14 @@ npx repo-guard lighthouse
 
 ## 完整交付流程
 
-需要将需求、实现、测试与反馈统一记录时，按[合同驱动交付配置](features/delivery-contract.md)准备功能登记、合同和资料，再启用 `deliveryContract`。初始化不会替团队决定需求或生成已经验收的证据。
+交付合同可以独立启用，也可以与工程检查同时启用。团队选择一种组织方式：
+
+| 组织方式 | 配置与入口 | 适用场景 |
+|---|---|---|
+| 独立共同合同 | `repo-guard.delivery.json`；`delivery init / bind / enable / disable` | 同仓或分仓前后端共同遵循需求、任务和验收；不受后端技术栈限制 |
+| 仓库内多文件合同包 | `repository.deliveryContract`；`enable / disable deliveryContract` | 在本仓维护功能树、需求快照、清单和 Evidence Run |
+
+同一仓库不能同时启用这两个入口。工程检查的开关独立保留；初始化不会替团队确认需求或生成已经验收的证据。完整配置见[交付合同手册](features/delivery-contract.md)。
 
 | 阶段 | 实际操作 | 完成依据 |
 |---|---|---|
@@ -519,9 +534,13 @@ npx repo-guard lighthouse
 | 反馈 | 将测试或使用中的问题关联任务，修复并复测 | 正式发现及其闭环记录 |
 | 反向升级 | 人工确认是否完善需求、设计、测试、任务模板或规则 | 升级决定及下一轮改进任务 |
 
-启用后同步的五个 Skills 分别支持功能登记、合同规划、合同执行、反馈闭环和交付证据。技术结果变化会使旧证据与验收失效；已关闭交付出现新问题时使用新的修复合同，保留原历史。
+启用后同步的五个 Skills 分别支持功能登记、合同规划、合同执行、反馈闭环和交付证据，先根据实际配置选择流程。独立合同由一个权威来源管理，各方固定同一修订与指纹，绑定自己的参与方和仓库；跨仓不要求相同磁盘、分支名或电脑。
 
-证据复核需要先形成技术结果，再人工验收、更新证据元数据，最后重新检查。接入、四方时序、两轮复核、反馈升级与字段格式统一见[交付合同手册](features/delivery-contract.md)。`release-ready` 提供检查结论，npm 发布或应用部署由团队另行执行。
+独立模式通过 `delivery run --participant <id> --check <id>` 执行已约定检查，通过 `delivery import --from <文件>` 汇总各方签名证据。`delivery integrate` 针对确切代码版本组合执行联调并要求本轮报告；负责人完成实际验收后签署，最后用 `delivery verify` 复核。必需检查关闭、跳过或失败均不能算完成。`delivery status` 用于查看待办，不能用命令退出成功推断交付已经通过。
+
+真实实现缺陷用 `delivery feedback` 关联需求、责任方、签名失败证据和改进义务；修订合同并重新确认后，修复提交必须由同一测试内容获得通过结果。技术结果或版本组合变化会使旧联合验证与验收失效。验收私钥由人工负责人保管，AI 不读取或使用；签名不代替真实业务验收，也不证明本机尚未同步的远端版本。
+
+仓库内合同包继续先形成技术结果，再人工验收、更新证据元数据，最后重新检查；已关闭交付出现新问题时建立新的修复合同，保留原历史。接入、四方时序、两轮复核、反馈升级与字段格式统一见[交付合同手册](features/delivery-contract.md)。`release-ready` 提供检查结论，npm 发布或应用部署由团队另行执行。
 
 ## 接入 CI 与交付流水线
 
@@ -549,7 +568,7 @@ CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](fe
 
 ### 外部门禁
 
-通过 `ci.externalGates` 声明项目 npm script、允许的执行环境和 `repo-guard-json-v2` 报告，报告固定为 `schemaVersion: 2`，旧格式直接拒绝。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
+通过应用自己的 `ci.externalGates` 声明 npm script、允许的执行环境和 `repo-guard-json-v2` 报告，报告固定为 `schemaVersion: 2`，旧格式直接拒绝。多应用根配置不接受外部门禁，本方脚本、依赖和报告路径按应用目录解析。可本地手动执行；自动加入 CI `full` / `release-ready` 时要求可信的 GitLab 受保护分支。不同入口的条件和报告示例见[外部门禁](features/external-gates.md)。
 
 ### Axios 手动接口性能外部门禁
 
@@ -577,12 +596,15 @@ CI 配置、可信 Git 范围、报告路径和逐 Gate 策略见 [GitLab CI](fe
 
 | 入口 | 含义 |
 |---|---|
-| 普通结构化 Gate / CI | `0` 通过或明确跳过；`1` 配置或执行错误；`2` 策略违规；`3` 不可信的 Git/CI 范围 |
-| `pre-commit` | 正常通过为 `0`；规则失败会归为 `1`，不能只凭退出码区分违规和配置错误 |
+| Gate / Hook / CI / 交付检查 | `0` 成功或无需阻断；`1` 配置或执行错误；`2` 策略违规或交付条件未满足；`3` 不可信的 Git 范围 |
+| 多应用 CI | 按执行错误、配置错误、范围错误、违规汇总阻断结果，应用排列不影响最终码 |
+| `delivery status` | `0` 表示查询成功，不代表交付已完成；最终条件由 `delivery verify` 复核 |
 | `check` | `0` 表示没有受保护工作区变更；`2` 表示发现此类变更，并不代表全部规则已检查 |
 | 第三方工具 | 原始退出码可能不同，先看 repo-guard 的中文结论与结构化状态 |
 
 repo-guard 自有诊断提供问题、位置、证据、预期和修复指引；第三方原始输出会经过脱敏处理，并与主结论区分。pre-push 会实时显示运行进度。
+
+CI 的只报告模式可以保留失败而返回 `0`；关闭或跳过不能作为通过证据。完整聚合规则和命令语义见[结果与报告](features/gate-result-and-reporting.md)。
 
 ## 配置与结果
 
@@ -622,13 +644,15 @@ npx repo-guard lighthouse --skip-build
 
 ### Schema 与报告
 
-完整主配置以 [config.schema.json](../config.schema.json) 为准。单应用包含 `version`、`project`、`checks`、`repository`、`reporting`、`ci`；多应用根用 `projects` 清单替代 `project` 和 `checks`，子应用只定义自己的身份与检查。外部门禁位于 `ci.externalGates`；部署策略使用独立的 [operations.schema.json](../operations.schema.json)。
+完整主配置以 [config.schema.json](../config.schema.json) 为准。单应用包含 `version`、`project`、`checks`、`repository`、`reporting`、`ci`；多应用根用 `projects` 清单替代 `project` 和 `checks`，可用 `sharedPaths` 声明共享变更影响。子应用按 [project.schema.json](../project.schema.json) 定义身份、检查、本方 `repository` 策略和 `ci.protectedFiles / gatePolicy / externalGates`。部署策略使用独立的 [operations.schema.json](../operations.schema.json)。
 
 | Schema | 对应用途 |
 |---|---|
+| [独立交付绑定](../delivery.schema.json) | 合同固定副本、指纹、本方参与者、执行密钥和证据目录 |
+| [共同交付合同](../delivery-contract.schema.json) | 需求、各方任务与检查、联合报告、人工确认和反馈 |
 | [GateResult](../gate-result.schema.json) | 单项检查的结构化状态、问题与产物 |
 | [外部门禁报告](../external-report.schema.json) | `repo-guard-json-v2` 协议，只接受 `schemaVersion: 2` |
-| [UI Token Manifest](../ui-token-manifest.schema.json) | Token 来源、类别与适配器别名 |
+| [UI Token Manifest](../ui-token-manifest.schema.json) | Token 来源、类别及 CSS、Sass、Less 精确别名 |
 | [Axios 性能配置](../api-performance-config.schema.json) | 目标、客户端、场景与阈值 |
 | [k6 压测配置](../k6-load-config.schema.json) | 目标、负载、场景与阈值 |
 

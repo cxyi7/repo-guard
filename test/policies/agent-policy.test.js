@@ -27,7 +27,18 @@ import {
   managedAgentPolicyCapabilities,
   managedAgentPolicyFeatures,
   managedAgentPolicyGateIds,
+  renderAgentPolicyGroups,
 } from '../../src/policies/agent-policy-catalog.js';
+
+test('根规范说明应用隔离与独立合同，不要求在公共入口登记应用例外', () => {
+  const config = createStarterConfig();
+  delete config.project;
+  const document = renderAgentPolicyGroups({ config, packageJson: {} }).flatMap(({ lines }) => lines).join('\n');
+  assert.match(document, /应用工程规则、依赖、例外与外部门禁必须配置在所属应用/);
+  assert.doesNotMatch(document, /例外只能登记在/);
+  assert.match(document, /repo-guard\.delivery\.json/);
+  assert.match(document, /AI 不得读取、保管或使用验收人的签名私钥/);
+});
 import {
   agentPolicies,
   inspectAgentPolicies,
@@ -36,6 +47,29 @@ import {
 
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
+
+test('UI Token 托管规范随语言和图标选择器配置同步并说明变量来源限制', () => {
+  const starter = createStarterConfig();
+  const config = {
+    ...starter,
+    checks: {
+      ...starter.checks,
+      uiTokens: {
+        ...starter.checks.uiTokens,
+        enabled: true,
+        languages: ['css', 'sass', 'less'],
+        iconSelectors: ['.app-icon'],
+      },
+    },
+  };
+  const document = renderAgentPolicyGroups({ config, packageJson: {} })
+    .flatMap(({ lines }) => lines).join('\n');
+  assert.match(document, /UI Token 门禁检查.*css.*sass.*less/);
+  assert.match(document, /\.app-icon/);
+  assert.match(document, /变量只能在来源文件定义/);
+  assert.match(document, /CSS 断点长度别名只用于 CSS/);
+  assert.doesNotMatch(document, /UnoCSS|Attributify|shortcut/);
+});
 
 function fixture() {
   const root = mkdtempSync(path.join(TEST_ROOT, 'agent-policy-'));

@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-result.js';
+import { aggregateExitCodes, aggregateGateResults } from '../../core/result/exit-code.js';
 import { renderGateResultJson } from '../../core/report/json-renderer.js';
 import { calculateGateResultDigest } from '../../policies/delivery-contract/digests.js';
-import { selectProjects } from '../workspace/targets.js';
+import { selectProjects, projectAffected, scopeRepositoryProtectionChanges, projectConfigurationChanged } from '../workspace/targets.js';
 import { resolveCiRange } from './change-range.js';
 import { runCiGate } from './runner.js';
 import { assertCiReportVersion, CI_REPORT_VERSION, writeCiReport } from './report.js';
@@ -11,7 +12,6 @@ import { assertCiReportVersion, CI_REPORT_VERSION, writeCiReport } from './repor
 /** 同一门禁跨应用时按最严重结果汇总，避免后执行的成功覆盖先前失败。 */
 export function aggregateWorkspaceGateResults(targets) {
   const latestByTarget = new Map();
-  const failureRank = { 'execution-error': 3, 'configuration-error': 2, 'range-error': 2, violation: 1 };
   for (const target of targets) {
     assertCiReportVersion(target.report);
     const results = (target.report.steps ?? []).map(({ gateResult }) => gateResult).filter(Boolean);
@@ -19,8 +19,8 @@ export function aggregateWorkspaceGateResults(targets) {
     for (const result of results) {
       const key = `${target.projectId ?? '@repository'}:${result.gateId}`;
       const previous = latestByTarget.get(key);
-      if ((failureRank[previous?.result.status] ?? 0) > (failureRank[result.status] ?? 0)) continue;
-      latestByTarget.set(key, { projectId: target.projectId, result });
+      const selected = aggregateGateResults(previous ? [result, previous.result] : [result]).decisiveResult;
+      latestByTarget.set(key, { projectId: target.projectId, result: selected });
     }
   }
   const groups = new Map();
@@ -30,8 +30,7 @@ export function aggregateWorkspaceGateResults(targets) {
   }
   return [...groups.entries()].map(([gateId, entries]) => {
     if (entries.length === 1) return entries[0].result;
-    const statuses = ['execution-error', 'configuration-error', 'range-error', 'violation', 'passed', 'skipped'];
-    const decisive = statuses.map((status) => entries.find(({ result }) => result.status === status)).find(Boolean).result;
+    const decisive = aggregateGateResults(entries.map(({ result }) => result)).decisiveResult;
     return renderGateResultJson(createGateResult({
       gateId,
       status: decisive.status,
@@ -61,9 +60,10 @@ function failedTargetReport(error, profile, range, target) {
 export async function runWorkspaceCi({ workspace, options = {} }) {
   const profile = options.profile ?? workspace.repositoryConfig.ci.profile;
   const reportPath = options.reportPath ?? workspace.repositoryConfig.ci.reportPath;
-  const projects = selectProjects(workspace, options.projectId);
+  const range = options.resolvedRange ?? resolveCiRange(workspace.root, options);
+  const projects = selectProjects(workspace, options.projectId).filter((project) =>
+    options.projectId !== undefined || profile === 'release-ready' || projectAffected(workspace, project, range.changes));
   const hasRootProject = projects.some((application) => application.root === workspace.root);
-  const range = resolveCiRange(workspace.root, options);
   const repositoryTarget = {
     projectId: null, projectRoot: '.', root: workspace.root,
     config: workspace.repositoryConfig, scope: 'repository',
@@ -72,6 +72,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
   const targets = [repositoryTarget, ...projects.map((application) => ({
     projectId: application.id, projectRoot: application.relativeRoot, root: application.root,
     config: application.config, scope: 'project',
+    configurationChanged: projectConfigurationChanged(workspace, application, range.changes),
     reportPath: `reports/repo-guard-workspace/projects/${application.id}.json`,
   }))];
   if (profile === 'release-ready') targets.push({
@@ -99,11 +100,13 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
         root: target.root,
         repositoryRoot: workspace.root,
         config: target.config,
+        configurationChanged: target.configurationChanged ?? false,
         scope: target.scope,
         skipRepositoryAgentPolicy: target.scope === 'repository' && hasRootProject,
         reportPath: target.reportPath,
         profile,
         resolvedRange: range,
+        repositoryProtectedChanges: target.scope === 'repository' ? scopeRepositoryProtectionChanges(workspace, range.changes) : null,
         initialPriorResults: target.scope === 'evidence' ? aggregateWorkspaceGateResults(completed) : [],
         onReport: (value) => { report = value; },
       });
@@ -118,7 +121,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
       exitCode, report,
     });
   }
-  const exitCode = completed.find((target) => target.exitCode !== 0)?.exitCode ?? 0;
+  const exitCode = aggregateExitCodes(completed.map((target) => target.exitCode));
   const report = {
     version: CI_REPORT_VERSION,
     status: exitCode === 0 ? 'passed' : 'failed',
@@ -126,6 +129,9 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
     selectedProjects: projects.map(({ id }) => id),
     targets: completed,
     gateResults: aggregateWorkspaceGateResults(completed),
+    scopedGateResults: completed.flatMap((target) => (target.report.steps ?? [])
+      .filter((step) => step.gateResult)
+      .map((step) => ({ projectId: target.projectId, projectRoot: target.projectRoot, gateResult: step.gateResult }))),
   };
   writeCiReport(workspace.root, reportPath, report);
   return exitCode;

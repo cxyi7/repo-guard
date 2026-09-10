@@ -14,6 +14,7 @@ export const prePushPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.commit-message',
+    'repository.delivery-contract',
     'quality.typecheck',
     'quality.dead-code',
     'repository.unused-image-assets',

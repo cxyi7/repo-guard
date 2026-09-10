@@ -1,9 +1,11 @@
-import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError, toRepoGuardError } from '../core/error/repo-guard-error.js';
 import { assertExceptionLifecycleCurrent } from './exception-lifecycle.js';
 import { assertProjectDocumentVersion, normalizeProjectDocument, normalizeRepositoryDocument } from './project-configuration.js';
 import { assertKnownProperties, CONFIG_FILE, configValidationError } from './validation-primitives.js';
+import { assertWorkspaceScopes } from './workspace-scopes.js';
+import { DELIVERY_CONFIG_FILE, validateDeliveryBinding } from './delivery-workspace.js';
 
 export function readConfigurationDocument(configPath) {
   try {
@@ -99,25 +101,8 @@ function validateExceptions(config, { allowExpiredExceptions = false, now = new 
   return config;
 }
 
-function scopeProjectExceptions(config, repositoryRoot, applicationRoot) {
-  const relativeRoot = path.relative(repositoryRoot, applicationRoot).replaceAll('\\', '/');
-  if (!relativeRoot) return config;
-  const prefix = `${relativeRoot}/`;
-  return {
-    ...config,
-    repository: {
-      ...config.repository,
-      exceptions: {
-        ...config.repository.exceptions,
-        entries: config.repository.exceptions.entries.filter((entry) => entry.path.startsWith(prefix))
-          .map((entry) => ({ ...entry, path: entry.path.slice(prefix.length) })),
-      },
-    },
-  };
-}
-
 function readWorkspaceProjects(root, document, options) {
-  assertKnownProperties(document, new Set(['$schema', 'version', 'projects', 'repository', 'reporting', 'ci']), CONFIG_FILE);
+  assertKnownProperties(document, new Set(['$schema', 'version', 'projects', 'sharedPaths', 'repository', 'reporting', 'ci']), CONFIG_FILE);
   if (!Array.isArray(document.projects) || document.projects.length === 0) {
     throw configValidationError('projects 必须包含至少一个显式项目');
   }
@@ -127,32 +112,39 @@ function readWorkspaceProjects(root, document, options) {
     const label = `projects[${index}]`;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw configValidationError(`${label} 必须是对象`);
     assertKnownProperties(entry, new Set(['id', 'root', 'config']), label);
-    if (typeof entry.id !== 'string' || ids.has(entry.id)) throw configValidationError(`${label}.id 必须是唯一的项目标识`);
+    if (typeof entry.id !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(entry.id) || ids.has(entry.id)) throw configValidationError(`${label}.id 必须是唯一的小写短横线项目标识`);
     ids.add(entry.id);
-    const appRoot = resolveOwnedPath(root, entry.root, `${label}.root`, { directory: true, snapshot: Boolean(options.readDocument) });
+    const appRoot = resolveOwnedPath(root, entry.root, `${label}.root`, { directory: true, snapshot: Boolean(options.readDocument) || options.lazyProjects });
     let canonicalRoot;
     try {
       canonicalRoot = realpathSync(appRoot);
     } catch (error) {
-      if (!options.readDocument || error.code !== 'ENOENT') throw configValidationError(`${label}.root 无法解析真实目录`);
+      if ((!options.readDocument && !options.lazyProjects) || error.code !== 'ENOENT') throw configValidationError(`${label}.root 无法解析真实目录`);
       canonicalRoot = canonicalSnapshotPath(appRoot, label);
     }
     if (roots.some((existing) => isWithin(existing, canonicalRoot) || isWithin(canonicalRoot, existing))) {
       throw configValidationError(`${label}.root 与其他应用目录重叠；每个文件必须只有一个应用归属`);
     }
     roots.push(canonicalRoot);
-    const configPath = resolveOwnedPath(appRoot, entry.config ?? CONFIG_FILE, `${label}.config`, { snapshot: Boolean(options.readDocument) });
+    const configPath = resolveOwnedPath(appRoot, entry.config ?? CONFIG_FILE, `${label}.config`, { snapshot: Boolean(options.readDocument) || options.lazyProjects });
     if (path.resolve(configPath) === path.join(root, CONFIG_FILE)) throw configValidationError('子应用配置不得引用工作区入口自身');
-    const sharedConfig = validateExceptions(normalizeProjectDocument(readDocument(root, configPath, options), {
-      ...options,
-      configPath,
-      repository: document.repository ?? {},
-      reporting: document.reporting ?? {},
-      ci: document.ci ?? {},
-    }), options);
-    const config = scopeProjectExceptions(sharedConfig, root, appRoot);
-    if (entry.id !== config.project.id) throw configValidationError(`${label}.id 必须与子应用 project.id 保持一致`);
-    return { id: entry.id, root: appRoot, relativeRoot: entry.root, configPath, config, project: config.project };
+    let loadedConfig;
+    const readConfig = () => {
+      if (loadedConfig) return loadedConfig;
+      const config = validateExceptions(normalizeProjectDocument(readDocument(root, configPath, options), {
+        ...options, configPath, shared: document,
+      }), options);
+      if (entry.id !== config.project.id) throw configValidationError(`${label}.id 必须与子应用 project.id 保持一致`);
+      loadedConfig = config;
+      return config;
+    };
+    // Git 变更使用规范相对路径，不能用含 ./ 或重复分隔符的配置原文匹配。
+    const relativeRoot = path.relative(root, appRoot).replaceAll('\\', '/') || '.';
+    return {
+      id: entry.id, root: appRoot, relativeRoot, configPath,
+      get config() { return readConfig(); },
+      get project() { return readConfig().project; },
+    };
   });
 }
 
@@ -161,11 +153,21 @@ export function loadWorkspace(root, options = {}) {
   try {
     const repositoryRoot = path.resolve(root);
     const configPath = path.join(repositoryRoot, CONFIG_FILE);
+    if (!options.readDocument && !existsSync(configPath) && existsSync(path.join(repositoryRoot, DELIVERY_CONFIG_FILE))) {
+      validateDeliveryBinding(readConfigurationDocument(path.join(repositoryRoot, DELIVERY_CONFIG_FILE)));
+      const document = { version: 2, projects: [], ci: { enabled: true } };
+      return { root: repositoryRoot, configPath, document, repositoryConfig: normalizeRepositoryDocument(document), projects: [], deliveryOnly: true };
+    }
     const document = readDocument(repositoryRoot, configPath, options);
     assertProjectDocumentVersion(document);
+    if (document.repository?.deliveryContract?.enabled && existsSync(path.join(repositoryRoot, DELIVERY_CONFIG_FILE))) {
+      throw configValidationError('不能同时启用仓库内合同包和独立交付合同；请明确选择交付入口，既有合同资料会保留，不会静默跳过规则');
+    }
     if (Object.hasOwn(document, 'projects')) {
+      assertWorkspaceScopes(document);
       const projects = readWorkspaceProjects(repositoryRoot, document, options);
       const repositoryConfig = validateExceptions(normalizeRepositoryDocument(document), options);
+      if (!options.lazyProjects) projects.forEach((project) => project.config);
       return { root: repositoryRoot, configPath, document, repositoryConfig, projects };
     }
     const config = validateExceptions(normalizeProjectDocument(document, options), options);

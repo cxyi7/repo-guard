@@ -100,8 +100,8 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.equal(config.checks.imageAssets.enabled, false);
   assert.equal(config.checks.imageAssets.naming.convention, 'camelCase');
   assert.equal(config.checks.uiTokens.enabled, false);
-  assert.equal(config.checks.uiTokens.adapters.sass.enabled, false);
-  assert.equal(config.checks.uiTokens.adapters.unocss.enabled, false);
+  assert.deepEqual(config.checks.uiTokens.languages, ['css']);
+  assert.equal(Object.hasOwn(config.checks.uiTokens, 'adapters'), false);
   assert.equal(config.checks.architecture.enabled, false);
   assert.equal(config.checks.accessibilityTest.enabled, false);
   assert.equal(config.checks.architecture.rules.length, 3);
@@ -363,20 +363,13 @@ test('enables and disables the dead-code project gate', (context) => {
   assert.equal(readConfig(root).checks.deadCode.enabled, false);
 });
 
-test('在项目先声明语言适配器后启用和禁用 UI Token 门禁', (context) => {
+test('在项目声明样式语言后启用和禁用 UI Token 门禁', (context) => {
   const root = createFixture(
     sparseConfig({
       checks: {
         uiTokens: {
           enabled: false,
-          adapters: {
-            sass: {
-              enabled: true,
-            },
-            unocss: {
-              enabled: true,
-            },
-          },
+          languages: ['css', 'sass', 'less'],
         },
       },
     }),
@@ -386,8 +379,7 @@ test('在项目先声明语言适配器后启用和禁用 UI Token 门禁', (con
   const enabled = setFeaturesEnabled(root, ['uiTokens'], true);
   assert.deepEqual(enabled.changed, ['uiTokens']);
   assert.equal(readConfig(root).checks.uiTokens.enabled, true);
-  assert.equal(readConfig(root).checks.uiTokens.adapters.sass.enabled, true);
-  assert.equal(readConfig(root).checks.uiTokens.adapters.unocss.enabled, true);
+  assert.deepEqual(readConfig(root).checks.uiTokens.languages, ['css', 'sass', 'less']);
   assert.equal(
     readConfig(root).repository.rules.some(
       ({ pattern, category }) =>

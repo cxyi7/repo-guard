@@ -230,6 +230,10 @@ function effectiveFeaturesFor(requestedFeatures, enabled) {
   return [...new Set([...related, ...unique])];
 }
 
+function isApplicationFeature(feature) {
+  return Object.hasOwn(PROJECT_CHECK_PATHS, feature) || ['dependencies', 'codePlacement'].includes(feature);
+}
+
 function selectApplication(workspace, features, projectId) {
   if (projectId !== undefined) {
     const selected = workspace.projects.find(
@@ -243,7 +247,7 @@ function selectApplication(workspace, features, projectId) {
     return selected;
   }
   if (workspace.projects.length === 1) return workspace.projects[0];
-  if (features.some((feature) => Object.hasOwn(PROJECT_CHECK_PATHS, feature))) {
+  if (features.some(isApplicationFeature)) {
     throw configurationError(
       'project/selection-required',
       '修改应用检查时必须使用 --project 显式选择应用。',
@@ -253,11 +257,13 @@ function selectApplication(workspace, features, projectId) {
 }
 
 function validateAndWriteDocuments(workspace, replacements) {
-  loadWorkspace(workspace.root, {
+  const candidate = loadWorkspace(workspace.root, {
+    lazyProjects: true,
     readDocument: (relative) =>
       replacements.get(path.resolve(workspace.root, relative)) ??
       readConfigurationDocument(path.resolve(workspace.root, relative)),
   });
+  candidate.projects.filter((project) => replacements.has(workspace.configPath) || replacements.has(project.configPath)).forEach((project) => project.config);
   const original = new Map(
     [...replacements.keys()].map((file) => [file, readFileSync(file, 'utf8')]),
   );
@@ -297,28 +303,18 @@ function protectProjectArtifacts(rules, config, relativeRoot = '.') {
 
 function protectWorkspaceArtifacts(workspace, replacements) {
   const candidate = loadWorkspace(workspace.root, {
+    lazyProjects: true,
     readDocument: (relative) =>
       replacements.get(path.resolve(workspace.root, relative)) ??
       readConfigurationDocument(path.resolve(workspace.root, relative)),
   });
-  const document = replacements.get(workspace.configPath) ?? workspace.document;
-  const originalRules =
-    document.repository?.rules ??
-    candidate.repositoryConfig.repository.rules.map(
-      ({ pattern, category, level }) => ({ pattern, category, level }),
-    );
-  let rules = originalRules;
-  for (const project of candidate.projects) {
-    rules = protectProjectArtifacts(
-      rules,
-      project.config,
-      project.relativeRoot,
-    );
-  }
-  if (!isDeepStrictEqual(rules, originalRules)) {
-    replacements.set(workspace.configPath, {
-      ...document,
-      repository: { ...document.repository, rules },
+  for (const project of candidate.projects.filter((item) => replacements.has(item.configPath))) {
+    const document = replacements.get(project.configPath) ?? readConfigurationDocument(project.configPath);
+    const originalRules = document.repository?.rules ?? project.config.repository.rules.map(
+      ({ pattern, category, level }) => ({ pattern, category, level }));
+    const rules = protectProjectArtifacts(originalRules, project.config);
+    if (!isDeepStrictEqual(rules, originalRules)) replacements.set(project.configPath, {
+      ...document, repository: { ...document.repository, rules },
     });
   }
 }
@@ -330,19 +326,19 @@ export function setFeaturesEnabled(
   options = {},
 ) {
   const effectiveFeatures = effectiveFeaturesFor(requestedFeatures, enabled);
-  const workspace = loadWorkspace(root);
+  const workspace = loadWorkspace(root, { lazyProjects: true });
   const application = selectApplication(
     workspace,
     effectiveFeatures,
     options.projectId,
   );
-  assertManagedDocumentFormats(root, { workspace });
+  assertManagedDocumentFormats(root, { workspace, projectId: application?.id });
   const replacements = new Map();
   const changed = [];
   const unchanged = [];
   for (const feature of effectiveFeatures) {
     const fields = featureDocumentPath(feature);
-    const appCheck = fields[0] === 'checks';
+    const appCheck = isApplicationFeature(feature);
     const file = appCheck ? application.configPath : workspace.configPath;
     const normalized = appCheck
       ? application.config

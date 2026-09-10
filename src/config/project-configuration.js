@@ -1,24 +1,18 @@
 import { validateConfig } from './configuration-validation.js';
 import { assertProjectDocumentVersion } from './root-configuration-validation.js';
-import { configValidationError, CONFIG_FILE } from './validation-primitives.js';
+import { CONFIG_FILE } from './validation-primitives.js';
+import { applicationDocument } from './workspace-scopes.js';
+import { PROJECT_CHECK_PATHS } from './project-feature-paths.js';
 
 export { assertProjectDocumentVersion };
 export const PROJECT_SCHEMA_PATH =
   './node_modules/@cxyi7/repo-guard/config.schema.json';
 
-/** 磁盘、快照与运行时共享 v2 结构；只继承仓库统一配置。 */
+/** 磁盘、快照与运行时共享 v2 结构；应用仅继承公共流程设置。 */
 export function normalizeProjectDocument(document, options = {}) {
   assertProjectDocumentVersion(document);
-  const shared = Object.fromEntries(
-    ['repository', 'reporting', 'ci'].map((section) => {
-      if (options[section] !== undefined && document[section] !== undefined) {
-        throw configValidationError(`子应用不得覆盖仓库统一的 ${section} 配置`);
-      }
-      return [section, options[section] ?? document[section]];
-    }),
-  );
   return validateConfig(
-    { ...document, ...shared },
+    options.shared ? applicationDocument(document, options.shared) : document,
     options.configPath ?? CONFIG_FILE,
     { ...options, repositoryOnly: false },
   );
@@ -55,7 +49,12 @@ export function normalizeRepositoryDocument(document, options = {}) {
   return validateConfig(
     {
       version: 2,
-      repository: document.repository,
+      checks: Object.fromEntries(Object.keys(PROJECT_CHECK_PATHS).map((key) => [key, { enabled: false }])),
+      repository: {
+        ...document.repository,
+        dependencyPolicy: { enabled: false },
+        codePlacement: { enabled: false },
+      },
       reporting: document.reporting,
       ci: document.ci,
     },

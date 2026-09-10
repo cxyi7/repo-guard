@@ -23,6 +23,9 @@ This repository is the canonical source for `@cxyi7/repo-guard`.
 - Keep Lighthouse out of pre-commit; it may run explicitly or from the optional pre-push gate.
 - Do not add TypeScript type checking to the pre-commit gate.
 - Preserve partially staged and unstaged changes through `lint-staged`.
+- 退出码、检查状态映射及汇总优先级只在 `src/core/result/exit-code.js` 维护。命令、Hook、CI、多应用、交付和运维入口必须复用公共常量与映射/汇总函数，不得自行返回数字码、压缩失败类型、取首个非零值或透传第三方进程退出码。第三方原始码保留为诊断，由适配层说明其语义；启动失败、超时、信号终止一律为执行错误。
+- 统一退出码为成功或非阻断 `0`、配置/执行错误 `1`、违规或交付条件未满足 `2`、不可信 Git 范围 `3`；多个阻断结果按执行错误、配置错误、范围错误、违规的优先级汇总，与应用和步骤排列无关。先选择需阻断的结果再汇总；CI 只报告和成功的状态查询可返回 `0`，但跳过不能作为交付通过证据。
+- 只有 `bin/repo-guard.js` 可以写入主进程退出码，写入前必须通过公共校验。生成的运维子脚本必须注入公共退出码常量，不能另建码表。新增入口或失败分类时同步退出码边界测试、跨入口行为测试及 `docs/features/gate-result-and-reporting.md`，不得以测试白名单绕过统一处理。
 - 托管 Hook 和规范区块只接受当前格式；旧版或未知标记必须拒绝，不转换或覆盖既有文件。repo-guard 自有配置、报告、登记表和基线只使用文档规定的当前格式，不得新增旧版读取器或转换路径。
 - Every behavior change requires tests and synchronized README/config schema updates.
 - Treat `docs/project-structure-and-feature-inventory.md` and `docs/features/` as the joint

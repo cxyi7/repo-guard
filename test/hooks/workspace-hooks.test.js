@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 import { loadWorkspace } from '../../src/config/configuration-loader.js';
+import { collectStagedChanges } from '../../src/git/change-collection.js';
 import { createChangeSet } from '../../src/core/capability/gate-context.js';
 import { createGateResult } from '../../src/core/result/gate-result.js';
 import { orchestratePlan } from '../../src/orchestration/orchestrator.js';
@@ -18,6 +19,9 @@ import { runPreCommit } from '../../src/orchestration/pre-commit/runner.js';
 import { runWorkspaceQualityExecution } from '../../src/orchestration/pre-commit/quality-runner.js';
 import { preCommitPlan } from '../../src/orchestration/pre-commit/protected-plan.js';
 import { resolvePushConfig } from '../../src/orchestration/pre-push/push-configuration.js';
+import { runPrePush } from '../../src/orchestration/pre-push/runner.js';
+import { runDeliveryCommand } from '../../src/orchestration/cli/delivery.js';
+import { createGitProjectFixture } from '../helpers/git-project.js';
 import { loadStagedWorkspace } from '../../src/orchestration/workspace/configuration-snapshot.js';
 import {
   createWorkspaceTargets,
@@ -50,7 +54,6 @@ function fixture(context, { tools = false, build = false } = {}) {
     version: 2,
     projects: ['web', 'api'].map((id) => ({ id, root: `apps/${id}` })),
     repository: {
-      dependencyPolicy: { enabled: false },
       rules: [
         { pattern: 'critical.txt', category: '必要内容', level: 'block' },
       ],
@@ -81,6 +84,7 @@ function fixture(context, { tools = false, build = false } = {}) {
         filePlacement: { enabled: false },
         maxFileLines: { enabled: false },
       },
+      repository: { dependencyPolicy: { enabled: false } },
     });
     writeFileSync(
       path.join(root, `apps/${id}/eslint.config.mjs`),
@@ -111,12 +115,74 @@ function quiet(context) {
   return messages;
 }
 
+for (const applicationRoot of ['apps/web', './apps/web', 'apps//web']) {
+  test(`应用目录 ${applicationRoot} 的真实提交仍阻断图片命名违规`, async (context) => {
+    const { root, rootConfig } = fixture(context);
+    const messages = quiet(context);
+    writeJson(root, 'repo-guard.config.json', {
+      ...rootConfig,
+      projects: rootConfig.projects.map((project) => project.id === 'web'
+        ? { ...project, root: applicationRoot } : project),
+    });
+    const configFile = 'apps/web/repo-guard.config.json';
+    const document = JSON.parse(readFileSync(path.join(root, configFile), 'utf8'));
+    writeJson(root, configFile, {
+      ...document,
+      checks: {
+        ...document.checks,
+        imageAssets: {
+          enabled: true,
+          include: ['src/assets/**'],
+          extensions: ['svg'],
+          naming: { convention: 'kebab-case' },
+          compression: { enabled: false },
+          duplicates: { pixel: 'off' },
+        },
+      },
+    });
+    const imageFile = 'apps/web/src/assets/BadName.SVG';
+    const content = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>\n';
+    mkdirSync(path.dirname(path.join(root, imageFile)), { recursive: true });
+    writeFileSync(path.join(root, imageFile), content);
+    git(root, ['add', 'repo-guard.config.json', configFile, imageFile]);
+
+    assert.equal(await runPreCommit(root), 2, messages.join('\n'));
+    assert.match(messages.join('\n'), /web \/ repository\.image-assets/);
+    assert.match(messages.join('\n'), /BadName\.SVG/);
+    assert.match(messages.join('\n'), /kebab-case/);
+    assert.match(messages.join('\n'), /扩展名必须使用小写/);
+    assert.equal(git(root, ['show', `:${imageFile}`]), content);
+    assert.equal(readFileSync(path.join(root, imageFile), 'utf8'), content);
+  });
+}
+
+test('等价目录写法下真实跨应用重命名仍拆为删除和新增', (context) => {
+  const { root, rootConfig } = fixture(context);
+  writeJson(root, 'repo-guard.config.json', {
+    ...rootConfig,
+    projects: [{ id: 'web', root: './apps/web' }, { id: 'api', root: 'apps//api/' }],
+  });
+  git(root, ['add', 'repo-guard.config.json']);
+  git(root, ['mv', 'apps/web/src/value.js', 'apps/api/src/moved.js']);
+  const targets = createWorkspaceTargets({
+    workspace: loadStagedWorkspace(root),
+    environment: 'pre-commit',
+    changes: createChangeSet({ source: 'staged', changes: collectStagedChanges(root) }),
+  });
+  assert.deepEqual(targets.projects.find(({ project }) => project.id === 'web').changes.entries, [
+    { status: 'D', path: 'src/value.js', oldPath: null },
+  ]);
+  assert.deepEqual(targets.projects.find(({ project }) => project.id === 'api').changes.entries, [
+    { status: 'A', path: 'src/moved.js', oldPath: null },
+  ]);
+});
+
 test('多应用的固定步骤按同一步骤轮流执行，受保护文件只在仓库最终检查', async (context) => {
   const { root } = fixture(context);
   const targets = createWorkspaceTargets({
     workspace: loadWorkspace(root),
     environment: 'pre-commit',
-    changes: createChangeSet({ source: 'test', changes: [] }),
+    changes: createChangeSet({ source: 'test', changes: [{ status: 'M', path: 'apps/web/src/value.js' }, { status: 'M', path: 'apps/api/src/value.js' }] }),
   });
   const calls = [];
   const registry = {
@@ -160,7 +226,7 @@ test('多应用的固定步骤按同一步骤轮流执行，受保护文件只�
   assert.equal(
     calls.filter((call) => call.startsWith('repository.protected-files'))
       .length,
-    1,
+    3,
   );
   assert.equal(
     calls.some((call) => /vue.*:api/.test(call)),
@@ -173,7 +239,7 @@ test('应用失败不会被另一个应用成功覆盖，前序结果按应用�
   const targets = createWorkspaceTargets({
     workspace: loadWorkspace(root),
     environment: 'pre-push',
-    changes: createChangeSet({ source: 'test', changes: [] }),
+    changes: createChangeSet({ source: 'test', changes: [{ status: 'M', path: 'apps/web/src/value.js' }, { status: 'M', path: 'apps/api/src/value.js' }] }),
   });
   const prior = [];
   const registry = {
@@ -299,6 +365,28 @@ test('已接入仓库不能通过推送删除根配置跳过质量门禁', (cont
   );
 });
 
+test('独立交付仓库的推送读取合同快照，未确认和删除绑定均阻断', async (context) => {
+  const root = createGitProjectFixture(context, { 'src/value.txt': '初始化\n' });
+  quiet(context);
+  const base = git(root, ['rev-parse', 'HEAD']).trim();
+  assert.equal(await runDeliveryCommand(['keygen', '--name', 'reviewer'], root), 0);
+  assert.equal(await runDeliveryCommand(['init', '--id', 'delivery', '--participant', 'api', '--repository', 'backend',
+    '--role', 'backend', '--reviewer-public-key', '.repo-guard/reviewer.pub'], root), 0);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'feat: 声明独立合同']);
+  const head = git(root, ['rev-parse', 'HEAD']).trim();
+  const protocol = `refs/heads/main ${head} refs/heads/main ${base}\n`;
+  const resolved = resolvePushConfig(root, protocol);
+  assert.equal(resolved.skip, false);
+  assert.equal(resolved.workspace.deliveryOnly, true);
+  assert.equal(resolved.workspace.projects.length, 0);
+  assert.notEqual(await runPrePush(root, { input: protocol }), 0);
+  git(root, ['rm', 'repo-guard.delivery.json']);
+  git(root, ['commit', '-m', 'test: 删除交付绑定']);
+  const deleted = git(root, ['rev-parse', 'HEAD']).trim();
+  assert.throws(() => resolvePushConfig(root, `refs/heads/main ${deleted} refs/heads/main ${head}\n`), /删除了已接入的 repo-guard.delivery.json/);
+});
+
 test('跨应用重命名在原应用显示删除、目标应用显示新增，范围不交叉', () => {
   const changes = [
     {
@@ -395,7 +483,7 @@ test('任一应用质量失败后恢复两个应用的索引和工作树', async
       `${content}// 尚未暂存的 ${id} 修改\n`,
     );
   }
-  assert.equal(await runQualityGate({ cwd: root }), 1);
+  assert.equal(await runQualityGate({ cwd: root }), 2);
   for (const [id, content] of Object.entries(contents)) {
     const file = `apps/${id}/src/value.js`;
     assert.equal(git(root, ['show', `:${file}`]), content);
@@ -415,7 +503,7 @@ test('真实多应用 pre-commit 在完成格式修复后仍阻断仓库受保�
   );
   writeFileSync(path.join(root, 'critical.txt'), '不能随意变更的必要内容\n');
   git(root, ['add', 'apps/api/src/value.js', 'critical.txt']);
-  assert.equal(await runPreCommit(root), 1, messages.join('\n'));
+  assert.equal(await runPreCommit(root), 2, messages.join('\n'));
   assert.equal(
     git(root, ['show', ':apps/api/src/value.js']),
     'export const value = 2;\n',

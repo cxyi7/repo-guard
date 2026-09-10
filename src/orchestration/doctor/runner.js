@@ -3,6 +3,7 @@ import path from 'node:path';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { createChangeSet } from '../../core/capability/gate-context.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { gateStatusToExitCode } from '../../core/result/exit-code.js';
 import {
   nodeVersionIsSupported,
   REQUIRED_NODE_RANGE,
@@ -46,7 +47,7 @@ function renderDoctorResult(root, repairResult, { checks, errors, warnings }) {
   for (const check of checks) writeConsoleMessage(`  正常   ${check}`);
   for (const warning of warnings) writeConsoleMessage(`  警告   ${warning}`, 'stderr');
   for (const error of errors) writeConsoleMessage(`  错误 ${error}`, 'stderr');
-  return errors.length === 0 ? 0 : 1;
+  return gateStatusToExitCode(errors.length === 0 ? 'passed' : 'configuration-error');
 }
 
 function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId) {
@@ -58,8 +59,8 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
 
   let workspace;
   try {
-    workspace = loadWorkspace(root, { allowExpiredExceptions: true });
-    selectProjects(workspace, projectId);
+    workspace = loadWorkspace(root, { allowExpiredExceptions: true, lazyProjects: true });
+    selectProjects(workspace, projectId).forEach((project) => project.config);
     checks.push(`配置（${workspace.projects.length} 个显式应用，${workspace.repositoryConfig.repository.rules.length} 条仓库规则）`);
   } catch (error) {
     errors.push(error.message);
@@ -83,7 +84,7 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
   const deliverySkills = inspectDeliverySkills(root, config.repository.deliveryContract.enabled);
   if (deliverySkills.issues.length > 0) {
     errors.push(...deliverySkills.issues.map((message) => `${message}；请运行 repo-guard doctor --fix`));
-  } else if (config.repository.deliveryContract.enabled) {
+  } else if (deliverySkills.skills.length > 0) {
     checks.push(`${deliverySkills.skills.length} 个交付流程 Skills`);
   } else {
     checks.push('交付流程 Skills 在功能禁用时未安装');
@@ -103,6 +104,13 @@ function inspectBaseConfiguration(root, { checks, errors, warnings }, projectId)
     && exceptionResult.future.length === 0
   ) {
     warnings.push(renderExceptionRegistrySummary(exceptionResult));
+  }
+  for (const application of selectProjects(workspace, projectId).filter(({ config: applicationConfig }) => applicationConfig !== config)) {
+    const result = inspectExceptionLifecycle(application.config.repository.exceptions);
+    const summary = `应用 ${application.id}：${renderExceptionRegistrySummary(result)}`;
+    if (result.expired.length > 0 || result.future.length > 0) errors.push(summary);
+    else if (result.expiring.length > 0) warnings.push(summary);
+    else checks.push(`应用 ${application.id} 结构化例外（${result.entries.length} 条）`);
   }
   return workspace;
 }
@@ -150,8 +158,9 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
 
   if (!ci) inspectManagedHooks(root, { checks, errors });
 
-  const hasNotifyRules = config?.repository.rules.some(({ level }) => level === 'notify') ?? false;
-  const hasMutationFailureNotification = workspace?.projects.some(({ config: appConfig }) => appConfig.checks.mutationTest.enabled
+  const hasNotifyRules = (config?.repository.rules.some(({ level }) => level === 'notify') ?? false)
+    || (workspace && selectProjects(workspace, projectId).some(({ config: applicationConfig }) => applicationConfig.repository.rules.some(({ level }) => level === 'notify')));
+  const hasMutationFailureNotification = workspace && selectProjects(workspace, projectId).some(({ config: appConfig }) => appConfig.checks.mutationTest.enabled
     && appConfig.checks.mutationTest.guardedBuilds.some(({ notifyOnFailure }) => notifyOnFailure));
   const notificationRequired = config?.reporting.notification.enabled
     && (hasNotifyRules || hasMutationFailureNotification);

@@ -1,3 +1,4 @@
+import { EXIT_CODES } from '../../core/result/exit-code.js';
 import { loadExecutionTarget } from '../workspace/project-selection.js';
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
@@ -29,5 +30,5 @@ export function runBuildArtifactBaseline(action, cwd = process.cwd(), options = 
       `构建产物基线已安全裁剪：${result.before} → ${result.after}；请审核并提交该文件。`,
     );
   }
-  return 0;
+  return EXIT_CODES.success;
 }

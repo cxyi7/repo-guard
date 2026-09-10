@@ -61,6 +61,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('pre-push').steps.map(({ id }) => id),
     [
       'repository.commit-message',
+      'repository.delivery-contract',
       'quality.typecheck',
       'quality.dead-code',
       'repository.unused-image-assets',

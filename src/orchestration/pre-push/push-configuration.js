@@ -4,6 +4,7 @@ import { configurationError, rangeError } from '../../core/error/repo-guard-erro
 import { gitValue, runGit } from '../../git/execution.js';
 import { parsePrePushUpdates } from './change-range.js';
 import { loadWorkspaceSnapshot } from '../workspace/configuration-snapshot.js';
+import { DELIVERY_CONFIG_FILE } from '../../config/delivery-workspace.js';
 
 const ZERO_SHA = /^0+$/;
 
@@ -17,22 +18,16 @@ function loadConfigAtRevision(root, revision) {
     if (history.stdout.trim()) {
       throw configurationError('pre-push/pushed-config-deleted', `待推送提交删除了已接入的 ${CONFIG_FILE}；请恢复配置后重新推送。`);
     }
+    const binding = runGit(['show', `${revision}:${DELIVERY_CONFIG_FILE}`], { cwd: root, allowFailure: true });
+    if (binding.status === 0) return loadWorkspaceSnapshot(root, revision, { lazyProjects: true });
+    const deliveryHistory = runGit(['log', '-1', '--format=%H', revision, '--', DELIVERY_CONFIG_FILE], { cwd: root });
+    if (deliveryHistory.stdout.trim()) {
+      throw configurationError('pre-push/pushed-delivery-config-deleted', `待推送提交删除了已接入的 ${DELIVERY_CONFIG_FILE}；请恢复交付配置后重新推送。`);
+    }
     return null;
   }
 
-  return loadWorkspaceSnapshot(root, revision);
-}
-
-function usesPrePushGate(config) {
-  return config?.checks.accessibilityTest.enabled
-    || config?.repository.commitMessage.enabled
-    || config?.checks.deadCode.enabled
-    || config?.checks.unusedImageAssets.enabled
-    || config?.checks.typeCheck.enabled
-    || config?.checks.unitTest.enabled
-    || config?.checks.architecture.enabled
-    || config?.checks.build.enabled
-    || config?.checks.lighthouse.enabled;
+  return loadWorkspaceSnapshot(root, revision, { lazyProjects: true });
 }
 
 function assertExactPushSnapshot(root, revision) {
@@ -68,7 +63,7 @@ function assertExactPushSnapshot(root, revision) {
 
 export function resolvePushConfig(root, input) {
   if (!String(input || '').trim()) {
-    const workspace = loadWorkspace(root);
+    const workspace = loadWorkspace(root, { lazyProjects: true });
     return { workspace, config: workspace.repositoryConfig, skip: false };
   }
 
@@ -88,7 +83,7 @@ export function resolvePushConfig(root, input) {
     revision,
   }));
   const gated = revisionConfigs.filter(({ workspace }) => (
-    workspace?.projects.some(({ config }) => usesPrePushGate(config))
+    workspace?.projects.length > 0 || workspace?.deliveryOnly
   ));
   if (gated.length === 0) {
     const workspace = revisionConfigs.find((entry) => entry.workspace)?.workspace;
