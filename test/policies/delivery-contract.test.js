@@ -1450,6 +1450,27 @@ test('doctor setup checks the registry, contract schemas, bindings, and managed 
   assert.match(invalid.summary, /guard:delivery-contract/);
 });
 
+test('Java 与无工程身份的合同诊断不要求 npm 别名且继续检查真实合同', (context) => {
+  const { root } = fixture(context);
+  const javaConfig = validateConfig({
+    version: 2,
+    project: { id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' },
+    repository: { deliveryContract: projectConfig() },
+  });
+  const repositoryConfig = { ...javaConfig, project: undefined };
+  for (const config of [javaConfig, repositoryConfig]) {
+    assert.equal(inspectDeliveryContractSetup({ root, config }).status, 'ready');
+  }
+  write(root, 'package.json', '{"scripts":{}}\n');
+  for (const config of [javaConfig, repositoryConfig]) {
+    assert.equal(inspectDeliveryContractSetup({ root, config }).status, 'ready');
+  }
+  write(root, 'docs/delivery/feature-registry.json', '{}\n');
+  const invalid = inspectDeliveryContractSetup({ root, config: javaConfig });
+  assert.equal(invalid.status, 'incomplete');
+  assert.doesNotMatch(invalid.summary, /guard:delivery-contract/);
+});
+
 test('requires a new revision and human confirmation when the contract definition changes', (context) => {
   const { baseline, data, definitionDigest, root } = fixture(context);
   data.summary = '在代码提交之后改写合同定义。';

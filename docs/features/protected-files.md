@@ -30,15 +30,17 @@
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `repository.rules` | 保护文件规则集合，按第一条匹配项决定级别 | 对象数组；对象字段见后续行<br>默认：内置 12 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项 |
+| `repository.rules` | 保护文件规则集合，按第一条匹配项决定级别 | 对象数组；对象字段见后续行<br>默认：1 项团队配置通知规则，见[应用默认配置](../../src/config/project-defaults.js) | 至少 1 项；显式配置会替换默认数组 |
 | `repository.rules[].pattern` | 受保护文件的仓库相对 glob，* 匹配单层，** 可跨目录 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
 | `repository.rules[].category` | 报告与通知中显示的业务类别 | 字符串<br>本对象内必填，无自动代填值 | 至少 1 个字符 |
-| `repository.rules[].level` | audit 仅记录；notify 在启用通知时要求发送成功；block 始终阻止修改、删除、重命名或移动匹配文件 | `"notify"` / `"audit"` / `"block"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `repository.rules[].level` | audit 仅记录；notify 在启用通知时要求发送成功；block 始终阻止新增、修改、删除、重命名或移动匹配文件 | `"notify"` / `"audit"` / `"block"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `repository.exclusions` | 保护文件排除路径，优先于所有保护规则 | 字符串数组<br>默认：`[]` | 允许空数组；元素不可重复；每项为非空字符串 |
 
 <!-- config-fields:end -->
 
-修改、删除、重命名或移动该文件都会阻断提交和 CI。规则按数组顺序采用第一条匹配，精确 `block` 规则应放在可能覆盖它的宽泛规则之前；`exclusions` 优先于规则。
+`block` 规则匹配的新增、修改、删除、重命名或移动都会阻断提交和 CI。规则按数组顺序采用第一条匹配，精确 `block` 规则应放在可能覆盖它的宽泛规则之前；`exclusions` 优先于规则。
+
+Java 应用同样使用此能力，可以在本方 `repository.rules` 中保护 `pom.xml`、团队检查规则及架构测试；不会自动给项目所有配置文件加锁。配置示例见 [Java 接入说明](../java-quality-integration.md#目录命名与保护文件)。保护是检查和提交门禁，不改变文件系统写入权限。需要先引入某文件再将其固定时，应按团队评审流程安排初始文件和保护策略，不能把“新增”误认为自动豁免。
 
 `audit`、`notify`、`block` 分别用于审计、通知和阻断级别；CI 的保护文件动作另受 `ci.protectedFiles.action` 约束，但 `block` 仍必须阻断。下列命令只针对保护文件及其相关检查，不代表运行全部测试：
 

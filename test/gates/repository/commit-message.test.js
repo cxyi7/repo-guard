@@ -313,6 +313,23 @@ test('release-ready compares package versions from the Git base and head instead
   assert.equal(passed.status, 'passed');
 });
 
+test('release-ready 无不兼容提交时不要求 Java 仓库提供 package.json', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = commitFile(root, 'pom.xml', '<project/>', 'chore: 初始化');
+  const head = commitFile(root, 'README.md', '说明', 'docs: 补充使用说明');
+  const passed = commitMessageGate.run({
+    root, config: { version: 2, repository: { commitMessage: policy() } },
+    environment: 'release-ready', plan: { enabled: true, revision: { base, head } },
+  });
+  assert.equal(passed.status, 'passed');
+  const breakingHead = commitFile(root, 'README.md', '新版说明', 'feat!: 调整公共接口\n\nBREAKING CHANGE: 删除旧接口');
+  assert.throws(() => commitMessageGate.run({
+    root, config: { version: 2, repository: { commitMessage: policy() } },
+    environment: 'release-ready', plan: { enabled: true, revision: { base, head: breakingHead } },
+  }), { code: 'commit-message/missing-package-version' });
+});
+
 test('commit-msg validates the human message before finalizing the automatic file summary', (context) => {
   const root = createRepository();
   context.after(() => rmSync(root, { recursive: true, force: true }));

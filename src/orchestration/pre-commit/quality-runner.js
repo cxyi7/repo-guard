@@ -119,7 +119,15 @@ function selectQualityFiles(normalizedFiles, config) {
   const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
   const uiTokenConfig = config.checks.uiTokens;
   const uiTokenFiles = selectUiTokenInputFiles(normalizedFiles, uiTokenConfig);
+  const javaEnabled = config.project?.stack === 'java'
+    && Object.entries(config.checks).some(([feature, value]) => feature.startsWith('java') && value.enabled);
+  const javaFiles = javaEnabled
+    ? normalizedFiles.filter(({ relative }) => relative.endsWith('.java')).map(({ absolute }) => absolute)
+    : [];
   return Object.freeze({
+    javaEnabled,
+    javaFiles,
+    javaPolicyFiles: javaEnabled ? normalizedFiles.map(({ absolute }) => absolute) : [],
     asyncResourceFiles,
     dynamicCodeFiles,
     eslintConfig,
@@ -141,6 +149,7 @@ function selectQualityFiles(normalizedFiles, config) {
       dynamicCodeFiles,
       vueSecurityFiles,
       uiTokenFiles,
+      javaFiles,
     ),
     stylelintFiles,
     uiTokenConfig,
@@ -178,10 +187,19 @@ async function runGateWithFiles(gate, stepContext, files = null) {
     ? stepContext
     : Object.freeze({ ...stepContext, files });
   const gatePlan = await gate.plan(context);
-  return await gate.run({ ...stepContext, plan: gatePlan });
+  return await gate.run({ ...context, plan: gatePlan });
 }
 
 async function executeQualityStep({ gate, step, stepContext, selection }) {
+  if (step.gateId === 'java.path-naming') {
+    return runGateWithFiles(gate, stepContext);
+  }
+  if (step.gateId.startsWith('java.')) {
+    return runGateWithFiles(gate, {
+      ...stepContext,
+      javaFix: step.id === 'java.format-fix',
+    }, step.gateId === 'java.files' ? selection.javaPolicyFiles : selection.javaFiles);
+  }
   switch (step.id) {
     case 'quality.stylelint-fix':
     case 'quality.stylelint-verify':
@@ -248,6 +266,18 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
   return skipped(step, `${step.id} 没有匹配的暂存文件或已被禁用`);
 }
 
+function skipUnmatchedJavaStep({ context, gate, step }) {
+  if (!gate.id.startsWith('java.') || ['java.files', 'java.path-naming'].includes(gate.id)) return null;
+  const settings = context.config.checks[gate.featureName];
+  const hasSource = context.files.some(({ relative }) => relative.endsWith('.java')
+    && micromatch.isMatch(relative, settings.include, { dot: true })
+    && !micromatch.isMatch(relative, settings.exclude, { dot: true }));
+  if (!hasSource && (!context.configurationChanged || step.id === 'java.format-fix')) {
+    return skipped(step, '当前暂存范围没有匹配的 Java 源码，无需启动源码检查工具');
+  }
+  return null;
+}
+
 function prepareQualityProject({ root, repositoryRoot = root, files, config, configurationChanged = false }) {
   const normalizedFiles = normalizeStagedFiles(root, files, '质量门禁');
   const selection = selectQualityFiles(normalizedFiles, config);
@@ -259,6 +289,7 @@ function prepareQualityProject({ root, repositoryRoot = root, files, config, con
     && !selection.filePlacementConfig.enabled
     && !selection.pathNamingConfig.enabled
     && !(selection.uiTokenConfig.enabled && (hasStagedDeletion || configurationChanged))
+    && !selection.javaEnabled
   ) {
     return null;
   }
@@ -314,6 +345,7 @@ async function executeQualityProjects(projects) {
       context: contexts[0],
       contextsForStep: () => contexts,
       stopOnFailure: true,
+      beforeStep: skipUnmatchedJavaStep,
       executeStep: (stepArguments) => executeQualityStep({
         ...stepArguments,
         stepContext: stepArguments.context,

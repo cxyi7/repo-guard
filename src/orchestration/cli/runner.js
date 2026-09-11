@@ -64,7 +64,7 @@ const HELP_TEXT = `
 repo-guard - 仓库保护门禁
 
 用法：
-  repo-guard init --project <id> --role frontend|backend --stack node --preset <preset>
+  repo-guard init --project <id> --role frontend|backend --stack node|java --preset <preset>
   repo-guard install-hooks
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
@@ -96,7 +96,7 @@ ${REGISTERED_MANUAL_HELP}
   doctor、ci、enable、disable 和应用检查支持 --project <id>。
   多应用工作区中的提交与推送只检查受影响的应用；release-ready 检查全部必需目标。
   delivery 独立于工程检查，可用于 Node、Java、Python 仓库；详细选项见交付合同文档。
-  预设：vue-javascript、vue-typescript、node-javascript、node-typescript。
+  预设：vue-javascript、vue-typescript、node-javascript、node-typescript、java-maven。
 
 退出码：
   0  成功

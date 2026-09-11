@@ -27,13 +27,13 @@ Node 后端使用 `--role backend --stack node --preset node-javascript` 或 `no
 
 | 所属配置 | 可配置内容 |
 |---|---|
-| 根 `repository` | 提交信息、仓库内合同包、公共基础文件的 `rules / exclusions` |
+| 根 `repository` | 提交信息、仓库内合同包、公共基础文件的 `rules / exclusions`，以及全仓 `filePlacement` |
 | 应用 `repository` | 本方 `rules / exclusions / exceptions / dependencyPolicy / codePlacement`，路径相对应用目录 |
 | 根 `ci` | `enabled / profile / reportPath` 及公共 Gate 策略；`gatePolicy.defaultMode` 作为应用默认模式 |
 | 应用 `ci` | 本方 `protectedFiles / gatePolicy / externalGates`，不覆盖全仓流程开关和报告路径 |
 | 根 `reporting / sharedPaths` | 统一通知与动画；共享文件变化应触发哪些应用 |
 
-根目录不接受应用依赖策略、例外和外部门禁；子应用不能覆盖提交信息、交付合同和通知。部署使用独立的 `repo-guard.ops.json`，见[独立运维](operations.md)。完整示例见[前后端隔离配置](project-workspace.md)。
+多应用根配置不接受应用依赖策略、例外和外部门禁；子应用不能覆盖提交信息、交付合同、仓库级文件归位和通知。单应用则在 Git 根配置同时维护公共和应用字段。部署使用独立的 `repo-guard.ops.json`，见[独立运维](operations.md)。完整示例见[前后端隔离配置](project-workspace.md)。
 
 ## 日常修改与启停
 
@@ -56,8 +56,26 @@ npx repo-guard doctor
 | 启用 `unusedImageAssets` | 同时启用图片治理 |
 | 关闭图片治理 | 同时关闭无效图片检查 |
 | 启停 `deliveryContract` | 控制仓库内合同包，按托管指纹同步对应 Skill；仍有独立交付启用时保留流程 Skill，人工修改导致冲突时拒绝覆盖 |
+| 启停 `repositoryFilePlacement` | 只修改根 `repository.filePlacement.enabled`，保留根规则及所有子应用检查配置，并同步根 `AGENTS.md` 的仓库归位规范 |
 
 启用检查仍需准备对应项目工具。启停命令和 Doctor 不代表完整质量测试已通过；应使用实际提交、专项命令或对应 CI 配置档验证。
+
+### 仓库级文件归位的开关
+
+`repositoryFilePlacement` 对应根配置中的 `repository.filePlacement`，默认 `{ "enabled": false, "rules": [] }`，没有 `mode`。开启前先填写至少一条规则，明确匹配路径、允许目录和建议目录；字段约束与完整示例见[仓库级文件归位](repository-file-placement.md)。规则为空时，启用命令报配置错误并保留原配置，不自动生成规则。
+
+```bash
+# 先在 Git 根配置准备 repository.filePlacement.rules，再启用
+npx repo-guard enable repositoryFilePlacement
+# 检查工作区中的全仓文件位置
+npx repo-guard repository-file-placement
+# 关闭检查，仍保留已配置规则
+npx repo-guard disable repositoryFilePlacement
+```
+
+这个开关不需要选择应用；即使携带有效的 `--project`，它仍保存到 Git 根 `repo-guard.config.json`，不会写入子应用文件。子应用不能声明 `repository.filePlacement`，包括 `{ "enabled": false }`；应用自己的 `checks.filePlacement`、例外和开关也不会改变根规则。两层配置不互相继承。
+
+启停命令同步根托管规范；手动编辑规则后使用 `doctor --fix` 同步。唯一应用的 `root` 为 `.` 时，根 `AGENTS.md` 合并公共要求与该应用工程要求，只维护一份规范。这种规范合成不改变检查配置的归属，详见[AGENTS 托管规范](managed-agent-policies.md)。
 
 ## 独立交付开关
 
@@ -101,3 +119,5 @@ npx repo-guard doctor
 ## 维护依据
 
 [配置校验](../../src/config/root-configuration-validation.js) · [管理入口](../../src/orchestration/setup/config-management.js) · [原生模型与拒绝边界测试](../../test/config/v2-runtime-contract.test.js) · [配置管理测试](../../test/setup/config-management.test.js)
+
+[仓库归位配置](../../src/config/repository-file-placement.js) · [根与应用启停边界](../../test/config/repository-file-placement.test.js)

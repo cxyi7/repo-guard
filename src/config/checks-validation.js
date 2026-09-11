@@ -15,8 +15,13 @@ import { validatePrettierConfiguration } from './prettier-validation.js';
 import { validateStylelintConfiguration } from './stylelint-validation.js';
 import { validateUiTokenConfiguration } from './ui-token-validation.js';
 import { validateUnitTestConfiguration } from './unit-test-validation.js';
-import { PROJECT_CHECK_PATHS } from './project-feature-paths.js';
+import { JAVA_PROJECT_CHECKS, NODE_ONLY_PROJECT_CHECKS, PROJECT_CHECK_PATHS } from './project-feature-paths.js';
 import { projectCheckDefaults } from './project-defaults.js';
+import { validateJavaSourceChecks } from './java-source.js';
+import { validateJavaEngineeringChecks } from './java-engineering.js';
+import { validateJavaPathNamingChecks } from './java-path-naming.js';
+import { validateJavaSpotbugsChecks } from './java-spotbugs.js';
+import { validateJavaMutationChecks } from './java-mutation.js';
 import {
   assertKnownProperties,
   configValidationError,
@@ -75,6 +80,16 @@ function checksValue(value, project, configPath) {
 /** 各领域校验器只接收本领域选项，统一结果始终保留扁平 checks。 */
 export function validateChecksConfiguration(value, project, configPath) {
   const checks = checksValue(value, project, configPath);
+  const unsupportedChecks = project?.stack === 'java'
+    ? NODE_ONLY_PROJECT_CHECKS : JAVA_PROJECT_CHECKS;
+  for (const feature of unsupportedChecks) {
+    if (checks[feature].enabled === true) {
+      throw configValidationError(`${configPath} checks.${feature} 不适用于当前项目技术栈，请使用该项目对应的检查。`);
+    }
+  }
+  if (project?.stack === 'java' && checks.mutationTest.guardedBuilds?.length > 0) {
+    throw configValidationError(`${configPath} checks.mutationTest.guardedBuilds 仅适用于 Node 项目的 npm 构建脚本。`);
+  }
   const {
     complexity: styleComplexity,
     governance: styleGovernance,
@@ -136,6 +151,11 @@ export function validateChecksConfiguration(value, project, configPath) {
     coverage,
     componentInteraction,
     mutationTest: validateMutationTestConfiguration(checks, configPath),
+    ...validateJavaSourceChecks(checks, { configPath, project }),
+    ...validateJavaEngineeringChecks(checks, { configPath, project }),
+    ...validateJavaPathNamingChecks(checks, { configPath, project }),
+    ...validateJavaSpotbugsChecks(checks, { configPath, project }),
+    ...validateJavaMutationChecks(checks, { configPath, project }),
   };
   if (project?.role === 'backend') {
     for (const feature of FRONTEND_ONLY) {

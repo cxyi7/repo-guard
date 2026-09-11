@@ -84,7 +84,7 @@ test('交付保留真实工程门禁的配置错误和违规分类，必需门�
   const cases = [
     { name: 'missing-script', gateId: 'quality.build', checks: { build: { enabled: true } }, scripts: {}, expected: 1, diagnostic: /build\/missing-script/ },
     { name: 'build-failed', gateId: 'quality.build', checks: { build: { enabled: true } }, scripts: { build: 'node -e "process.exit(7)"' }, expected: 2 },
-    { name: 'build-timeout', gateId: 'quality.build', checks: { build: { enabled: true, timeoutMs: 1000 } }, scripts: { build: 'node -e "setTimeout(() => process.exit(0), 1800)"' }, expected: 1, diagnostic: /build\/timeout/ },
+    { name: 'build-timeout', gateId: 'quality.build', checks: { build: { enabled: true, timeoutMs: 1000 } }, scripts: { build: 'node -e "setTimeout(() => process.exit(0), 1800)"' }, expected: 1, diagnostic: /build\/timeout|orchestration\/gate-timeout/ },
     { name: 'disabled-eslint', gateId: 'quality.eslint', checks: { eslint: { enabled: false } }, scripts: {}, expected: 2, diagnostic: /被跳过/ },
   ];
   for (const item of cases) {

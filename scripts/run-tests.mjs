@@ -11,7 +11,7 @@ export const TEST_SUITES = Object.freeze([
   'integrations', 'setup', 'provisioning', 'hooks', 'ci', 'operations',
   'e2e', 'architecture', 'docs',
 ]);
-const GATE_SUITES = ['repository', 'quality', 'testing', 'security', 'release'];
+const GATE_SUITES = ['repository', 'quality', 'testing', 'security', 'release', 'java'];
 const EXCLUDED_DIRECTORIES = new Set(['fixtures', 'helpers', 'node_modules']);
 
 /** 只接受已登记的测试组；Node 测试参数保持独立参数传递。 */

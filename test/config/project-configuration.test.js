@@ -83,7 +83,7 @@ test('Node 稀疏配置只修改开关时保留后端路径，显式路径仍可
   );
 });
 
-test('必须明确身份并拒绝未知字段、错误方案及未实现 Java 检查', () => {
+test('必须明确身份并拒绝未知字段、错误方案及未实现 Gradle 检查', () => {
   for (const document of [
     { version: 2 },
     { version: 2, project: { ...backend, role: 'frontend' } },
@@ -115,7 +115,7 @@ test('必须明确身份并拒绝未知字段、错误方案及未实现 Java �
           id: 'java',
           role: 'backend',
           stack: 'java',
-          preset: 'java-maven',
+          preset: 'java-gradle',
         },
       }),
     { code: 'project/stack-not-supported' },

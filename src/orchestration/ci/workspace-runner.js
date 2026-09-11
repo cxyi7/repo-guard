@@ -4,7 +4,7 @@ import { createGateResult, gateStatusToExitCode } from '../../core/result/gate-r
 import { aggregateExitCodes, aggregateGateResults } from '../../core/result/exit-code.js';
 import { renderGateResultJson } from '../../core/report/json-renderer.js';
 import { calculateGateResultDigest } from '../../policies/delivery-contract/digests.js';
-import { selectProjects, projectAffected, scopeRepositoryProtectionChanges, projectConfigurationChanged } from '../workspace/targets.js';
+import { composeAgentPolicyConfig, selectProjects, projectAffected, scopeRepositoryProtectionChanges, projectConfigurationChanged } from '../workspace/targets.js';
 import { resolveCiRange } from './change-range.js';
 import { runCiGate } from './runner.js';
 import { assertCiReportVersion, CI_REPORT_VERSION, writeCiReport } from './report.js';
@@ -64,6 +64,10 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
   const projects = selectProjects(workspace, options.projectId).filter((project) =>
     options.projectId !== undefined || profile === 'release-ready' || projectAffected(workspace, project, range.changes));
   const hasRootProject = projects.some((application) => application.root === workspace.root);
+  const rootApplication = workspace.projects.find((application) => application.root === workspace.root);
+  // 规范归属由应用清单决定；没有应用变更时，仍须核验同一份合成后的根规范。
+  const rootAgentPolicyConfig = rootApplication
+    ? composeAgentPolicyConfig(rootApplication.config, workspace.repositoryConfig) : null;
   const repositoryTarget = {
     projectId: null, projectRoot: '.', root: workspace.root,
     config: workspace.repositoryConfig, scope: 'repository',
@@ -103,6 +107,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
         configurationChanged: target.configurationChanged ?? false,
         scope: target.scope,
         skipRepositoryAgentPolicy: target.scope === 'repository' && hasRootProject,
+        agentPolicyConfig: target.root === workspace.root ? rootAgentPolicyConfig : null,
         reportPath: target.reportPath,
         profile,
         resolvedRange: range,

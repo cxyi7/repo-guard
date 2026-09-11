@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { validateConfigValue } from '../../src/config/configuration-validation.js';
 
 const SOURCE_ROOT = path.join(process.cwd(), 'src');
 const source = (name) => readFileSync(path.join(SOURCE_ROOT, name), 'utf8');
@@ -140,7 +141,7 @@ const DOMAINS = [
     'dependency-policy',
     'validateDependencyPolicyConfiguration',
     'root',
-    'repository',
+    'projectRepository',
   ],
   ['architecture', 'validateArchitectureConfiguration', 'checks', 'checks'],
   ['execution-gate', 'validateExecutionGateConfiguration', 'checks', 'checks'],
@@ -153,6 +154,24 @@ const DOMAINS = [
   ['eslint', 'validateEslintConfiguration', 'checks', 'checks'],
   ['notification', 'validateNotificationConfiguration', 'root', 'reporting'],
 ];
+
+test('依赖策略仍由领域校验器验证，Java 默认只调整输入且不修改原配置', () => {
+  const repository = Object.freeze({ dependencyPolicy: Object.freeze({ requireExactVersions: false }) });
+  const descriptor = { id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' };
+  const java = validateConfigValue({ version: 2, project: descriptor, repository });
+  assert.equal(java.repository.dependencyPolicy.enabled, false);
+  assert.equal(java.repository.dependencyPolicy.requireExactVersions, false);
+  assert.deepEqual(repository, { dependencyPolicy: { requireExactVersions: false } });
+  const node = validateConfigValue({
+    version: 2, project: { ...descriptor, stack: 'node', preset: 'node-javascript' }, repository,
+  });
+  assert.equal(node.repository.dependencyPolicy.enabled, true);
+  assert.equal(node.repository.dependencyPolicy.requireExactVersions, false);
+  assert.throws(() => validateConfigValue({
+    version: 2, project: descriptor,
+    repository: { dependencyPolicy: { enabled: false, requireExactVersions: '无效值' } },
+  }), /requireExactVersions 必须是布尔值/);
+});
 
 for (const [moduleName, exportName, owner, argument] of DOMAINS) {
   test(`keeps ${moduleName} validation and its v2 caller in the owning config modules`, () => {
@@ -242,6 +261,19 @@ test('keeps protected-file configuration separate from engineering check validat
     protectedFiles,
     /from ['"][^'"]*(?:commands|orchestration)\//,
   );
+});
+
+test('仓库文件归位独立维护根级配置，只复用应用归位的规则结构校验', () => {
+  const repositoryPlacement = source('config/repository-file-placement.js');
+  assert.match(configuration(), /validateRepositoryFilePlacementConfiguration\(repository, configPath\)/);
+  assert.doesNotMatch(checks(), /validateRepositoryFilePlacementConfiguration/);
+  assert.match(repositoryPlacement, /export const DEFAULT_REPOSITORY_FILE_PLACEMENT_CONFIG/);
+  assert.match(repositoryPlacement, /export const REPOSITORY_FILE_PLACEMENT_SCHEMA/);
+  assert.match(repositoryPlacement, /export function validateRepositoryFilePlacementConfiguration/);
+  assert.match(repositoryPlacement, /from ['"]\.\/file-placement-validation\.js['"]/);
+  assert.match(source('config/file-placement-validation.js'), /export function normalizeFilePlacementRule/);
+  assert.doesNotMatch(repositoryPlacement, /from ['"][^'"]*(?:gates|git|integrations|orchestration|policies)\//);
+  assert.doesNotMatch(repositoryPlacement, /DEFAULT_FILE_PLACEMENT_CONFIG|validateFilePlacementConfiguration/);
 });
 
 test('所有运行入口只使用 v2，不保留旧配置解析器或转换入口', () => {

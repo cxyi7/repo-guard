@@ -39,6 +39,22 @@ test('根规范说明应用隔离与独立合同，不要求在公共入口登�
   assert.match(document, /repo-guard\.delivery\.json/);
   assert.match(document, /AI 不得读取、保管或使用验收人的签名私钥/);
 });
+
+test('仓库归位生成根 AI 规范并明确范围，应用默认不复制根规则', () => {
+  const config = createStarterConfig();
+  delete config.project;
+  config.repository.filePlacement = {
+    enabled: true,
+    rules: [{ name: 'SQL 归位', patterns: ['**/*.sql'], allowedPatterns: ['database/sql/**'], exceptions: [], suggestedDirectory: 'database/sql' }],
+  };
+  const document = renderAgentPolicyGroups({ config, packageJson: {} }).flatMap(({ lines }) => lines).join('\n');
+  assert.match(document, /完整 Git 索引/);
+  assert.match(document, /应用自己的规则或例外不能豁免仓库规则/);
+  assert.match(document, /database\/sql\/\*\*/);
+  assert.match(document, /repo-guard repository-file-placement/);
+  const applicationDocument = renderAgentPolicyGroups({ config: createStarterConfig(), packageJson: {} }).flatMap(({ lines }) => lines).join('\n');
+  assert.doesNotMatch(applicationDocument, /SQL 归位|repo-guard repository-file-placement/);
+});
 import {
   agentPolicies,
   inspectAgentPolicies,

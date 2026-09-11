@@ -61,7 +61,7 @@ function createHookContent(argumentsList, packageName) {
     '  if command -v repo-guard >/dev/null 2>&1; then',
     `    exec repo-guard ${argumentsList.join(' ')}`,
     '  fi',
-    '  echo "repo-guard 失败：未安装依赖包。请运行 npm install。" >&2',
+    '  echo "repo-guard 失败：未找到可执行入口。请先准备宿主环境中的 repo-guard，或仓库根目录的本地安装。" >&2',
     `  exit ${EXIT_CODES.error}`,
     'fi',
     '',
@@ -220,7 +220,10 @@ export function installHooks({
   if (updatePackageScripts && !workspace) {
     throw configurationError('hooks/missing-project-config', '请先通过 repo-guard init 显式声明项目身份，再同步 package 脚本。');
   }
-  if (updatePackageScripts && !existsSync(path.join(root, 'package.json'))) {
+  const hasPackageManifest = existsSync(path.join(root, 'package.json'));
+  const javaOnlyWorkspace = workspace?.projects.length > 0
+    && workspace.projects.every((application) => application.project.stack === 'java');
+  if (updatePackageScripts && !hasPackageManifest && !javaOnlyWorkspace) {
     throw configurationError('hooks/missing-package-manifest', '仓库根目录中未找到 package.json；当前 npm 入口必须安装在仓库根目录。');
   }
 
@@ -239,7 +242,8 @@ export function installHooks({
 
   const gitAttributes = ensureGitAttributes(root);
   const localEnvironment = ensureLocalEnvironment(root);
-  const ignores = workspace ? selectProjects(workspace, projectId).map((application) => (
+  const ignores = workspace ? selectProjects(workspace, projectId)
+    .filter((application) => application.project.stack === 'node').map((application) => (
     ensureLighthouseIgnore(
       application.root,
       application.config.checks.coverage?.reportsDirectory ?? DEFAULT_UNIT_TEST_COVERAGE_CONFIG.reportsDirectory,
@@ -247,7 +251,7 @@ export function installHooks({
     )
   )) : [ensureLighthouseIgnore(root)];
   const lighthouseIgnore = { ...ignores[0], changed: ignores.some((result) => result.changed), projects: ignores };
-  if (updatePackageScripts) {
+  if (updatePackageScripts && hasPackageManifest) {
     ensurePackageScripts(root, workspace, projectId);
   }
 

@@ -26,6 +26,12 @@ import { defineExternalGate } from './testing/external-gate.js';
 import { accessibilityTestGate, unitTestGate } from './testing/platform-test-gates.js';
 import { mutationTestGate } from './testing/mutation-test-platform-gate.js';
 import { vueSecurityGates } from './security/vue-policy-gates.js';
+import { javaSourceGates } from './java/source-gates.js';
+import { javaEngineeringGates } from './java/engineering-gates.js';
+import { javaPathNamingGate } from './java/path-naming-gate.js';
+import { javaSpotbugsGate } from './java/spotbugs-gate.js';
+import { javaMutationGate } from './java/mutation-gate.js';
+import { globalFilePlacementGate } from './repository/global-file-placement-gate.js';
 
 const nativePolicyGates = Object.freeze([
   ...vueSecurityGates,
@@ -59,6 +65,12 @@ export const officialGates = Object.freeze([
   ...nativePolicyGates,
   deliveryEvidenceGate,
   ...platformGates,
+  ...javaSourceGates,
+  ...javaEngineeringGates,
+  javaPathNamingGate,
+  javaSpotbugsGate,
+  javaMutationGate,
+  globalFilePlacementGate,
 ]);
 
 export const gateRegistry = createGateRegistry(officialGates);

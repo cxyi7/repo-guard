@@ -177,7 +177,10 @@ export const commitMessageGate = defineGate({
     }
     const records = collectCommitMessages(root, plan.revision);
     const requireVersion = environment === 'release-ready'
-      && config.repository.commitMessage.breakingChange.requireMajorVersionOnRelease;
+      && config.repository.commitMessage.breakingChange.requireMajorVersionOnRelease
+      && records.some((record) => inspectCommitMessage(
+        record, config.repository.commitMessage, environment,
+      ).breakingChange);
     return createCommitMessageResult({
       records,
       config: config.repository.commitMessage,

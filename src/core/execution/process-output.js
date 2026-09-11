@@ -1,10 +1,11 @@
 import { sanitizeProcessOutput } from './output-safety.js';
+import { processExecutionToStatus } from '../result/exit-code.js';
 
 export function processOutputDiagnostics(execution, {
   source = 'project-process',
   root = null,
   stdoutLevel = 'info',
-  stderrLevel = execution.status === 0 ? 'warn' : 'error',
+  stderrLevel = processExecutionToStatus(execution) === 'passed' ? 'warn' : 'error',
 } = {}) {
   const diagnostics = [];
   const stdout = sanitizeProcessOutput(execution.stdout, { root });
@@ -25,5 +26,18 @@ export function processOutputDiagnostics(execution, {
     redacted: stderr.redacted,
     truncated: stderr.truncated,
   });
+  const observations = [];
+  if (Number.isInteger(execution.status)) observations.push(`原始退出码 ${execution.status}`);
+  if (execution.timedOut) observations.push('执行超时');
+  if (execution.signal) observations.push(`终止信号 ${execution.signal}`);
+  if (execution.error) observations.push(`进程错误：${execution.error.code ?? execution.error.message ?? '未提供错误详情'}`);
+  if (observations.length) {
+    const state = sanitizeProcessOutput(`第三方进程状态：${observations.join('；')}。原始状态仅用于诊断，门禁结果仍按统一规则判定。`, { root });
+    const passed = processExecutionToStatus(execution) === 'passed';
+    diagnostics.push({
+      source, stream: passed ? 'stdout' : 'stderr', level: passed ? 'info' : 'error',
+      message: state.text, redacted: state.redacted, truncated: state.truncated,
+    });
+  }
   return diagnostics;
 }

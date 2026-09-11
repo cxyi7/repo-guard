@@ -5,6 +5,7 @@ import {
 } from '../core/capability/execution-plan.js';
 import { gateRegistry } from '../gates/registry.js';
 import { preCommitPlan } from './pre-commit/protected-plan.js';
+import { JAVA_ENGINEERING_STEPS, JAVA_SOURCE_STEPS } from './java-check-plans.js';
 
 export { preCommitPlan } from './pre-commit/protected-plan.js';
 
@@ -14,6 +15,7 @@ export const prePushPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.commit-message',
+    'repository.global-file-placement',
     'repository.delivery-contract',
     'quality.typecheck',
     'quality.dead-code',
@@ -23,6 +25,10 @@ export const prePushPlan = defineExecutionPlan({
     'quality.architecture',
     'quality.build',
     'quality.lighthouse',
+    ...JAVA_SOURCE_STEPS,
+    'java.files',
+    'java.path-naming',
+    ...JAVA_ENGINEERING_STEPS,
   ],
 });
 
@@ -32,6 +38,9 @@ export const ciPolicyPlan = defineExecutionPlan({
   locked: true,
   steps: [
     'repository.structured-exceptions',
+    'repository.global-file-placement',
+    'java.files',
+    'java.path-naming',
     'repository.agent-policy',
     'repository.commit-message',
     { id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', reportName: 'async-resource-cleanup' },
@@ -93,6 +102,8 @@ export const ciFullPlan = defineExecutionPlan({
     'quality.accessibility-test',
     'quality.architecture',
     { id: 'quality.build', gateId: 'quality.build', reportName: 'build' },
+    ...JAVA_SOURCE_STEPS,
+    ...JAVA_ENGINEERING_STEPS,
   ],
 });
 

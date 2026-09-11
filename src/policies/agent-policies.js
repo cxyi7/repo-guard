@@ -72,7 +72,8 @@ export function inspectAgentPolicies(root, config) {
   const target = path.join(root, AGENT_POLICY_FILE);
   const exists = existsSync(target);
   const current = exists ? readFileSync(target, 'utf8') : '';
-  const packageJson = !config.project && !existsSync(path.join(root, 'package.json'))
+  const packageJson = config.project?.stack === 'java'
+    || (!config.project && !existsSync(path.join(root, 'package.json')))
     ? {}
     : readPackageJson(root);
   const expected = renderAgentPolicyDocument(current, config, packageJson);

@@ -4,6 +4,7 @@ import {
 } from '../../core/capability/execution-plan.js';
 import { gateRegistry } from '../../gates/registry.js';
 import { internalError } from '../../core/error/repo-guard-error.js';
+import { JAVA_ENGINEERING_STEPS, JAVA_QUALITY_STEPS } from '../java-check-plans.js';
 
 export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'quality.stylelint-fix', gateId: 'quality.stylelint', mutation: 'working-tree-fix' }),
@@ -11,6 +12,7 @@ export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'quality.prettier', gateId: 'quality.prettier', mutation: 'working-tree-fix' }),
   Object.freeze({ id: 'quality.stylelint-verify', gateId: 'quality.stylelint', mutation: 'read-only' }),
   Object.freeze({ id: 'quality.eslint-verify', gateId: 'quality.eslint', mutation: 'read-only' }),
+  ...JAVA_QUALITY_STEPS,
   Object.freeze({ id: 'quality.ui-tokens', gateId: 'quality.ui-tokens', mutation: 'read-only' }),
   Object.freeze({ id: 'quality.vue-async-resource-cleanup', gateId: 'quality.vue-async-resource-cleanup', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.path-naming', gateId: 'repository.path-naming', mutation: 'read-only' }),
@@ -22,6 +24,7 @@ export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
   Object.freeze({ id: 'repository.maximum-file-lines', gateId: 'repository.maximum-file-lines', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.file-placement', gateId: 'repository.file-placement', mutation: 'read-only' }),
   Object.freeze({ id: 'dependencies.policy', gateId: 'dependencies.policy', mutation: 'read-only' }),
+  Object.freeze({ id: 'repository.global-file-placement', gateId: 'repository.global-file-placement', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.image-assets', gateId: 'repository.image-assets', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.code-placement', gateId: 'repository.code-placement', mutation: 'read-only' }),
   Object.freeze({ id: 'repository.delivery-contract', gateId: 'repository.delivery-contract', mutation: 'read-only' }),
@@ -29,6 +32,7 @@ export const PROTECTED_PRE_COMMIT_STEPS = Object.freeze([
 ]);
 
 export const FORBIDDEN_PRE_COMMIT_GATE_IDS = Object.freeze([
+  ...JAVA_ENGINEERING_STEPS,
   'quality.typecheck',
   'quality.unit-test',
   'quality.accessibility-test',

@@ -39,6 +39,7 @@ const BACKEND = {
   stack: 'node',
   preset: 'node-typescript',
 };
+const JAVA = { id: 'java-api', role: 'backend', stack: 'java', preset: 'java-maven' };
 const EXTERNAL = {
   id: 'project.contract',
   enabled: true,
@@ -114,7 +115,7 @@ test('所有消费项目使用同一个工程交付检查计划，而不是 npm 
     releaseReadyPlan.steps.map(({ id }) => id),
     expected,
   );
-  for (const descriptor of [FRONTEND, BACKEND]) {
+  for (const descriptor of [FRONTEND, BACKEND, JAVA]) {
     const projectConfig = config(descriptor);
     const registry = createProjectGateRegistry(projectConfig);
     assert.deepEqual(
@@ -178,7 +179,7 @@ test('交付外部门禁拒绝发布与部署脚本，且执行环境移除发�
   );
 });
 
-for (const descriptor of [FRONTEND, BACKEND]) {
+for (const descriptor of [FRONTEND, BACKEND, JAVA]) {
   test(`${descriptor.preset} 私有消费项目可完成只读交付检查，无需 check/test/pack:check`, async (context) => {
     const root = fixture(context);
     git(root, ['init']);
@@ -207,13 +208,23 @@ for (const descriptor of [FRONTEND, BACKEND]) {
     assert.equal(report.profile, 'release-ready');
     assert.equal(report.status, 'passed');
     assert.deepEqual(
-      report.steps.slice(-3).map(({ name, status }) => ({ name, status })),
+      report.steps.slice(-2).map(({ name, status }) => ({ name, status })),
       [
-        { name: 'build', status: 'skipped' },
         { name: 'quality.lighthouse', status: 'skipped' },
         { name: 'release.delivery-evidence', status: 'skipped' },
       ],
     );
+    for (const [name, applicable] of [
+      ['build', descriptor.stack === 'node'],
+      ['java.build', descriptor.stack === 'java'],
+    ]) {
+      const build = report.steps.find((step) => step.name === name);
+      assert.ok(build, `交付计划必须包含 ${name}`);
+      assert.ok(report.steps.indexOf(build) < report.steps.length - 2);
+      assert.equal(build.status, 'skipped');
+      if (applicable) assert.doesNotMatch(build.gateResult.summary, /不适用于/);
+      else assert.match(build.gateResult.summary, /不适用于/);
+    }
     assert.equal(
       report.steps.some(({ name }) =>
         ['release.check', 'release.test', 'release.package'].includes(name),

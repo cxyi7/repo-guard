@@ -542,6 +542,104 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     packageScript: 'guard:style-governance',
     requiredTools: ['stylelint'],
   }),
+  reviewedGateDescriptor('java.format', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaFormat', featureName: 'javaFormat', featureOrder: 400,
+    doctorOrder: 400, manualOrder: 400, manualCommand: 'java-format',
+    manualOptions: ['--fix'], packageScript: 'guard:java-format',
+    mutation: 'working-tree-fix', allowedMutations: ['working-tree-fix', 'read-only'],
+    supportsFix: true, supportsCancellation: true, requiredTools: ['google-java-format'],
+  }),
+  reviewedGateDescriptor('java.naming', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaNaming', featureName: 'javaNaming', featureOrder: 410,
+    doctorOrder: 410, manualOrder: 410, manualCommand: 'java-naming',
+    packageScript: 'guard:java-naming', supportsCancellation: true, requiredTools: ['checkstyle'],
+  }),
+  reviewedGateDescriptor('java.layout', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaLayout', featureName: 'javaLayout', featureOrder: 420,
+    doctorOrder: 420, manualOrder: 420, manualCommand: 'java-layout',
+    packageScript: 'guard:java-layout', supportsCancellation: true, requiredTools: ['checkstyle'],
+  }),
+  reviewedGateDescriptor('java.imports', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaImports', featureName: 'javaImports', featureOrder: 430,
+    doctorOrder: 430, manualOrder: 430, manualCommand: 'java-imports',
+    packageScript: 'guard:java-imports', supportsCancellation: true, requiredTools: ['checkstyle'],
+  }),
+  reviewedGateDescriptor('java.size', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaSize', featureName: 'javaSize', featureOrder: 440,
+    doctorOrder: 440, manualOrder: 440, manualCommand: 'java-size',
+    packageScript: 'guard:java-size', supportsCancellation: true, requiredTools: ['checkstyle'],
+  }),
+  reviewedGateDescriptor('java.docs', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaDocs', featureName: 'javaDocs', featureOrder: 450,
+    doctorOrder: 450, manualOrder: 450, manualCommand: 'java-docs',
+    packageScript: 'guard:java-docs', supportsCancellation: true, requiredTools: ['checkstyle'],
+  }),
+  reviewedGateDescriptor('java.lint', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaLint', featureName: 'javaLint', featureOrder: 460,
+    doctorOrder: 460, manualOrder: 460, manualCommand: 'java-lint',
+    packageScript: 'guard:java-lint', supportsCancellation: true, requiredTools: ['pmd'],
+  }),
+  reviewedGateDescriptor('java.duplication', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaDuplication', featureName: 'javaDuplication', featureOrder: 470,
+    doctorOrder: 470, manualOrder: 470, manualCommand: 'java-duplication',
+    packageScript: 'guard:java-duplication', supportsCancellation: true, requiredTools: ['pmd'],
+  }),
+  reviewedGateDescriptor('java.architecture', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaArchitecture', featureName: 'javaArchitecture', featureOrder: 500,
+    doctorOrder: 500, manualOrder: 500, manualCommand: 'java-architecture',
+    packageScript: 'guard:java-architecture', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.dependencies', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaDependencies', featureName: 'javaDependencies', featureOrder: 510,
+    doctorOrder: 510, manualOrder: 510, manualCommand: 'java-dependencies',
+    packageScript: 'guard:java-dependencies', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.files', ['manual', 'pre-commit', 'ci-policy', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaFiles', featureName: 'javaFiles', featureOrder: 520,
+    doctorOrder: 520, manualOrder: 520, manualCommand: 'java-files',
+    packageScript: 'guard:java-files', defaultTimeoutMs: 30000,
+  }),
+  reviewedGateDescriptor('java.compile', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaCompile', featureName: 'javaCompile', featureOrder: 530,
+    doctorOrder: 530, manualOrder: 530, manualCommand: 'java-compile',
+    packageScript: 'guard:java-compile', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.build', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaBuild', featureName: 'javaBuild', featureOrder: 540,
+    doctorOrder: 540, manualOrder: 540, manualCommand: 'java-build',
+    packageScript: 'guard:java-build', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.test', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaTest', featureName: 'javaTest', featureOrder: 550,
+    doctorOrder: 550, manualOrder: 550, manualCommand: 'java-test',
+    packageScript: 'guard:java-test', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.coverage', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaCoverage', featureName: 'javaCoverage', featureOrder: 560,
+    doctorOrder: 560, manualOrder: 560, manualCommand: 'java-coverage',
+    packageScript: 'guard:java-coverage', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.path-naming', ['manual', 'pre-commit', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaPathNaming', featureName: 'javaPathNaming', featureOrder: 570,
+    doctorOrder: 570, manualOrder: 570, manualCommand: 'java-path-naming',
+    packageScript: 'guard:java-path-naming', defaultTimeoutMs: 30000,
+  }),
+  reviewedGateDescriptor('java.spotbugs', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaSpotbugs', featureName: 'javaSpotbugs', featureOrder: 580,
+    doctorOrder: 580, manualOrder: 580, manualCommand: 'java-spotbugs',
+    packageScript: 'guard:java-spotbugs', defaultTimeoutMs: 180000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('java.mutation-test', ['manual', 'pre-push', 'ci-full', 'release-ready'], {
+    configKey: 'checks.javaMutationTest', featureName: 'javaMutationTest', featureOrder: 590,
+    doctorOrder: 590, manualOrder: 590, manualCommand: 'java-mutation-test',
+    packageScript: 'guard:java-mutation-test', defaultTimeoutMs: 600000, supportsCancellation: true,
+  }),
+  reviewedGateDescriptor('repository.global-file-placement', ['manual', 'pre-commit', 'pre-push', 'ci-policy', 'ci-full', 'release-ready'], {
+    configKey: 'repository.filePlacement', featureName: 'repositoryFilePlacement', featureOrder: 45,
+    doctorOrder: 155, manualOrder: 155, manualCommand: 'repository-file-placement',
+    packageScript: 'guard:repository-file-placement', defaultTimeoutMs: 30000,
+    rules: ['repository/global-file-placement'], requiredTools: ['git'],
+  }),
 ]);
 
 function officialGateDescriptor(gateDefinition) {

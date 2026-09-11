@@ -5,6 +5,14 @@ import { gitValue, runGit } from '../../git/execution.js';
 const ZERO_SHA = /^0+$/;
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+function commitId(root, revision) {
+  const head = gitValue(['--no-replace-objects', 'rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`], '', root);
+  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(head)) {
+    throw rangeError('pre-push/commit-unavailable', '待推送引用无法解析为完整提交标识，不能确定检查范围。');
+  }
+  return head;
+}
+
 export function parsePrePushUpdates(input) {
   return String(input || '')
     .split(/\r?\n/)
@@ -64,9 +72,8 @@ function newBranchBase(root, remoteName, localSha) {
 export function collectPrePushChanges({ input, remoteName = 'origin', root }) {
   const updates = parsePrePushUpdates(input);
   if (updates.length === 0) {
-    const parent = gitValue(['rev-parse', '--verify', 'HEAD^'], '', root)
-      || EMPTY_TREE_SHA;
-    return diffRange(root, parent, 'HEAD');
+    const { base, head } = resolvePrePushRevision({ input, remoteName, root });
+    return diffRange(root, base, head);
   }
 
   const combined = new Map();
@@ -90,15 +97,16 @@ export function collectPrePushChanges({ input, remoteName = 'origin', root }) {
 export function resolvePrePushRevision({ input, remoteName = 'origin', root }) {
   const updates = parsePrePushUpdates(input).filter(({ localSha }) => !ZERO_SHA.test(localSha));
   if (updates.length === 0) {
-    const base = gitValue(['rev-parse', '--verify', 'HEAD^'], '', root)
+    const head = commitId(root, 'HEAD');
+    const base = gitValue(['rev-parse', '--verify', `${head}^`], '', root)
       || EMPTY_TREE_SHA;
-    return Object.freeze({ base, head: 'HEAD' });
+    return Object.freeze({ base, head });
   }
   const ranges = updates.map(({ localSha, remoteSha }) => ({
     base: ZERO_SHA.test(remoteSha)
       ? newBranchBase(root, remoteName, localSha)
-      : remoteSha,
-    head: localSha,
+      : commitId(root, remoteSha),
+    head: commitId(root, localSha),
   }));
   const bases = [...new Set(ranges.map(({ base }) => base))];
   const heads = [...new Set(ranges.map(({ head }) => head))];

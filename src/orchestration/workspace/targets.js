@@ -10,13 +10,29 @@ export function selectProjects(workspace, projectId) {
   return [selected];
 }
 
+/** 同一份 AGENTS 同时服务根应用与仓库时，只合成规范上下文，不改变应用门禁配置。 */
+export function composeAgentPolicyConfig(applicationConfig, repositoryConfig) {
+  if (!repositoryConfig || applicationConfig === repositoryConfig) return applicationConfig;
+  return {
+    ...applicationConfig,
+    repository: {
+      ...applicationConfig.repository,
+      commitMessage: repositoryConfig.repository.commitMessage,
+      deliveryContract: repositoryConfig.repository.deliveryContract,
+      filePlacement: repositoryConfig.repository.filePlacement,
+    },
+  };
+}
+
 export function workspaceAgentPolicyTargets(workspace, projectId) {
   const projects = selectProjects(workspace, projectId);
   const rootApplication = workspace.projects.find((project) => project.root === workspace.root);
   return [
     {
       root: workspace.root,
-      config: rootApplication?.config ?? workspace.repositoryConfig,
+      config: rootApplication
+        ? composeAgentPolicyConfig(rootApplication.config, workspace.repositoryConfig)
+        : workspace.repositoryConfig,
       label: rootApplication ? `应用 ${rootApplication.id}` : '仓库',
     },
     ...projects.filter((project) => project.root !== workspace.root)
@@ -121,7 +137,9 @@ export function workspaceStepTargets(targets, step) {
   if (SHARED_AND_APPLICATION_GATE_IDS.has(step.gateId)) {
     if (step.gateId === 'repository.protected-files') return [...targets.projects, targets.repositoryProtection ?? targets.repository];
     return step.gateId === 'repository.agent-policy' && targets.projects.some(({ root }) => root === targets.repository.root)
-      ? targets.projects
+      ? targets.projects.map((context) => context.root === targets.repository.root
+        ? { ...context, config: composeAgentPolicyConfig(context.config, targets.repository.config) }
+        : context)
       : [...targets.projects, targets.repository];
   }
   return REPOSITORY_GATE_IDS.has(step.gateId) ? [targets.repository] : targets.projects;

@@ -128,11 +128,11 @@ export function inspectDeliveryContractSetup({ root, config, environment }) {
   const registry = readRegistry(loader, config.repository.deliveryContract, errors);
   const contracts = readContracts(loader, config.repository.deliveryContract, errors);
   validateBindings(root, registry, contracts, errors);
-  validateManagedScripts(root, errors);
+  if (config.project?.stack === 'node') validateManagedScripts(root, errors);
   return errors.length === 0
     ? {
       status: 'ready',
-      summary: `交付合同设置完整（${contracts.length} 份合同，功能登记、Schema、绑定和脚本均有效）`,
+      summary: `交付合同设置完整（${contracts.length} 份合同，功能登记、Schema、绑定和适用的入口均有效）`,
     }
     : {
       status: 'incomplete',

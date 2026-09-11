@@ -5,7 +5,7 @@ export const PROJECT_PROFILES = Object.freeze({
   'vue-javascript': Object.freeze({ role: 'frontend', stack: 'node', language: 'javascript', supported: true }),
   'node-typescript': Object.freeze({ role: 'backend', stack: 'node', language: 'typescript', supported: true }),
   'node-javascript': Object.freeze({ role: 'backend', stack: 'node', language: 'javascript', supported: true }),
-  'java-maven': Object.freeze({ role: 'backend', stack: 'java', language: 'java', supported: false }),
+  'java-maven': Object.freeze({ role: 'backend', stack: 'java', language: 'java', supported: true }),
   'java-gradle': Object.freeze({ role: 'backend', stack: 'java', language: 'java', supported: false }),
 });
 
@@ -26,7 +26,7 @@ export function validateProjectDescriptor(value, { allowUnsupported = false } = 
     throw configurationError('project/profile-mismatch', 'project.role、stack 和 preset 必须是同一个受支持方案的明确组合。');
   }
   if (!profile.supported && !allowUnsupported) {
-    throw configurationError('project/stack-not-supported', 'Java 项目身份已预留，但当前版本尚未实现 Java 检查；不能将其作为通过的检查执行。');
+    throw configurationError('project/stack-not-supported', '当前版本尚未支持此项目预设；Java 工程检查仅支持显式声明的 java-maven 项目。');
   }
   return { id: value.id, role: value.role, stack: value.stack, preset: value.preset };
 }

@@ -86,6 +86,7 @@ export async function runCiGate({
   resolvedRange = null,
   initialPriorResults = [],
   skipRepositoryAgentPolicy = false,
+  agentPolicyConfig = null,
   onReport = null,
   repositoryProtectedChanges = null,
   configurationChanged = null,
@@ -239,8 +240,18 @@ export async function runCiGate({
     registry,
     context,
     initialPriorResults,
-    prepareStepContext: (options) => gatePolicy.prepareStepContext(options.gate.id === 'repository.protected-files'
-      ? { ...options, context: { ...options.context, changes: protectionChangeSet } } : options),
+    prepareStepContext: (options) => {
+      if (options.gate.id === 'repository.protected-files') {
+        return gatePolicy.prepareStepContext({ ...options, context: { ...options.context, changes: protectionChangeSet } });
+      }
+      if (options.gate.id === 'repository.agent-policy' && agentPolicyConfig) {
+        return gatePolicy.prepareStepContext({
+          ...options,
+          context: { ...options.context, config: agentPolicyConfig },
+        });
+      }
+      return gatePolicy.prepareStepContext(options);
+    },
     beforeStep: gatePolicy.beforeStep,
     onResult: ({ result, step }) => {
       recordResult(step.reportName ?? step.id, result, {

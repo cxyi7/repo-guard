@@ -7,15 +7,15 @@ import { findRepositoryRoot } from '../../git/repository.js';
 import { writeConsoleMessage } from '../../core/report/console-renderer.js';
 import { syncAgentPolicies } from '../../policies/agent-policies.js';
 import { syncDeliverySkills } from '../setup/delivery-skills.js';
-import { selectProjects } from '../workspace/targets.js';
+import { workspaceAgentPolicyTargets } from '../workspace/targets.js';
 
 function runFeatureToggle(requestedFeatures, enabled, cwd, options) {
   const root = findRepositoryRoot(cwd);
   const result = setFeaturesEnabled(root, requestedFeatures, enabled, options);
   const workspace = loadWorkspace(root, { lazyProjects: true });
   const config = workspace.repositoryConfig;
-  const policies = selectProjects(workspace, options.projectId).map((application) => syncAgentPolicies(application.root, application.config));
-  if (!workspace.projects.some((application) => application.root === root)) policies.push(syncAgentPolicies(root, config));
+  const policies = workspaceAgentPolicyTargets(workspace, options.projectId)
+    .map((target) => syncAgentPolicies(target.root, target.config));
   const agentPolicy = { changed: policies.some((policy) => policy.changed) };
   const deliverySkills = syncDeliverySkills(root, config.repository.deliveryContract.enabled);
   writeConsoleMessage(

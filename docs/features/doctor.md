@@ -2,7 +2,9 @@
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-Doctor 检查 repo-guard 是否已经正确接入：项目身份、工具、脚本、Git Hook 和团队规范是否准备好。它按配置检查前端或 Node 后端，不猜测框架，也不代替测试与构建的实际执行。
+Doctor 检查 repo-guard 是否已经正确接入：项目身份、工具、脚本、Git Hook 和团队规范是否准备好。它按配置检查前端、Node 后端或 Java Maven 后端，不猜测框架，也不代替测试与构建的实际执行。
+
+应用直接位于仓库根目录时，Doctor 会同时核对该份 `AGENTS.md` 中的公共提交、交付、归位规范及应用规则；缺失公共内容不能报告正常。`doctor --fix` 按同一上下文恢复规范，保留应用配置的独立性。
 
 ## 入口与范围
 
@@ -37,14 +39,19 @@ Doctor 先验证根清单、应用路径和公共规则，再加载本轮所选�
 | 子应用 `AGENTS.md` | 对应应用的角色、检查开关与工程要求 |
 | ESLint、Prettier、Stylelint、类型、测试、构建等工具 | 对应应用目录和已启用配置，检查项目已安装的工具与已有脚本 |
 | Vue 专项检查 | 只适用于前端 Vue 预设；Node 后端不执行 Vue 专项 |
+| Java 工程检查 | 仅检查 `java-maven` 应用已启用的 Java 工具与配置；不要求该应用提供 npm 清单或 Node 检查工具 |
 | 受保护构建 | 对应应用的 `package.json`；子应用包装脚本必须包含正确的 `--project <id>` |
 | 通知 | 仓库级配置；实际启用通知规则或变异测试失败通知时才要求对应环境 |
 
 配置在[前后端与多应用配置](project-workspace.md)中明确声明。启用工具不会自动安装依赖；缺少工具、插件、配置或脚本时，Doctor 会报告需要补齐的项目。
 
+Java 检查默认关闭。纯 Java 仓库仍需 Node.js 运行 repo-guard，但初始化、托管规范和 Doctor 不要求 `package.json`；`doctor --fix` 不创建 npm 清单、不安装 JDK/Maven 或分析工具，也不改写 `pom.xml`。启用检查后，必须再次运行对应 Java 门禁取得实际结果。普通托管 GitLab 模板仍使用 npm 宿主准备流程；Java CI 的 JDK 和已有工具需要在 Runner 或上游准备，Java 运维部署适配尚未提供。
+
 工具定位支持应用及祖先 `node_modules` 中的提升安装、作用域包和包目录链接；最近安装的损坏清单会明确报错，不会改用另一份安装。定位边界与修复方式见[应用工具如何定位](project-workspace.md#应用工具如何定位)。Doctor 的工具准备检查与实际适配器共用定位逻辑。
 
 独立交付使用 `repo-guard.delivery.json`，可与工程检查同时启用。交付状态和证据完整性使用 `repo-guard delivery check / status / verify` 复核；Doctor 的接入结果不能代替合同确认、联合验证或人工验收。单独使用交付时，按[独立交付接入](delivery-contract.md#独立交付与跨仓库协作)操作，无需为了诊断而添加虚构工程身份。
+
+仓库内合同包的 `guard:delivery-contract` 与 `guard:delivery-evidence` npm 别名只对明确声明的 Node 应用检查。Java 应用和无工程身份的仓库直接使用 repo-guard CLI；存在仅供宿主使用的 npm 清单也不产生别名义务。功能登记、合同结构、Git 跟踪、绑定和真实证据要求保持一致。
 
 ## `--fix` 会修改什么
 

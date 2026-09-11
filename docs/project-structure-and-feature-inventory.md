@@ -2,7 +2,7 @@
 
 适用于版本 `2.0.0`。
 
-本文维护当前 **v2 配置模型、模块职责和扩展边界**。repo-guard 通过统一的 npm 命令入口约束 AI 与开发者的工程行为；前端和 Node 后端各自使用明确配置的工具、规则和执行目录，不承担接口契约、鉴权或其他业务验收判断。
+本文维护当前 **v2 配置模型、模块职责和扩展边界**。repo-guard 通过统一的 npm 命令入口约束 AI 与开发者的工程行为；Vue 前端、Node 后端与 Java Maven 后端各自使用明确配置的工具、规则和执行目录，不承担接口契约、鉴权或其他业务验收判断。
 
 产品用途见 [README](../README.md)，安装与配置见[使用说明](usage-guide.md)，单项能力见[功能索引](features/README.md)。交付资料与反馈流程统一维护在[交付合同手册](features/delivery-contract.md)。
 
@@ -16,21 +16,24 @@
 
 [打开可导出结构图](images/repo-guard-v2-architecture.html)
 
-图中实线模块对应当前实现；底部虚线区域是后续扩展。Java 检查尚未提供，自动安装与基础配置生成也尚未实现，不应将预留身份或工具需求声明解释为接入就绪。
+Java Maven 已接入独立工程检查；Gradle、自动安装与基础配置生成仍是后续扩展。显式身份不会自动准备 JDK、检查工具或构建插件，开启前须按功能说明配置。
 
 | 范围 | 明确由谁配置 | 当前执行方式 |
 |---|---|---|
-| 仓库公共规范 | 提交信息、公共 CI 流程、通知动画、基础文件保护 | 公共上下文执行，不向应用继承依赖、保护和豁免规则 |
+| 仓库公共规范 | 提交信息、公共 CI 流程、通知动画、基础文件保护、全仓文件归位 | 公共上下文执行；仓库归位检查全仓一次，应用不能覆盖或豁免 |
 | 独立交付 | 人确认共同合同，各参与方绑定同一修订 | 独立于工程预设；同仓多应用或跨仓库汇总签名证据与联合验收 |
 | 前端应用 | 人或 AI 声明 `project.id / role / stack / preset` | 使用前端预设和应用目录中的工具与配置 |
 | Node 后端应用 | 人或 AI 声明 `role: backend`、`stack: node` 及 Node 预设 | 复用工程检查，跳过 Vue 专项，不绑定具体后端框架 |
+| Java 后端应用 | 人或 AI 声明 `role: backend`、`stack: java`、`preset: java-maven` | 独立源码、依赖、架构、编译、测试与构建检查，不继承 Node 工具 |
 | 运维发布 | 运维或应用负责人配置独立的 `repo-guard.ops.json` | 按项目标识生成 GitLab 质量、构建和部署作业 |
 
-项目身份只来自配置，不扫描文件或依赖来猜测前后端。环境、工具和脚本仍需检查是否与声明匹配。当前前端预设为 Vue JavaScript / TypeScript，后端预设为 Node JavaScript / TypeScript。
+项目身份只来自配置，不扫描文件或依赖来猜测前后端。环境、工具和脚本仍需检查是否与声明匹配。当前前端预设为 Vue JavaScript / TypeScript，后端预设为 Node JavaScript / TypeScript 和 Java Maven。
 
 ### 2 单应用与多应用
 
 单应用将身份、检查与公共规则放在根目录 `repo-guard.config.json`。多应用由根配置的 `projects` 声明目录和配置；子应用声明 `project`、`checks`、应用 `repository` 策略以及 `ci` 检查选项。依赖策略、规则豁免、代码归位和外部门禁都归应用所有。`sharedPaths` 显式描述共享文件对应用的影响。
+
+仓库级文件归位单独配置为根 `repository.filePlacement`，功能名 `repositoryFilePlacement`，默认关闭且没有 `mode`；启用前必须提供至少一条有序规则，按第一条匹配规则判断文件位置。它使用 Git 根相对路径，覆盖前端、后端及公共目录，子应用不能声明或继承该配置。应用 `checks.filePlacement` 保留自己的规则和路径范围；应用开关、例外与应用选择不能放行仓库规则，根级例外只在该规则自身的 `exceptions` 声明。具体字段见[仓库级文件归位](features/repository-file-placement.md)。
 
 独立交付配置为 `repo-guard.delivery.json`，不要求工程配置或 `package.json` 存在。`delivery-workspace.js` 验证合同身份与字段；`policies/delivery-contract/collaboration.js` 校验边界、签名、版本组合和反馈；`orchestration/delivery/` 执行明确声明的检查并保存证据。工程检查通过 Gate 适配接入，合同校验不依赖 Node、Java 或 Python 预设。
 
@@ -132,13 +135,22 @@ repo-guard/
 
 `core`、`profiles` 和 `config` 的底层边界、运维与质量编排的独立边界、Gate 领域边界、循环依赖及不可解析导入，由 `.dependency-cruiser.cjs` 和架构测试共同约束。结构调整应先判断职责归属，再修改依赖。
 
+Java 能力按职责分别维护：`integrations/java/source/` 适配 Checkstyle、PMD 和格式化工具；`integrations/java/engineering/` 提供 Maven 进程、隐式参数预检、文件边界、JUnit/JaCoCo 等原生证据；`integrations/java/spotbugs/` 与 `integrations/java/mutation/` 分别控制字节码分析和 PIT 执行、读取本次原生报告。`policies/java/` 判定团队规则，路径命名直接使用 Git 索引，不依赖 Java 工具；`gates/java/` 转换为统一 GateResult。各自的 `config/java-*.js` 校验独立字段，生命周期在 `orchestration/java-check-plans.js` 声明。新增适配器复用基础设施、不调用其他 Gate，不使用 Node 检查器伪装 Java 检查，也不在 Hook 安装工具。配置及规则细节见 [Java 接入](java-quality-integration.md)。
+
+仓库归位沿用同一分层：`config/repository-file-placement.js` 独立维护根字段和 Schema，只复用 `config/file-placement-validation.js` 的规则结构校验；`git/repository-file-paths.js` 读取索引、提交树或工作区路径事实；`policies/file-placement.js` 复用第一匹配的纯规则判断；`gates/repository/global-file-placement-gate.js` 返回统一结果。`repository.global-file-placement` 在仓库上下文登记和编排，不调用应用 Gate，也不读取应用豁免。根文件保护继续使用自己的范围和模块，不能把归位规则误限于应用目录外。
+
+所有 Maven 门禁在准备和每次执行前共用隐式参数预检，覆盖从 POM 目录向上发现的 `.mvn` 配置、JVM/Maven 环境参数和 RC 脚本。无法确认的覆盖会作为配置错误阻断，避免隐式关闭工具规则；具体允许的资源参数与处理方式见 [Maven 执行边界](features/java-engineering.md)。这项预检不承担任意 Maven 插件代码的沙箱职责。
+
+Java 工程问题的语义由 `policies/java/engineering/findings.js` 组织，保留模块、报告、规则对象、预期和修复步骤；标识与指纹仍交给公共 GateResult。进程原始状态由 `core/execution/process-output.js` 统一转换为诊断，不由各 Java Gate 另建退出码规则。同根应用仅在托管规范上下文中合成公共提交、交付与归位配置，应用 Gate 始终使用本方配置。
+
 样式 Token 检查沿用这些边界：`config` 校验 `checks.uiTokens.languages` 与 v2 清单；`integrations/ui-tokens/` 使用消费项目的 Stylelint 和语法配置提取 CSS、SCSS/Sass、Less 及 Vue 内联样式事实；`policies/ui-tokens.js` 检查 12 类 Token 的完整别名、类别与变量定义归属；`quality.ui-tokens` 组合清单指纹、扫描范围和只读报告。CSS 断点采用清单允许值，普通 CSS 变量也可在 Sass/Less 声明中使用。UnoCSS 类名、配置与 shortcut 分析已移除；不新增编译器执行、语言自动探测或工具安装职责。该能力仅归前端应用，其清单保护和例外都使用所属应用规则，详见[样式 Token 检查](features/ui-tokens.md)。
 
 ## 执行与可信结果
 
-- **提交前**：根配置和子应用配置一起从索引读取；同一次 `lint-staged` 隔离两个应用的部分暂存内容。依次对各应用执行 Stylelint 修复、ESLint 修复、Prettier、只读复核和适用策略，仓库受保护文件门禁最后执行。
-- **真实推送**：使用待推送提交的配置快照。启用重型检查时拒绝脏工作树、非当前 HEAD 或多个不同提交，避免测试其他代码后宣称待推送内容已通过。手动执行 `pre-push` 无 Git 输入时是本地工作树验证，不等同于真实推送快照验证。
-- **CI**：公共规则与应用检查使用对应上下文；项目标识进入结果和产物命名，避免前后端报告覆盖。任一应用失败都不能被另一应用成功掩盖。
+- **提交前**：根配置和子应用配置一起从索引读取；同一次 `lint-staged` 隔离两个应用的部分暂存内容。依次对各应用执行 Stylelint 修复、ESLint 修复、Prettier、只读复核和适用策略；仓库归位在公共策略阶段复核完整 Git 索引，包含未改动文件，仓库受保护文件门禁最后执行。
+- **真实推送**：使用待推送提交的配置快照，仓库归位读取可信 `revision.head` 的完整提交树。启用重型检查时拒绝脏工作树、非当前 HEAD 或多个不同提交，避免测试其他代码后宣称待推送内容已通过。手动执行 `pre-push` 无 Git 输入时读取工作区配置，工程命令使用工作区，仓库归位仍读取当前 HEAD 完整提交树；不等同于真实推送范围验证。
+- **CI**：公共规则与应用检查使用对应上下文；仓库归位始终在公共上下文检查可信 head 完整文件树，不按应用选择或变更缩小。项目标识进入结果和产物命名，避免前后端报告覆盖。任一应用失败都不能被另一应用成功掩盖。
+- **手动仓库归位**：`repo-guard repository-file-placement` 检查工作区中实际存在的受控文件与未被忽略的新文件。上述各入口均不遍历 Git 子模块（gitlink）内部，检查不自动移动文件。
 - **运维**：质量成功后构建，构建产物存在且非空后部署；应用之间独立命名、依赖和环境，生产手动触发。项目脚本、Runner 工具和平台发布权限由团队维护。
 
 已接入配置的暂存删除、子应用配置快照缺失，以及推送时删除根配置会阻断执行，不能被当作“未接入”自动跳过。
@@ -153,6 +165,7 @@ repo-guard/
 | `core/project/package.js` | 按应用解析最近的本地或提升安装，统一清单、入口与链接归属 |
 | `core/execution/process-tree.js` | 流式执行与外部 npm 共用有时限的进程树清理及失败处理 |
 | `git/command-error.js` / `git/snapshot-content.js` | 中文执行错误与独立原始诊断；区分快照文件缺失和 Git 读取失败 |
+| `git/repository-file-paths.js` | 仓库归位所需的完整路径事实；校验索引和可信提交树，工作区纳入未忽略文件，排除 gitlink |
 | 运维发布计划 | 绑定同一应用的质量、构建、产物、分支和环境 |
 | Delivery Contract / Evidence Run | 为团队启用的交付资料与反馈流程提供可核验依据 |
 
@@ -172,10 +185,12 @@ CI 计划通过 `policy → full → release-ready` 逐级复用公共步骤，�
 
 新增功能的测试按实际职责归类，不再直接堆放到 `test` 根目录。跨应用集成应覆盖身份与目录隔离、报告隔离、失败汇总、索引一致性以及部分暂存恢复；新增工具适配还需验证实际消费项目的工具与脚本入口。
 
+仓库归位测试分别覆盖根与子应用配置边界、完整 Git 路径事实、纯规则复用、GateResult 以及真实 CLI/Hook 跨入口行为，维护位置见 [测试组织](../test/README.md)。Java 原生检查的版本、通过/失败样例和验证限制集中记录在 [Java 检查验收记录](java-check-acceptance.md)，不把普通夹具解析测试视为实际工具已验证。
+
 | 扩展方向 | 当前事实 | 后续实现边界 |
 |---|---|---|
 | Node 后端 | 已有 JS/TS 显式预设，共用工程检查 | 扩展工具时继续依赖项目自身安装与配置，不引入业务接口校验 |
-| Java | 已预留 `java-maven` / `java-gradle` 身份，但执行明确拒绝 | 新增 Java 工具、报告和构建适配；Node 运行 repo-guard，JDK 运行 Java 检查 |
+| Java | `java-maven` 已有 18 个独立检测开关；Node 运行 CLI，JDK 运行 Java 工具 | Gradle 工程、自动接入与 Java 运维部署仍待实现 |
 | 自动接入 | 已声明预设需要的运行环境与工具 | 独立建设准备计划、兼容性、安装、配置和就绪验证；日常 Hook 不负责安装 |
 | 分仓协作 | 已支持跨仓签名证据交换、联合验证与人工验收；各仓库独立检查、生成本仓发布任务 | 跨仓自动协调发布尚未实现；后续必须显式配置，不能默认触发其他团队部署 |
 
@@ -188,6 +203,8 @@ CI 计划通过 `policy → full → release-ready` 逐级复用公共步骤，�
 | [功能索引](features/README.md)与专题 | 功能用途、字段要求、运行结果、修复和测试依据 |
 | [独立运维](features/operations.md) | 运维配置字段、应用产物、环境和平台约束 |
 | [交付合同手册](features/delivery-contract.md) | 交付资料、人员分工、反馈和执行证据 |
+| [仓库级文件归位](features/repository-file-placement.md) | 根级文件位置规则、完整检查范围与应用隔离 |
+| [Java 检查验收记录](java-check-acceptance.md) | 当前原生工具验证证据、覆盖范围与限制 |
 | 本文与结构图 | 当前目录、职责、依赖与已实现/预留边界 |
 
 每个行为变化同步代码测试、README/相关专题、Schema 和 CHANGELOG；能力变化同时维护功能索引。结构变化同步本文、SVG、HTML 与架构约束。配置示例、文档链接、测试入口和 npm 打包内容必须一并复核。

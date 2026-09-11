@@ -2,6 +2,7 @@ import {
   createGateResult,
 } from '../core/result/gate-result.js';
 import { aggregateGateResults } from '../core/result/exit-code.js';
+import { configuredGateTimeout } from './gate-timeout.js';
 import { gateAppliesToProject } from '../gates/project-applicability.js';
 import {
   cancellationError,
@@ -69,6 +70,7 @@ function abortError(reason, fallback) {
 }
 
 async function executeWithTimeout({ context, gate, step, executeStep }) {
+  const timeoutMs = configuredGateTimeout(gate, context);
   const controller = new AbortController();
   const upstream = context.signal;
   const onUpstreamAbort = () => controller.abort(
@@ -84,18 +86,18 @@ async function executeWithTimeout({ context, gate, step, executeStep }) {
 
   const timeoutError = executionError(
     'orchestration/gate-timeout',
-    `门禁 ${gate.id} 超过 ${gate.defaultTimeoutMs}ms 超时时间`,
+    `门禁 ${gate.id} 超过 ${timeoutMs}ms 超时时间`,
     {
-      details: { timeoutMs: gate.defaultTimeoutMs },
+      details: { timeoutMs },
       remediation: {
         goal: '让门禁在配置的时限内完成，或基于可复现的执行数据调整超时配置。',
         steps: ['检查诊断输出定位阻塞步骤。', '修复阻塞或性能问题后重新运行同一门禁。'],
         constraints: ['不要通过吞掉失败或跳过门禁规避超时。'],
-        verification: [`重新运行 ${gate.id} 并确认在 ${gate.defaultTimeoutMs}ms 内完成。`],
+        verification: [`重新运行 ${gate.id} 并确认在 ${timeoutMs}ms 内完成。`],
       },
     },
   );
-  const timeout = setTimeout(() => controller.abort(timeoutError), gate.defaultTimeoutMs);
+  const timeout = setTimeout(() => controller.abort(timeoutError), timeoutMs);
   const stepContext = Object.freeze({ ...context, signal: controller.signal });
   let cancellationCleanupTimeout = null;
   const aborted = new Promise((resolve, reject) => {
@@ -215,7 +217,7 @@ export async function orchestratePlan({
         ? createGateResult({
           gateId: gate.id,
           status: 'skipped',
-          summary: '该前端检查不适用于已配置的后端项目',
+          summary: '该检查不适用于当前应用配置的技术栈或角色',
         })
         : beforeStep
         ? await beforeStep({ context: stepContext, gate, step })

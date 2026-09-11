@@ -29,6 +29,18 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 
 ## 提交阶段质量与安全
 
+Java Maven 的 18 项能力独立于 Node 检查，完整接入流程见 [Java 接入说明](../java-quality-integration.md)，逐项复核见 [Java 验收清单](../java-check-acceptance.md)。源码、路径、字节码、构建与测试分别维护；启用检查不会自动安装工具。
+
+Java 工程问题按模块和规则对象提供可定位证据及修复步骤，Maven/SpotBugs/PIT 的原始进程状态通过公共诊断保留。同根应用托管规范合并公共提交、交付和归位要求；不会改变本方工程开关。相关约定见[统一报告](gate-result-and-reporting.md)与[AI 规范维护](managed-agent-policies.md)。
+
+| Java 功能 | 说明文档 | 状态 |
+|---|---|---|
+| 格式、命名、包路径、导入、规模、Javadoc、静态问题与重复代码 | [docs/features/java-source-checks.md](java-source-checks.md) | 已维护 |
+| 文件与目录命名、按目录约束文件后缀 | [docs/features/java-path-naming.md](java-path-naming.md) | 已维护 |
+| SpotBugs 字节码缺陷与优先级门禁 | [docs/features/java-spotbugs.md](java-spotbugs.md) | 已维护 |
+| PIT 变异测试、原始测试与逐模块得分 | [docs/features/java-mutation-test.md](java-mutation-test.md) | 已维护 |
+| 架构、依赖、文件放置、编译、构建、测试与覆盖率 | [docs/features/java-engineering.md](java-engineering.md) | 已维护 |
+
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
 | 暂存隔离与跨进程重入保护 | [docs/features/staged-isolation-and-lifecycle-lock.md](staged-isolation-and-lifecycle-lock.md) | 已维护，索引与对象损坏保留执行错误 |
@@ -53,6 +65,7 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 |---|---|---|
 | 路径命名 | [docs/features/path-naming.md](path-naming.md) | 已维护 |
 | 文件归位 | [docs/features/file-placement.md](file-placement.md) | 已维护 |
+| 仓库级文件归位 | [docs/features/repository-file-placement.md](repository-file-placement.md) | 已维护，全索引或完整目标提交，不受应用筛选影响 |
 | 单文件行数 | [docs/features/maximum-file-lines.md](maximum-file-lines.md) | 已维护 |
 | 代码位置 | [docs/features/code-placement.md](code-placement.md) | 已维护 |
 | 保护文件 | [docs/features/protected-files.md](protected-files.md) | 已维护 |

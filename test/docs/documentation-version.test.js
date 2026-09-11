@@ -173,6 +173,7 @@ test('uses one delivery loop diagram and preserves usage documentation links', (
   for (const [, feature, documentedPath] of usageGuide.matchAll(/^\| `([a-zA-Z]+)` \| `([^`]+)` \|/gm)) {
     const expectedPath = Object.hasOwn(PROJECT_CHECK_PATHS, feature) ? `checks.${feature}`
       : feature === 'dependencies' ? 'repository.dependencyPolicy'
+        : feature === 'repositoryFilePlacement' ? 'repository.filePlacement'
         : ['commitMessage', 'codePlacement', 'deliveryContract'].includes(feature) ? `repository.${feature}`
           : feature === 'ci' ? 'ci' : `reporting.${feature}`;
     assert.equal(documentedPath, expectedPath, `${feature} 的文档路径必须指向新配置位置`);

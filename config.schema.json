@@ -37,7 +37,7 @@
             "node",
             "java"
           ],
-          "description": "业务工具技术栈；java 为后续扩展预留，当前执行会明确拒绝。"
+          "description": "应用技术栈；Java 工程检查支持 java-maven，java-gradle 尚未接入。"
         },
         "preset": {
           "enum": [
@@ -45,8 +45,7 @@
             "vue-javascript",
             "node-typescript",
             "node-javascript",
-            "java-maven",
-            "java-gradle"
+            "java-maven"
           ],
           "description": "显式选择工程规范方案。"
         }
@@ -94,8 +93,7 @@
             },
             "preset": {
               "enum": [
-                "java-maven",
-                "java-gradle"
+                "java-maven"
               ]
             }
           }
@@ -548,6 +546,98 @@
                   }
                 }
               }
+            },
+            "filePlacement": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "仓库级文件归位规则，只在根配置维护；所有路径相对仓库根目录，不继承到子应用。按声明顺序采用第一条匹配规则。",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用仓库级文件归位；启用前必须至少配置一条规则。"
+                },
+                "rules": {
+                  "type": "array",
+                  "default": [],
+                  "description": "有序规则列表；关闭时可为空，第一条匹配规则决定文件应放置的位置。",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "patterns",
+                      "allowedPatterns",
+                      "suggestedDirectory"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "非空规则名称，用于中文违规提示。"
+                      },
+                      "patterns": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": "匹配需要限制位置的仓库相对文件路径。"
+                      },
+                      "allowedPatterns": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": "匹配文件允许所在的位置，路径相对仓库根目录。"
+                      },
+                      "exceptions": {
+                        "type": "array",
+                        "minItems": 0,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "default": [],
+                        "description": "当前规则明确放行的路径；不能为 null。"
+                      },
+                      "suggestedDirectory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "建议移动到的仓库内具体目录，不支持通配符。"
+                      }
+                    }
+                  }
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "rules"
+                    ],
+                    "properties": {
+                      "rules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ]
             }
           }
         },
@@ -2928,10 +3018,2116 @@
                   }
                 }
               }
+            },
+            "javaFormat": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                },
+                "style": {
+                  "enum": [
+                    "google",
+                    "aosp"
+                  ],
+                  "default": "google",
+                  "description": "google-java-format 的格式风格"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaNaming": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaLayout": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaImports": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaSize": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                },
+                "maxFileLines": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 1000,
+                  "description": "单文件最大物理行数"
+                },
+                "maxMethodLines": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 100,
+                  "description": "单方法最大物理行数，包含空行和注释"
+                },
+                "maxParameters": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 7,
+                  "description": "方法与构造器的参数上限"
+                },
+                "maxCyclomaticComplexity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 15,
+                  "description": "单方法圈复杂度上限"
+                },
+                "maxNestingDepth": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 3,
+                  "description": "同类 if、for、try 的嵌套深度上限"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaDocs": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                },
+                "scope": {
+                  "enum": [
+                    "public",
+                    "protected",
+                    "package",
+                    "private"
+                  ],
+                  "default": "public",
+                  "description": "需要 Javadoc 的最低可见性范围"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaLint": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaDuplication": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用该 Java 源码检查"
+                },
+                "command": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "default": null,
+                  "description": "消费项目已经准备的可执行文件名称或路径；启用时必填"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "仅用于启动工具的前缀参数；不得覆盖文件、规则、报告或跳过参数"
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 120000,
+                  "description": "包括版本确认和检查在内的最长执行时间，单位毫秒"
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.java"
+                  ],
+                  "description": "应用根目录内需要检查的 Java 文件范围"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/target/**",
+                    "**/build/**"
+                  ],
+                  "description": "应用根目录内排除的生成文件范围"
+                },
+                "minimumTokens": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 100,
+                  "description": "报告重复代码的最少词法标记数量"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "command"
+                    ],
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "javaArchitecture": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "reports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "description": "相对应用根目录的必需原生报告；报告不得跨模块复用，失败问题保留报告位置和用例证据。"
+                      },
+                      "requiredTestClasses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "reports",
+                      "requiredTestClasses"
+                    ]
+                  }
+                }
+              }
+            },
+            "javaDependencies": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules",
+                      "enforcerExecution"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      },
+                      "enforcerExecution": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "effectivePom": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "dependencyTree": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "effectivePom",
+                      "dependencyTree"
+                    ]
+                  }
+                },
+                "enforcerExecution": {
+                  "type": "string"
+                },
+                "requiredEnforcerRules": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "dependencyConvergence",
+                      "requireUpperBoundDeps",
+                      "banDuplicatePomDependencyVersions",
+                      "bannedDependencies",
+                      "requireReleaseDeps",
+                      "requirePluginVersions",
+                      "bannedPlugins",
+                      "banDynamicVersions"
+                    ]
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "bannedDependencies": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "banSnapshots": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "javaCompile": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "outputs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "outputs"
+                    ]
+                  }
+                }
+              }
+            },
+            "javaBuild": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "outputs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "outputs"
+                    ]
+                  }
+                }
+              }
+            },
+            "javaTest": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "reports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "description": "相对应用根目录的必需原生报告；报告不得跨模块复用，失败问题保留报告位置和用例证据。"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "reports"
+                    ]
+                  }
+                }
+              }
+            },
+            "javaCoverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "reports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "description": "相对应用根目录的必需原生报告；报告不得跨模块复用，失败问题保留报告位置和用例证据。"
+                      },
+                      "coverageReport": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "reports",
+                      "coverageReport"
+                    ]
+                  }
+                },
+                "thresholds": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "line": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "branch": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "instruction": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                }
+              }
+            },
+            "javaFiles": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "forbidden": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                  },
+                  "uniqueItems": true
+                },
+                "allowedJavaRoots": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                }
+              }
+            },
+            "javaPathNaming": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "include": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^(?!\\s|.*\\s$|/|.*/$|.*//|.*(?:^|/)\\.{1,2}(?:/|$)|.*(?:[^/]\\*\\*|\\*\\*[^/]))[^\\\\:\\x00-\\x1f\\x7f\\[\\]{}()!|^$+]+$"
+                  },
+                  "minItems": 1
+                },
+                "exclude": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^(?!\\s|.*\\s$|/|.*/$|.*//|.*(?:^|/)\\.{1,2}(?:/|$)|.*(?:[^/]\\*\\*|\\*\\*[^/]))[^\\\\:\\x00-\\x1f\\x7f\\[\\]{}()!|^$+]+$"
+                  }
+                },
+                "rules": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "target",
+                      "include"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+                      },
+                      "target": {
+                        "enum": [
+                          "files",
+                          "directories"
+                        ]
+                      },
+                      "include": {
+                        "type": "array",
+                        "maxItems": 64,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^(?!\\s|.*\\s$|/|.*/$|.*//|.*(?:^|/)\\.{1,2}(?:/|$)|.*(?:[^/]\\*\\*|\\*\\*[^/]))[^\\\\:\\x00-\\x1f\\x7f\\[\\]{}()!|^$+]+$"
+                        },
+                        "minItems": 1
+                      },
+                      "exclude": {
+                        "type": "array",
+                        "maxItems": 64,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^(?!\\s|.*\\s$|/|.*/$|.*//|.*(?:^|/)\\.{1,2}(?:/|$)|.*(?:[^/]\\*\\*|\\*\\*[^/]))[^\\\\:\\x00-\\x1f\\x7f\\[\\]{}()!|^$+]+$"
+                        }
+                      },
+                      "conventions": {
+                        "type": "array",
+                        "maxItems": 5,
+                        "uniqueItems": true,
+                        "items": {
+                          "enum": [
+                            "PascalCase",
+                            "camelCase",
+                            "lowercase",
+                            "kebab-case",
+                            "snake_case"
+                          ]
+                        }
+                      },
+                      "basename": {
+                        "type": "array",
+                        "maxItems": 64,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "pattern": "^(?!\\s|.*\\s$|\\.{1,2}$|.*\\*\\*)[^/\\\\:\\x00-\\x1f\\x7f\\[\\]{}()!|^$+]+$"
+                        }
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "required": [
+                          "conventions"
+                        ],
+                        "properties": {
+                          "conventions": {
+                            "type": "array",
+                            "minItems": 1
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "basename"
+                        ],
+                        "properties": {
+                          "basename": {
+                            "type": "array",
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "javaSpotbugs": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules",
+                      "pluginVersion"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "type": "array",
+                        "minItems": 1
+                      },
+                      "pluginVersion": {
+                        "type": "string",
+                        "pattern": "^4\\.\\d+\\.\\d+\\.\\d+$"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(?:-P[A-Za-z0-9_,.-]+|-Dmaven\\.repo\\.local=[A-Za-z0-9_.,:/@+-]+|-DrepoGuard\\.[A-Za-z0-9_.-]+=[A-Za-z0-9_.,:/@+-]+)$"
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "reports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "description": "相对应用根目录的必需原生报告；报告不得跨模块复用，失败问题保留报告位置和用例证据。",
+                        "maxItems": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "reports"
+                    ]
+                  }
+                },
+                "pluginVersion": {
+                  "type": "string",
+                  "pattern": "^(?:|4\\.\\d+\\.\\d+\\.\\d+)$"
+                },
+                "priority": {
+                  "enum": [
+                    "high",
+                    "normal",
+                    "low"
+                  ],
+                  "default": "normal"
+                },
+                "excludeBugPatterns": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]+$"
+                  }
+                }
+              }
+            },
+            "javaMutationTest": {
+              "type": "object",
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "modules",
+                      "pluginVersion"
+                    ],
+                    "properties": {
+                      "modules": {
+                        "minItems": 1
+                      },
+                      "pluginVersion": {
+                        "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647,
+                  "default": 600000
+                },
+                "executable": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pom": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                },
+                "offline": {
+                  "type": "boolean"
+                },
+                "arguments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(?:-P[A-Za-z0-9_,.-]+|-D(?:maven\\.repo\\.local|repoGuard\\.[A-Za-z0-9_.-]+)=[A-Za-z0-9_.,:/@+-]+)$"
+                  },
+                  "uniqueItems": true
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "应用内唯一的稳定模块名称，用于问题归属和问题标识；名称改变会改变对应问题标识。"
+                      },
+                      "directory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                      },
+                      "reports": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "^(?!/|[A-Za-z]:|.*(?:^|/)\\.\\.(?:/|$)).+$"
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1,
+                        "description": "相对应用根目录的必需原生报告；报告不得跨模块复用，失败问题保留报告位置和用例证据。"
+                      },
+                      "mutationReport": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "targetClasses": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 32,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z_$*][A-Za-z0-9_.$*]*$"
+                        }
+                      },
+                      "targetTests": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 32,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^[A-Za-z_$*][A-Za-z0-9_.$*]*$"
+                        }
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "reports",
+                      "mutationReport",
+                      "targetClasses",
+                      "targetTests"
+                    ]
+                  }
+                },
+                "pluginVersion": {
+                  "type": "string",
+                  "pattern": "^(?:|1\\.[0-9]+\\.[0-9]+)$"
+                },
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 80
+                }
+              }
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "project": {
+                "properties": {
+                  "stack": {
+                    "const": "java"
+                  }
+                },
+                "required": [
+                  "stack"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          "then": {
+            "properties": {
+              "checks": {
+                "properties": {
+                  "eslint": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "prettier": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "stylelint": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "styleComplexity": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "styleGovernance": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "fileHeader": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "functionDocs": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "asyncResourceCleanup": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "deadCode": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "unusedImageAssets": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "uiTokens": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "architecture": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "accessibilityTest": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "build": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "lighthouse": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "typeCheck": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "unitTest": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "coverage": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "componentInteraction": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "mutationTest": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              },
+              "repository": {
+                "properties": {
+                  "dependencyPolicy": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "checks": {
+                "properties": {
+                  "javaFormat": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaNaming": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaLayout": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaImports": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaSize": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaDocs": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaLint": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaDuplication": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaArchitecture": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaDependencies": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaFiles": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaCompile": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaBuild": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaTest": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaCoverage": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaPathNaming": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaSpotbugs": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "javaMutationTest": {
+                    "properties": {
+                      "enabled": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "workspaceDocument": {
       "type": "object",
@@ -3164,6 +5360,98 @@
                   "description": "不触发合同选择的生成物范围；选定合同后不会因此绕过 allowedPaths 或 forbiddenPaths。"
                 }
               }
+            },
+            "filePlacement": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "仓库级文件归位规则，只在根配置维护；所有路径相对仓库根目录，不继承到子应用。按声明顺序采用第一条匹配规则。",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "是否启用仓库级文件归位；启用前必须至少配置一条规则。"
+                },
+                "rules": {
+                  "type": "array",
+                  "default": [],
+                  "description": "有序规则列表；关闭时可为空，第一条匹配规则决定文件应放置的位置。",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "patterns",
+                      "allowedPatterns",
+                      "suggestedDirectory"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "非空规则名称，用于中文违规提示。"
+                      },
+                      "patterns": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": "匹配需要限制位置的仓库相对文件路径。"
+                      },
+                      "allowedPatterns": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": "匹配文件允许所在的位置，路径相对仓库根目录。"
+                      },
+                      "exceptions": {
+                        "type": "array",
+                        "minItems": 0,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "default": [],
+                        "description": "当前规则明确放行的路径；不能为 null。"
+                      },
+                      "suggestedDirectory": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "建议移动到的仓库内具体目录，不支持通配符。"
+                      }
+                    }
+                  }
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "rules"
+                    ],
+                    "properties": {
+                      "rules": {
+                        "type": "array",
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ]
             }
           }
         },

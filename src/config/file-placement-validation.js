@@ -6,8 +6,8 @@ import {
   normalizeRelativePattern,
 } from './validation-primitives.js';
 
-function normalizeFilePlacementRule(rule, index, configPath) {
-  const label = `${configPath} checks.filePlacement 规则 ${index + 1}`;
+export function normalizeFilePlacementRule(rule, index, configPath, { configLabel = 'checks.filePlacement' } = {}) {
+  const label = `${configPath} ${configLabel} 规则 ${index + 1}`;
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
     throw configValidationError(`${label} 必须是对象`);
   }

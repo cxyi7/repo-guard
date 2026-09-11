@@ -1,3 +1,5 @@
+import { gateAppliesToProject } from '../profiles/gate-applicability.js';
+
 const GROUP_DEFINITIONS = [
   ['repository-governance-policy', '仓库与变更治理'],
   ['staged-quality-policy', '暂存代码质量'],
@@ -47,6 +49,54 @@ function entry({ id, groupId, gates = [], features = [], capabilities = [], when
 }
 
 const entries = [
+  entry({
+    id: 'repository-global-file-placement', groupId: 'repository-structure-policy',
+    gates: ['repository.global-file-placement'], features: ['repositoryFilePlacement'],
+    when: enabled('repository.filePlacement'),
+    lines: ({ config }) => [
+      '- 仓库级文件归位覆盖整个 Git 仓库，路径相对仓库根目录；应用自己的规则或例外不能豁免仓库规则。',
+      '- 提交前检查完整 Git 索引，推送与 CI 检查目标提交完整文件树；手动检查还包含未被 Git 忽略的未跟踪文件。',
+      ...config.repository.filePlacement.rules.map((rule) => `- 归位规则 ${code(rule.name)}：${list(rule.patterns)} 只允许放在 ${list(rule.allowedPatterns)}；仓库级例外为 ${list(rule.exceptions)}。`),
+      `- 新增、移动或删除文件后运行 ${code('repo-guard repository-file-placement')}；不得缩小根规则范围来掩盖错位文件。`,
+    ],
+  }),
+  entry({
+    id: 'java-project-tools',
+    groupId: 'repository-governance-policy',
+    when: ({ config }) => config.project?.stack === 'java',
+    lines: () => [
+      '- 本应用使用 Java/Maven 工程检查；Node.js 仅作为 repo-guard 宿主运行时，Java 应用不需要 package.json。',
+      '- Java 检查默认关闭；须先显式准备 JDK、Maven、检查工具和项目配置，再启用对应检查。检查命令与 Doctor 不会安装或升级工具。',
+      '- Java 源码规则只读取应用自身的配置、源码与报告；编译、构建、测试和覆盖率使用消费项目提供的命令，关闭或跳过检查不能作为交付通过证据。',
+    ],
+  }),
+  ...[
+    ['javaFormat', 'java.format', 'staged-quality-policy', '格式与文本'],
+    ['javaNaming', 'java.naming', 'repository-structure-policy', 'Java 命名'],
+    ['javaLayout', 'java.layout', 'repository-structure-policy', '包与目录'],
+    ['javaImports', 'java.imports', 'source-safety-policy', 'import 规范'],
+    ['javaSize', 'java.size', 'repository-structure-policy', '源码规模'],
+    ['javaDocs', 'java.docs', 'source-safety-policy', 'Javadoc'],
+    ['javaLint', 'java.lint', 'source-safety-policy', 'PMD 静态分析'],
+    ['javaDuplication', 'java.duplication', 'source-safety-policy', 'CPD 重复代码'],
+    ['javaArchitecture', 'java.architecture', 'dependency-health-policy', '架构依赖'],
+    ['javaDependencies', 'java.dependencies', 'dependency-health-policy', 'Java 依赖'],
+    ['javaFiles', 'java.files', 'repository-structure-policy', '工程文件'],
+    ['javaCompile', 'java.compile', 'delivery-policy', '编译'],
+    ['javaBuild', 'java.build', 'delivery-policy', '构建'],
+    ['javaTest', 'java.test', 'testing-policy', 'Java 测试'],
+    ['javaCoverage', 'java.coverage', 'testing-policy', 'Java 覆盖率'],
+    ['javaPathNaming', 'java.path-naming', 'repository-structure-policy', 'Java 文件与目录命名'],
+    ['javaSpotbugs', 'java.spotbugs', 'source-safety-policy', 'SpotBugs 字节码缺陷'],
+    ['javaMutationTest', 'java.mutation-test', 'testing-policy', 'PIT 变异测试'],
+  ].map(([feature, gate, groupId, label]) => entry({
+    id: gate,
+    groupId,
+    gates: [gate],
+    features: [feature],
+    when: enabled(`checks.${feature}`),
+    lines: () => [`- ${label}检查由 ${code(`checks.${feature}`)} 显式配置；必须保留本次执行的真实证据，按报告中的中文诊断修复，不得降低要求或伪造通过状态。`],
+  })),
   entry({
     id: 'workspace-isolation',
     groupId: 'repository-governance-policy',
@@ -473,9 +523,11 @@ export function renderAgentPolicyGroups(context) {
 function entryAppliesToProject(item, config) {
   if (!config.project) {
     return ['workspace-isolation', 'independent-delivery', 'commit-animation', 'protected-files', 'delivery-contract',
-      'commit-message', 'pre-commit-order', 'ci',
+      'commit-message', 'repository-global-file-placement', 'pre-commit-order', 'ci',
       'notification', 'release-readiness'].includes(item.id);
   }
+  if (item.gates.length > 0
+    && item.gates.every((gate) => !gateAppliesToProject(gate, config.project))) return false;
   return config.project.role !== 'backend'
     || !['vue-security', 'vue-accessibility', 'async-resource-cleanup', 'component-interaction',
       'accessibility-test', 'lighthouse', 'ui-tokens'].includes(item.id);
@@ -484,6 +536,18 @@ function entryAppliesToProject(item, config) {
 function renderProjectEntry(item, context) {
   let lines = item.lines(context);
   const { config } = context;
+  if (config.project?.stack === 'java' && item.id === 'pre-commit-order') {
+    return [
+      '- pre-commit 通过 lint-staged 对已启用 javaFormat 的暂存 Java 文件格式化，然后只读复核格式并执行适用规则；受保护文件门禁保持最后执行。Java 编译、构建、测试和覆盖率在明确支持的后续生命周期执行。',
+      '- 暂存修复与检查须保留部分暂存与未暂存内容，不得在 Hook 中执行项目级修复。',
+    ];
+  }
+  if (config.project?.stack === 'java' && item.id === 'release-readiness') {
+    return [
+      ...lines,
+      '- 当前 Java 接入只提供工程质量检查，尚未提供 Java 运维部署适配；质量检查通过不表示部署已经完成。',
+    ];
+  }
   if (config.project?.role === 'backend') {
     lines = lines.filter((line) => !line.includes('Vue 样式语言必须'));
     if (item.id === 'unit-test') {

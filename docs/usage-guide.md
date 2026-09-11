@@ -25,8 +25,10 @@
 | 类型 / 构建 | 实际可执行的 `typecheck` / `build` 项目脚本 |
 | 架构 | dependency-cruiser `>=16 <19` 与待检查的源码目录 |
 | axe / Lighthouse | 项目自己的测试集成、浏览器或 DOM 环境；Lighthouse 还需 Vue、`@lhci/cli` 和页面配置 |
+| Java 源码规范 | JDK、google-java-format、Checkstyle、PMD；固定版本、启动参数与范围由项目配置 |
+| Java 编译 / 构建 / 测试 / 架构 / 覆盖率 / 依赖 | 已准备的 Maven 与项目插件、明确的必需模块及原生报告路径，见 [Java 工程检查](features/java-engineering.md) |
 
-这些是当前包声明和运行校验对应的要求。可选能力的准备方式见各功能说明；安装依赖时使用 `--save-exact`，并提交同步的锁文件。
+这些是当前包声明和运行校验对应的要求，按项目技术栈选择。可选能力的准备方式见各功能说明；安装 npm 依赖时使用 `--save-exact`，并提交同步的锁文件。Java 工具的 JDK 与版本兼容性、Maven 插件配置由项目准备，检查过程不安装工具。
 
 ### 安装与初始化
 
@@ -38,14 +40,16 @@ npx repo-guard doctor
 
 本文在普通终端中使用 `npx repo-guard`。`package.json` 的 npm scripts 内可直接写 `repo-guard`；先确认本项目已经安装该包，再执行命令。
 
-`init` 创建或补齐 `repo-guard.config.json`，安装五个托管 Hook，将 `core.hooksPath` 设为 `.githooks`，维护 `.gitattributes`、`.gitignore`、本地 `.env.config`，并补充 `guard:*` 脚本与 AGENTS 托管规范。启用交付合同后还会同步交付流程 Skills。已有非托管 Hook 或不同的 `core.hooksPath` 会提示冲突，不直接覆盖。
+`init` 创建或补齐 `repo-guard.config.json`，安装五个托管 Hook，将 `core.hooksPath` 设为 `.githooks`，维护 `.gitattributes`、`.gitignore`、本地 `.env.config` 与 AGENTS 托管规范。Node 项目还会补充 `guard:*` 脚本；纯 Java 项目不要求或创建 `package.json`。启用交付合同后还会同步交付流程 Skills。已有非托管 Hook 或不同的 `core.hooksPath` 会提示冲突，不直接覆盖。
 
-**新建配置时的启用状态：**
+**Node 预设新建配置时的启用状态：**
 
 - 默认启用 ESLint（含预设）、Prettier、依赖策略、文件归位、单文件行数和通知开关。
 - Stylelint、样式增强、类型、单元测试、axe、架构和构建默认关闭；通过显式配置或 enable 命令启用，不根据安装的依赖自动改变开关。
 - Lighthouse、覆盖率、组件交互、图片治理、交付合同、变异测试、CI 等能力默认关闭。
 - 通知开关启用不等于通知凭据已经可用；按 Doctor 提示配置本地环境。
+
+Java 预设的 18 项专用检查与其他可选工程检查默认关闭，不继承 Node 工具与 npm 依赖策略。共享的提交、交付和通知设置独立管理；接入命令与字段见 [Java 接入说明](java-quality-integration.md)。
 
 已有配置会保留，不会因再次执行 `init` 就重置团队选择。`doctor` 通过表示配置、依赖和托管内容就绪，不等于全部业务测试与性能检查已经通过。
 
@@ -83,7 +87,7 @@ Node 后端复用 ESLint、Prettier、命名、目录、依赖、类型、架构
 
 前后端分仓时，各仓库独立初始化；同仓时用 `projects` 明确不重叠的应用目录，不支持前后端源码混在同一目录。提交、推送及普通 `policy / full` CI 按变更选择受影响应用，使用本方工具和规则。根清单变化触发全部应用，共享文件通过 `sharedPaths` 声明影响范围。`release-ready` 默认复核全部应用；专项命令和 CI 可通过 `--project api` 明确选择本方，无关应用的工程配置和工具不加载。
 
-完整目录、公共与应用字段约束及示例见[项目身份与多应用工作区](features/project-workspace.md)。Java 内置工程校验和自动安装工具将在后续适配，本版尚未提供；Java、Python 项目现在可通过独立交付合同参与共同需求、检查证据与验收，运行 CLI 仍需要 Node。
+完整目录、公共与应用字段约束及示例见[项目身份与多应用工作区](features/project-workspace.md)。Java Maven 使用独立的 18 项工程检查；Java、Python 也可通过独立交付合同参与共同需求与验收。运行 CLI 仍需要 Node，Java 检查额外需要项目准备 JDK 与检查工具。自动安装与基础配置适配由后续 Skill 负责，见 [Java 接入](java-quality-integration.md)。
 
 ### 启用或关闭能力
 
@@ -100,7 +104,7 @@ npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-下表列出全部 31 个可配置功能名。默认状态指首次按显式预设生成配置。Vue 专用功能不能用于后端；启用检查后必须准备项目工具与配置。多应用的 `checks`、`dependencies` 和 `codePlacement` 等本方功能用 `--project <id>` 选择；提交信息、通知、动画和全仓流程保存在根配置。CI 还有独立策略，自动执行范围见后文。
+下表列出全部 50 个可配置功能名。前 31 项的初始状态以 Node 预设为准；Java 专用检查默认关闭，不能在 Node 应用启用，Java 也不继承 Node 的检查工具和依赖策略。Vue 专用功能不能用于后端；启用检查后必须准备项目工具与配置。多应用的 `checks`、`dependencies` 和 `codePlacement` 等本方功能用 `--project <id>` 选择；提交信息、通知、动画和全仓流程保存在根配置。CI 还有独立策略，自动执行范围见后文。
 
 | 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
 |---|---|---|---|---|
@@ -115,6 +119,7 @@ npx repo-guard doctor
 | `pathNaming` | `checks.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 关 | 提交、CI 三档 |
 | `uiTokens` | `checks.uiTokens` | [要求 CSS、SCSS/Sass、Less 中的受控颜色、间距、字号等使用团队登记的 Token](features/ui-tokens.md) | 关 | 提交、CI 三档 |
 | `filePlacement` | `checks.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
+| `repositoryFilePlacement` | `repository.filePlacement` | [限制整个仓库的文件存放位置，覆盖应用与公共目录的历史文件](features/repository-file-placement.md) | 关 | 手动、提交、推送、CI 三档 |
 | `maxFileLines` | `checks.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
 | `codePlacement` | `repository.codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
 | `dependencies` | `repository.dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI 三档 |
@@ -135,12 +140,30 @@ npx repo-guard doctor
 | `notification` | `reporting.notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
 | `commitAnimation` | `reporting.commitAnimation` | [用小猫或小狗展示提交检查状态，真实提交成功后播放类型道具和彩蛋](features/commit-animation.md) | 关 | 本地 `pre-commit` / `post-commit` |
 | `ci` | `ci` | [在 CI 按固定配置档复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
+| `javaFormat` | `checks.javaFormat` | [统一 Java 格式并检查编码、行尾和文件末尾换行](features/java-source-checks.md) | 关 | 提交修复及复核、推送、CI full/release-ready |
+| `javaNaming` | `checks.javaNaming` | [检查 Java 类型、方法、变量与常量的命名规则](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaLayout` | `checks.javaLayout` | [检查 Java 包声明、目录路径与顶层类型文件关系](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaImports` | `checks.javaImports` | [检查 Java 通配符、重复和不必要的导入声明](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaSize` | `checks.javaSize` | [限制 Java 文件、方法、参数、嵌套与圈复杂度](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaDocs` | `checks.javaDocs` | [检查指定可见范围的 Java 类型与方法文档结构](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaLint` | `checks.javaLint` | [检查错误空值判断、空捕获块和直接控制台输出](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
+| `javaDuplication` | `checks.javaDuplication` | [按最小重复代码 token 数量检查 Java 重复片段](features/java-source-checks.md) | 关 | 推送、CI full/release-ready |
+| `javaArchitecture` | `checks.javaArchitecture` | [执行项目声明的架构测试并核验必需测试类实际运行](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaDependencies` | `checks.javaDependencies` | [检查 Maven 生效的依赖与插件策略及解析结果](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaFiles` | `checks.javaFiles` | [限制 Java 工程文件目录并阻止生成产物进入 Git](features/java-engineering.md) | 关 | 提交、推送、CI 三档 |
+| `javaCompile` | `checks.javaCompile` | [执行 Java 编译并核验必需模块的实际编译产物](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaBuild` | `checks.javaBuild` | [执行 Maven 打包并核验模块声明的构建产物](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaTest` | `checks.javaTest` | [执行 Java 测试并阻断失败、缺报告、零执行或全跳过](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaCoverage` | `checks.javaCoverage` | [检查本次 Java 测试覆盖率及必需模块的报告完整性](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
+| `javaPathNaming` | `checks.javaPathNaming` | [分别约束 Java 文件与包目录命名，并按目录要求文件后缀](features/java-path-naming.md) | 关 | 提交、推送、CI 三档 |
+| `javaSpotbugs` | `checks.javaSpotbugs` | [分析编译字节码的缺陷模式并核验本次 SpotBugs 原生报告](features/java-spotbugs.md) | 关 | 推送、CI full/release-ready |
+| `javaMutationTest` | `checks.javaMutationTest` | [运行 PIT 变异测试，验证测试能否发现错误并检查逐模块得分](features/java-mutation-test.md) | 关 | 推送、CI full/release-ready |
 
 **开关之间的联动：** `coverage`、`componentInteraction` 会启用 `unitTest`；关闭 `unitTest` 会关闭组件交互与覆盖率检查。`styleComplexity`、`styleGovernance` 会启用 Stylelint，关闭 Stylelint 会关闭两项增强。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
 
 **区分三个入口：** 自动 Hook 按功能配置执行；CI 可按 Gate 设置 `inherit/off/report/enforce`；手动专项入口按自身契约运行。例如 `path-naming`、`dead-code`、`lighthouse` 的显式手动命令即使自动开关关闭也会检查，而 `unit-test`、`typecheck`、`build` 仍读取功能开关。
 
-动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的提交检查中固定执行，Vue 专用检查只面向前端。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `repository.rules` 与 `repository.exclusions` 配置，结构化例外使用 `repository.exceptions`，都不在 31 项功能开关中。
+动态代码、Vue `v-html`、新窗口链接、表单标签和图片替代文本没有 `enable/disable` 功能开关；它们在适用的 Node 提交检查中固定执行，Vue 专用检查只面向前端。CI 对这些 Gate 的处理仍受独立 CI 策略控制。保护文件使用 `repository.rules` 与 `repository.exclusions` 配置，结构化例外使用 `repository.exceptions`，都不在 50 项功能开关中。Java 的各个开关独立；测试、架构和覆盖率各自执行所需检查，不以其他开关的通过状态替代本次证据。
 
 ### 初始化、配置和诊断
 
@@ -246,7 +269,7 @@ npx repo-guard doctor
 
 详见[文件归位](features/file-placement.md)和[单文件行数](features/maximum-file-lines.md)。
 
-初始化默认启用。文件归位默认约束新增资源与 Markdown 的目录；单文件行数按文件类型检查。以下是按团队约定调整的配置片段：
+Node 预设初始化时默认启用。Vue 前端的文件归位默认约束新增资源与 Markdown 的目录，Node 后端使用自己的测试目录规则；单文件行数按文件类型检查。Java 可独立开启本方规则。以下是按团队约定调整的配置片段：
 
 ```json
 {
@@ -293,7 +316,7 @@ npx repo-guard doctor
 
 详见[依赖声明与锁文件](features/dependency-policy.md)。
 
-依赖策略默认启用，要求精确版本与同步锁文件。项目可配置允许的协议和禁用依赖：
+Node 项目的 npm 依赖策略默认启用，要求精确版本与同步锁文件。项目可配置允许的协议和禁用依赖；Java 依赖使用独立的 `javaDependencies`：
 
 ```json
 {

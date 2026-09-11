@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard 子应用配置 v2",
-  "description": "应用工程检查、保护规则、依赖限制、豁免及外部门禁独立配置；提交规范、通知动画和 CI 流程由仓库统一管理。",
+  "description": "应用工程检查、保护规则、依赖限制、豁免及外部门禁独立配置；提交规范、通知动画和 CI 流程由仓库统一管理。同根应用的 AGENTS.md 合并公共提交、交付与归位规范，但不将这些配置写入子应用。",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -23,7 +23,7 @@
     },
     "repository": {
       "type": "object",
-      "description": "本应用的保护、依赖、例外与代码位置规则；路径相对应用目录，独立于根公共规则和其他应用。",
+      "description": "本应用的保护、依赖、例外与代码位置规则；路径相对应用目录。repository.filePlacement 仅允许在仓库根配置中维护，子应用不得声明或继承。",
       "additionalProperties": false,
       "properties": {
         "rules": {
@@ -60,5 +60,319 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "stack": {
+                "const": "java"
+              }
+            },
+            "required": [
+              "stack"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "checks": {
+            "properties": {
+              "eslint": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "prettier": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "stylelint": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "styleComplexity": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "styleGovernance": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "fileHeader": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "functionDocs": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "asyncResourceCleanup": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "deadCode": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "unusedImageAssets": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "uiTokens": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "architecture": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "accessibilityTest": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "build": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "lighthouse": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "typeCheck": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "unitTest": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "coverage": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "componentInteraction": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "mutationTest": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          },
+          "repository": {
+            "properties": {
+              "dependencyPolicy": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "checks": {
+            "properties": {
+              "javaFormat": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaNaming": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaLayout": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaImports": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaSize": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaDocs": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaLint": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaDuplication": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaArchitecture": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaDependencies": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaFiles": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaCompile": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaBuild": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaTest": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaCoverage": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaPathNaming": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaSpotbugs": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              },
+              "javaMutationTest": {
+                "properties": {
+                  "enabled": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

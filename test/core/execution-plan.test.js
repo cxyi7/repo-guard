@@ -18,6 +18,9 @@ import {
   preCommitQualityPlan,
 } from '../../src/orchestration/pre-commit/protected-plan.js';
 
+const JAVA_SOURCE_IDS = ['java.format', 'java.naming', 'java.layout', 'java.imports', 'java.size', 'java.docs', 'java.lint'];
+const JAVA_ENGINEERING_IDS = ['java.duplication', 'java.dependencies', 'java.compile', 'java.spotbugs', 'java.architecture', 'java.test', 'java.coverage', 'java.mutation-test', 'java.build'];
+
 function gate(id, overrides = {}) {
   return defineGate({
     id,
@@ -40,6 +43,10 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.prettier',
       'quality.stylelint-verify',
       'quality.eslint-verify',
+      'java.format-fix',
+      ...JAVA_SOURCE_IDS,
+      'java.files',
+      'java.path-naming',
       'quality.ui-tokens',
       'quality.vue-async-resource-cleanup',
       'repository.path-naming',
@@ -51,6 +58,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.maximum-file-lines',
       'repository.file-placement',
       'dependencies.policy',
+      'repository.global-file-placement',
       'repository.image-assets',
       'repository.code-placement',
       'repository.delivery-contract',
@@ -61,6 +69,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('pre-push').steps.map(({ id }) => id),
     [
       'repository.commit-message',
+      'repository.global-file-placement',
       'repository.delivery-contract',
       'quality.typecheck',
       'quality.dead-code',
@@ -70,12 +79,19 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.architecture',
       'quality.build',
       'quality.lighthouse',
+      ...JAVA_SOURCE_IDS,
+      'java.files',
+      'java.path-naming',
+      ...JAVA_ENGINEERING_IDS,
     ],
   );
   assert.deepEqual(
     executionPlans.get('ci-policy').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.global-file-placement',
+      'java.files',
+      'java.path-naming',
       'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
@@ -100,6 +116,9 @@ test('locks the reviewed lifecycle order independently from project configuratio
     executionPlans.get('ci-full').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.global-file-placement',
+      'java.files',
+      'java.path-naming',
       'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
@@ -128,12 +147,17 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.accessibility-test',
       'quality.architecture',
       'quality.build',
+      ...JAVA_SOURCE_IDS,
+      ...JAVA_ENGINEERING_IDS,
     ],
   );
   assert.deepEqual(
     executionPlans.get('release-ready').steps.map(({ id }) => id),
     [
       'repository.structured-exceptions',
+      'repository.global-file-placement',
+      'java.files',
+      'java.path-naming',
       'repository.agent-policy',
       'repository.commit-message',
       'quality.vue-async-resource-cleanup',
@@ -162,6 +186,8 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.accessibility-test',
       'quality.architecture',
       'quality.build',
+      ...JAVA_SOURCE_IDS,
+      ...JAVA_ENGINEERING_IDS,
       'quality.lighthouse',
       'release.delivery-evidence',
     ],
@@ -180,6 +206,9 @@ test('locks the reviewed lifecycle order independently from project configuratio
       .steps.map((step) => step.reportName ?? step.id),
     [
       'repository.structured-exceptions',
+      'repository.global-file-placement',
+      'java.files',
+      'java.path-naming',
       'repository.agent-policy',
       'repository.commit-message',
       'async-resource-cleanup',
@@ -208,6 +237,8 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'quality.accessibility-test',
       'quality.architecture',
       'build',
+      ...JAVA_SOURCE_IDS,
+      ...JAVA_ENGINEERING_IDS,
     ],
   );
 
@@ -294,6 +325,7 @@ test('rejects every attempt to reorder or expand the protected pre-commit plan',
     preCommitPolicyPlan.steps.map(({ id }) => id),
     [
       'dependencies.policy',
+      'repository.global-file-placement',
       'repository.image-assets',
       'repository.code-placement',
       'repository.delivery-contract',

@@ -9,6 +9,7 @@ import { validateDependencyPolicyConfiguration } from './dependency-policy-valid
 import { validateDeliveryContractConfiguration } from './delivery-contract-validation.js';
 import { validateExceptionConfiguration } from './exception-validation.js';
 import { validateNotificationConfiguration } from './notification-validation.js';
+import { validateRepositoryFilePlacementConfiguration } from './repository-file-placement.js';
 import {
   normalizeProtectedFileConfiguration,
   validateProtectedFileConfigurationShape,
@@ -73,16 +74,23 @@ export function validateConfigValue(
     ['notification', 'commitAnimation'],
     `${configPath} reporting`,
   );
+  if (project?.stack === 'java' && repository.dependencyPolicy?.enabled === true) {
+    throw configValidationError(`${configPath} repository.dependencyPolicy 仅适用于 Node 依赖；Java 项目请配置 checks.javaDependencies。`);
+  }
+  const projectRepository = project?.stack === 'java'
+    ? { ...repository, dependencyPolicy: { enabled: false, ...repository.dependencyPolicy } }
+    : repository;
   const normalized = {
     version: 2,
     ...(project ? { project } : {}),
     checks: validateChecksConfiguration(value.checks, project, configPath),
     repository: {
       ...normalizeProtectedFileConfiguration(protectedFiles, configPath),
+      filePlacement: validateRepositoryFilePlacementConfiguration(repository, configPath),
       codePlacement: validateCodePlacementConfiguration(repository, configPath),
       exceptions: validateExceptionConfiguration(repository, configPath),
       dependencyPolicy: validateDependencyPolicyConfiguration(
-        repository,
+        projectRepository,
         configPath,
       ),
       commitMessage: validateCommitMessageConfiguration(repository, configPath),

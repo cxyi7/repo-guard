@@ -23,11 +23,11 @@ npx repo-guard doctor
 
 | Hook | 职责 |
 |---|---|
-| `pre-commit` | 暂存文件格式修复、只读复核、策略检查及末尾保护文件门禁 |
+| `pre-commit` | 暂存文件格式修复、只读复核、应用策略、完整索引的仓库归位及末尾保护文件门禁 |
 | `prepare-commit-msg` | 准备提交信息与变更摘要 |
 | `commit-msg` | 校验已启用的提交信息规范 |
 | `post-commit` | 清理提交信息临时状态，按配置播放[提交成功动画](commit-animation.md) |
-| `pre-push` | 检查真实推送范围中的提交历史、独立合同约束，以及受影响应用已启用的类型、测试、构建等检查 |
+| `pre-push` | 检查真实推送范围中的提交历史、完整可信 head 文件树的仓库归位、独立合同约束，以及受影响应用已启用的类型、测试、构建等检查 |
 
 ## 多应用保持同一个提交顺序
 
@@ -39,17 +39,24 @@ npx repo-guard doctor
   → 各应用 Prettier
   → 各应用 Stylelint 只读复核
   → 各应用 ESLint 只读复核
-  → 其他已启用策略
+  → Java 应用暂存格式修复与只读复核
+  → Java 应用源码规范、工程文件与文件/目录命名检查
+  → 其他已启用应用规范与文件归位
+  → 应用依赖策略
+  → 仓库级文件归位（完整 Git 索引，仅执行一次）
+  → 图片、代码片段归位与交付等后续策略
   → 仓库受保护文件门禁
 ```
 
-只读复核也适用于关闭 Prettier 的场景。某个应用的失败会使整体失败，另一个应用成功不会覆盖它。前端 Vue 专项只运行于匹配的预设，Node 后端使用通用工程检查。
+只读复核也适用于关闭 Prettier 的场景。某个应用的失败会使整体失败，另一个应用成功不会覆盖它。前端 Vue 专项只运行于匹配的预设，Node 后端使用 Node 工具，Java Maven 使用独立 Java 检查器。
 
 Hook 保留 repo-guard 的[统一退出码](gate-result-and-reporting.md)：规则违规返回 `2`，配置或执行异常返回 `1`，Git 范围不可信返回 `3`，不再把所有阻断压成 `1`。Git 自身及 npm 等外层命令可能另行返回自己的进程状态；自动化若需要区分失败类型，应读取 repo-guard 命令结果和结构化报告，不能把 Git 的返回码当作门禁分类。
 
 修复范围只包含暂存文件；工具使用应用自己的安装和配置。一次提交由同一个 `lint-staged` 流程保护所有应用的部分暂存与未暂存修改。Hook 不执行项目全量修复，也不在提交阶段执行类型检查、测试、构建、Lighthouse 或依赖安装。
 
-应用文件模式相对应用根目录，保护文件等仓库规则相对 Git 根目录。维护者可以开关规则，不能通过配置重新排列官方执行顺序。
+应用文件模式相对应用根目录，仓库级文件归位等公共规则相对 Git 根目录；保护文件的根与应用范围按各自配置执行。维护者可以开关规则，不能通过配置重新排列官方执行顺序。
+
+仓库级文件归位配置为根 `repository.filePlacement`，开关名 `repositoryFilePlacement`，Gate ID 为 `repository.global-file-placement`。它默认关闭，启用前须配置至少一条规则；只读检查全部索引路径，包括本次未改动的文件，不扩大格式修复范围。子应用不能声明或继承该配置，应用筛选、应用归位开关和应用例外都不能放行根规则。规则字段和建议接入方式见[仓库级文件归位](repository-file-placement.md)。
 
 ## 配置快照与推送检查
 
@@ -59,7 +66,11 @@ Hook 保留 repo-guard 的[统一退出码](gate-result-and-reporting.md)：规�
 
 真实 `git push` 通过 Git 提供的参数确定待推送提交。启用的重型检查执行前，需要工作树干净、HEAD 对应待验证提交，并且不能混用多个不同的待推送代码版本；不满足时会阻止并提示处理方式。仅删除远端引用不会运行源码检查。
 
-手动执行 `repo-guard pre-push` 且没有 Git 推送参数时，检查当前工作树；这不能作为某个远端提交快照已经通过的证明。
+启用的仓库级文件归位读取可信 `revision.head` 的完整提交树，CI policy/full/release-ready 使用相同范围；它不只检查本轮变更，也不按受影响应用裁剪。缺少可信提交、索引冲突或读取错误都会保留相应的范围/执行错误，按公共退出码返回，不能用空清单当作通过。Git 子模块（gitlink）入口及内部文件不参与本仓归位。
+
+手动执行 `repo-guard pre-push` 且没有 Git 推送参数时，读取工作区配置，工程命令使用当前工作区，仓库级文件归位仍检查已解析的当前 HEAD 完整提交树；这不能作为某个指定远端推送范围已经通过的证明。
+
+单独预览当前文件位置可运行 `repo-guard repository-file-placement`：读取工作区中实际存在的受控文件及未被 Git 忽略的新文件，不移动文件。它的通过结果不能代替提交 Hook 的完整索引检查或推送的提交树检查。
 
 ## 安装时的文件维护
 
@@ -71,7 +82,9 @@ Hook 保留 repo-guard 的[统一退出码](gate-result-and-reporting.md)：规�
 | 应用忽略项 | 对应应用的检查报告目录 |
 | 应用 `package.json` | 仅在配置受保护构建时同步包装命令，子应用携带 `--project <id>`；不添加子应用 `prepare` |
 
-Hook 本身不会自动安装、升级工具或修改业务配置。当前 Java 执行器与自动接入流程仍属于后续扩展。
+Hook 本身不会自动安装、升级工具或修改业务配置。Java Maven 已接入源码和路径检查，编译、构建、测试、覆盖率、SpotBugs 与 PIT 留在推送或 CI。Java 路径命名复核完整 Git 索引，配置变更和删除路径也参与调度；不自动重命名文件。纯 Java 仓库没有 `package.json` 时不会创建 npm 脚本，Hook 使用环境中已准备的 repo-guard CLI。自动接入流程仍属于后续 Skill。
+
+Java 实际工具检查的版本和验证边界见 [Java 检查验收记录](../java-check-acceptance.md)。仓库级文件归位不要求 Java 或前端工具，纯 Java 仓库同样可以配置使用。
 
 ## 排查与复核
 
@@ -82,3 +95,5 @@ Hook 本身不会自动安装、升级工具或修改业务配置。当前 Java 
 ## 维护依据
 
 [安装器](../../src/orchestration/setup/hook-installer.js) · [工作区调度](../../src/orchestration/workspace/targets.js) · [配置快照读取](../../src/git/snapshot-content.js) · [暂存配置入口](../../src/orchestration/workspace/configuration-snapshot.js) · [推送配置入口](../../src/orchestration/pre-push/push-configuration.js) · [基础测试](../../test/hooks/hook-installer.test.js) · [多应用与真实 Git 回归](../../test/hooks/workspace-hooks.test.js) · [快照错误分类回归](../../test/config/snapshot-errors.test.js) · [索引与提交树读取回归](../../test/core/snapshot-content.test.js)
+
+[全仓路径事实](../../src/git/repository-file-paths.js) · [仓库归位跨入口回归](../../test/hooks/repository-file-placement.test.js)

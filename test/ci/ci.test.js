@@ -233,6 +233,9 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     report.steps.map(({ name, status }) => ({ name, status })),
     [
       { name: 'repository.structured-exceptions', status: 'passed' },
+      { name: 'repository.global-file-placement', status: 'skipped' },
+      { name: 'java.files', status: 'skipped' },
+      { name: 'java.path-naming', status: 'skipped' },
       { name: 'repository.agent-policy', status: 'passed' },
       { name: 'repository.commit-message', status: 'skipped' },
       { name: 'async-resource-cleanup', status: 'skipped' },

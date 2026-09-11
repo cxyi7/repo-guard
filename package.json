@@ -1,7 +1,7 @@
 {
   "name": "@cxyi7/repo-guard",
   "version": "2.0.0",
-  "description": "面向 AI 与团队开发的工程质量门禁，支持显式配置前端和 Node 后端检查",
+  "description": "面向 AI 与团队开发的工程质量门禁，支持显式配置前端、Node 后端与 Java Maven 检查",
   "homepage": "https://github.com/cxyi7/repo-guard#readme",
   "bugs": {
     "url": "https://github.com/cxyi7/repo-guard/issues"
@@ -107,6 +107,7 @@
     "@babel/traverse": "7.29.0",
     "lint-staged": "15.5.2",
     "micromatch": "4.0.8",
+    "saxes": "6.0.0",
     "yaml": "2.9.0"
   },
   "peerDependencies": {

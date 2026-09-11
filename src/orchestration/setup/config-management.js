@@ -172,6 +172,7 @@ function featureConfig(config, feature) {
 function featureDocumentPath(feature) {
   if (Object.hasOwn(PROJECT_CHECK_PATHS, feature)) return ['checks', feature];
   if (feature === 'dependencies') return ['repository', 'dependencyPolicy'];
+  if (feature === 'repositoryFilePlacement') return ['repository', 'filePlacement'];
   if (['commitMessage', 'codePlacement', 'deliveryContract'].includes(feature))
     return ['repository', feature];
   if (feature === 'notification' || feature === 'commitAnimation')

@@ -60,6 +60,10 @@ test('captures subprocess output instead of inheriting gate runner stdio', () =>
     {
       source: 'project-process', stream: 'stderr', level: 'error', message: 'tool failure', redacted: false, truncated: false,
     },
+    {
+      source: 'project-process', stream: 'stderr', level: 'error',
+      message: '第三方进程状态：原始退出码 1。原始状态仅用于诊断，门禁结果仍按统一规则判定。', redacted: false, truncated: false,
+    },
   ]);
 
   const [safeDiagnostic] = processOutputDiagnostics({

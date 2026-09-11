@@ -4,7 +4,7 @@ export const APPLICATION_REPOSITORY_FIELDS = Object.freeze([
   'rules', 'exclusions', 'exceptions', 'dependencyPolicy', 'codePlacement',
 ]);
 export const SHARED_REPOSITORY_FIELDS = Object.freeze([
-  'rules', 'exclusions', 'commitMessage', 'deliveryContract',
+  'rules', 'exclusions', 'commitMessage', 'deliveryContract', 'filePlacement',
 ]);
 export const APPLICATION_CI_FIELDS = Object.freeze(['protectedFiles', 'gatePolicy', 'externalGates']);
 
