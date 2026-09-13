@@ -1,4 +1,5 @@
 import { DEFAULT_PRETTIER_CONFIG } from './defaults.js';
+import { validateToolOptions } from './tool-options.js';
 import {
   assertKnownProperties,
   configValidationError,
@@ -11,7 +12,7 @@ export function validatePrettierConfiguration(checksValue, configPath) {
   }
   assertKnownProperties(
     prettierValue,
-    new Set(['enabled', 'pattern', 'fix', 'requireConfig']),
+    new Set(['enabled', 'pattern', 'fix', 'requireConfig', 'options']),
     `${configPath} checks.prettier`,
   );
   if (prettierValue.enabled != null && typeof prettierValue.enabled !== 'boolean') {
@@ -33,6 +34,7 @@ export function validatePrettierConfiguration(checksValue, configPath) {
     throw configValidationError(`${configPath} checks.prettier.requireConfig 必须是布尔值`);
   }
   return {
+    ...validateToolOptions('prettier', prettierValue.options, configPath),
     enabled: prettierValue.enabled ?? DEFAULT_PRETTIER_CONFIG.enabled,
     pattern: prettierValue.pattern?.trim() || DEFAULT_PRETTIER_CONFIG.pattern,
     fix: prettierValue.fix ?? DEFAULT_PRETTIER_CONFIG.fix,

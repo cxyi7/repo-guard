@@ -4,7 +4,7 @@ import path from 'node:path';
 import { executionError } from '../../core/error/repo-guard-error.js';
 import { synchronizeFunctionDocumentationContent } from '../../policies/function-documentation.js';
 
-export function synchronizeStagedFunctionDocumentation({ root, files }) {
+export function synchronizeStagedFunctionDocumentation({ root, files, config = {} }) {
   if (files.length === 0) {
     return Object.freeze({ checked: 0, changed: 0, warnings: Object.freeze([]) });
   }
@@ -21,7 +21,7 @@ export function synchronizeStagedFunctionDocumentation({ root, files }) {
       );
     }
     const original = bytes.toString('utf8');
-    const result = synchronizeFunctionDocumentationContent(original, relativePath);
+    const result = synchronizeFunctionDocumentationContent(original, relativePath, config);
     warnings.push(...result.warnings);
     if (result.content !== original) {
       writeFileSync(file, result.content, 'utf8');

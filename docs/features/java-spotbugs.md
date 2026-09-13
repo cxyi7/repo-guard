@@ -6,7 +6,7 @@
 
 | 项目 | 当前约定 |
 | --- | --- |
-| 配置 | Java 应用的 `checks.javaSpotbugs`，默认关闭 |
+| 配置 | Java 应用的 `checks.javaSpotbugs`，新建模板开启、已有配置省略时关闭 |
 | 命令 | `repo-guard java-spotbugs --project api` |
 | 门禁标识 | `java.spotbugs` |
 | 原生工具 | 项目提供的 JDK、Maven、固定版本 SpotBugs Maven 插件 4.x |
@@ -107,3 +107,7 @@ repo-guard java-spotbugs --project api
 原生兼容性夹具固定 Maven 插件 `4.10.3.0`、SpotBugs `4.10.3` 和 JDK 17。其他 4.x 固定版本只有满足相同原生报告和配置约定才可通过；更换版本应重新运行项目检查。仓库真实工具测试通过 `REPO_GUARD_JAVA_SPOTBUGS_NATIVE_TESTS=1` 显式开启，并可用 `REPO_GUARD_JAVA_SPOTBUGS_REPOSITORY` 指定预先准备的本地 Maven 缓存。
 
 原生工具约定参考：[SpotBugs Maven 目标参数](https://spotbugs.github.io/spotbugs-maven-plugin/spotbugs-mojo.html)、[SpotBugs 运行方式](https://spotbugs.readthedocs.io/en/stable/running.html)。
+
+## Java 新建模板
+
+7.1.5 起 java-maven 新建模板默认开启全部 18 项专属检查。上文和 Schema 的字段默认值仍用于已有配置补缺，不改变显式关闭值。新建模板保留 command=null、modules=[]、pluginVersion 等真实接入缺项，不填写虚构路径或版本；这些缺项不满足严格运行配置 Schema，init 会保留待补齐配置并报错，校验通过前不安装 Hook。由人或后续 Skill 补齐工具、模块、报告、产物和插件版本后，再运行 init 与 Doctor 验证。

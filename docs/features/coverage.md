@@ -1,3 +1,4 @@
+<!-- 前端公共方法预设：新配置默认开启，已有显式配置保持不变。 -->
 # 覆盖率与变更行覆盖率
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
@@ -36,7 +37,7 @@
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `checks.unitTest.enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
+| `checks.unitTest.enabled` | 是否启用单元测试与资料策略 | `true` / `false`<br>省略补缺：`false`；前端初始化写入 `true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 按明确前端预设开启；需准备项目工具。 |
 | `checks.coverage.enabled` | 是否启用本轮覆盖率生成与阈值检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；启用命令同时启用 unitTest；父级关闭时不执行。 |
 | `checks.coverage.reportsDirectory` | 本轮 coverage-summary.json 与 lcov.info 的专用输出目录 | 字符串<br>默认：`"coverage"` | 至少 1 个字符；末级目录名称必须包含 coverage（不区分大小写）；末级目录名必须含 coverage；Vitest 会清理该专用目录，不能指向源码。 |
 | `checks.coverage.thresholds.lines` | 全量行覆盖率最低百分比 | 数值<br>默认：`80` | ≥ 0；≤ 100 |
@@ -52,7 +53,7 @@ npx repo-guard enable coverage
 npx repo-guard unit-test
 ```
 
-`enable coverage` 同时启用 `unitTest`。关闭 `unitTest` 会关闭组件交互，但保留 coverage 子配置；父级关闭时不会运行单元测试与覆盖率。报告缺失、格式无效与覆盖率不达标是不同问题，应分别补齐 provider/报告设置或增加有效测试。
+`enable coverage` 同时启用 `unitTest`。关闭 `unitTest` 会关闭 coverage 开关，但保留阈值和报告配置；父级关闭时不会运行单元测试与覆盖率。报告缺失、格式无效与覆盖率不达标是不同问题，应分别补齐 provider/报告设置或增加有效测试。
 
 ## 运行范围与报告
 
@@ -67,3 +68,9 @@ npx repo-guard unit-test
 ## 维护依据
 
 [实现入口](../../src/gates/testing/coverage-gate.js) · [对应测试](../../test/gates/testing/coverage.test.js)
+
+## Node 新建预设
+
+7.1.4 起本项在新建 Node 后端配置中默认开启（类型检查仅限 node-typescript）。原有规则、阈值与配置字段不变；已有项目不因读取或升级而开启。实际工具、脚本和检查范围仍需接入准备，见 [Node 后端规范](node-backend.md)。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

@@ -1,137 +1,43 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import micromatch from 'micromatch';
-
-const ATTRIBUTE = (name) => new RegExp(`(?:^|\\s)${name}(?:\\s*=|\\s|$)`, 'i');
-const MODULE_STYLE = /\.module\.(?:css|scss|sass|less)$/i;
-
-function tagEnd(source, start) {
-  let quote = null;
-  let escaped = false;
-  for (let cursor = start; cursor < source.length; cursor += 1) {
-    const character = source[cursor];
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (character === '\\') escaped = true;
-      else if (character === quote) quote = null;
-    } else if (character === '"' || character === "'") {
-      quote = character;
-    } else if (character === '>') {
-      return cursor + 1;
-    }
-  }
-  return source.length;
-}
-
-function closingTag(source, name, start) {
-  const expression = new RegExp(`</${name}\\s*>`, 'gi');
-  expression.lastIndex = start;
-  const match = expression.exec(source);
-  return match ? { end: expression.lastIndex, start: match.index } : null;
-}
-
-function findVueStyleBlocks(source) {
-  const blocks = [];
-  let cursor = 0;
-  while (cursor < source.length) {
-    const start = source.indexOf('<', cursor);
-    if (start === -1) break;
-    if (source.startsWith('<!--', start)) {
-      const end = source.indexOf('-->', start + 4);
-      cursor = end === -1 ? source.length : end + 3;
-      continue;
-    }
-    const tagMatch = /^<([A-Za-z][\w.-]*)\b/.exec(source.slice(start));
-    if (!tagMatch) {
-      cursor = start + 1;
-      continue;
-    }
-    const name = tagMatch[1].toLowerCase();
-    const openingEnd = tagEnd(source, start + tagMatch[0].length);
-    const closing = closingTag(source, name, openingEnd);
-    if (!closing) {
-      cursor = openingEnd;
-      continue;
-    }
-    if (name === 'style') {
-      blocks.push({
-        attributes: source.slice(start + tagMatch[0].length, openingEnd - 1),
-        content: source.slice(openingEnd, closing.start),
-        contentOffset: openingEnd,
-        start,
-      });
-    }
-    cursor = closing.end;
-  }
-  return blocks;
-}
-
-function normalizePath(root, filePath) {
-  return path.relative(root, filePath).replace(/\\/g, '/');
-}
-
-function sourceLocation(source, offset) {
-  const prefix = source.slice(0, offset);
-  const lines = prefix.split(/\r?\n/);
-  return { line: lines.length, column: lines.at(-1).length + 1 };
-}
-
-function withoutComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\r\n]/g, ' '));
-}
-
-function governanceViolation(source, offset, text) {
-  return {
-    ...sourceLocation(source, offset),
-    endLine: sourceLocation(source, offset).line,
-    endColumn: sourceLocation(source, offset).column + 1,
-    rule: 'no-unexpected-global-style',
+/** 根据解析事实约束隔离与全局位置，不推断运行时视觉冲突。 */
+export function inspectStyleGovernanceFacts({
+  relative,
+  blocks,
+  escapes,
+  allowedPatterns,
+}) {
+  if (micromatch.isMatch(relative, allowedPatterns, { dot: true })) return [];
+  const violation = (location, text) => ({
+    ...location,
     severity: 'error',
-    text: `${text} (no-unexpected-global-style)`,
-  };
-}
-
-function inspectVueStyleViolations(source, allowed) {
-  if (allowed) return [];
-  const violations = [];
-  for (const block of findVueStyleBlocks(source)) {
-    const { attributes, content, contentOffset } = block;
-    const isolated = withoutComments(content);
-    if (!ATTRIBUTE('scoped').test(attributes) && !ATTRIBUTE('module').test(attributes)) {
-      violations.push(governanceViolation(
-        source,
-        block.start,
-        'Vue style 块必须使用 scoped 或 module，除非该文件是已批准的全局样式表',
-      ));
-    }
-    const globalPattern = /(?:::v-global|:global)\s*\(/gi;
-    let globalMatch;
-    while ((globalMatch = globalPattern.exec(isolated)) !== null) {
-      violations.push(governanceViolation(
-        source,
-        contentOffset + globalMatch.index,
-        ':global() 会绕过组件样式隔离，因此必须使用已批准的全局样式表',
-      ));
-    }
-  }
-  return violations;
-}
-
-export function inspectUnexpectedGlobalStyles({ root, files, allowedPatterns }) {
-  return files.flatMap((filePath) => {
-    const relative = normalizePath(root, filePath);
-    const allowed = micromatch.isMatch(relative, allowedPatterns, { dot: true });
-    const source = readFileSync(filePath, 'utf8');
-    let violations = [];
-    if (relative.toLowerCase().endsWith('.vue')) {
-      violations = inspectVueStyleViolations(source, allowed);
-    } else if (!allowed && !MODULE_STYLE.test(relative)) {
-      violations = [governanceViolation(
-        source,
-        0,
-        '全局样式表不在 allowedGlobalStylePatterns 范围内；请将其移动到已批准的全局样式目录，或转换为 CSS Module',
-      )];
-    }
-    return violations.length > 0 ? [{ source: filePath, violations }] : [];
+    rule: 'no-unexpected-global-style',
+    text,
   });
+  const findings =
+    blocks === null
+      ? /\.module\.(css|scss|sass|less)$/i.test(relative)
+        ? []
+        : [
+            violation(
+              { line: 1, column: 1 },
+              '全局样式文件必须位于配置允许的目录，或使用 CSS Module。',
+            ),
+          ]
+      : blocks
+          .filter((block) => !block.isolated)
+          .map((block) =>
+            violation(
+              { line: block.line, column: block.column },
+              'Vue style 块必须使用 scoped 或 module，或位于批准的全局样式文件。',
+            ),
+          );
+  return [
+    ...findings,
+    ...escapes.map((location) =>
+      violation(
+        location,
+        '全局选择器会绕过样式隔离，只能在批准的全局样式文件使用。',
+      ),
+    ),
+  ];
 }

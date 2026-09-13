@@ -28,15 +28,6 @@ const PROCESS_FAILURES = Object.freeze({
       constraint: '不得删除测试或断言、使用 skip/todo/only，或削弱门禁。',
     }),
   }),
-  'quality.accessibility-test': Object.freeze({
-    ruleId: 'accessibility/axe-test-process',
-    message: '使用方项目无障碍测试报告了违规',
-    evidence: '项目自有的 axe 测试进程未成功退出。',
-    remediation: ({ script }) => ({
-      step: `修复报告中的无障碍问题根因和回归测试，然后运行 npm run ${script}。`,
-      constraint: '不得关闭规则、排除节点、缩小扫描范围、删除断言或削弱门禁。',
-    }),
-  }),
   'quality.lighthouse:build': Object.freeze({
     ruleId: 'lighthouse/build-process',
     message: 'Lighthouse 项目构建报告了错误',

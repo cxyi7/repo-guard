@@ -115,12 +115,13 @@ export const buildGate = definePlatformGate({
   defaultTimeoutMs: DEFAULT_BUILD_CONFIG.timeoutMs,
   manualCommand: 'build', manualOrder: 30, packageScript: 'guard:build',
   supportsCancellation: true,
-  requiredScripts: ['config:checks.build.script'], artifactTypes: ['build-output'],
+  requiredScripts: ['config:checks.build.script'], artifactTypes: ['build-output', 'bundle-html', 'bundle-json', 'bundle-facts', 'bundle-summary'],
   inspectSetup: inspectBuildSetup, plan: ({ config }) => ({ enabled: config.checks.build.enabled }),
   run: ({ root, config, plan, ...context }) => plan.enabled
     ? runBuildGate({
         root,
         config: config.checks.build,
+        stylelintConfig: config.checks.stylelint, exceptionsConfig: config.repository.exceptions,
         ...processExecutionOptions(context),
       })
     : skippedResult('quality.build', '构建已禁用'),
@@ -129,17 +130,17 @@ export const buildGate = definePlatformGate({
 export const lighthouseGate = definePlatformGate({
   id: 'quality.lighthouse', configKey: 'checks.lighthouse', featureName: 'lighthouse',
   featureOrder: 120, doctorOrder: 30,
-  environments: ['manual', 'pre-push', 'release-ready'],
+  environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
   manualCommand: 'lighthouse', manualOptions: ['--skip-build'], manualOrder: 160,
   packageScript: 'guard:lighthouse', requiredTools: ['@lhci/cli'],
-  artifactTypes: ['lighthouse-report'], inspectSetup: inspectLighthouseSetup,
+  supportsCancellation: true,
+  artifactTypes: ['lighthouse-report', 'lighthouse-summary', 'lighthouse-run'], inspectSetup: inspectLighthouseSetup,
   plan: ({ config, environment, argumentsList = [] }) => ({
-    enabled: environment === 'manual' || config.checks.lighthouse.enabled,
-    skipBuild: argumentsList.includes('--skip-build')
-      || (config.checks.build.enabled && config.checks.lighthouse.buildScript === config.checks.build.script),
+    enabled: environment === 'manual' || (config.checks.lighthouse.enabled && (environment !== 'pre-push' || config.checks.lighthouse.prePush !== false)),
+    skipBuild: argumentsList.includes('--skip-build'),
   }),
-  run: ({ root, config, plan }) => plan.enabled
-    ? runVueLighthouse({ root, config: config.checks.lighthouse, skipBuild: plan.skipBuild })
+  run: ({ root, config, plan, signal }) => plan.enabled
+    ? runVueLighthouse({ root, config: config.checks.lighthouse, buildConfig: config.checks.build, stylelintConfig: config.checks.stylelint, exceptionsConfig: config.repository.exceptions, skipBuild: plan.skipBuild, signal })
     : skippedResult('quality.lighthouse', 'Lighthouse 已禁用'),
 });

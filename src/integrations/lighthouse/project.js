@@ -2,8 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 
 export const LIGHTHOUSE_CONFIG_FILES = Object.freeze([
+  '.lighthouserc.mjs',
+  'lighthouserc.mjs',
   '.lighthouserc.js',
   'lighthouserc.js',
   '.lighthouserc.cjs',
@@ -94,9 +97,12 @@ export function validateVueLighthouseSetup(root, config) {
     throw configurationError('lighthouse/invalid-setup', 'Lighthouse 当前仅支持在 package.json 中声明 vue 的 Vue 项目');
   }
 
+  if (config.pages && config.pages.length === 0) throw configurationError('lighthouse/missing-pages', 'Lighthouse 接入未完成：请配置真实业务页面、预期 URL 与页面标识。');
+  if (config.pages) resolveProjectPackageMetadata(root, 'puppeteer', '页面身份验证工具');
   const lighthouse = resolveProjectLighthouseMetadata(root);
   const configFile = findProjectLighthouseConfig(root, config.configFile);
-  if (!configFile) {
+  if (config.configFile && !configFile) throw configurationError('lighthouse/missing-explicit-config', `找不到显式指定的 Lighthouse 配置：${config.configFile}`);
+  if (!configFile && !config.options) {
     const expected = config.configFile || 'lighthouserc.*';
     throw configurationError('lighthouse/invalid-setup', `找不到 Lighthouse 配置：${expected}`);
   }

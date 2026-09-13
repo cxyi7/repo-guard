@@ -9,13 +9,13 @@ const javaProject = { id: 'java-api', role: 'backend', stack: 'java', preset: 'j
 const nodeProject = { id: 'node-api', role: 'backend', stack: 'node', preset: 'node-typescript' };
 const vueProject = { id: 'web', role: 'frontend', stack: 'node', preset: 'vue-typescript' };
 
-test('Java Maven 配置默认关闭所有工程检查，不继承 npm 依赖策略', () => {
+test('Java Maven 新建模板开启全部工程检查，不继承 npm 依赖策略', () => {
   const config = createProjectDocument(javaProject);
-  assert.deepEqual(Object.entries(config.checks).filter(([, check]) => check.enabled), []);
+  assert.equal(Object.entries(config.checks).filter(([, check]) => check.enabled).length, 18);
   assert.equal(JAVA_PROJECT_CHECKS.length, 18);
-  for (const feature of JAVA_PROJECT_CHECKS) assert.equal(config.checks[feature].enabled, false, feature);
+  for (const feature of JAVA_PROJECT_CHECKS) assert.equal(config.checks[feature].enabled, true, feature);
   assert.equal(config.repository.dependencyPolicy.enabled, false);
-  assert.deepEqual(normalizeProjectDocument(config).checks, config.checks);
+  assert.throws(() => normalizeProjectDocument(config), /必须显式指定已准备的工具/);
   assert.deepEqual(getProjectToolRequirements(javaProject), {
     host: { runtime: 'node', purpose: '运行 repo-guard' },
     project: { runtime: 'jdk', buildTool: 'maven' },
@@ -81,7 +81,7 @@ test('应用门禁适用性显式隔离 Java、Node、Vue 和公共规则', () =
     assert.equal(gateAppliesToProject(gate, undefined), false, gate);
   }
   for (const gate of ['quality.eslint', 'quality.prettier', 'quality.unit-test', 'quality.build',
-    'quality.architecture', 'quality.typecheck', 'dependencies.policy', 'security.dynamic-code']) {
+    'quality.architecture', 'quality.typecheck', 'dependencies.policy', 'security.source-security']) {
     assert.equal(gateAppliesToProject(gate, javaProject), false, gate);
     assert.equal(gateAppliesToProject(gate, nodeProject), true, gate);
   }
@@ -90,6 +90,6 @@ test('应用门禁适用性显式隔离 Java、Node、Vue 和公共规则', () =
     'repository.code-placement', 'repository.commit-message', 'repository.delivery-contract']) {
     assert.equal(gateAppliesToProject(gate, javaProject), true, gate);
   }
-  assert.equal(gateAppliesToProject('security.vue-unsafe-html', nodeProject), false);
-  assert.equal(gateAppliesToProject('security.vue-unsafe-html', vueProject), true);
+  assert.equal(gateAppliesToProject('security.source-security', nodeProject), true);
+  assert.equal(gateAppliesToProject('security.source-security', vueProject), true);
 });

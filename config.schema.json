@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "repo-guard 工程配置 v2",
-  "description": "显式项目身份、通用工程检查和仓库规范。运维发布配置独立维护，不检查业务接口与身份权限。",
+  "description": "显式项目身份、通用工程检查和仓库规范。运维发布配置独立维护，不检查业务接口与身份权限。 Node 后端新建预设默认开启构建、测试、覆盖率、变异、架构、Knip、路径命名、函数文档及文件头；类型检查仅 TypeScript 开启。已有配置省略值和显式值保持不变。Java 新建模板默认开启 18 项检查；工具、模块、插件版本未补齐时不满足本运行配置 Schema，必须补齐才能初始化和执行。",
   "$defs": {
     "nullablePositiveInteger": {
       "type": [
@@ -209,7 +209,7 @@
                       "rule": {
                         "type": "string",
                         "pattern": "^[a-z][a-z0-9-]*(/[a-z][a-z0-9-]*)+$",
-                        "description": "Namespaced repo-guard rule id, for example vue/no-v-html, vue/form-control-label, or vue/img-alt."
+                        "description": "Namespaced repo-guard rule id, for example security/no-eval or vue/no-v-html."
                       },
                       "path": {
                         "type": "string",
@@ -259,7 +259,7 @@
             },
             "dependencyPolicy": {
               "type": "object",
-              "description": "Govern package.json declarations and npm package-lock root metadata.",
+              "description": "检查普通注册表依赖；workspace、别名、本地路径等特殊引用跳过，不产生不支持违规。",
               "additionalProperties": false,
               "properties": {
                 "enabled": {
@@ -270,25 +270,12 @@
                 "requireExactVersions": {
                   "type": "boolean",
                   "default": true,
-                  "description": "Require exact versions outside peerDependencies; approved npm aliases and workspace protocols remain supported."
+                  "description": "普通注册表依赖要求精确版本，peerDependencies 接受范围；特殊引用跳过，不使用白名单。"
                 },
                 "requireLockfile": {
                   "type": "boolean",
                   "default": true,
-                  "description": "Require package-lock.json v2+ and exact agreement between its root declaration and package.json."
-                },
-                "allowedProtocols": {
-                  "type": "array",
-                  "default": [
-                    "npm",
-                    "workspace"
-                  ],
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z][a-z0-9+.-]*$"
-                  },
-                  "description": "Explicit dependency source protocols allowed outside normal registry versions. Use protocol names without colons."
+                  "description": "要求配置的 npm、pnpm 或 Yarn 锁文件存在。"
                 },
                 "bannedPackages": {
                   "type": "array",
@@ -319,6 +306,93 @@
                     }
                   },
                   "description": "Project-owned denylist with reviewable reasons and optional replacements."
+                },
+                "checkConflictingDeclarations": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "检查普通直接依赖的冲突声明，尊重 optionalDependencies 覆盖语义。"
+                },
+                "packageManager": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "enum": [
+                        "npm",
+                        "pnpm",
+                        "yarn"
+                      ],
+                      "default": "npm"
+                    },
+                    "root": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": "."
+                    },
+                    "requireVersionDeclaration": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkInstalledVersion": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "lockfile": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "checkManifestSync": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkConflictingLockfiles": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "toolReadiness": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "requireDeclaredDependencies": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkToolVersions": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkNodeEngines": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkPeerDependencies": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkConfigLoading": {
+                      "description": "加载已启用工具的实际项目配置；Prettier 目标按项目 pattern 选择，解析和格式问题由实际格式检查验证。",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkRequiredScripts": {
+                      "description": "核验已启用类型脚本、构建和单元测试的精确脚本名；类型工具 options 模式不强制脚本。",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
                 }
               }
             },
@@ -330,7 +404,7 @@
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "是否启用提交信息强制门禁。"
+                  "description": "是否启用提交信息强制门禁；新建配置和显式启用时默认开启，读取既有配置不改写。"
                 },
                 "types": {
                   "type": "array",
@@ -396,7 +470,7 @@
                     "requireMajorVersionOnRelease": {
                       "type": "boolean",
                       "default": true,
-                      "description": "release-ready 是否要求包含不兼容变更的发布提升 major 版本。"
+                      "description": "release-ready 是否要求包含不兼容变更的发布提升 major 版本；新建及显式启用预设为 false，用户显式值优先。"
                     }
                   }
                 },
@@ -885,6 +959,55 @@
                   "minimum": 0,
                   "default": 0,
                   "description": "Maximum ESLint warning count allowed by the commit gate."
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "recommended": {
+                      "type": "boolean"
+                    },
+                    "typeAware": {
+                      "type": "boolean"
+                    },
+                    "ignores": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "globals": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "browser": {
+                          "type": "boolean"
+                        },
+                        "node": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": []
+                    },
+                    "linterOptions": {
+                      "type": "object"
+                    },
+                    "rules": {
+                      "type": "object"
+                    },
+                    "vueRules": {
+                      "type": "object"
+                    },
+                    "typescriptRules": {
+                      "type": "object"
+                    },
+                    "typedRules": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [],
+                  "description": "启用时写入的工具预设；执行时项目原生配置优先，同名规则整体替换。"
                 }
               }
             },
@@ -912,6 +1035,94 @@
                   "type": "boolean",
                   "default": true,
                   "description": "Require a project Prettier configuration for every matched file."
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "printWidth": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "tabWidth": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "useTabs": {
+                      "type": "boolean"
+                    },
+                    "semi": {
+                      "type": "boolean"
+                    },
+                    "singleQuote": {
+                      "type": "boolean"
+                    },
+                    "jsxSingleQuote": {
+                      "type": "boolean"
+                    },
+                    "quoteProps": {
+                      "enum": [
+                        "as-needed",
+                        "consistent",
+                        "preserve"
+                      ]
+                    },
+                    "trailingComma": {
+                      "enum": [
+                        "all",
+                        "es5",
+                        "none"
+                      ]
+                    },
+                    "bracketSpacing": {
+                      "type": "boolean"
+                    },
+                    "bracketSameLine": {
+                      "type": "boolean"
+                    },
+                    "arrowParens": {
+                      "enum": [
+                        "always",
+                        "avoid"
+                      ]
+                    },
+                    "endOfLine": {
+                      "enum": [
+                        "lf",
+                        "crlf",
+                        "cr",
+                        "auto"
+                      ]
+                    },
+                    "vueIndentScriptAndStyle": {
+                      "type": "boolean"
+                    },
+                    "htmlWhitespaceSensitivity": {
+                      "enum": [
+                        "css",
+                        "strict",
+                        "ignore"
+                      ]
+                    },
+                    "singleAttributePerLine": {
+                      "type": "boolean"
+                    },
+                    "embeddedLanguageFormatting": {
+                      "enum": [
+                        "auto",
+                        "off"
+                      ]
+                    },
+                    "proseWrap": {
+                      "enum": [
+                        "preserve",
+                        "always",
+                        "never"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "description": "启用时写入的工具预设；执行时项目原生配置优先，同名规则整体替换。"
                 }
               }
             },
@@ -946,79 +1157,378 @@
                   "type": "boolean",
                   "default": true,
                   "description": "Require a project Stylelint configuration when the staged gate is enabled."
-                }
-              }
-            },
-            "styleComplexity": {
-              "type": "object",
-              "description": "通过显式开关约束选择器复合数量和嵌套深度；默认关闭，不依据工具就绪状态自动开启。",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "对暂存样式执行 selector-max-compound-selectors 和 max-nesting-depth；初始化启用 Stylelint 时同时启用，可按需调整。"
                 },
-                "maxCompoundSelectors": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 3,
-                  "description": "Maximum compound selector count in one resolved selector."
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "extends": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "plugins": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "customSyntax": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ignoreFiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "overrides": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "rules": {
+                      "type": "object"
+                    },
+                    "defaultSeverity": {
+                      "enum": [
+                        "error",
+                        "warning"
+                      ]
+                    },
+                    "reportDescriptionlessDisables": {
+                      "type": "boolean"
+                    },
+                    "reportInvalidScopeDisables": {
+                      "type": "boolean"
+                    },
+                    "reportNeedlessDisables": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [],
+                  "description": "启用时写入的工具预设；执行时项目原生配置优先，同名规则整体替换。"
                 },
-                "maxNestingDepth": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 3,
-                  "description": "Maximum nested rule depth."
-                }
-              }
-            },
-            "styleGovernance": {
-              "type": "object",
-              "description": "通过显式开关约束样式优先级、ID、important 与全局样式位置；默认关闭，适用范围由项目配置决定。",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "约束选择器权重、ID、!important 和非预期全局样式；初始化启用 Stylelint 时同时启用，可按需调整。"
-                },
-                "maxSpecificity": {
-                  "type": "string",
-                  "pattern": "^[0-9]+,[0-9]+,[0-9]+$",
-                  "default": "0,3,0",
-                  "description": "Maximum selector specificity in id,class,type notation."
-                },
-                "maxIdSelectors": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "default": 0,
-                  "description": "Maximum ID selectors per resolved selector; zero forbids ID selectors."
-                },
-                "disallowImportant": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Reject !important declarations when true."
-                },
-                "allowedGlobalStylePatterns": {
-                  "type": "array",
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "default": [
-                    "src/styles/**",
-                    "src/assets/styles/**",
-                    "src/assets/css/**",
-                    "src/assets/main.{css,scss,sass,less}",
-                    "src/main.{css,scss,sass,less}",
-                    "src/index.{css,scss,sass,less}",
-                    "src/style.{css,scss,sass,less}",
-                    "src/App.vue"
-                  ],
-                  "description": "Repository-relative globs allowed to contain intentional global styles; CSS Module files are isolated automatically.",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
+                "governance": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "allowedGlobalStylePatterns": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "default": [
+                        "styles/**"
+                      ],
+                      "description": "Repository-relative globs allowed to contain intentional global styles; CSS Module files are isolated automatically.",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
                   }
+                },
+                "uiTokens": {
+                  "type": "object",
+                  "description": "按项目声明的 CSS、Sass、Less 语言和 Manifest 检查样式 Token。",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁；新前端预设默认开启，读取既有配置保留原值。"
+                    },
+                    "languages": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "css",
+                          "sass",
+                          "less"
+                        ]
+                      },
+                      "default": [
+                        "css"
+                      ],
+                      "description": "显式选择样式语言；sass 同时覆盖 SCSS 与缩进式 Sass，当前不支持 Stylus。"
+                    },
+                    "manifestFile": {
+                      "type": "string",
+                      "minLength": 1,
+                      "default": "ui-tokens.manifest.json",
+                      "description": "应用目录内由项目生成并提交的 UI Token Manifest。"
+                    },
+                    "include": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "default": [
+                        "src/**/*.{vue,css,scss,sass,less}",
+                        "styles/**/*.{css,scss,sass,less}"
+                      ],
+                      "description": "参与 CSS、Sass 或 Less 静态检查的应用相对 glob。"
+                    },
+                    "exclude": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "default": [
+                        "**/generated/**",
+                        "**/dist/**",
+                        "**/coverage/**",
+                        "**/reports/**"
+                      ],
+                      "description": "优先于 include 的排除 glob。"
+                    },
+                    "values": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "definitions": {
+                          "type": "array",
+                          "default": [],
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "token",
+                              "source",
+                              "language",
+                              "alias",
+                              "selector",
+                              "value"
+                            ],
+                            "properties": {
+                              "token": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": ".*\\S.*"
+                              },
+                              "source": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": ".*\\S.*"
+                              },
+                              "language": {
+                                "enum": [
+                                  "css",
+                                  "sass",
+                                  "less"
+                                ]
+                              },
+                              "alias": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": ".*\\S.*"
+                              },
+                              "selector": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": ".*\\S.*"
+                              },
+                              "conditions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "name",
+                                    "params"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "pattern": ".*\\S.*"
+                                    },
+                                    "params": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "pattern": ".*\\S.*"
+                                    }
+                                  }
+                                }
+                              },
+                              "outputs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "selector",
+                                    "property"
+                                  ],
+                                  "properties": {
+                                    "selector": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "pattern": ".*\\S.*"
+                                    },
+                                    "property": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "pattern": ".*\\S.*",
+                                      "description": "生成 CSS 的属性名；普通属性忽略大小写，自定义属性保留大小写。"
+                                    },
+                                    "value": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "pattern": ".*\\S.*"
+                                    },
+                                    "conditions": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": [
+                                          "name",
+                                          "params"
+                                        ],
+                                        "properties": {
+                                          "name": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "pattern": ".*\\S.*"
+                                          },
+                                          "params": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "pattern": ".*\\S.*"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "allOf": [
+                        {
+                          "if": {
+                            "required": [
+                              "enabled"
+                            ],
+                            "properties": {
+                              "enabled": {
+                                "const": true
+                              }
+                            }
+                          },
+                          "then": {
+                            "required": [
+                              "definitions"
+                            ],
+                            "properties": {
+                              "definitions": {
+                                "minItems": 1
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "artifacts": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "patterns": {
+                          "type": "array",
+                          "minItems": 1,
+                          "uniqueItems": true,
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": ".*\\S.*"
+                          },
+                          "default": [
+                            "**/*.css"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "required": [
+                          "artifacts"
+                        ],
+                        "properties": {
+                          "artifacts": {
+                            "required": [
+                              "enabled"
+                            ],
+                            "properties": {
+                              "enabled": {
+                                "const": true
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "then": {
+                        "required": [
+                          "values"
+                        ],
+                        "properties": {
+                          "values": {
+                            "required": [
+                              "enabled",
+                              "definitions"
+                            ],
+                            "properties": {
+                              "enabled": {
+                                "const": true
+                              },
+                              "definitions": {
+                                "minItems": 1,
+                                "items": {
+                                  "required": [
+                                    "outputs"
+                                  ],
+                                  "properties": {
+                                    "outputs": {
+                                      "minItems": 1
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             },
@@ -1345,6 +1855,30 @@
                     ]
                   },
                   "description": "允许同步函数文档的扩展名白名单；Vue 文件只处理内联 script 和 script setup。"
+                },
+                "exportedOnly": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
+                },
+                "requireDescription": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
+                },
+                "requireParamDescription": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
+                },
+                "requireReturnsDescription": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
+                },
+                "requireThrowsDescription": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
+                },
+                "requireSideEffectsDescription": {
+                  "type": "boolean",
+                  "description": "函数文档约束，可由项目显式修改。"
                 }
               }
             },
@@ -1478,6 +2012,10 @@
                     "minLength": 1
                   },
                   "description": "仓库相对 glob；排除优先级高于 include，适合隐藏路径、生成目录和框架特殊路径。"
+                },
+                "lowercaseExtension": {
+                  "type": "boolean",
+                  "description": "是否要求文件扩展名使用小写。"
                 }
               }
             },
@@ -1556,6 +2094,11 @@
                   "const": true,
                   "default": true,
                   "description": "Knip 配置提示必须作为错误处理，避免在不完整项目图上建立基线。"
+                },
+                "options": {
+                  "type": "object",
+                  "description": "可修改的 Knip JSON 预设；原生项目配置优先，数组整体替换。实际 Knip 版本校验其字段和插件。",
+                  "additionalProperties": true
                 }
               }
             },
@@ -1574,7 +2117,7 @@
                     "changedFiles",
                     "allFiles"
                   ],
-                  "default": "changedFiles"
+                  "default": "allFiles"
                 },
                 "include": {
                   "type": "array",
@@ -1738,7 +2281,8 @@
                           "type": "string",
                           "enum": [
                             "preserve",
-                            "strip"
+                            "strip",
+                            "display"
                           ],
                           "default": "preserve"
                         }
@@ -1866,6 +2410,185 @@
                       "minimum": 1,
                       "maximum": 1000,
                       "default": 1
+                    }
+                  }
+                },
+                "governance": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "budgets": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "action": {
+                          "enum": [
+                            "report",
+                            "error"
+                          ]
+                        },
+                        "maxBytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "maxWidth": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "maxHeight": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "rules": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "patterns": {
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "maxBytes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1000000000
+                              },
+                              "maxWidth": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1000000000
+                              },
+                              "maxHeight": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1000000000
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "patterns"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "formats": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "action": {
+                          "enum": [
+                            "report",
+                            "error"
+                          ]
+                        },
+                        "discouraged": {
+                          "type": "array",
+                          "minItems": 1,
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "action": {
+                          "enum": [
+                            "report",
+                            "error"
+                          ]
+                        }
+                      }
+                    },
+                    "animation": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "action": {
+                          "enum": [
+                            "report",
+                            "error"
+                          ]
+                        },
+                        "maxBytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "maxFrames": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "maxDurationMs": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        }
+                      }
+                    },
+                    "avif": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "action": {
+                          "enum": [
+                            "report",
+                            "error"
+                          ]
+                        },
+                        "quality": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "effort": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9
+                        },
+                        "minSavingsBytes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000000000
+                        },
+                        "minSavingsPercent": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        }
+                      }
                     }
                   }
                 }
@@ -2019,6 +2742,36 @@
                       "reason": {
                         "type": "string",
                         "minLength": 1
+                      },
+                      "api": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "method",
+                          "endpoint",
+                          "responseField"
+                        ],
+                        "properties": {
+                          "method": {
+                            "enum": [
+                              "GET",
+                              "POST",
+                              "PUT",
+                              "PATCH",
+                              "DELETE",
+                              "HEAD",
+                              "OPTIONS"
+                            ]
+                          },
+                          "endpoint": {
+                            "type": "string",
+                            "pattern": "^/(?!/)[^?#\\r\\n]*$"
+                          },
+                          "responseField": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
                       }
                     }
                   },
@@ -2047,83 +2800,10 @@
                       "default": 104857600
                     }
                   }
-                }
-              }
-            },
-            "uiTokens": {
-              "type": "object",
-              "description": "按项目声明的 CSS、Sass、Less 语言和 Manifest 检查样式 Token。",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
+                },
+                "referenceIntegrity": {
                   "type": "boolean",
-                  "default": false,
-                  "description": "是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁。"
-                },
-                "languages": {
-                  "type": "array",
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "items": {
-                    "enum": [
-                      "css",
-                      "sass",
-                      "less"
-                    ]
-                  },
-                  "default": [
-                    "css"
-                  ],
-                  "description": "显式选择样式语言；sass 同时覆盖 SCSS 与缩进式 Sass，当前不支持 Stylus。"
-                },
-                "manifestFile": {
-                  "type": "string",
-                  "minLength": 1,
-                  "default": "ui-tokens.manifest.json",
-                  "description": "应用目录内由项目生成并提交的 UI Token Manifest。"
-                },
-                "include": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "default": [
-                    "src/**/*.{vue,css,scss,sass,less}"
-                  ],
-                  "description": "参与 CSS、Sass 或 Less 静态检查的应用相对 glob。"
-                },
-                "exclude": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "default": [
-                    "**/generated/**",
-                    "**/dist/**",
-                    "**/coverage/**",
-                    "**/reports/**"
-                  ],
-                  "description": "优先于 include 的排除 glob。"
-                },
-                "iconSelectors": {
-                  "type": "array",
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": ".*\\S.*"
-                  },
-                  "default": [
-                    "svg",
-                    ".icon",
-                    ".ui-icon",
-                    ".svg-icon"
-                  ],
-                  "description": "在这些选择器上下文中将 width、height、inline-size、block-size 按 icon-size 检查。"
+                  "default": false
                 }
               }
             },
@@ -2213,44 +2893,6 @@
                     }
                   },
                   "description": "Forbidden dependency-cruiser rules. Error violations block the gate; warn and info violations remain visible in the unified report."
-                }
-              }
-            },
-            "accessibilityTest": {
-              "type": "object",
-              "description": "Project-owned axe component or E2E accessibility tests run explicitly or from the managed pre-push hook.",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "Run static axe test policy checks followed by the configured accessibility test script from pre-push. Init enables this only for a complete supported axe setup."
-                },
-                "script": {
-                  "type": "string",
-                  "minLength": 1,
-                  "pattern": "^[A-Za-z0-9:_-]+$",
-                  "default": "test:a11y",
-                  "description": "Name of the consuming project's npm script dedicated to axe accessibility tests."
-                },
-                "timeoutMs": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "default": 180000,
-                  "description": "Maximum runtime for the accessibility test process."
-                },
-                "testPatterns": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "default": [
-                    "**/*.a11y.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
-                    "**/accessibility/**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
-                  ],
-                  "description": "Repository-relative globs for files that must directly execute axe and assert zero violations."
                 }
               }
             },
@@ -2636,6 +3278,87 @@
                       }
                     }
                   ]
+                },
+                "bundleAnalysis": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "adapter": {
+                      "enum": [
+                        "rollup-visualizer"
+                      ]
+                    },
+                    "reportsDirectory": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "formats": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "enum": [
+                          "html",
+                          "json"
+                        ]
+                      }
+                    },
+                    "template": {
+                      "enum": [
+                        "treemap",
+                        "network",
+                        "sunburst"
+                      ]
+                    },
+                    "gzipSize": {
+                      "type": "boolean"
+                    },
+                    "brotliSize": {
+                      "type": "boolean"
+                    },
+                    "open": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "minify": {
+                      "enum": [
+                        true,
+                        false,
+                        "esbuild",
+                        "terser"
+                      ]
+                    },
+                    "cssMinify": {
+                      "enum": [
+                        true,
+                        false,
+                        "esbuild",
+                        "lightningcss"
+                      ]
+                    },
+                    "cssCodeSplit": {
+                      "type": "boolean"
+                    },
+                    "sourcemap": {
+                      "enum": [
+                        true,
+                        false,
+                        "inline",
+                        "hidden"
+                      ]
+                    },
+                    "assetsInlineLimit": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
                 }
               }
             },
@@ -2672,31 +3395,191 @@
                   "minimum": 1,
                   "default": 300000,
                   "description": "Timeout applied separately to the build, collect, and assert processes."
+                },
+                "prePush": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ci"
+                  ],
+                  "properties": {
+                    "ci": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "collect": {
+                          "type": "object"
+                        },
+                        "assert": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                },
+                "pages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "url",
+                      "expectedUrl",
+                      "selector"
+                    ],
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "expectedUrl": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "selector": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                },
+                "imageUsage": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "action": {
+                      "enum": [
+                        "report",
+                        "error"
+                      ]
+                    },
+                    "failedRequests": {
+                      "type": "boolean"
+                    },
+                    "maxDimensionRatio": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 10
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "selector",
+                          "sourceAttribute"
+                        ],
+                        "properties": {
+                          "selector": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sourceAttribute": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "loadingAttribute": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "maxTransferBytes": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "auditIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "url",
+                          "maxTransferBytes"
+                        ],
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "^https?://"
+                          },
+                          "maxTransferBytes": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             },
             "typeCheck": {
               "type": "object",
-              "description": "Project-owned TypeScript type-check script run explicitly or from the managed pre-push hook.",
+              "description": "使用消费项目类型工具或脚本执行完整类型检查，不进入 pre-commit。",
               "additionalProperties": false,
               "properties": {
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "Run the configured TypeScript type-check script automatically from the managed pre-push hook. Init enables this only when the script is already available."
+                  "description": "是否启用类型检查；前端 TypeScript 新预设默认开启并写入工具选项，JavaScript 默认关闭，不根据脚本存在与否猜测。"
                 },
                 "script": {
                   "type": "string",
                   "minLength": 1,
                   "pattern": "^[A-Za-z0-9:_-]+$",
                   "default": "typecheck",
-                  "description": "Name of the consuming project's npm script that runs tsc, vue-tsc, or an equivalent full-project type check."
+                  "description": "消费项目类型检查脚本名称；配置工具 options 时按工具执行，否则使用项目脚本。"
                 },
                 "timeoutMs": {
                   "type": "integer",
                   "minimum": 1,
                   "default": 180000,
                   "description": "Maximum runtime for the TypeScript type-check process."
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "tool": {
+                      "enum": [
+                        "tsc",
+                        "vue-tsc"
+                      ]
+                    },
+                    "configFiles": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(?!.*\\.\\.)(?!/)[^:\\\\]+\\.json$"
+                      }
+                    },
+                    "compilerOptions": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "tool",
+                    "configFiles",
+                    "compilerOptions"
+                  ],
+                  "description": "启用时写入的工具预设；执行时项目原生配置优先，同名规则整体替换。"
                 }
               }
             },
@@ -2783,8 +3666,36 @@
                           "minLength": 1
                         },
                         "description": "Allowed test paths using {dir}, {name}, {path}, and {ext}; each template must include {name} or {path}."
+                      },
+                      "sourceRoot": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "明确的源码根目录；{relativePath} 使用相对该目录且不含扩展名的路径。",
+                        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^:*?{}\\[\\]\\\\]+$"
                       }
-                    }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "testTemplates": {
+                              "contains": {
+                                "type": "string",
+                                "pattern": "\\{relativePath\\}"
+                              }
+                            }
+                          },
+                          "required": [
+                            "testTemplates"
+                          ]
+                        },
+                        "then": {
+                          "required": [
+                            "sourceRoot"
+                          ]
+                        }
+                      }
+                    ]
                   },
                   "default": [
                     {
@@ -2922,30 +3833,6 @@
               },
               "description": "Vitest coverage execution plus optional repo-guard global and changed-line hard thresholds."
             },
-            "componentInteraction": {
-              "type": "object",
-              "description": "Static Vue component interaction-test semantics enforced before the existing unit-test script runs; it does not start a second test process.",
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "Require interactive Vue components to have a test that directly imports and mounts the component, performs a wrapper interaction, and asserts an outcome afterward."
-                },
-                "componentPatterns": {
-                  "type": "array",
-                  "minItems": 1,
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "default": [
-                    "src/components/**/*.vue"
-                  ],
-                  "description": "Repository-relative Vue component globs subject to interaction-test semantics when their templates contain v-on/@ events or v-model."
-                }
-              }
-            },
             "mutationTest": {
               "type": "object",
               "description": "使用消费项目安装的 Stryker 执行变异测试，生成本地中文报告，并可在指定 npm 构建脚本之前形成硬门禁。",
@@ -3016,6 +3903,65 @@
                       }
                     }
                   }
+                },
+                "options": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "mutate": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minItems": 1
+                    },
+                    "testRunner": {
+                      "enum": [
+                        "vitest"
+                      ]
+                    },
+                    "thresholds": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "high": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "low": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "break": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        }
+                      },
+                      "required": [
+                        "break"
+                      ]
+                    },
+                    "vitest": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "configFile": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  "required": [
+                    "mutate",
+                    "testRunner",
+                    "thresholds"
+                  ]
                 }
               }
             },
@@ -4810,6 +5756,349 @@
                   "default": 80
                 }
               }
+            },
+            "sourceSecurity": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "六组明确源码语法检查，不进行运行时值推导。",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "include": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/*.{vue,js,jsx,mjs,cjs,ts,tsx,mts,cts,html}"
+                  ]
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [
+                    "**/node_modules/**",
+                    "**/.git/**"
+                  ]
+                },
+                "dynamicCode": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "eval": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "functionConstructors": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "stringTimers": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "htmlInjection": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "vueVHtml": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "domHtmlWrites": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "iframeSrcdoc": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "allowEmptyClear": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "inlineEventCode": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "htmlEventAttributes": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "domEventAttributeWrites": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "stringEventPropertyWrites": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "urlScheme": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "navigation": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "scriptSource": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "newWindow": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "requireNoopener": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "requireNoreferrer": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "forbidOpener": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "checkWindowOpen": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                },
+                "crossWindowMessage": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "requireExplicitTargetOrigin": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "forbidWildcardTargetOrigin": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "directories": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entries"
+          ],
+          "description": "应用独立的目录职责与路径绑定；只声明用途，不证明代码语义。缺省字段采用绑定模板，用户显式路径优先。",
+          "properties": {
+            "entries": {
+              "type": "object",
+              "maxProperties": 64,
+              "propertyNames": {
+                "pattern": "^[a-z][a-zA-Z0-9-]*$",
+                "not": {
+                  "enum": [
+                    "constructor",
+                    "prototype",
+                    "__proto__"
+                  ]
+                }
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "purpose"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1024,
+                    "pattern": "^[^\\r\\n\\u0000]+$",
+                    "description": "相对应用根目录的字面路径，允许引用其他职责，例如 ${source}/utils；不接受越界或 glob。"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "pattern": "^[^\\r\\n\\u0000]+$",
+                    "description": "目录的团队用途说明，供开发者与 AI 遵循。"
+                  }
+                }
+              }
+            },
+            "bindings": {
+              "type": "object",
+              "maxProperties": 128,
+              "propertyNames": {
+                "enum": [
+                  "checks.sourceSecurity.include",
+                  "checks.sourceSecurity.exclude",
+                  "checks.filePlacement.rules",
+                  "checks.maxFileLines.rules",
+                  "checks.maxFileLines.exclusions",
+                  "checks.fileHeader.include",
+                  "checks.fileHeader.exclude",
+                  "checks.functionDocs.include",
+                  "checks.functionDocs.exclude",
+                  "checks.pathNaming.include",
+                  "checks.pathNaming.exclude",
+                  "checks.asyncResourceCleanup.include",
+                  "checks.asyncResourceCleanup.exclude",
+                  "checks.unitTest.sourcePatterns",
+                  "checks.unitTest.testPatterns",
+                  "checks.unitTest.mappings",
+                  "checks.unitTest.exclusions",
+                  "checks.coverage.reportsDirectory",
+                  "checks.mutationTest.options.mutate",
+                  "checks.mutationTest.configFile",
+                  "checks.mutationTest.reportsDirectory",
+                  "checks.architecture.sourcePaths",
+                  "checks.architecture.exclude",
+                  "checks.architecture.rules",
+                  "checks.architecture.tsConfig",
+                  "checks.deadCode.options.entry",
+                  "checks.deadCode.options.project",
+                  "checks.deadCode.options.ignoreFiles",
+                  "checks.deadCode.configFile",
+                  "checks.deadCode.baselineFile",
+                  "checks.stylelint.pattern",
+                  "checks.stylelint.options.ignoreFiles",
+                  "checks.stylelint.options.overrides",
+                  "checks.stylelint.uiTokens.include",
+                  "checks.stylelint.uiTokens.exclude",
+                  "checks.stylelint.uiTokens.manifestFile",
+                  "checks.stylelint.uiTokens.values.definitions",
+                  "checks.stylelint.governance.allowedGlobalStylePatterns",
+                  "checks.eslint.pattern",
+                  "checks.eslint.options.ignores",
+                  "checks.prettier.pattern",
+                  "checks.typeCheck.options.configFiles",
+                  "checks.build.artifactBudget.outputDirectory",
+                  "checks.build.options.artifacts.outputDirectory",
+                  "checks.build.options.artifacts.manifestFile",
+                  "checks.build.options.bundleAnalysis.reportFile",
+                  "checks.lighthouse.configFile",
+                  "checks.lighthouse.options.imageAudits.sourceRoots",
+                  "checks.imageAssets.include",
+                  "checks.imageAssets.exclude",
+                  "checks.imageAssets.duplicates.canonicalRoots",
+                  "checks.unusedImageAssets.sourceInclude",
+                  "checks.unusedImageAssets.sourceExclude",
+                  "checks.unusedImageAssets.aliases",
+                  "checks.unusedImageAssets.publicRoots",
+                  "checks.unusedImageAssets.dynamicReferences",
+                  "checks.javaFormat.include",
+                  "checks.javaFormat.exclude",
+                  "checks.javaFormat.args",
+                  "checks.javaNaming.include",
+                  "checks.javaNaming.exclude",
+                  "checks.javaNaming.args",
+                  "checks.javaLayout.include",
+                  "checks.javaLayout.exclude",
+                  "checks.javaLayout.args",
+                  "checks.javaImports.include",
+                  "checks.javaImports.exclude",
+                  "checks.javaImports.args",
+                  "checks.javaSize.include",
+                  "checks.javaSize.exclude",
+                  "checks.javaSize.args",
+                  "checks.javaDocs.include",
+                  "checks.javaDocs.exclude",
+                  "checks.javaDocs.args",
+                  "checks.javaLint.include",
+                  "checks.javaLint.exclude",
+                  "checks.javaLint.args",
+                  "checks.javaDuplication.include",
+                  "checks.javaDuplication.exclude",
+                  "checks.javaDuplication.args",
+                  "checks.javaArchitecture.modules",
+                  "checks.javaArchitecture.pom",
+                  "checks.javaDependencies.modules",
+                  "checks.javaDependencies.pom",
+                  "checks.javaCompile.modules",
+                  "checks.javaCompile.pom",
+                  "checks.javaBuild.modules",
+                  "checks.javaBuild.pom",
+                  "checks.javaTest.modules",
+                  "checks.javaTest.pom",
+                  "checks.javaCoverage.modules",
+                  "checks.javaCoverage.pom",
+                  "checks.javaSpotbugs.modules",
+                  "checks.javaSpotbugs.pom",
+                  "checks.javaMutationTest.modules",
+                  "checks.javaMutationTest.pom",
+                  "checks.javaFiles.allowedJavaRoots",
+                  "checks.javaFiles.forbidden",
+                  "checks.javaPathNaming.include",
+                  "checks.javaPathNaming.exclude",
+                  "checks.javaPathNaming.rules"
+                ]
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "format",
+                  "value"
+                ],
+                "properties": {
+                  "format": {
+                    "enum": [
+                      "path",
+                      "glob",
+                      "regex"
+                    ],
+                    "description": "引用路径用于普通路径、glob 或正则；正则模式对目录字面值转义。"
+                  },
+                  "value": {
+                    "description": "字段模板，可嵌套 JSON 值；${职责标识} 引用目录，展开后仍受原检查字段的严格校验。"
+                  }
+                }
+              }
             }
           }
         }
@@ -4855,20 +6144,21 @@
                     "properties": {
                       "enabled": {
                         "const": false
-                      }
-                    }
-                  },
-                  "styleComplexity": {
-                    "properties": {
-                      "enabled": {
-                        "const": false
-                      }
-                    }
-                  },
-                  "styleGovernance": {
-                    "properties": {
-                      "enabled": {
-                        "const": false
+                      },
+                      "governance": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "uiTokens": {
+                        "properties": {
+                          "enabled": {
+                            "const": false
+                          }
+                        }
                       }
                     }
                   },
@@ -4883,6 +6173,30 @@
                     "properties": {
                       "enabled": {
                         "const": false
+                      },
+                      "exportedOnly": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
+                      },
+                      "requireDescription": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
+                      },
+                      "requireParamDescription": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
+                      },
+                      "requireReturnsDescription": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
+                      },
+                      "requireThrowsDescription": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
+                      },
+                      "requireSideEffectsDescription": {
+                        "type": "boolean",
+                        "description": "函数文档约束，可由项目显式修改。"
                       }
                     }
                   },
@@ -4907,21 +6221,7 @@
                       }
                     }
                   },
-                  "uiTokens": {
-                    "properties": {
-                      "enabled": {
-                        "const": false
-                      }
-                    }
-                  },
                   "architecture": {
-                    "properties": {
-                      "enabled": {
-                        "const": false
-                      }
-                    }
-                  },
-                  "accessibilityTest": {
                     "properties": {
                       "enabled": {
                         "const": false
@@ -4932,6 +6232,87 @@
                     "properties": {
                       "enabled": {
                         "const": false
+                      },
+                      "bundleAnalysis": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "adapter": {
+                            "enum": [
+                              "rollup-visualizer"
+                            ]
+                          },
+                          "reportsDirectory": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "formats": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                              "enum": [
+                                "html",
+                                "json"
+                              ]
+                            }
+                          },
+                          "template": {
+                            "enum": [
+                              "treemap",
+                              "network",
+                              "sunburst"
+                            ]
+                          },
+                          "gzipSize": {
+                            "type": "boolean"
+                          },
+                          "brotliSize": {
+                            "type": "boolean"
+                          },
+                          "open": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "options": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "minify": {
+                            "enum": [
+                              true,
+                              false,
+                              "esbuild",
+                              "terser"
+                            ]
+                          },
+                          "cssMinify": {
+                            "enum": [
+                              true,
+                              false,
+                              "esbuild",
+                              "lightningcss"
+                            ]
+                          },
+                          "cssCodeSplit": {
+                            "type": "boolean"
+                          },
+                          "sourcemap": {
+                            "enum": [
+                              true,
+                              false,
+                              "inline",
+                              "hidden"
+                            ]
+                          },
+                          "assetsInlineLimit": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        }
                       }
                     }
                   },
@@ -4939,6 +6320,56 @@
                     "properties": {
                       "enabled": {
                         "const": false
+                      },
+                      "prePush": {
+                        "type": "boolean"
+                      },
+                      "options": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "ci"
+                        ],
+                        "properties": {
+                          "ci": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "collect": {
+                                "type": "object"
+                              },
+                              "assert": {
+                                "type": "object"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "pages": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "url",
+                            "expectedUrl",
+                            "selector"
+                          ],
+                          "properties": {
+                            "url": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "expectedUrl": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "selector": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
                       }
                     }
                   },
@@ -4963,14 +6394,73 @@
                       }
                     }
                   },
-                  "componentInteraction": {
+                  "mutationTest": {
                     "properties": {
                       "enabled": {
                         "const": false
+                      },
+                      "options": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "mutate": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1
+                          },
+                          "testRunner": {
+                            "enum": [
+                              "vitest"
+                            ]
+                          },
+                          "thresholds": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "high": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "low": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "break": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              }
+                            },
+                            "required": [
+                              "break"
+                            ]
+                          },
+                          "vitest": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "configFile": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": []
+                          }
+                        },
+                        "required": [
+                          "mutate",
+                          "testRunner",
+                          "thresholds"
+                        ]
                       }
                     }
                   },
-                  "mutationTest": {
+                  "sourceSecurity": {
                     "properties": {
                       "enabled": {
                         "const": false
@@ -5200,7 +6690,7 @@
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "是否启用提交信息强制门禁。"
+                  "description": "是否启用提交信息强制门禁；新建配置和显式启用时默认开启，读取既有配置不改写。"
                 },
                 "types": {
                   "type": "array",
@@ -5266,7 +6756,7 @@
                     "requireMajorVersionOnRelease": {
                       "type": "boolean",
                       "default": true,
-                      "description": "release-ready 是否要求包含不兼容变更的发布提升 major 版本。"
+                      "description": "release-ready 是否要求包含不兼容变更的发布提升 major 版本；新建及显式启用预设为 false，用户显式值优先。"
                     }
                   }
                 },

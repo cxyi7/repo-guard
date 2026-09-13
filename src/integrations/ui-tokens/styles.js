@@ -82,6 +82,18 @@ function variableName(declaration, language) {
   return null;
 }
 
+function definitionContext(node) {
+  const selectors = [];
+  const conditions = [];
+  for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
+    if (ancestor.type === 'rule') selectors.unshift(ancestor.selector);
+    if (ancestor.type === 'atrule') conditions.unshift({ name: ancestor.name, params: ancestor.params });
+  }
+  // 嵌套选择器不尝试展开；保留独立条件，使其不能冒充顶层授权定义。
+  if (selectors.length > 1) conditions.push({ name: 'repo-guard-parent-selector', params: selectors.slice(0, -1).join(' ') });
+  return { selector: selectors.at(-1) ?? '', conditions };
+}
+
 function factPlugin(stylelint, input, file, facts, languages, parsed) {
   const ranges = input.file.toLowerCase().endsWith('.vue') ? vueRanges(input.code) : null;
   const languageOf = (node) => {
@@ -93,10 +105,10 @@ function factPlugin(stylelint, input, file, facts, languages, parsed) {
     root.walkDecls((declaration) => {
       const language = languageOf(declaration);
       if (!language) return;
-      const base = { path: file, language, value: declaration.value, ...location(declaration) };
+      const base = { path: file, language, value: declaration.value, important: Boolean(declaration.important), ...location(declaration), ...definitionContext(declaration) };
       const name = variableName(declaration, language);
       if (name) {
-        facts.push({ ...base, type: 'variable-definition', name });
+        facts.push({ ...base, type: 'variable-definition', definitionKind: 'value', name });
         return;
       }
       let ancestor = declaration.parent;
@@ -108,7 +120,7 @@ function factPlugin(stylelint, input, file, facts, languages, parsed) {
     root.walkAtRules((atRule) => {
       const language = languageOf(atRule);
       if (!language) return;
-      const base = { path: file, language, value: atRule.params, ...location(atRule) };
+      const base = { path: file, language, value: atRule.params, ...location(atRule), ...definitionContext(atRule) };
       for (const name of styleBindingNames(atRule, language)) {
         facts.push({ ...base, type: 'variable-definition', name });
       }
@@ -117,7 +129,7 @@ function factPlugin(stylelint, input, file, facts, languages, parsed) {
       } else if (atRule.name.toLowerCase() === 'property' && atRule.params.trim().startsWith('--')) {
         facts.push({ ...base, type: 'variable-definition', name: atRule.params.trim() });
       } else if (language === 'less' && (atRule.variable || atRule.name.endsWith(':'))) {
-        facts.push({ ...base, type: 'variable-definition', name: `@${atRule.name.replace(/:$/, '')}` });
+        facts.push({ ...base, type: 'variable-definition', definitionKind: 'value', name: `@${atRule.name.replace(/:$/, '')}` });
       }
     });
     root.walkRules((styleRule) => {
@@ -182,16 +194,16 @@ function assertParsed(report, inputs, parsed, root) {
   );
 }
 
-export async function collectStyleFacts({ project, root, files, languages }) {
+export async function collectStyleFacts({ project, root, files, languages, options, plainCss = false }) {
   const selected = files.filter((file) => isUiTokenStyleFile(file, languages));
   if (selected.length === 0) return Object.freeze([]);
   const facts = [];
   const parsed = new Set();
   try {
-    const inputs = await inspectProjectStylelintRuleInputs({ project, root, files: selected });
+    const inputs = await inspectProjectStylelintRuleInputs({ project, root, files: selected, options });
     const report = await executeProjectStylelintRules({
       project, root, bypassProjectIgnores: true, ignoreDisables: true,
-      inputs: inputs.map((input) => configuredInput(input, root, project.stylelint, facts, languages, parsed)),
+      inputs: inputs.map((input) => configuredInput(plainCss ? { ...input, projectConfig: {} } : input, root, project.stylelint, facts, languages, parsed)),
     });
     assertParsed(report, inputs, parsed, root);
   } catch (error) {

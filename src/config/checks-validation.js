@@ -1,4 +1,4 @@
-import { validateAccessibilityConfiguration } from './accessibility-validation.js';
+import { validateSourceSecurity } from './source-security.js';
 import { validateArchitectureConfiguration } from './architecture-validation.js';
 import { validateAsyncResourceCleanupConfiguration } from './async-resource-cleanup-validation.js';
 import { validateDeadCodeConfiguration } from './dead-code-validation.js';
@@ -13,7 +13,7 @@ import { validateMutationTestConfiguration } from './mutation-test-validation.js
 import { validatePathNamingConfiguration } from './path-naming-validation.js';
 import { validatePrettierConfiguration } from './prettier-validation.js';
 import { validateStylelintConfiguration } from './stylelint-validation.js';
-import { validateUiTokenConfiguration } from './ui-token-validation.js';
+
 import { validateUnitTestConfiguration } from './unit-test-validation.js';
 import { JAVA_PROJECT_CHECKS, NODE_ONLY_PROJECT_CHECKS, PROJECT_CHECK_PATHS } from './project-feature-paths.js';
 import { projectCheckDefaults } from './project-defaults.js';
@@ -28,18 +28,13 @@ import {
 } from './validation-primitives.js';
 
 const FRONTEND_ONLY = [
-  'componentInteraction',
   'lighthouse',
-  'accessibilityTest',
-  'uiTokens',
   'asyncResourceCleanup',
 ];
 const CHILD_CHECKS = {
-  stylelint: { complexity: 'styleComplexity', governance: 'styleGovernance' },
   imageAssets: { unused: 'unusedImageAssets' },
   unitTest: {
     coverage: 'coverage',
-    componentInteraction: 'componentInteraction',
   },
 };
 
@@ -77,7 +72,7 @@ function checksValue(value, project, configPath) {
   );
 }
 
-/** 各领域校验器只接收本领域选项，统一结果始终保留扁平 checks。 */
+/** 各领域校验器只接收本领域选项，样式子能力保留在统一 stylelint 配置内。 */
 export function validateChecksConfiguration(value, project, configPath) {
   const checks = checksValue(value, project, configPath);
   const unsupportedChecks = project?.stack === 'java'
@@ -90,20 +85,8 @@ export function validateChecksConfiguration(value, project, configPath) {
   if (project?.stack === 'java' && checks.mutationTest.guardedBuilds?.length > 0) {
     throw configValidationError(`${configPath} checks.mutationTest.guardedBuilds 仅适用于 Node 项目的 npm 构建脚本。`);
   }
-  const {
-    complexity: styleComplexity,
-    governance: styleGovernance,
-    ...stylelint
-  } = validateStylelintConfiguration(
-    {
-      stylelint: {
-        ...checks.stylelint,
-        complexity: checks.styleComplexity,
-        governance: checks.styleGovernance,
-      },
-    },
-    configPath,
-  );
+  const stylelint = validateStylelintConfiguration(checks, configPath);
+  if (project?.role === 'backend' && (stylelint.governance.enabled || stylelint.uiTokens.enabled)) throw configValidationError('checks.stylelint.governance 和 checks.stylelint.uiTokens 仅适用于前端项目。');
   const { unused: unusedImageAssets, ...imageAssets } =
     validateImageAssetsConfiguration(
       {
@@ -114,23 +97,21 @@ export function validateChecksConfiguration(value, project, configPath) {
       },
       configPath,
     );
-  const { coverage, componentInteraction, ...unitTest } =
+  const { coverage, ...unitTest } =
     validateUnitTestConfiguration(
       {
         unitTest: {
           ...checks.unitTest,
           coverage: checks.coverage,
-          componentInteraction: checks.componentInteraction,
         },
       },
       configPath,
     );
   const normalized = {
+    sourceSecurity: validateSourceSecurity(checks.sourceSecurity, project),
     eslint: validateEslintConfiguration(checks, configPath),
     prettier: validatePrettierConfiguration(checks, configPath),
     stylelint,
-    styleComplexity,
-    styleGovernance,
     maxFileLines: validateMaxFileLinesConfiguration(checks, configPath),
     filePlacement: validateFilePlacementConfiguration(checks, configPath),
     fileHeader: validateFileHeaderConfiguration(checks, configPath),
@@ -143,13 +124,10 @@ export function validateChecksConfiguration(value, project, configPath) {
     deadCode: validateDeadCodeConfiguration(checks, configPath),
     imageAssets,
     unusedImageAssets,
-    uiTokens: validateUiTokenConfiguration(checks, configPath),
     architecture: validateArchitectureConfiguration(checks, configPath),
-    accessibilityTest: validateAccessibilityConfiguration(checks, configPath),
     ...validateExecutionGateConfiguration(checks, configPath),
     unitTest,
     coverage,
-    componentInteraction,
     mutationTest: validateMutationTestConfiguration(checks, configPath),
     ...validateJavaSourceChecks(checks, { configPath, project }),
     ...validateJavaEngineeringChecks(checks, { configPath, project }),
@@ -157,6 +135,10 @@ export function validateChecksConfiguration(value, project, configPath) {
     ...validateJavaSpotbugsChecks(checks, { configPath, project }),
     ...validateJavaMutationChecks(checks, { configPath, project }),
   };
+  if (stylelint.enabled && stylelint.uiTokens.enabled && stylelint.uiTokens.artifacts.enabled
+    && (!normalized.build.enabled || !normalized.build.artifactBudget.enabled || !normalized.build.artifactBudget.cleanScript)) {
+    throw configValidationError(`${configPath} UI Token 产物检查要求开启 checks.build、artifactBudget 并配置精确的 cleanScript。`);
+  }
   if (project?.role === 'backend') {
     for (const feature of FRONTEND_ONLY) {
       if (normalized[feature].enabled)

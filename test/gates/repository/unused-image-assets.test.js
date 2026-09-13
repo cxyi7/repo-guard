@@ -56,6 +56,43 @@ function gitFixture(context) {
   return root;
 }
 
+test('引用完整性遵守精确位置的有效人工例外', (t) => {
+  const root = gitFixture(t);
+  const file = 'src/pages/home.ts';
+  writeFileSync(path.join(root, file), "\nimport image from '../assets/missing.png';");
+  const config = configFixture();
+  config.checks.unusedImageAssets.referenceIntegrity = { enabled: true, action: 'error' };
+  const plan = unusedImageAssetsGate.plan({ config, environment: 'manual', files: [file] });
+  const before = unusedImageAssetsGate.run({ root, config, plan });
+  assert.equal(before.status, 'violation');
+  const { line, column } = before.findings[0].location;
+  assert.equal(line, 2);
+  config.repository.exceptions.entries.push({ id: 'review-fixture', rule: 'assets/reference-integrity', path: file, line, column,
+    createdOn: '2020-01-01', expiresOn: '2099-01-01' });
+  const after = unusedImageAssetsGate.run({ root, config, plan });
+  assert.equal(after.status, 'passed');
+  assert.equal(after.metrics.approvedExceptions, 1);
+});
+
+test('增量引用检查区分基线缺失引用和新增缺失引用', (t) => {
+  const root = gitFixture(t);
+  const file = 'src/pages/home.ts';
+  writeFileSync(path.join(root, file), "import old from '../assets/missing.png';");
+  runGit(['add', '.'], { cwd: root });
+  runGit(['commit', '-m', 'test: 缺失引用基线'], { cwd: root });
+  const base = runGit(['rev-parse', 'HEAD'], { cwd: root }).stdout.trim();
+  writeFileSync(path.join(root, file), "import old from '../assets/missing.png';\nimport fresh from '../assets/new.png';");
+  runGit(['add', '.'], { cwd: root });
+  runGit(['commit', '-m', 'test: 新增缺失引用'], { cwd: root });
+  const config = configFixture({ enforcement: 'changedFiles' });
+  config.checks.unusedImageAssets.referenceIntegrity = { enabled: true, action: 'error' };
+  const plan = unusedImageAssetsGate.plan({ config, environment: 'ci-full', revision: { base, head: 'HEAD' } });
+  const result = unusedImageAssetsGate.run({ root, config, plan });
+  assert.equal(result.status, 'violation');
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].location.line, 2);
+});
+
 test('识别 Vue、脚本、样式、Markdown、JSON、别名和 public 静态图片引用', () => {
   const contents = new Map([
     ['src/pages/Home.vue', `

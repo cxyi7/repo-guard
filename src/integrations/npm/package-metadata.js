@@ -4,7 +4,9 @@ import { configurationError } from '../../core/error/repo-guard-error.js';
 
 export function parsePackageMetadata(source, label) {
   try {
-    return { source, value: JSON.parse(source) };
+    const value = JSON.parse(source);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw configurationError('dependency-policy/manifest-object', '包清单必须是对象');
+    return { source, value };
   } catch (error) {
     throw configurationError(
       'dependency-policy/package-metadata-invalid-json',

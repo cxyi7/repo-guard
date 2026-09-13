@@ -25,7 +25,7 @@ function repository(context) {
   assert.equal(init.status, 0, init.stderr);
   writeFileSync(
     path.join(root, 'package.json'),
-    JSON.stringify({ name: 'workspace', scripts: {} }),
+    JSON.stringify({ name: 'workspace', packageManager: 'npm@10.9.8', scripts: {} }),
   );
   return root;
 }
@@ -125,6 +125,7 @@ test('根目录应用的初始化、修复、安装 CI 与 Doctor 使用同一�
   const manifest = {
     name: 'workspace',
     version: '1.0.0',
+    packageManager: 'npm@10.9.8',
     devDependencies: { '@cxyi7/repo-guard': '2.0.0' },
   };
   writeJson(root, 'package.json', manifest);

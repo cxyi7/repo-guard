@@ -10,7 +10,7 @@
 
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
-无效图片是指位于 `checks.imageAssets.include` 范围内，但没有被配置范围源码静态引用、也没有被有效动态声明覆盖的图片。该能力默认关闭，不会进入 pre-commit；启用时同步打开父级图片治理：
+无效图片是指位于 `checks.imageAssets.include` 范围内，但没有被配置范围源码静态引用、也没有被有效动态声明覆盖的图片。通用补缺默认关闭、前端预设默认开启且只报告；不会进入 pre-commit；启用时同步打开父级图片治理：
 
 ```bash
 npx repo-guard enable unusedImageAssets
@@ -135,3 +135,11 @@ npx repo-guard unused-image-assets
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/gates/repository/unused-image-assets-gate.js) · [对应测试](../../test/gates/repository/unused-image-assets.test.js)
+
+## 前端预设扩展
+
+前端初始化及显式启用的可编辑全量图片预设、接口/响应字段保留依据、预算、动画、元数据处理、页面图片审计及批量引用更新见[前端图片治理预设](frontend-image-presets.md)。默认执行范围现为 allFiles；changedFiles 仍可由用户显式选择。
+
+引用完整性使用真实源码行列匹配人工批准例外；`changedFiles` 对缺失引用也比较基线。动态拼接片段和远程基址的 `new URL()` 不作为本地完整引用。静态引用自动更新只改写确定的语法边界，无法定位的内容保留人工核对。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

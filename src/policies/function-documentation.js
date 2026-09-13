@@ -4,6 +4,7 @@ import traverseModule from '@babel/traverse';
 import micromatch from 'micromatch';
 import { executionError } from '../core/error/repo-guard-error.js';
 import { findVueScriptBlocks } from '../integrations/vue/template-parser.js';
+import { isPublicFunction, missingFunctionDocumentation } from './function-documentation-requirements.js';
 
 const traverse = traverseModule.default ?? traverseModule;
 const PARAM_TAGS = new Set(['param', 'arg', 'argument']);
@@ -116,11 +117,10 @@ function functionTarget(functionPath) {
   if (parent?.isVariableDeclarator?.()) {
     const declaration = parent.parentPath;
     if (!declaration?.isVariableDeclaration?.()
-      || declaration.node.declarations.length !== 1
       || parent.node.id.type !== 'Identifier') {
       return null;
     }
-    const targetPath = declaration.parentPath?.isExportNamedDeclaration?.()
+    const targetPath = declaration.node.declarations.length > 1 ? parent : declaration.parentPath?.isExportNamedDeclaration?.()
       ? declaration.parentPath
       : declaration;
     return { functionPath, name: parent.node.id.name, targetPath };
@@ -505,6 +505,7 @@ function synchronizeProgram(source, {
   language,
   lineOffset,
   relativePath,
+  config = {},
 }) {
   const ast = parseProgram(source, relativePath, language, lineOffset);
   const comments = ast.comments ?? [];
@@ -519,18 +520,19 @@ function synchronizeProgram(source, {
     Function(functionPath) {
       const target = functionTarget(functionPath);
       if (!target || seenTargets.has(target.targetPath.node.start)) return;
+      const publicFunction = isPublicFunction(target, ast);
+      if (config.exportedOnly && !publicFunction) return;
       seenTargets.add(target.targetPath.node.start);
 
       const parameterState = parametersForFunction(functionPath.node);
       if (parameterState.unsupported) {
-        warnings.push(warning(
+        warnings.push({ ...warning(
           'function-docs/destructured-parameter',
           `函数 ${target.name} 包含匿名解构参数，未自动同步其函数文档`,
           relativePath,
           target,
           lineOffset,
-        ));
-        return;
+        ), ...(publicFunction && config.requireParamDescription ? { blocking: true } : {}) });
       }
 
       const returnState = hasReturnValue(functionPath);
@@ -549,6 +551,13 @@ function synchronizeProgram(source, {
         ? parseDocBlocks(source.slice(jsdoc.start, jsdoc.end))
         : [];
       const hasThrows = originalBlocks.some((block) => THROWS_TAGS.has(block.tag));
+      if (publicFunction) {
+        const missing = missingFunctionDocumentation({ blocks: originalBlocks.map((block) => ({ ...block,
+          parameterName: PARAM_TAGS.has(block.tag) ? documentedParameterName(block) : null })), parameters: parameterState.parameters,
+          returns: returnState, throws: hasEscapingException(functionPath), config });
+        if (missing.length) warnings.push({ ...warning('function-docs/missing-description',
+          `公开函数 ${target.name} 缺少：${missing.join('、')}。请补充真实业务说明。`, relativePath, target, lineOffset), blocking: true });
+      }
       if (hasEscapingException(functionPath) && !hasThrows) {
         warnings.push(warning(
           'function-docs/missing-throws',
@@ -558,6 +567,8 @@ function synchronizeProgram(source, {
           lineOffset,
         ));
       }
+
+      if (parameterState.unsupported) return;
 
       const synchronized = synchronizeDocBlocks(
         originalBlocks,
@@ -593,7 +604,7 @@ function scriptLanguage(attributes) {
   return (attributes.find(({ name }) => name === 'lang')?.value ?? 'js').toLowerCase();
 }
 
-function synchronizeVue(content, relativePath) {
+function synchronizeVue(content, relativePath, config) {
   const sections = [];
   for (const block of findVueScriptBlocks(content)) {
     if (block.attributes.some(({ name }) => name === 'src')) continue;
@@ -604,6 +615,7 @@ function synchronizeVue(content, relativePath) {
       language: scriptLanguage(block.attributes),
       lineOffset,
       relativePath,
+      config,
     });
     sections.push({ start, end, result });
   }
@@ -617,13 +629,14 @@ function synchronizeVue(content, relativePath) {
   return Object.freeze({ content: updated, warnings: Object.freeze(warnings) });
 }
 
-export function synchronizeFunctionDocumentationContent(content, relativePath) {
+export function synchronizeFunctionDocumentationContent(content, relativePath, config = {}) {
   if (path.extname(relativePath).toLowerCase() === '.vue') {
-    return synchronizeVue(content, relativePath);
+    return synchronizeVue(content, relativePath, config);
   }
   return synchronizeProgram(content, {
     language: path.extname(relativePath).slice(1).toLowerCase(),
     lineOffset: 0,
     relativePath,
+    config,
   });
 }

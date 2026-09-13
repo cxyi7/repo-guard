@@ -1,5 +1,8 @@
 import { stringifyProjectFixture } from '../../helpers/project-config.js';
 import assert from 'node:assert/strict';
+import filesystem from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+import { executionError } from '../../../src/core/error/repo-guard-error.js';
 import {
   existsSync,
   mkdirSync,
@@ -19,6 +22,7 @@ import { createChangeSet } from '../../../src/core/capability/gate-context.js';
 import { imageAssetsGate } from '../../../src/gates/repository/image-assets-gate.js';
 import { runGit } from '../../../src/git/execution.js';
 import { runImageOptimize } from '../../../src/orchestration/cli/image-optimize.js';
+import { executeImageOptimization } from '../../../src/gates/repository/image-assets-optimizer.js';
 import {
   createSvgCompressionCandidate,
   normalizedPixelHash,
@@ -35,12 +39,97 @@ import { inspectPathNaming } from '../../../src/policies/path-naming.js';
 const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
+test('批量 WebP 规划更新静态引用，保留原图与普通字符串，冲突时整批不写入', async (context) => {
+  const root = gitFixture(context);
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'image-batch-fixture', version: '1.0.0', devDependencies: { sharp: '0.35.4' } }));
+  writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n');
+  symlinkSync(path.join(process.cwd(), 'node_modules'), path.join(root, 'node_modules'), 'junction');
+  const buffer = await pngBuffer();
+  const config = configFixture();
+  config.checks.imageAssets.compression.enabled = true;
+  config.checks.imageAssets.compression.conversion.enabled = true;
+  const source = "import image from './assets/banner.png'; console.log('./assets/banner.png');";
+  writeFileSync(path.join(root, 'src/assets/banner.png'), buffer);
+  writeFileSync(path.join(root, 'src/main.ts'), source);
+  runGit(['add', '.'], { cwd: root });
+  runGit(['commit', '-m', 'test: 添加图片与引用'], { cwd: root });
+  const args = { root, config, paths: ['src/assets/banner.png'], to: 'webp', updateReferences: true };
+  const preview = await executeImageOptimization(args);
+  assert.ok(preview.some((message) => message.includes('静态引用更新')));
+  assert.equal(readFileSync(path.join(root, 'src/main.ts'), 'utf8'), source);
+  assert.equal(existsSync(path.join(root, 'src/assets/banner.webp')), false);
+  await executeImageOptimization({ ...args, write: true });
+  assert.equal(readFileSync(path.join(root, 'src/main.ts'), 'utf8'), "import image from './assets/banner.webp'; console.log('./assets/banner.png');");
+  assert.deepEqual(readFileSync(path.join(root, 'src/assets/banner.png')), buffer);
+  writeFileSync(path.join(root, 'src/assets/second.png'), buffer);
+  runGit(['add', '.'], { cwd: root });
+  runGit(['commit', '-m', 'test: 记录优化结果'], { cwd: root });
+  await assert.rejects(executeImageOptimization({ ...args, paths: ['src/assets/second.png', 'src/assets/banner.png'], write: true }), /拒绝覆盖/);
+  assert.equal(existsSync(path.join(root, 'src/assets/second.webp')), false);
+});
+
+test('批量优化中途写入失败时恢复已经生成的图片并保留原文件', async (context) => {
+  const root = gitFixture(context);
+  writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n');
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'image-rollback-fixture', version: '1.0.0', devDependencies: { sharp: '0.35.4' } }));
+  const original = await pngBuffer();
+  for (const name of ['first', 'second']) writeFileSync(path.join(root, `src/assets/${name}.png`), original);
+  runGit(['add', '.'], { cwd: root });
+  runGit(['commit', '-m', 'test: 准备图片回滚样例'], { cwd: root });
+  symlinkSync(path.join(process.cwd(), 'node_modules'), path.join(root, 'node_modules'), 'junction');
+  const config = configFixture();
+  config.checks.imageAssets.compression.enabled = true;
+  config.checks.imageAssets.compression.conversion.enabled = true;
+  const originalLink = filesystem.linkSync;
+  let calls = 0;
+  context.mock.method(filesystem, 'linkSync', (...args) => {
+    if (++calls === 2) throw executionError('test/write-failed', '模拟第二个目标写入失败');
+    return originalLink(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(executeImageOptimization({ root, config, paths: ['src/assets/first.png', 'src/assets/second.png'], to: 'webp', write: true }), /已恢复本批写入内容/);
+    for (const name of ['first', 'second']) {
+      assert.equal(existsSync(path.join(root, `src/assets/${name}.webp`)), false);
+      assert.deepEqual(readFileSync(path.join(root, `src/assets/${name}.png`)), original);
+    }
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+  }
+});
+
 function dateText(offsetDays) {
   const date = new Date();
   date.setUTCHours(0, 0, 0, 0);
   date.setUTCDate(date.getUTCDate() + offsetDays);
   return date.toISOString().slice(0, 10);
 }
+
+test('输出已建立但临时文件清理失败时仍回滚本批输出', async (context) => {
+  const root = gitFixture(context);
+  writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n');
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'image-cleanup-fixture', version: '1.0.0', devDependencies: { sharp: '0.35.4' } }));
+  writeFileSync(path.join(root, 'src/assets/banner.png'), await pngBuffer());
+  runGit(['add', '.'], { cwd: root }); runGit(['commit', '-m', 'test: 准备清理失败样例'], { cwd: root });
+  symlinkSync(path.join(process.cwd(), 'node_modules'), path.join(root, 'node_modules'), 'junction');
+  const config = configFixture(); config.checks.imageAssets.compression.enabled = true; config.checks.imageAssets.compression.conversion.enabled = true;
+  const originalRemove = filesystem.rmSync; let failed = false;
+  context.mock.method(filesystem, 'rmSync', (target, ...args) => {
+    if (!failed && String(target).endsWith('.tmp')) { failed = true; throw executionError('test/cleanup-failed', '模拟临时文件清理失败'); }
+    return originalRemove(target, ...args);
+  }); syncBuiltinESMExports();
+  try {
+    await assert.rejects(executeImageOptimization({ root, config, paths: ['src/assets/banner.png'], to: 'webp', write: true }), /失败/);
+    assert.equal(existsSync(path.join(root, 'src/assets/banner.webp')), false);
+  } finally { context.mock.restoreAll(); syncBuiltinESMExports(); }
+});
+
+test('关闭位图压缩后显式原格式优化也不得继续执行', async (context) => {
+  const root = gitFixture(context); writeFileSync(path.join(root, 'src/assets/banner.png'), await pngBuffer());
+  const config = configFixture(); config.checks.imageAssets.compression.enabled = true; config.checks.imageAssets.compression.raster.enabled = false;
+  await assert.rejects(executeImageOptimization({ root, config, paths: ['src/assets/banner.png'] }), (error) => error.code === 'image-optimize/raster-disabled');
+});
 
 function configFixture() {
   const config = createStarterConfig();
@@ -328,6 +417,7 @@ test('精确重复规则接受同一路径和位置的限时结构化例外', as
   runGit(['add', '.'], { cwd: root });
   const rawConfig = createStarterConfig();
   rawConfig.checks.imageAssets.enabled = true;
+  rawConfig.checks.imageAssets.enforcement = 'changedFiles';
   rawConfig.checks.imageAssets.include = ['src/assets/**/*.png'];
   rawConfig.checks.imageAssets.exclude = [];
   rawConfig.checks.imageAssets.compression.enabled = false;
@@ -407,7 +497,7 @@ test('显式命令生成 WebP 且保留原图和引用', async (context) => {
   writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({
     name: 'image-assets-fixture',
     version: '1.0.0',
-    devDependencies: { sharp: '0.35.3' },
+    devDependencies: { sharp: '0.35.4' },
   }, null, 2)}\n`, 'utf8');
   runGit(['add', '.'], { cwd: root });
   runGit(['commit', '-m', 'test: 添加原始图片'], { cwd: root });
@@ -454,7 +544,7 @@ test('原格式安全替换压缩图片并保留文件权限', async (context) =
   writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({
     name: 'image-assets-fixture',
     version: '1.0.0',
-    devDependencies: { sharp: '0.35.3' },
+    devDependencies: { sharp: '0.35.4' },
   }, null, 2)}\n`, 'utf8');
   runGit(['add', '.'], { cwd: root });
   runGit(['commit', '-m', 'test: 添加待压缩图片'], { cwd: root });

@@ -49,10 +49,8 @@ npx repo-guard doctor
 
 | 操作 | 联动结果 |
 |---|---|
-| 启用 `coverage` 或 `componentInteraction` | 同时启用 `unitTest` |
-| 关闭 `unitTest` | 同时关闭组件交互和覆盖率检查 |
-| 启用 `styleComplexity` 或 `styleGovernance` | 同时启用 Stylelint |
-| 关闭 Stylelint | 同时关闭两项样式增强 |
+| 关闭 `unitTest` | 同时关闭覆盖率检查 |
+| 关闭 Stylelint | 停止普通规则、治理和 Token 执行，保留全部子配置 |
 | 启用 `unusedImageAssets` | 同时启用图片治理 |
 | 关闭图片治理 | 同时关闭无效图片检查 |
 | 启停 `deliveryContract` | 控制仓库内合同包，按托管指纹同步对应 Skill；仍有独立交付启用时保留流程 Skill，人工修改导致冲突时拒绝覆盖 |
@@ -121,3 +119,5 @@ npx repo-guard disable repositoryFilePlacement
 [配置校验](../../src/config/root-configuration-validation.js) · [管理入口](../../src/orchestration/setup/config-management.js) · [原生模型与拒绝边界测试](../../test/config/v2-runtime-contract.test.js) · [配置管理测试](../../test/setup/config-management.test.js)
 
 [仓库归位配置](../../src/config/repository-file-placement.js) · [根与应用启停边界](../../test/config/repository-file-placement.test.js)
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

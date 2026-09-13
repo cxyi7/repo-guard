@@ -1,6 +1,8 @@
 # 样式 Token 检查
 
-让颜色、间距、字号等使用团队登记的设计变量，支持原生 CSS、SCSS/Sass、Less，以及 Vue 中对应的内联 `style` 块。功能名仍为 `uiTokens`，默认关闭，仅适用于前端应用。
+4.1.0 增加可选的[指定值与生成 CSS 校验](ui-token-values.md)：核对明确登记的来源、选择器、条件和值；可独立只验证源码，不承诺浏览器行为。
+
+让颜色、间距、字号等使用团队登记的设计变量，支持原生 CSS、SCSS/Sass、Less，以及 Vue 中对应的内联 `style` 块。作为 `checks.stylelint.uiTokens` 子能力，新前端配置默认开启，仅适用于前端应用；读取既有配置时保留原开关。
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
@@ -14,13 +16,13 @@
 
 本仓库已通过真实解析测试的配置组合如下；只需准备项目实际使用的语法包，并在现有 Stylelint 配置的 `overrides` 中按文件类型设置 `customSyntax`：
 
-| 文件类型 | `customSyntax` | 说明 |
-|---|---|---|
-| `.css` | 默认 CSS 解析器 | 无需额外语法包 |
-| `.scss` | `postcss-scss` | 保留 SCSS 变量及表达式 |
-| `.sass` | `postcss-sass` | 解析缩进式 Sass |
-| `.less` | `postcss-less` | 保留 Less 变量及表达式 |
-| `.vue` | `postcss-html` | 同时安装内联样式语言对应的语法包；按各块的 `lang` 解析 |
+| 文件类型 | `customSyntax`  | 说明                                                   |
+| -------- | --------------- | ------------------------------------------------------ |
+| `.css`   | 默认 CSS 解析器 | 无需额外语法包                                         |
+| `.scss`  | `postcss-scss`  | 保留 SCSS 变量及表达式                                 |
+| `.sass`  | `postcss-sass`  | 解析缩进式 Sass                                        |
+| `.less`  | `postcss-less`  | 保留 Less 变量及表达式                                 |
+| `.vue`   | `postcss-html`  | 同时安装内联样式语言对应的语法包；按各块的 `lang` 解析 |
 
 这些语法包安装在消费项目中。常规样式规则继续由项目自己的 Stylelint 配置维护。
 
@@ -29,10 +31,13 @@
 ```json
 {
   "checks": {
-    "uiTokens": {
-      "enabled": false,
-      "languages": ["css", "sass", "less"],
-      "manifestFile": "ui-tokens.manifest.json"
+    "stylelint": {
+      "enabled": true,
+      "uiTokens": {
+        "enabled": false,
+        "languages": ["css", "sass", "less"],
+        "manifestFile": "ui-tokens.manifest.json"
+      }
     }
   }
 }
@@ -41,25 +46,25 @@
 只使用原生 CSS 时，将 `languages` 改为 `["css"]`；SCSS 和缩进式 Sass 都用 `"sass"`。允许按项目实际情况多选。扫描时同时根据明确选择的语言与文件语法判断，未选择的语言不会被接管。
 
 <!-- config-fields:start -->
-**字段说明**（包含可选的扫描与图标配置）：
 
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `checks.uiTokens.enabled` | 启用样式 Token 检查 | `true` / `false`；默认 `false` | 必须是 JSON 布尔值；启用后需要有效的清单、来源文件及对应解析工具。 |
-| `checks.uiTokens.languages` | 明确参与检查的样式语言 | 从 `"css"`、`"sass"`、`"less"` 中选择；默认 `["css"]` | 非空且不可重复；`sass` 同时包含 `.scss` 和 `.sass`；Vue 块根据 `lang` 归属，没有 `lang` 的块属于 CSS。 |
-| `checks.uiTokens.manifestFile` | 项目生成并提交的 Token 清单 | 应用相对文件路径；默认 `"ui-tokens.manifest.json"` | 非空、确定文件路径，不支持 glob；不得越出应用目录。 |
-| `checks.uiTokens.include` | 参与扫描的应用相对 glob | 字符串数组；默认 `["src/**/*.{vue,css,scss,sass,less}"]` | 至少一项，每项非空；目录不在 `src` 下时需调整。 |
-| `checks.uiTokens.exclude` | 优先于 `include` 的排除范围 | 字符串数组；默认 `["**/generated/**","**/dist/**","**/coverage/**","**/reports/**"]` | 允许空数组，每项非空；不要把业务样式整体排除来隐藏违规。 |
-| `checks.uiTokens.iconSelectors` | 哪些选择器中的尺寸按图标尺寸检查 | 字符串数组；默认 `["svg",".icon",".ui-icon",".svg-icon"]` | 至少一项、不可重复且每项非空；匹配上下文中的 `width`、`height`、`inline-size`、`block-size` 使用 `icon-size` 类别。 |
+**字段说明**（包含可选的扫描配置）：
+
+| 字段                                      | 用途                             | 可填值与默认值                                                                              | 约束与要求                                                                                                          |
+| ----------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `checks.stylelint.uiTokens.enabled`       | 启用样式 Token 检查              | `true` / `false`；默认 `false`                                                              | 必须是 JSON 布尔值；启用后需要有效的清单、来源文件及对应解析工具。                                                  |
+| `checks.stylelint.uiTokens.languages`     | 明确参与检查的样式语言           | 从 `"css"`、`"sass"`、`"less"` 中选择；默认 `["css"]`                                       | 非空且不可重复；`sass` 同时包含 `.scss` 和 `.sass`；Vue 块根据 `lang` 归属，没有 `lang` 的块属于 CSS。              |
+| `checks.stylelint.uiTokens.manifestFile`  | 项目生成并提交的 Token 清单      | 应用相对文件路径；默认 `"ui-tokens.manifest.json"`                                          | 非空、确定文件路径，不支持 glob；不得越出应用目录。                                                                 |
+| `checks.stylelint.uiTokens.include`       | 参与扫描的应用相对 glob          | 字符串数组；默认 `["src/**/*.{vue,css,scss,sass,less}","styles/**/*.{css,scss,sass,less}"]` | 至少一项，每项非空；目录不在 `src` 或 `styles` 下时需调整。                                                         |
+| `checks.stylelint.uiTokens.exclude`       | 优先于 `include` 的排除范围      | 字符串数组；默认 `["**/generated/**","**/dist/**","**/coverage/**","**/reports/**"]`        | 允许空数组，每项非空；不要把业务样式整体排除来隐藏违规。                                                            |
 
 <!-- config-fields:end -->
 
-将真实的 Token 来源与清单加入 Git 后启用：
+将真实的 Token 来源与清单加入 Git，将 `checks.stylelint.uiTokens.enabled` 改为 true 后启用主开关：
 
 ```bash
-npx repo-guard enable uiTokens
+npx repo-guard enable stylelint
 npx repo-guard doctor
-npx repo-guard ui-tokens
+npx repo-guard stylelint
 ```
 
 多应用仓库在命令后加 `--project <id>`。启用命令会在**所属应用**的 `repository.rules` 中为清单补充 `notify` 保护，路径相对于该应用；不会把前端保护规则写入后端。已有同路径规则不会被降低，关闭检查也不会移除这条保护规则。启用与停用会同步应用的 AI 托管规范；直接修改配置后运行 `npx repo-guard doctor --fix` 同步，再执行 `doctor` 复核。
@@ -115,22 +120,23 @@ npx repo-guard ui-tokens
 ```
 
 <!-- config-fields:start -->
+
 **字段说明**：
 
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `$schema` | 为编辑器提供字段校验 | 可选字符串；示例为包内 Schema 相对路径 | 相对路径按清单所在目录解析，按实际安装位置调整；不控制检查开关。 |
-| `version` | 清单格式版本 | 必填，只能是 `2` | 不读取或转换旧版本。 |
-| `sources` | 真实 Token 定义源及其指纹 | 必填对象数组 | 至少一项；路径不可重复；来源需纳入 Git，清单不得引用自身。 |
-| `sources[].path` | 定义源的位置 | 必填、非空的应用相对文件路径 | 确定路径，不支持 glob，不得越出应用目录或经过符号链接。 |
-| `sources[].sha256` | 来源文件原始字节的 SHA-256 | 必填字符串 | 64 位小写十六进制，必须与实际文件一致；来源变化后重新生成。 |
-| `tokens` | 允许使用的设计 Token | 必填对象数组 | 至少一项；每个 Token 都需声明标识、类别及至少一种语言的别名。 |
-| `tokens[].id` | 稳定的 Token 标识 | 必填字符串，例如 `color.brand` | 不可重复；小写字母开头，段内只含小写字母和数字，段间使用点号或连字符。 |
-| `tokens[].category` | Token 所属的设计类别 | 必填，下表的 12 类之一 | 使用时必须与受控属性的类别一致。 |
-| `tokens[].aliases` | 各语言允许的精确写法 | 必填对象，仅支持 `css`、`sass`、`less` | 至少一个语言数组非空；省略的语言补为空数组。同一语言的别名在整份清单中不得重复。 |
-| `tokens[].aliases.css` | CSS 变量引用，或 CSS 断点允许值 | 字符串数组，默认 `[]` | 普通类别只能是完整 `var(--name)`，名称只含字母、数字、下划线、连字符，无空白与回退参数；断点类别只能是大于零的 `px`、`em` 或 `rem` 长度。 |
-| `tokens[].aliases.sass` | Sass 中允许使用的变量或表达式 | 字符串数组，默认 `[]` | 每项非空、不可重复；按完整表达式边界匹配，例如 `$space-md` 或项目登记的 map、函数表达式。 |
-| `tokens[].aliases.less` | Less 中允许使用的变量或表达式 | 字符串数组，默认 `[]` | 每项非空、不可重复；按完整表达式边界匹配，例如 `@space-md` 或项目登记的函数表达式。 |
+| 字段                    | 用途                            | 可填值与默认值                         | 约束与要求                                                                                                                                |
+| ----------------------- | ------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `$schema`               | 为编辑器提供字段校验            | 可选字符串；示例为包内 Schema 相对路径 | 相对路径按清单所在目录解析，按实际安装位置调整；不控制检查开关。                                                                          |
+| `version`               | 清单格式版本                    | 必填，只能是 `2`                       | 不读取或转换旧版本。                                                                                                                      |
+| `sources`               | 真实 Token 定义源及其指纹       | 必填对象数组                           | 至少一项；路径不可重复；来源需纳入 Git，清单不得引用自身。                                                                                |
+| `sources[].path`        | 定义源的位置                    | 必填、非空的应用相对文件路径           | 确定路径，不支持 glob，不得越出应用目录或经过符号链接。                                                                                   |
+| `sources[].sha256`      | 来源文件原始字节的 SHA-256      | 必填字符串                             | 64 位小写十六进制，必须与实际文件一致；来源变化后重新生成。                                                                               |
+| `tokens`                | 允许使用的设计 Token            | 必填对象数组                           | 至少一项；每个 Token 都需声明标识、类别及至少一种语言的别名。                                                                             |
+| `tokens[].id`           | 稳定的 Token 标识               | 必填字符串，例如 `color.brand`         | 不可重复；小写字母开头，段内只含小写字母和数字，段间使用点号或连字符。                                                                    |
+| `tokens[].category`     | Token 所属的设计类别            | 必填，下表的 11 类之一                 | 使用时必须与受控属性的类别一致。                                                                                                          |
+| `tokens[].aliases`      | 各语言允许的精确写法            | 必填对象，仅支持 `css`、`sass`、`less` | 至少一个语言数组非空；省略的语言补为空数组。同一语言的别名在整份清单中不得重复。                                                          |
+| `tokens[].aliases.css`  | CSS 变量引用，或 CSS 断点允许值 | 字符串数组，默认 `[]`                  | 普通类别只能是完整 `var(--name)`，名称只含字母、数字、下划线、连字符，无空白与回退参数；断点类别只能是大于零的 `px`、`em` 或 `rem` 长度。 |
+| `tokens[].aliases.sass` | Sass 中允许使用的变量或表达式   | 字符串数组，默认 `[]`                  | 每项非空、不可重复；按完整表达式边界匹配，例如 `$space-md` 或项目登记的 map、函数表达式。                                                 |
+| `tokens[].aliases.less` | Less 中允许使用的变量或表达式   | 字符串数组，默认 `[]`                  | 每项非空、不可重复；按完整表达式边界匹配，例如 `@space-md` 或项目登记的函数表达式。                                                       |
 
 <!-- config-fields:end -->
 
@@ -140,20 +146,19 @@ CSS 自定义属性不能直接用于 `@media` 的条件，因此 CSS 的断点 
 
 ## 检查范围与边界
 
-| 类别 | 约束的设计内容 |
-|---|---|
-| `color` | 文字、背景、边框等受控颜色 |
-| `spacing` | 内外边距、间隙等间距 |
-| `font-family` | 字体族 |
-| `font-size` | 字号 |
-| `line-height` | 行高 |
-| `font-weight` | 字重 |
-| `radius` | 圆角 |
-| `shadow` | 阴影 |
-| `z-index` | 层级 |
-| `breakpoint` | 媒体与容器查询的断点 |
-| `animation-duration` | 动画与过渡时长 |
-| `icon-size` | `iconSelectors` 指定上下文中的图标尺寸 |
+| 类别                 | 约束的设计内容                         |
+| -------------------- | -------------------------------------- |
+| `color`              | 文字、背景、边框等受控颜色             |
+| `spacing`            | 内外边距、间隙等间距                   |
+| `font-family`        | 字体族                                 |
+| `font-size`          | 字号                                   |
+| `line-height`        | 行高                                   |
+| `font-weight`        | 字重                                   |
+| `radius`             | 圆角                                   |
+| `shadow`             | 阴影                                   |
+| `z-index`            | 层级                                   |
+| `breakpoint`         | 媒体与容器查询的断点                   |
+| `animation-duration` | 动画与过渡时长                         |
 
 受控声明需要使用对应类别的完整别名。原始颜色、长度、字体、阴影、时长、未登记变量、错误类别及无法证明符合清单的计算表达式会被指出；`0`、`auto`、`inherit`、`none` 等不属于设计刻度的中性常量允许使用。普通元素宽高、布局、定位模式、透明度、边框厚度等不属于本门禁的管理范围。
 
@@ -172,3 +177,9 @@ CSS 自定义属性不能直接用于 `@media` 的条件，因此 CSS 的断点 
 检查失败时，根据中文报告中的规则、文件位置和证据修复。源码问题改用正确类别的 Token；定义变更需要重新生成清单并核对指纹；工具问题需要补齐消费项目的 Stylelint 与语法配置。修改后重新暂存，使用相同入口复核，不通过关闭功能或删除清单规避团队要求。
 
 [实现入口](../../src/gates/quality/ui-token-gate.js) · [策略测试](../../test/policies/ui-tokens.test.js) · [真实解析与清单测试](../../test/integrations/ui-tokens/) · [提交阶段测试](../../test/hooks/ui-tokens.test.js)
+
+图标尺寸专项已移除：不按类名、SVG 标签或宽高推断图标。`iconSelectors` 与清单 `icon-size` 类别均不再接受。其他分类与清单校验继续执行。
+
+新建预设开启主开关不代表已建立设计规范。values.enabled 与 artifacts.enabled 仍默认关闭，需显式配置指定值和生成 CSS 范围后开启；不得自动填入业务设计值或伪造 Token 清单。通用字段回退值不改变既有配置。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

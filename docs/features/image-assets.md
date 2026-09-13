@@ -10,10 +10,10 @@
 
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
-图片治理默认关闭，消费项目需自行安装兼容的 Sharp 和 SVGO，再显式启用：
+通用配置图片治理默认关闭；前端新建预设默认开启。消费项目需自行安装兼容的 Sharp 和 SVGO：
 
 ```bash
-npm install --save-dev --save-exact sharp@0.35.3 svgo@4.1.0
+npm install --save-dev --save-exact sharp@0.35.4 svgo@4.1.0
 npx repo-guard enable imageAssets
 npx repo-guard doctor
 ```
@@ -109,7 +109,7 @@ npx repo-guard doctor
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
 | `checks.imageAssets.enabled` | 是否启用图片治理 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `checks.imageAssets.enforcement` | changedFiles 约束变更图片；allFiles 扩大为全部匹配图片 | `"changedFiles"` / `"allFiles"`<br>默认：`"changedFiles"` | 只接受列出的值 |
+| `checks.imageAssets.enforcement` | changedFiles 约束变更图片；allFiles 扩大为全部匹配图片 | `"changedFiles"` / `"allFiles"`<br>默认：`"allFiles"` | 只接受列出的值 |
 | `checks.imageAssets.include` | 参与图片治理的仓库相对文件 glob | 字符串数组<br>默认：内置 3 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；每项为非空字符串 |
 | `checks.imageAssets.exclude` | 排除的图片路径，优先于 include | 字符串数组<br>默认：`["**/generated/**","**/dist/**","**/coverage/**","**/reports/**"]` | 允许空数组；每项为非空字符串 |
 | `checks.imageAssets.extensions` | 允许治理的图片扩展名列表；不带开头的点 | 数组；每项可选 `"png"`、`"jpg"`、`"jpeg"`、`"webp"`、`"avif"`、`"svg"`、`"gif"`、`"ico"`、`"bmp"`、`"tif"`、`"tiff"`<br>默认：`["png","jpg","jpeg","webp","avif","svg","gif","ico","bmp","tif","tiff"]` | 至少 1 项；元素不可重复 |
@@ -128,7 +128,7 @@ npx repo-guard doctor
 | `checks.imageAssets.compression.minSavingsPercent` | 优化结果至少需要节省的百分比，与字节阈值同时满足 | 整数<br>默认：`10` | ≥ 1；≤ 99 |
 | `checks.imageAssets.compression.raster.enabled` | 是否启用位图优化 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 | `checks.imageAssets.compression.raster.allowLossy` | 是否允许有损编码；写入仍需命令行显式确认 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；显式写入有损结果还需 --allow-lossy。 |
-| `checks.imageAssets.compression.raster.metadata` | preserve 保留元数据；strip 移除元数据 | `"preserve"` / `"strip"`<br>默认：`"preserve"` | 只接受列出的值 |
+| `checks.imageAssets.compression.raster.metadata` | preserve 保留元数据；strip 移除元数据 | `"preserve"` / `"strip"` / `"display"`<br>默认：`"preserve"` | 只接受列出的值 |
 | `checks.imageAssets.compression.svg.enabled` | 是否启用SVG 优化 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 | `checks.imageAssets.compression.svg.allowWrite` | 是否允许显式优化命令写入 SVG | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；还需 image-optimize --write；自动 Hook 不写入图片。 |
 | `checks.imageAssets.compression.conversion.enabled` | 是否启用WebP 转换收益检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
@@ -181,3 +181,11 @@ npx repo-guard image-optimize --to webp --write --allow-lossy -- src/assets/bann
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/gates/repository/image-assets-gate.js) · [对应测试](../../test/gates/repository/image-assets.test.js)
+
+## 前端预设扩展
+
+前端初始化及显式启用的可编辑全量图片预设、接口/响应字段保留依据、预算、动画、元数据处理、页面图片审计及批量引用更新见[前端图片治理预设](frontend-image-presets.md)。默认执行范围现为 allFiles；changedFiles 仍可由用户显式选择。
+
+安全输入上限在读取图片计算哈希前生效。全部治理扩展关闭后不隐式加载 Sharp；GIF/TIFF 元数据治理的 Doctor 检查也要求消费项目 Sharp。格式配置 `jpg`/`tif` 分别对应真实编码 `jpeg`/`tiff`。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

@@ -6,6 +6,7 @@ export {
   serializeProjectConfig,
 } from './config/project-configuration.js';
 export { getProjectToolRequirements, PROJECT_PROFILES } from './profiles/project-profiles.js';
+export { getFrontendToolRequirements } from './profiles/frontend-tool-requirements.js';
 export { matchRule } from './config/path-matching.js';
 export { EXIT_CODES, aggregateExitCodes, aggregateGateResults } from './core/result/exit-code.js';
 export {

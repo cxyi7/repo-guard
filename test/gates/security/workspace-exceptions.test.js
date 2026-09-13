@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { loadWorkspace } from '../../../src/config/workspace-configuration.js';
-import { dynamicCodeGate } from '../../../src/gates/security/dynamic-code-gate.js';
+import { sourceSecurityGate } from '../../../src/gates/security/source-security-gate.js';
 
 function dateText(offset) {
   const date = new Date();
@@ -39,8 +39,8 @@ function fixture(context, declarations, entriesByApplication) {
 
 function inspect(project) {
   const files = ['src/runtime.js'];
-  const plan = dynamicCodeGate.plan({ root: project.root, files });
-  return dynamicCodeGate.run({ root: project.root, config: project.config, plan });
+  const plan = sourceSecurityGate.plan({ root: project.root, files });
+  return sourceSecurityGate.run({ root: project.root, config: project.config, plan });
 }
 
 test('应用例外只放行本应用，同名文件不能跨应用套用且根入口不接受例外', (context) => {
@@ -56,7 +56,7 @@ test('应用例外只放行本应用，同名文件不能跨应用套用且根�
     const approved = inspect(api);
     assert.equal(approved.status, 'passed', approved.summary);
     assert.equal(approved.metrics.approvedExceptions, 1);
-    assert.match(approved.diagnostics[0].message, /api-approved/);
+    assert.match(approved.diagnostics.map(item => item.message).join('\n'), /api-approved/);
     assert.equal(inspect(worker).status, 'violation');
   }
   assert.equal(readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'), original);

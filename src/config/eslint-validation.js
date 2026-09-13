@@ -1,4 +1,5 @@
 import { DEFAULT_ESLINT_CONFIG } from './defaults.js';
+import { validateToolOptions } from './tool-options.js';
 import {
   assertKnownProperties,
   configValidationError,
@@ -11,7 +12,7 @@ export function validateEslintConfiguration(checksValue, configPath) {
   }
   assertKnownProperties(
     eslintValue,
-    new Set(['enabled', 'preset', 'pattern', 'fix', 'maxWarnings']),
+    new Set(['enabled', 'preset', 'pattern', 'fix', 'maxWarnings', 'options']),
     `${configPath} checks.eslint`,
   );
   if (eslintValue.enabled != null && typeof eslintValue.enabled !== 'boolean') {
@@ -36,6 +37,7 @@ export function validateEslintConfiguration(checksValue, configPath) {
     throw configValidationError(`${configPath} checks.eslint.maxWarnings 必须是非负整数`);
   }
   return {
+    ...validateToolOptions('eslint', eslintValue.options, configPath),
     enabled: eslintValue.enabled ?? DEFAULT_ESLINT_CONFIG.enabled,
     preset: eslintValue.preset ?? DEFAULT_ESLINT_CONFIG.preset,
     pattern: eslintValue.pattern?.trim() || DEFAULT_ESLINT_CONFIG.pattern,

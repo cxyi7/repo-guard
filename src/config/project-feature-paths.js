@@ -6,21 +6,20 @@ export const JAVA_PROJECT_CHECKS = Object.freeze([
 ]);
 
 export const NODE_ONLY_PROJECT_CHECKS = Object.freeze([
-  'eslint', 'prettier', 'stylelint', 'styleComplexity', 'styleGovernance',
+  'sourceSecurity', 'eslint', 'prettier', 'stylelint',
   'fileHeader', 'functionDocs', 'asyncResourceCleanup', 'deadCode',
-  'unusedImageAssets', 'uiTokens', 'architecture', 'accessibilityTest',
+  'unusedImageAssets', 'architecture',
   'build', 'lighthouse', 'typeCheck', 'unitTest', 'coverage',
-  'componentInteraction', 'mutationTest',
+  'mutationTest',
 ]);
 
 export const PROJECT_CHECK_PATHS = Object.freeze(
   Object.fromEntries(
     [
+      'sourceSecurity',
       'eslint',
       'prettier',
       'stylelint',
-      'styleComplexity',
-      'styleGovernance',
       'maxFileLines',
       'filePlacement',
       'fileHeader',
@@ -30,15 +29,12 @@ export const PROJECT_CHECK_PATHS = Object.freeze(
       'deadCode',
       'imageAssets',
       'unusedImageAssets',
-      'uiTokens',
       'architecture',
-      'accessibilityTest',
       'build',
       'lighthouse',
       'typeCheck',
       'unitTest',
       'coverage',
-      'componentInteraction',
       'mutationTest',
       ...JAVA_PROJECT_CHECKS,
     ].map((feature) => [feature, Object.freeze(['checks', feature])]),

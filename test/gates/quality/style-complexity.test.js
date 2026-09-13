@@ -1,122 +1,105 @@
-import { stringifyProjectFixture } from '../../helpers/project-config.js';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { runStyleComplexityProject } from '../../../src/gates/quality/stylelint-gate.js';
+import { styleFixture } from '../../helpers/stylelint.js';
+import { frontendToolOptions } from '../../../src/profiles/frontend-tool-presets.js';
 
-const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
-const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
-mkdirSync(TEST_ROOT, { recursive: true });
-
-function git(root, args) {
-  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-}
-
-function createFixture() {
-  const root = mkdtempSync(path.join(TEST_ROOT, 'style-complexity-'));
-  git(root, ['init']);
-  writeFileSync(
-    path.join(root, 'package.json'),
-    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
-  );
-  writeFileSync(
-    path.join(root, 'stylelint.config.mjs'),
-    'export default { rules: { "selector-max-compound-selectors": null } };\n',
-  );
-  writeFileSync(path.join(root, '.stylelintignore'), 'style.css\n');
-  writeFileSync(
-    path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-  version: 2,
-  project: {
-    id: 'web',
+test('完整预设实际检查 CSS 权重与自定义属性，Vue 不套用 CSS 权重', async (t) => {
+  const f = styleFixture(t);
+  const options = frontendToolOptions('stylelint', {
     role: 'frontend',
     stack: 'node',
-    preset: 'vue-javascript'
-  },
-  checks: {
-    stylelint: {
-      enabled: true
-    },
-    styleComplexity: {
-      enabled: false,
-      maxCompoundSelectors: 2,
-      maxNestingDepth: 2
-    }
-  },
-  repository: {
-    rules: [{
-      pattern: '**',
-      category: 'Fixture',
-      level: 'audit'
-    }]
-  }
-}, null, 2)}\n`,
-  );
-  writeFileSync(
-    path.join(root, 'style.css'),
-    '/* stylelint-disable selector-max-compound-selectors */\n.page .panel .action { color: red; }\n',
-  );
-  git(root, ['add', '.']);
-  return root;
-}
-
-function exceptionRegistry(entries = []) {
-  return { warningDays: 14, maxDays: 90, entries };
-}
-
-test('explicit CLI audits ignored files even when the staged gate is disabled', (context) => {
-  const root = createFixture();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const result = spawnSync(process.execPath, [CLI_PATH, 'style-complexity'], {
-    cwd: root,
-    encoding: 'utf8',
+    preset: 'vue-typescript',
   });
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /style\/selector-max-compound-selectors/);
-  assert.match(result.stderr, /\[style\/selector-max-compound-selectors\] style\.css:2:1/);
-  assert.match(result.stderr, /修复目标:/);
+  f.write('styles/site.css', '.a.b.c.d {\n  color: red;\n}\n');
+  const css = await f.run(['styles/site.css'], { options });
+  assert.ok(
+    css.findings.some(
+      (finding) => finding.ruleId === 'style/selector-max-specificity',
+    ),
+  );
+  f.write(
+    'src/site.vue',
+    '<template><div /></template><style scoped>.a.b.c.d {\n  color: red;\n}\n</style>',
+  );
+  assert.equal((await f.run(['src/site.vue'], { options })).status, 'passed');
+  f.write(
+    'styles/site.css',
+    ':root {\n  --theme: red;\n  --theme: blue;\n}\n.a {\n  color: --theme;\n}\n',
+  );
+  const variables = await f.run(['styles/site.css'], { options });
+  for (const rule of [
+    'custom-property-no-missing-var-function',
+    'declaration-block-no-duplicate-custom-properties',
+  ])
+    assert.ok(
+      variables.findings.some(
+        (finding) => finding.ruleId === 'stylelint/' + rule,
+      ),
+    );
 });
 
-test('allows only an exact active structured exception', async (context) => {
-  const root = createFixture();
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  const expiresOn = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000))
-    .toISOString().slice(0, 10);
-  const createdOn = new Date(Date.now() - (24 * 60 * 60 * 1000))
-    .toISOString().slice(0, 10);
-
-  const result = await runStyleComplexityProject({
-    root,
-    files: ['style.css'],
-    config: {
-      enabled: true,
-      maxCompoundSelectors: 2,
-      maxNestingDepth: 2,
-    },
-    exceptions: exceptionRegistry([{
-      id: 'legacy-selector-chain',
-      rule: 'style/selector-max-compound-selectors',
-      path: 'style.css',
-      line: 2,
-      column: 1,
-      reason: 'Legacy selector awaits a reviewed component markup migration.',
-      owner: 'frontend-team',
-      approvedBy: 'architecture-team',
-      ticket: 'STYLE-1000',
-      createdOn,
-      expiresOn,
-    }]),
+test('真实 Stylelint 检测复杂度且每条规则只报告一次', async (t) => {
+  const f = styleFixture(t);
+  f.write('styles/site.css', '.a .b .c .d { color: red; }');
+  const result = await f.run(['styles/site.css'], {
+    options: { rules: { 'selector-max-compound-selectors': 3 } },
+  });
+  assert.equal(result.status, 'violation');
+  assert.equal(result.findings.length, 1);
+  assert.equal(
+    result.findings[0].ruleId,
+    'style/selector-max-compound-selectors',
+  );
+});
+test('真实原生规则优先于默认值，规则参数整体替换', async (t) => {
+  const f = styleFixture(t);
+  f.write('styles/site.css', '.a .b .c .d { color: red; }');
+  f.write(
+    'stylelint.config.mjs',
+    'export default { rules: {"selector-max-compound-selectors":null} };',
+  );
+  const result = await f.run(['styles/site.css'], {
+    options: { rules: { 'selector-max-compound-selectors': 3 } },
   });
   assert.equal(result.status, 'passed');
+});
+test('真实项目忽略文件不作为已检查通过证据', async (t) => {
+  const f = styleFixture(t);
+  f.write('styles/site.css', '.a .b .c .d { color: red; }');
+  f.write(
+    'stylelint.config.mjs',
+    'export default { ignoreFiles:["**/site.css"], rules: {"block-no-empty":true} };',
+  );
+  assert.equal((await f.run(['styles/site.css'])).status, 'skipped');
+});
+test('真实无效规则选项保留配置错误', async (t) => {
+  const f = styleFixture(t);
+  f.write('styles/site.css', '.a { color: red; }');
+  await assert.rejects(
+    () =>
+      f.run(['styles/site.css'], {
+        options: { rules: { 'selector-max-id': -1 } },
+      }),
+    (e) => e.kind === 'configuration',
+  );
+});
+test('用户修改复杂度阈值后按实际值检查', async (t) => {
+  const f = styleFixture(t);
+  f.write('styles/site.scss', '.a { .b { .c { color:red; } } }');
+  assert.equal(
+    (
+      await f.run(['styles/site.scss'], {
+        options: { ...f.options, rules: { 'max-nesting-depth': 1 } },
+      })
+    ).status,
+    'violation',
+  );
+  assert.equal(
+    (
+      await f.run(['styles/site.scss'], {
+        options: { ...f.options, rules: { 'max-nesting-depth': 2 } },
+      })
+    ).status,
+    'passed',
+  );
 });

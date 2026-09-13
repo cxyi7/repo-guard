@@ -97,7 +97,7 @@ function assertDynamicDeclarationsCurrent(config, sourcePaths, assetPaths) {
       ].join('；');
       throw configurationError(
         'unused-image-assets/stale-dynamic-reference',
-        `imageAssets.unused.dynamicReferences 第 ${index + 1} 项已经失效：${missing}`,
+        `checks.unusedImageAssets.dynamicReferences 第 ${index + 1} 项已经失效：${missing}`,
       );
     }
   }
@@ -116,15 +116,33 @@ export function analyzeUnusedImageAssets({
   }
   const assetSet = new Set(assetPaths);
   const used = new Set();
+  const retained = [];
+  const uncertainSources = [];
+  const referenceFindings = [];
+  const allPaths = new Set(entries.map((entry) => typeof entry === 'string' ? entry : entry.path));
   let referenceCount = 0;
   let dynamicGlobCount = 0;
   for (const sourcePath of sourcePaths) {
-    const facts = extractImageReferenceFacts(readSource(sourcePath), sourcePath);
+    const source = readSource(sourcePath);
+    const facts = extractImageReferenceFacts(source, sourcePath);
+    if (facts.uncertain?.length && !imageConfig.unused.dynamicReferences.some((entry) => matchesAny(sourcePath, entry.sourcePatterns))) uncertainSources.push(sourcePath);
     for (const reference of facts.references) {
       const resolved = resolveImageReference(reference.value, sourcePath, imageConfig.unused);
       if (resolved && assetSet.has(resolved)) {
         referenceCount += 1;
         used.add(resolved);
+      }
+      if (imageConfig.unused.referenceIntegrity && !['script-string', 'script-template', 'json-string'].includes(reference.kind) && resolved && !allPaths.has(resolved)
+        && imageConfig.extensions.includes(path.posix.extname(resolved).slice(1).toLowerCase())
+        && selectImageAssetPaths([resolved], imageConfig).length) {
+        const actual = [...allPaths].find((candidate) => candidate.toLowerCase() === resolved.toLowerCase());
+        if (actual) used.add(actual);
+        referenceFindings.push({ rule: 'assets/reference-integrity', issue: actual ? 'image-assets/reference-case' : 'image-assets/reference-missing',
+          path: sourcePath, line: source.slice(0, reference.offset).split('\n').length,
+          column: reference.offset - source.lastIndexOf('\n', reference.offset - 1), severity: 'error',
+          message: actual ? `图片引用 ${reference.value} 大小写不匹配，实际路径为 ${actual}` : `本地图片引用不存在：${reference.value}`,
+          remediation: '核对图片文件、别名和公开目录映射，修正引用路径。',
+        });
       }
     }
     const resolvedGlobs = facts.dynamicGlobs
@@ -142,6 +160,8 @@ export function analyzeUnusedImageAssets({
   for (const declaration of imageConfig.unused.dynamicReferences) {
     for (const assetPath of assetPaths.filter((candidate) => matchesAny(candidate, declaration.assetPatterns))) {
       used.add(assetPath);
+      retained.push({ path: assetPath, sourcePatterns: declaration.sourcePatterns, reason: declaration.reason,
+        ...(declaration.api ? { api: declaration.api } : {}), status: 'declared' });
     }
   }
   return Object.freeze({
@@ -151,6 +171,9 @@ export function analyzeUnusedImageAssets({
     unusedPaths: Object.freeze(assetPaths.filter((assetPath) => !used.has(assetPath))),
     referenceCount,
     dynamicGlobCount,
+    retained: Object.freeze(retained),
+    uncertainSources: Object.freeze(uncertainSources),
+    referenceFindings: Object.freeze(referenceFindings),
   });
 }
 

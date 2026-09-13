@@ -25,10 +25,6 @@ test('normalizes unit test execution, coverage, interaction, and mapping setting
             reportsDirectory: ' reports/coverage ',
             thresholds: { lines: 85, changedLines: 95 },
           },
-          componentInteraction: {
-            enabled: true,
-            componentPatterns: [' src/widgets/**/*.vue '],
-          },
           requireTests: 'changedFiles',
           sourcePatterns: [' src/widgets/**/*.vue '],
           testPatterns: [' test/**/*.spec.ts '],
@@ -57,10 +53,6 @@ test('normalizes unit test execution, coverage, interaction, and mapping setting
           branches: 80,
           changedLines: 95,
         },
-      },
-      componentInteraction: {
-        enabled: true,
-        componentPatterns: ['src/widgets/**/*.vue'],
       },
       requireTests: 'changedFiles',
       sourcePatterns: ['src/widgets/**/*.vue'],
@@ -157,7 +149,7 @@ test('validates component interaction and test selection settings', () => {
         },
         CONFIG_PATH,
       ),
-    /checks\.componentInteraction\.enabled 要求启用 checks\.unitTest\.enabled/,
+    /包含不支持的属性： componentInteraction/,
   );
   assert.throws(
     () =>
@@ -222,6 +214,6 @@ test('validates unit test mapping templates', () => {
         },
         CONFIG_PATH,
       ),
-    /必须包含 \{path\} 或 \{name\}/,
+    /必须包含 \{path\}、\{name\} 或 \{relativePath\}/,
   );
 });

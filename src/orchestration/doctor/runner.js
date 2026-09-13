@@ -262,7 +262,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
 async function inspectGate(gate, context, { checks, errors }) {
   const label = context.project?.id ? `应用 ${context.project.id}` : '仓库';
   try {
-    const setup = await gate.inspectSetup(context);
+    const setup = await gate.inspectSetup({ ...context, doctor: true });
     if (setup == null) return;
     if (setup.status === 'ready') checks.push(`${label}：${setup.summary}`);
     else errors.push(`${label} ${gate.id} 设置状态为 ${setup.status}：${setup.summary}`);

@@ -103,3 +103,39 @@ Git 非零退出、无法启动或被信号终止时，主错误说明、退出�
 [结果结构](../../src/core/result/gate-result.js) · [统一退出码](../../src/core/result/exit-code.js) · [工作区报告聚合](../../src/orchestration/ci/workspace-runner.js) · [对应测试](../../test/ci/workspace-ci.test.js) · [出口边界测试](../../test/architecture/exit-code-boundary.test.js)
 
 [Git 错误诊断](../../src/git/command-error.js) · [进程树清理](../../src/core/execution/process-tree.js) · [结果与呈现回归](../../test/core/gate-result.test.js) · [Git 执行回归](../../test/core/git-execution.test.js)
+
+## 前端工具配置查询与类型检查补充
+
+`tool-config` 使用当前 v2 配置输出生效工具选项；成功返回公共成功码，仅表示查询完成，不能作为检查通过证据。非法工具、路径、应用选择、缺失依赖或损坏配置返回配置/执行错误。类型预设执行全部目标与已有自定义脚本，复用公共状态映射和汇总优先级，正常非零为违规，超时/信号/启动失败为执行错误；第三方原始码单独保留。详见[前端工具预设](frontend-tool-presets.md)。
+
+## 公开函数文档结果
+
+`quality.function-documentation` 在 pre-commit、CI policy/full、release-ready 和手动入口使用统一 GateResult。缺失说明为 violation（公共退出码 2），源码解析错误为 execution-error（公共退出码 1），无匹配文件或关闭时 skipped，不能作为通过证据。
+
+3.0.0 移除组件交互与 axe 测试入口；quality.mutation-test 纳入 ci-full 和 release-ready，继续通过公共 GateResult 映射配置错误、执行错误与得分违规，不透传 Stryker 退出码。
+
+## 前端性能结果
+
+quality.build 模块报告缺失或非本轮，以及 quality.lighthouse 采集失败、页面不匹配、旧报告/缺页、超时/取消均为执行错误；未完成路由配置或未经验证跳过构建为配置错误；预算与性能断言失败为违规。继续复用公共退出码与汇总规则。报告通过 artifacts 引用，第三方原始码只用于诊断。
+
+### 图片治理结果
+
+图片预算与页面图片 action=report 产生警告并返回成功；action=error 的违规使用公共违规状态（退出码 2）。接口动态保留说明是声明，不能充当验证证据。Lighthouse 缺少某审计明确报告未验证；读取/解析错误和批量优化执行失败使用公共执行错误状态（退出码 1），不透传 Sharp、SVGO 或浏览器的原始码。
+
+严格图片模式缺少必需 Lighthouse 审计为配置错误；审计执行失败、非法传输量或缺少本轮 DOM 观察为执行错误，均通过公共状态映射为退出码 1。实际图片违规在严格模式映射为 2。每次执行的 `lighthouse-run` 产物保留结构化诊断，报告检查失败不会丢弃此前采集输出。
+
+统一 `stylelint` 手动入口汇总普通规则、隔离治理与 Token 的发现，使用公共 `aggregateGateResults`：Token 配置错误与普通违规同时发生时返回配置错误码 1，并保留违规发现。主开关关闭或无适用文件返回 skipped，不能当作交付通过证据。原生语法与规则配置解析错误保留独立第三方诊断。
+
+### Token 指定值的结果
+
+`ui-token/missing-definition`、`ui-token/value-mismatch`、`ui-token/unexpected-definition` 是结构化违规，按公共映射返回 `2`；无效配置、无法解析样式及匹配不到 CSS 产物属于配置/执行错误，返回 `1`。源码发现保留 `quality.ui-tokens` 归属，构建前置失败及产物发现归于 `quality.build`，Lighthouse 前置失败保留发现并归于其入口。源码或产物失败均不登记构建证据。
+
+## 源码安全的无法确认项
+
+`security.source-security` 使用公共状态：明确违规为 `violation`，解析/读取失败为 `execution-error`。仅有无法确认项或空范围为 `skipped`，诊断说明原因，不能作为交付通过证据；不新增退出码。
+
+依赖策略：普通依赖的非精确版本、声明冲突和锁文件不一致属于违规；特殊引用跳过对应检查；未知锁格式、工具版本或 peer 不满足属于配置错误；包管理器启动失败、配置加载超时和进程树清理失败属于执行错误。pre-commit 只读取索引，不调用磁盘就绪检查；正式门禁保持违规分类，不由准备阶段改为配置错误。
+
+### Knip 分析范围与诊断
+
+无效代码报告包含 `processedFiles`、`totalFiles` 和 `skippedSpecialReferences`；文件计数不等于业务入口覆盖证明。零处理计数属于配置错误。显式入口或范围为空、不匹配文件以及原生配置加载失败均阻断；子进程加载失败保留 Knip 原始诊断并归入执行错误。超时、启动失败、异常终止使用公共执行错误状态；普通无效代码问题使用公共违规状态，不透传 Knip 退出码。特殊引用跳过数只说明相应依赖发现被排除，不代表这些依赖已经验证。

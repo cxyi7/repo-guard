@@ -1,18 +1,15 @@
 const FRONTEND_GATE_IDS = new Set([
   'quality.vue-async-resource-cleanup', 'quality.ui-tokens',
-  'security.vue-unsafe-html', 'security.vue-target-blank',
-  'accessibility.vue-form-label', 'accessibility.vue-image-alt',
-  'quality.accessibility-test', 'quality.lighthouse',
+  'quality.lighthouse',
 ]);
 
 const NODE_GATE_IDS = new Set([
   ...FRONTEND_GATE_IDS,
   'quality.eslint', 'quality.prettier', 'quality.stylelint',
-  'quality.style-complexity', 'quality.style-governance',
   'quality.typecheck', 'quality.dead-code', 'quality.unit-test',
   'quality.coverage', 'quality.mutation-test', 'quality.architecture',
   'quality.build', 'repository.unused-image-assets', 'dependencies.policy',
-  'security.dynamic-code',
+  'security.source-security',
 ]);
 
 export const JAVA_GATE_IDS = new Set([

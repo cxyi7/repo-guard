@@ -15,6 +15,7 @@ import {
 } from '../../integrations/stylelint/project.js';
 import { findingFromPolicy, passedResult, skippedResult, violationResult } from '../native-result.js';
 import { definePlatformGate, readyGateSetup } from '../platform-gate.js';
+import { validateTokenValueSetup } from './ui-token-value-setup.js';
 
 export const UI_TOKEN_GATE_ID = 'quality.ui-tokens';
 
@@ -65,36 +66,31 @@ function contractChanged(config, manifest, changes) {
 }
 
 function inspectSetup({ root, config }) {
-  if (!config.checks.uiTokens.enabled) return readyGateSetup('UI Token 门禁已禁用');
-  loadUiTokenManifest(root, config.checks.uiTokens);
+  if (!config.checks.stylelint.enabled || !config.checks.stylelint.uiTokens.enabled) return readyGateSetup('UI Token 门禁已禁用');
+  validateTokenValueSetup(config.checks.stylelint.uiTokens, loadUiTokenManifest(root, config.checks.stylelint.uiTokens));
   const stylelint = resolveProjectStylelintMetadata(root);
-  if (!findProjectStylelintConfig(root)) {
+  if (!config.checks.stylelint.options && !findProjectStylelintConfig(root)) {
     throw configurationError(
       'ui-token/missing-stylelint-config',
       'UI Token 样式检查要求消费项目提供 Stylelint 配置',
     );
   }
-  return readyGateSetup(`UI Token 门禁（${config.checks.uiTokens.languages.join('、')} 使用 Stylelint ${stylelint.version}）`);
+  return readyGateSetup(`UI Token 门禁（${config.checks.stylelint.uiTokens.languages.join('、')} 使用 Stylelint ${stylelint.version}）`);
 }
 
 export const uiTokenGate = definePlatformGate({
   id: UI_TOKEN_GATE_ID,
-  configKey: 'checks.uiTokens',
-  featureName: 'uiTokens',
-  featureOrder: 39,
-  doctorOrder: 147,
+  configKey: 'checks.stylelint.uiTokens',
   environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'],
   ciScopes: ['all-files', 'changed-files'],
-  manualCommand: 'ui-tokens',
-  manualOrder: 147,
-  packageScript: 'guard:ui-tokens',
   rules: UI_TOKEN_RULES,
   inspectSetup,
   plan({ root, config, files, changes, configurationChanged = false }) {
-    if (!config.checks.uiTokens.enabled) return Object.freeze({ enabled: false, files: [] });
-    const manifest = loadUiTokenManifest(root, config.checks.uiTokens);
+    if (!config.checks.stylelint.enabled || !config.checks.stylelint.uiTokens.enabled) return Object.freeze({ enabled: false, files: [] });
+    const manifest = loadUiTokenManifest(root, config.checks.stylelint.uiTokens);
+    validateTokenValueSetup(config.checks.stylelint.uiTokens, manifest);
     const projectFiles = configurationChanged || contractChanged(
-      config.checks.uiTokens,
+      config.checks.stylelint.uiTokens,
       manifest,
       changes,
     ) ? collectProjectFiles(root) : files;
@@ -102,24 +98,26 @@ export const uiTokenGate = definePlatformGate({
       enabled: true,
       manifest,
       deletedContractPaths: Object.freeze(deletedContractPaths(
-        config.checks.uiTokens,
+        config.checks.stylelint.uiTokens,
         manifest,
         changes,
       )),
-      files: Object.freeze(selectedFiles(root, projectFiles, config.checks.uiTokens)),
+      files: Object.freeze(selectedFiles(root, projectFiles, config.checks.stylelint.uiTokens)),
     });
   },
   async run({ root, config, plan }) {
     if (!plan.enabled) return skippedResult(UI_TOKEN_GATE_ID, 'UI Token 门禁已禁用');
-    const styleFiles = plan.files
-      .filter(({ absolute }) => isUiTokenStyleFile(absolute, config.checks.uiTokens.languages))
-      .map(({ absolute }) => absolute);
+    const requiredSources = config.checks.stylelint.uiTokens.values?.enabled
+      ? config.checks.stylelint.uiTokens.values.definitions.map(entry => path.resolve(root, entry.source)) : [];
+    const styleFiles = [...new Set([...plan.files
+      .filter(({ absolute }) => isUiTokenStyleFile(absolute, config.checks.stylelint.uiTokens.languages))
+      .map(({ absolute }) => absolute), ...requiredSources])];
     const project = styleFiles.length > 0 ? await loadProjectStylelint(root) : null;
     const styleFacts = project ? await collectStyleFacts({
-      project, root, files: styleFiles, languages: config.checks.uiTokens.languages,
+      project, root, options: config.checks.stylelint.options, files: styleFiles, languages: config.checks.stylelint.uiTokens.languages,
     }) : [];
     const result = inspectUiTokens({
-      config: { ...config.checks.uiTokens, exceptions: config.repository.exceptions },
+      config: { ...config.checks.stylelint.uiTokens, exceptions: config.repository.exceptions },
       manifest: plan.manifest,
       deletedContractPaths: plan.deletedContractPaths,
       styleFacts,

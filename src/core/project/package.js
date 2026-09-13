@@ -1,3 +1,4 @@
+import * as nodeModule from 'node:module';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -45,6 +46,20 @@ function manifestError(root, packageName, displayName, manifestPath, reason, cau
 }
 
 function findDependencyManifest(root, packageName, displayName, requireFromProject) {
+  const pnp = nodeModule.default.findPnpApi?.(path.join(root, 'package.json'));
+  if (pnp) {
+    let resolved;
+    try { resolved = pnp.resolveToUnqualified(packageName, path.join(root, 'package.json')); }
+    catch { return null; }
+    return resolved ? path.join(resolved, 'package.json') : null;
+  }
+  let boundary = path.resolve(root);
+  while (true) {
+    if (existsSync(path.join(boundary, '.pnp.cjs'))) throw configurationError('project-package/pnp-environment', '检测到项目 PnP 清单但原生解析环境未生效，请通过项目 Yarn 环境启动 repo-guard');
+    const parent = path.dirname(boundary);
+    if (parent === boundary || existsSync(path.join(boundary, '.git'))) break;
+    boundary = parent;
+  }
   // Node supplies lookup order; only consumer ancestor node_modules directories are allowed.
   const searchPaths = (requireFromProject.resolve.paths(packageName) ?? []).filter((directory) => (
     path.basename(directory) === 'node_modules'

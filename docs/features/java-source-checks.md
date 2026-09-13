@@ -2,7 +2,7 @@
 
 源码工具与 Maven 工具复用公共原始进程诊断，保留退出码、超时和信号；即使工具没有输出，也不能丢失原始状态。源码适配器不另建原始码报告逻辑，最终门禁结果仍由报告完整性与规则共同判定。
 
-八项源码能力分别登记为门禁，分别开关和配置。所有 `enabled` 默认都是 `false`；`java-maven` 预设声明项目类型，不会自动下载、安装或启用 Java 检查工具。多应用仓库把这些配置写在所属应用根目录的 `repo-guard.config.json` 中。
+八项源码能力分别登记为门禁，分别开关和配置。已有配置的 `enabled` 省略值都是 `false`；`java-maven` 预设声明项目类型，新建模板开启检查意图，但不会自动下载或安装 Java 检查工具。多应用仓库把这些配置写在所属应用根目录的 `repo-guard.config.json` 中。
 
 完整项目接入见 [Java 接入说明](../java-quality-integration.md)，结构化状态和退出码见 [门禁结果与报告](gate-result-and-reporting.md)。源码根目录与 Maven 目录约束由独立的 `javaFiles` 检查负责；本页的 `javaLayout` 负责源码包声明与目录后缀的一致性，两项可组合启用。
 
@@ -195,3 +195,9 @@ XML 采用严格解析，拒绝外部实体、DOCTYPE、异常结构、未知字
 `command` 使用的运行 JDK 决定工具能否启动；项目编译目标与 Maven Toolchains 由独立工程检查负责。源码工具通过不证明项目按期望 Java 版本编译，也不证明测试在目标 JDK 运行。
 
 实现分别位于 `src/config/java-source.js`、`src/config/java-source-schema.js`、`src/policies/java/source-rules.js`、`src/integrations/java/source/`、`src/gates/java/source-*`。测试位于 `test/config/java-source.test.js`、`test/gates/java/source.test.js`、`test/integrations/java/source/` 与 `test/hooks/java-source-isolation.test.js`。真实工具测试只在开发者预先准备工具时运行，通过 `REPO_GUARD_JAVA_SOURCE_TOOLS` 指定含 `classpath.txt` 与 `google-java-format.jar` 的目录；测试不会自动安装工具。
+
+## Java 新建模板
+
+7.1.5 起 java-maven 新建模板默认开启全部 18 项专属检查。上文和 Schema 的字段默认值仍用于已有配置补缺，不改变显式关闭值。新建模板保留 command=null、modules=[]、pluginVersion 等真实接入缺项，不填写虚构路径或版本；这些缺项不满足严格运行配置 Schema，init 会保留待补齐配置并报错，校验通过前不安装 Hook。由人或后续 Skill 补齐工具、模块、报告、产物和插件版本后，再运行 init 与 Doctor 验证。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

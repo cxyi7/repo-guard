@@ -1,4 +1,5 @@
 import { runAnimationPreview } from './animation-preview.js';
+import { runToolConfiguration } from './tool-configuration.js';
 import { readFileSync } from 'node:fs';
 import { runCheck } from './check.js';
 import { runCiCommand } from '../ci/command.js';
@@ -51,7 +52,6 @@ const REGISTERED_MANUAL_HELP = registeredManualGates
   .join('\n');
 const CONFIGURABLE_FEATURE_HELP = [
   ...gateRegistry.configurable.map(({ featureName }) => featureName),
-  'componentInteraction',
   'coverage',
   'fileHeader',
   'functionDocs',
@@ -69,6 +69,7 @@ repo-guard - 仓库保护门禁
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard doctor [--fix|--ci]
+  repo-guard tool-config --tool eslint|prettier|stylelint|typeCheck [--file <path>] [--project <id>]
   repo-guard install-ci --provider gitlab [--profile policy|full|release-ready] [--stage <name>] [--dry-run]
   repo-guard ci [--profile policy|full|release-ready] [--base <sha>] [--head <sha>] [--report-json <path>]
   repo-guard ci-notify [--status success|failed|canceled]
@@ -88,7 +89,7 @@ ${EARLY_MANUAL_HELP}
   repo-guard guarded-build <npm-script>
   repo-guard dead-code-baseline <init|prune>
   repo-guard build-artifact-baseline <init|prune>
-  repo-guard image-optimize [--project <id>] [--to webp] [--write] [--allow-lossy] -- <paths...>
+  repo-guard image-optimize [--project <id>] [--to webp] [--write] [--allow-lossy] [--update-references] -- <paths...>
 ${REGISTERED_MANUAL_HELP}
   repo-guard hook-message <prepare|finalize|cleanup|success> [hook arguments]
 
@@ -143,6 +144,10 @@ function projectDeclaration(argumentsList, projectId) {
 }
 
 const COMMAND_HANDLERS = Object.freeze({
+  'tool-config': (argumentsList, { projectId }) => {
+    const { values } = valuedOptions(argumentsList, ['--tool', '--file']);
+    return runToolConfiguration({ tool: values['--tool'], file: values['--file'], projectId });
+  },
   delivery: (argumentsList) => runDeliveryCommand(argumentsList),
   help: helpCommand,
   '--help': helpCommand,
@@ -267,7 +272,7 @@ const COMMAND_HANDLERS = Object.freeze({
     const options = valuedOptions(
       argumentsList.slice(0, delimiter),
       ['--to', '--project'],
-      ['--write', '--allow-lossy'],
+      ['--write', '--allow-lossy', '--update-references'],
     );
     return runImageOptimize({
       paths: argumentsList.slice(delimiter + 1),
@@ -275,6 +280,7 @@ const COMMAND_HANDLERS = Object.freeze({
       to: options.values['--to'] ?? null,
       write: options.flags.has('--write'),
       allowLossy: options.flags.has('--allow-lossy'),
+      updateReferences: options.flags.has('--update-references'),
     });
   },
 });
@@ -282,7 +288,7 @@ const COMMAND_HANDLERS = Object.freeze({
 async function runKnownCommand(command, argumentsList) {
   const gate = gateRegistry.findByManualCommand(command);
   const scopedCommands = new Set([
-    'init', 'enable', 'disable', 'doctor', 'ci', 'external',
+    'init', 'enable', 'disable', 'doctor', 'ci', 'external', 'tool-config',
     'guarded-build', 'dead-code-baseline', 'build-artifact-baseline',
     'api-performance-runner', 'k6-runner',
   ]);

@@ -17,7 +17,6 @@ export const TOKEN_CASES = [
   ['layer.modal', 'z-index', 'z-index', '100'],
   ['breakpoint.tablet', 'breakpoint', 'min-width', '769px'],
   ['duration.fast', 'animation-duration', 'transition-duration', '100ms'],
-  ['icon.sm', 'icon-size', 'width', '24px'],
 ];
 
 export function digest(content) {

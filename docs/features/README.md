@@ -1,5 +1,13 @@
 # 功能说明文档索引
 
+本轮全部新增功能统一归入 2.0.0 重构；链接中的 2.1.0～7.2.0 审查文件保留为历史开发记录，不代表独立发布。
+
+完整流程尚未完成的六项工作见 [AI 接入、合同交付与发布流程待办](../end-to-end-workflow-backlog.md)，包含当前状态、实施内容、前置条件与验收标准。
+
+给出最佳配置与接入预设时，统一遵守[消费项目预设设计原则](consumer-preset-design-principles.md)：假设待接入项目尚无规范，先建立规则并确认覆盖范围，不能依赖代码已经符合建议的命名和目录。
+
+- [Token 指定值与生成 CSS 校验](ui-token-values.md)：源码定义必须符合明确约定；可选在真实构建后核对 CSS 输出，失败不登记构建证据。
+
 当前接入只使用新格式：自有结构化配置、登记表、基线与报告统一为 v2，Hook 仅接受当前 v5，AGENTS 仅接受当前托管区块；旧文件拒绝处理且不自动转换。公共写入口先检查相关托管格式，避免拒绝旧输入时留下部分写入；无法识别的执行锁也保留并阻断。格式清单与重新接入边界见[配置管理与规则启停](configuration-management.md)。
 
 每项能力都提供用途、接入或调用方式、执行范围、判断依据、失败处理以及实现和测试入口。安装与日常操作从[使用说明](../usage-guide.md)开始；内部模块职责见[维护者架构说明](../project-structure-and-feature-inventory.md)。
@@ -15,6 +23,8 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 当前配置加载、功能启停和各执行入口共同使用原生 v2 模型；质量检查与运维发布独立维护。具体改动与验收依据见 [2.0 重构工作清单](../refactor-2.0-remaining-work.md)。下表“已维护”表示已有对应功能文档，不表示已发布到 npm。
 
 ## 接入与托管
+
+前端四项工具支持[内联预设与原生配置合并](frontend-tool-presets.md)：启用时保存可修改的 options，项目原生配置优先，支持最终配置查询和接入依赖要求。
 
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
@@ -50,14 +60,9 @@ Java 工程问题按模块和规则对象提供可定位证据及修复步骤，
 | 文件头同步 | [docs/features/file-header.md](file-header.md) | 已维护 |
 | 函数文档同步 | [docs/features/function-documentation.md](function-documentation.md) | 已维护 |
 | Vue 异步资源清理 | [docs/features/async-resource-cleanup.md](async-resource-cleanup.md) | 已维护 |
-| 样式 Token 检查：CSS、SCSS/Sass、Less | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护，解析失败保留配置错误及独立 Stylelint 诊断 |
-| 样式复杂度 | [docs/features/style-complexity.md](style-complexity.md) | 已维护 |
-| 样式治理 | [docs/features/style-governance.md](style-governance.md) | 已维护 |
-| 动态代码 | [docs/features/dynamic-code.md](dynamic-code.md) | 已维护 |
-| Vue 不安全 HTML | [docs/features/vue-unsafe-html.md](vue-unsafe-html.md) | 已维护 |
-| Vue 新窗口链接安全 | [docs/features/vue-target-blank.md](vue-target-blank.md) | 已维护 |
-| Vue 表单标签 | [docs/features/vue-form-label.md](vue-form-label.md) | 已维护 |
-| Vue 图片替代文本 | [docs/features/vue-image-alt.md](vue-image-alt.md) | 已维护 |
+| Stylelint 子能力：Token 检查：CSS、SCSS/Sass、Less | [docs/features/ui-tokens.md](ui-tokens.md) | 已维护，已移除图标尺寸推断，解析失败保留配置错误及独立 Stylelint 诊断 |
+| Stylelint 子规则：复杂度 | [docs/features/style-complexity.md](style-complexity.md) | 已维护 |
+| Stylelint 子能力：隔离与全局目录 | [docs/features/style-governance.md](style-governance.md) | 已维护 |
 
 ## 仓库与代码治理
 
@@ -73,7 +78,7 @@ Java 工程问题按模块和规则对象提供可定位证据及修复步骤，
 | 图片资源质量 | [docs/features/image-assets.md](image-assets.md) | 已维护 |
 | 图片安全优化与应用选择 | [docs/features/image-optimization.md](image-optimization.md) | 已维护 |
 | 无效图片资源与 Git 基线 | [docs/features/unused-image-assets.md](unused-image-assets.md) | 已维护，支持应用历史配置 |
-| 依赖声明与锁文件 | [docs/features/dependency-policy.md](dependency-policy.md) | 已维护 |
+| 依赖声明、三种包管理器锁文件与工具就绪 | [docs/features/dependency-policy.md](dependency-policy.md) | 已维护 |
 | 提交信息生命周期 | [docs/features/commit-message.md](commit-message.md) | 已维护 |
 | 结构化例外 | [docs/features/structured-exceptions.md](structured-exceptions.md) | 已维护，按应用隔离批准范围 |
 | 树形功能登记 | [交付合同手册 · 功能登记与合同规划](delivery-contract.md#功能登记与合同规划) | 已维护 |
@@ -86,16 +91,17 @@ Java 工程问题按模块和规则对象提供可定位证据及修复步骤，
 | 功能 | 说明文档 | 状态 |
 |---|---|---|
 | 单元测试 | [docs/features/unit-test.md](unit-test.md) | 已维护 |
-| Vue 组件交互测试 | [docs/features/component-interaction.md](component-interaction.md) | 已维护 |
 | 覆盖率 | [docs/features/coverage.md](coverage.md) | 已维护 |
 | 变异测试 | [docs/features/mutation-test.md](mutation-test.md) | 已维护 |
 | 受保护构建 | [docs/features/guarded-build.md](guarded-build.md) | 已维护 |
-| axe 可访问性测试 | [docs/features/accessibility-test.md](accessibility-test.md) | 已维护 |
 | TypeScript 类型检查 | [docs/features/typecheck.md](typecheck.md) | 已维护 |
 | dependency-cruiser 架构检查 | [docs/features/architecture.md](architecture.md) | 已维护 |
 | Knip 无效代码与基线 | [docs/features/dead-code.md](dead-code.md) | 已维护 |
 | 项目构建 | [docs/features/build.md](build.md) | 已维护 |
 | 单平台构建产物预算 | [docs/features/build-artifact-budget.md](build-artifact-budget.md) | 已维护 |
+| 前端构建与性能预设 | [docs/features/frontend-performance-presets.md](frontend-performance-presets.md) | 已维护 |
+| Skill 接入待办清单 | [docs/features/skill-integration-backlog.md](skill-integration-backlog.md) | 仅记录，Skill 待实现 |
+| 包体积分析 | [docs/features/bundle-analysis.md](bundle-analysis.md) | 已维护 |
 | Lighthouse | [docs/features/lighthouse.md](lighthouse.md) | 已维护 |
 | Axios 接口性能 | [docs/features/api-performance.md](api-performance.md) | 已维护 |
 | k6 接口压测 | [docs/features/k6-load-test.md](k6-load-test.md) | 已维护 |
@@ -145,3 +151,49 @@ Java 工程问题按模块和规则对象提供可定位证据及修复步骤，
 | 模块或依赖边界变化 | 维护者架构说明与架构测试 |
 
 新能力在交付时就应有可用说明，不登记尚不存在的文档链接。维护时核对源码、Schema、执行计划和测试；检查示例可解析、开关不遗漏、相对链接与锚点可达，SVG 与 Mermaid 源文件含义一致。历史演进只写入 CHANGELOG。
+
+- [前端文件组织与维护预设](frontend-maintenance-presets.md)：目录归位、统一命名、文件规模、分层和公开函数文档；不限制依赖包内部路径。
+
+公共方法测试支持自定义目录和文件名，单元测试映射、覆盖率与变异范围遵循用户配置，详见[单元测试](unit-test.md)与[变异测试](mutation-test.md)。
+
+| 前端图片治理预设 | [docs/features/frontend-image-presets.md](frontend-image-presets.md) | 已维护 |
+
+前端图片治理的完整审查范围、反例与真实浏览器验证见 [3.2.0 审查记录](../reviews/frontend-image-governance-3.2.0.md)。
+
+| 六组源码安全检查 | [docs/features/source-security.md](source-security.md) | 已维护 |
+
+已删除能力：[表单标签与图片替代文本门禁删除说明](template-accessibility-removal.md)。
+
+依赖声明、三种包管理器及工具就绪的实现审查见 [7.0.0 审查记录](../reviews/dependency-managers-7.0.0.md)。
+
+特殊引用处理已修正为跳过对应依赖，不产生不支持违规；同一清单中的普通依赖继续检查，详见依赖策略及 7.0.0 审查记录。
+
+图片检查接入示例已同步 Sharp 0.35.4；开发依赖漏洞修复及验证见 [2026-09-13 审计记录](../reviews/npm-dependency-audit-2026-09-13.md)。
+
+7.1.0 前端新建及显式启用默认开启 [Knip 核心检查](dead-code.md)，支持 checks.deadCode.options 与项目原生配置合并；特殊依赖引用跳过，显式空匹配与零分析阻断。接入 Skill 仅记录，入口和动态使用仍需实际核对。
+
+前端 Knip 默认预设与原生配置合并的真实复现、修复和验证见[7.1.0 审查记录](../reviews/frontend-dead-code-7.1.0.md)。
+
+7.1.1 [提交规范](commit-message.md)新预设默认开启并禁止 merge commit，保留本地自动文件摘要；[接口验收与受控挑拣](delivery-contract.md#后续计划接口验收与受控挑拣未实现)仅登记为交付合同后续计划，尚未实现。
+
+提交规范预设的真实 Git 验证见[7.1.1 审查记录](../reviews/commit-message-preset-7.1.1.md)。
+
+7.1.2 修正前端 TypeScript 的[类型检查](typecheck.md)新建开关，并默认开启 Stylelint 的 [UI Tokens](ui-tokens.md) 主开关；既有配置保持原值，清单等接入缺项仍必须补齐。
+
+默认开关遗漏与真实工具验证见[7.1.2 审查记录](../reviews/frontend-default-switches-7.1.2.md)。
+
+前端 22 项应用配置和 Node 后端适用性见[前端与 Node 后端审查记录](../reviews/frontend-node-audit-7.1.3.md)；[Node 后端使用边界](node-backend.md)列出默认规范、可选检查、接入条件与真实验证。
+
+7.1.4 的 [Node 后端默认规范](node-backend.md)写入新建项目，既有配置保持；Java 检查未随 Node 开关调整。
+
+默认开关与真实验证结果见 [Node 默认配置审查](../reviews/node-default-presets-7.1.4.md)。
+
+Java 新建模板默认开关及接入缺项见 [Java 接入说明](../java-quality-integration.md)；18 项均默认开启，未完成接入时严格阻断。
+
+Java 默认全开模板与阻断边界见 [7.1.5 审查记录](../reviews/java-default-presets-7.1.5.md)。
+
+[目录职责与路径绑定](directory-roles.md)为 Java、Node、前端提供可编辑的目录约定，检查范围从目录引用解析；绑定不替代原生工具接入与业务验证。
+
+目录功能的复现、修复与真实执行证据见 [7.2.0 审查记录](../reviews/directory-roles-7.2.0.md)。
+
+目录职责二次审查已覆盖前端与 Node 的四种语言预设；完整默认路径及用途见[通用目录模板](directory-roles.md#前端与-node-的通用模板)。局部目录校验与 Schema 均拒绝显式 null 绑定。

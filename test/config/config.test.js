@@ -1,8 +1,8 @@
+import { DEFAULT_STYLELINT_CONFIG as STYLE_DEFAULT } from '../../src/config/defaults.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_ARCHITECTURE_CONFIG,
   DEFAULT_BUILD_CONFIG,
   DEFAULT_CI_CONFIG,
@@ -10,7 +10,6 @@ import {
   DEFAULT_COMMIT_MESSAGE_CONFIG,
   DEFAULT_DEPENDENCY_POLICY_CONFIG,
   DEFAULT_DELIVERY_CONTRACT_CONFIG,
-  DEFAULT_ESLINT_PATTERN,
   DEFAULT_EXCEPTIONS_CONFIG,
   DEFAULT_FILE_HEADER_CONFIG,
   DEFAULT_FILE_PLACEMENT_CONFIG,
@@ -20,8 +19,6 @@ import {
   DEFAULT_MUTATION_TEST_CONFIG,
   DEFAULT_PATH_NAMING_CONFIG,
   DEFAULT_PRETTIER_PATTERN,
-  DEFAULT_STYLELINT_PATTERN,
-  DEFAULT_STYLE_GOVERNANCE_CONFIG,
   DEFAULT_TYPE_CHECK_CONFIG,
   DEFAULT_UI_TOKENS_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
@@ -33,7 +30,6 @@ import {
   loadConfig as publicLoadConfig,
   validateConfig as publicValidateConfig,
 } from '../../src/index.js';
-
 function baseConfig(extra = {}) {
   return {
     version: 2,
@@ -56,12 +52,10 @@ function baseConfig(extra = {}) {
     ...extra,
   };
 }
-
 test('keeps the published configuration schema valid JSON', () => {
   const schema = JSON.parse(
     readFileSync(new URL('../../config.schema.json', import.meta.url), 'utf8'),
   );
-
   assert.equal(schema.$defs.singleProjectDocument.type, 'object');
   assert.equal(
     schema.$defs.singleProjectDocument.properties.repository.properties
@@ -74,13 +68,18 @@ test('keeps the published configuration schema valid JSON', () => {
     'array',
   );
 });
-
 test('preserves public configuration lifecycle exports from their owning modules', () => {
   assert.equal(publicLoadConfig, loadConfig);
   assert.equal(publicValidateConfig, normalizeProjectDocument);
-  assert.throws(() => publicValidateConfig({ version: 1 }), {
-    code: 'config/unsupported-version',
-  });
+  assert.throws(
+    () =>
+      publicValidateConfig({
+        version: 1,
+      }),
+    {
+      code: 'config/unsupported-version',
+    },
+  );
   const actual = publicValidateConfig({
     version: 2,
     project: {
@@ -93,12 +92,15 @@ test('preserves public configuration lifecycle exports from their owning modules
   assert.equal(actual.version, 2);
   assert.equal(actual.project.role, 'backend');
 });
-
 test('sparse version 2 configs use the current platform defaults', () => {
   const config = validateConfig(baseConfig());
-
-  assert.deepEqual(config.reporting.notification, { enabled: true });
-  assert.deepEqual(config.ci, { ...DEFAULT_CI_CONFIG, externalGates: [] });
+  assert.deepEqual(config.reporting.notification, {
+    enabled: true,
+  });
+  assert.deepEqual(config.ci, {
+    ...DEFAULT_CI_CONFIG,
+    externalGates: [],
+  });
   assert.deepEqual(
     config.repository.codePlacement,
     DEFAULT_CODE_PLACEMENT_CONFIG,
@@ -117,25 +119,19 @@ test('sparse version 2 configs use the current platform defaults', () => {
     assert.deepEqual(config.checks.imageAssets, expectedFeature);
     assert.deepEqual(config.checks.unusedImageAssets, unused);
   }
-  assert.deepEqual(config.checks.uiTokens, DEFAULT_UI_TOKENS_CONFIG);
+  assert.deepEqual(config.checks.stylelint.uiTokens, DEFAULT_UI_TOKENS_CONFIG);
   assert.deepEqual(
     config.repository.deliveryContract,
     DEFAULT_DELIVERY_CONTRACT_CONFIG,
   );
   assert.deepEqual(config.checks.architecture, DEFAULT_ARCHITECTURE_CONFIG);
-  assert.deepEqual(
-    config.checks.accessibilityTest,
-    DEFAULT_ACCESSIBILITY_TEST_CONFIG,
-  );
   assert.deepEqual(config.checks.build, DEFAULT_BUILD_CONFIG);
   assert.deepEqual(config.checks.lighthouse, DEFAULT_LIGHTHOUSE_CONFIG);
   assert.deepEqual(config.checks.typeCheck, DEFAULT_TYPE_CHECK_CONFIG);
   {
-    const { coverage, componentInteraction, ...expectedFeature } =
-      DEFAULT_UNIT_TEST_CONFIG;
+    const { coverage, ...expectedFeature } = DEFAULT_UNIT_TEST_CONFIG;
     assert.deepEqual(config.checks.unitTest, expectedFeature);
     assert.deepEqual(config.checks.coverage, coverage);
-    assert.deepEqual(config.checks.componentInteraction, componentInteraction);
   }
   assert.deepEqual(config.checks.mutationTest, DEFAULT_MUTATION_TEST_CONFIG);
   assert.deepEqual(config.checks.filePlacement, DEFAULT_FILE_PLACEMENT_CONFIG);
@@ -148,31 +144,8 @@ test('sparse version 2 configs use the current platform defaults', () => {
     fix: true,
     requireConfig: true,
   });
-  assert.deepEqual(config.checks.stylelint, {
-    enabled: false,
-    pattern: DEFAULT_STYLELINT_PATTERN,
-    fix: true,
-    maxWarnings: 0,
-    requireConfig: true,
-  });
-  assert.deepEqual(config.checks.styleComplexity, {
-    enabled: false,
-    maxCompoundSelectors: 3,
-    maxNestingDepth: 3,
-  });
-  assert.deepEqual(
-    config.checks.styleGovernance,
-    DEFAULT_STYLE_GOVERNANCE_CONFIG,
-  );
-  assert.deepEqual(config.checks.eslint, {
-    enabled: true,
-    preset: true,
-    pattern: DEFAULT_ESLINT_PATTERN,
-    fix: true,
-    maxWarnings: 0,
-  });
+  assert.deepEqual(config.checks.stylelint, STYLE_DEFAULT);
 });
-
 test('validates the project notification switch', () => {
   const config = validateConfig(
     baseConfig({
@@ -183,7 +156,6 @@ test('validates the project notification switch', () => {
       },
     }),
   );
-
   assert.equal(config.reporting.notification.enabled, false);
   assert.throws(
     () =>
@@ -199,7 +171,6 @@ test('validates the project notification switch', () => {
     /notification.enabled 必须是布尔值/,
   );
 });
-
 test('validates and normalizes contract-driven delivery configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -248,7 +219,6 @@ test('validates and normalizes contract-driven delivery configuration', () => {
     /必须指向仓库内目录/,
   );
 });
-
 test('validates read-only CI profiles, reports, and protected-file actions', () => {
   const config = validateConfig(
     baseConfig({
@@ -266,8 +236,13 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
     enabled: true,
     profile: 'full',
     reportPath: 'reports/custom.json',
-    protectedFiles: { action: 'fail' },
-    gatePolicy: { defaultMode: 'inherit', gates: {} },
+    protectedFiles: {
+      action: 'fail',
+    },
+    gatePolicy: {
+      defaultMode: 'inherit',
+      gates: {},
+    },
     externalGates: [],
   });
   assert.throws(
@@ -328,7 +303,6 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
     /必须为 report 或 fail/,
   );
 });
-
 test('validates exact, independently approved, time-limited exceptions', () => {
   const validEntry = {
     id: 'legacy-renderer',
@@ -445,7 +419,6 @@ test('validates exact, independently approved, time-limited exceptions', () => {
     /有效期必须介于 1 到 10 天之间/,
   );
 });
-
 test('validates and normalizes architecture dependency rules', () => {
   const config = validateConfig(
     baseConfig({
@@ -473,7 +446,6 @@ test('validates and normalizes architecture dependency rules', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.architecture, {
     enabled: true,
     timeoutMs: 90000,
@@ -485,8 +457,12 @@ test('validates and normalizes architecture dependency rules', () => {
         name: 'no-ui-to-api',
         comment: 'Keep the UI independent.',
         severity: 'error',
-        from: { path: '^src/ui/' },
-        to: { path: '^src/api/' },
+        from: {
+          path: '^src/ui/',
+        },
+        to: {
+          path: '^src/api/',
+        },
       },
     ],
   });
@@ -534,7 +510,6 @@ test('validates and normalizes architecture dependency rules', () => {
     /规则名称重复/,
   );
 });
-
 test('validates and normalizes build gate configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -547,7 +522,6 @@ test('validates and normalizes build gate configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.build, {
     enabled: true,
     script: 'build:prod',
@@ -581,7 +555,6 @@ test('validates and normalizes build gate configuration', () => {
     /正整数/,
   );
 });
-
 test('validates and normalizes Vue Lighthouse configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -595,7 +568,6 @@ test('validates and normalizes Vue Lighthouse configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.lighthouse, {
     enabled: true,
     configFile: 'config/lighthouserc.cjs',
@@ -629,7 +601,6 @@ test('validates and normalizes Vue Lighthouse configuration', () => {
     /正整数/,
   );
 });
-
 test('validates and normalizes TypeScript gate configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -642,7 +613,6 @@ test('validates and normalizes TypeScript gate configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.typeCheck, {
     enabled: true,
     script: 'typecheck:vue',
@@ -675,55 +645,6 @@ test('validates and normalizes TypeScript gate configuration', () => {
     /正整数/,
   );
 });
-
-test('validates and normalizes axe accessibility test configuration', () => {
-  const config = validateConfig(
-    baseConfig({
-      checks: {
-        accessibilityTest: {
-          enabled: true,
-          script: '  test:a11y:e2e  ',
-          timeoutMs: 90000,
-          testPatterns: ['  e2e/accessibility/**/*.spec.ts  '],
-        },
-      },
-    }),
-  );
-
-  assert.deepEqual(config.checks.accessibilityTest, {
-    enabled: true,
-    script: 'test:a11y:e2e',
-    timeoutMs: 90000,
-    testPatterns: ['e2e/accessibility/**/*.spec.ts'],
-  });
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            accessibilityTest: {
-              script: 'playwright test',
-            },
-          },
-        }),
-      ),
-    /必须是 npm 脚本名称/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            accessibilityTest: {
-              testPatterns: [],
-            },
-          },
-        }),
-      ),
-    /必须是非空数组/,
-  );
-});
-
 test('validates and normalizes unit test configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -757,7 +678,6 @@ test('validates and normalizes unit test configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.unitTest, {
     enabled: true,
     script: 'test:unit',
@@ -783,10 +703,6 @@ test('validates and normalizes unit test configuration', () => {
       branches: 80,
       changedLines: 90,
     },
-  });
-  assert.deepEqual(config.checks.componentInteraction, {
-    enabled: false,
-    componentPatterns: ['src/components/**/*.vue'],
   });
   assert.throws(
     () =>
@@ -918,29 +834,9 @@ test('validates and normalizes unit test configuration', () => {
           },
         }),
       ),
-    /必须包含 \{path\} 或 \{name\}/,
+    /必须包含 \{path\}、\{name\} 或 \{relativePath\}/,
   );
 });
-
-test('requires unit tests when component interaction semantics are enabled', () => {
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            unitTest: {
-              enabled: false,
-            },
-            componentInteraction: {
-              enabled: true,
-            },
-          },
-        }),
-      ),
-    /checks\.componentInteraction\.enabled 要求启用 checks\.unitTest\.enabled/,
-  );
-});
-
 test('validates and normalizes staged Prettier configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -954,7 +850,6 @@ test('validates and normalizes staged Prettier configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.prettier, {
     enabled: true,
     pattern: '*.{js,json,css}',
@@ -962,7 +857,6 @@ test('validates and normalizes staged Prettier configuration', () => {
     requireConfig: false,
   });
 });
-
 test('validates and normalizes staged ESLint configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -977,7 +871,6 @@ test('validates and normalizes staged ESLint configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.eslint, {
     enabled: true,
     preset: true,
@@ -986,55 +879,28 @@ test('validates and normalizes staged ESLint configuration', () => {
     maxWarnings: 2,
   });
 });
-
-test('validates and normalizes staged Stylelint configuration', () => {
+test('统一样式配置保留用户规则和全局目录', () => {
   const config = validateConfig(
     baseConfig({
       checks: {
         stylelint: {
           enabled: true,
-          pattern: '  **/*.{css,scss,vue}  ',
-          fix: false,
-          maxWarnings: 3,
-          requireConfig: false,
-        },
-        styleComplexity: {
-          enabled: true,
-          maxCompoundSelectors: 2,
-          maxNestingDepth: 4,
-        },
-        styleGovernance: {
-          enabled: true,
-          maxSpecificity: '0,2,1',
-          maxIdSelectors: 0,
-          disallowImportant: true,
-          allowedGlobalStylePatterns: ['  src/styles/**  ', 'src/App.vue'],
+          options: { rules: { 'max-nesting-depth': 4 } },
+          governance: {
+            enabled: true,
+            allowedGlobalStylePatterns: ['theme/**'],
+          },
         },
       },
     }),
   );
-
-  assert.deepEqual(config.checks.stylelint, {
-    enabled: true,
-    pattern: '**/*.{css,scss,vue}',
-    fix: false,
-    maxWarnings: 3,
-    requireConfig: false,
-  });
-  assert.deepEqual(config.checks.styleComplexity, {
-    enabled: true,
-    maxCompoundSelectors: 2,
-    maxNestingDepth: 4,
-  });
-  assert.deepEqual(config.checks.styleGovernance, {
-    enabled: true,
-    maxSpecificity: '0,2,1',
-    maxIdSelectors: 0,
-    disallowImportant: true,
-    allowedGlobalStylePatterns: ['src/styles/**', 'src/App.vue'],
-  });
+  assert.equal(config.checks.stylelint.options.rules['max-nesting-depth'], 4);
+  assert.deepEqual(
+    config.checks.stylelint.governance.allowedGlobalStylePatterns,
+    ['theme/**'],
+  );
+  assert.equal(Object.hasOwn(config.checks, 'styleComplexity'), false);
 });
-
 test('validates and normalizes maximum file line rules', () => {
   const config = validateConfig(
     baseConfig({
@@ -1058,19 +924,23 @@ test('validates and normalizes maximum file line rules', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.maxFileLines, {
     enabled: true,
     mode: 'noRegression',
     warnAt: 0.9,
     rules: [
-      { pattern: 'src/**/*.vue', maxLines: 700 },
-      { pattern: '**/*.js', maxLines: 1000 },
+      {
+        pattern: 'src/**/*.vue',
+        maxLines: 700,
+      },
+      {
+        pattern: '**/*.js',
+        maxLines: 1000,
+      },
     ],
     exclusions: ['src/generated/**'],
   });
 });
-
 test('validates configurable file placement rules', () => {
   const config = validateConfig(
     baseConfig({
@@ -1091,7 +961,6 @@ test('validates configurable file placement rules', () => {
       },
     }),
   );
-
   assert.deepEqual(config.checks.filePlacement, {
     enabled: false,
     mode: 'changedFiles',
@@ -1139,7 +1008,6 @@ test('validates configurable file placement rules', () => {
     /必须位于仓库内部/,
   );
 });
-
 test('rejects invalid maximum file line rules', () => {
   assert.throws(
     () =>
@@ -1212,7 +1080,6 @@ test('rejects invalid maximum file line rules', () => {
     /warnAt 必须大于 0 且不超过 1/,
   );
 });
-
 test('rejects unknown and invalid staged ESLint properties', () => {
   assert.throws(
     () =>
@@ -1227,7 +1094,6 @@ test('rejects unknown and invalid staged ESLint properties', () => {
       ),
     /包含不支持的属性： command/,
   );
-
   assert.throws(
     () =>
       validateConfig(
@@ -1255,7 +1121,6 @@ test('rejects unknown and invalid staged ESLint properties', () => {
     /eslint.preset 必须是布尔值/,
   );
 });
-
 test('rejects unknown and invalid staged Prettier properties', () => {
   assert.throws(
     () =>
@@ -1270,7 +1135,6 @@ test('rejects unknown and invalid staged Prettier properties', () => {
       ),
     /包含不支持的属性： command/,
   );
-
   assert.throws(
     () =>
       validateConfig(
@@ -1285,111 +1149,18 @@ test('rejects unknown and invalid staged Prettier properties', () => {
     /requireConfig 必须是布尔值/,
   );
 });
-
-test('rejects unknown and invalid staged Stylelint properties', () => {
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {
-              command: 'stylelint --fix',
-            },
-          },
-        }),
-      ),
-    /包含不支持的属性： command/,
-  );
-
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {
-              maxWarnings: -1,
-            },
-          },
-        }),
-      ),
-    /非负整数/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {},
-            styleComplexity: {
-              maxNestingDepth: -1,
-            },
-          },
-        }),
-      ),
-    /maxNestingDepth 必须是非负整数/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {
-              enabled: false,
-            },
-            styleComplexity: {
-              enabled: true,
-            },
-          },
-        }),
-      ),
-    /styleComplexity.enabled 要求启用 checks.stylelint.enabled/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {},
-            styleGovernance: {
-              maxSpecificity: 'high',
-            },
-          },
-        }),
-      ),
-    /maxSpecificity 必须使用 "id,class,type" 格式/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {},
-            styleGovernance: {
-              maxIdSelectors: -1,
-            },
-          },
-        }),
-      ),
-    /maxIdSelectors 必须是非负整数/,
-  );
-  assert.throws(
-    () =>
-      validateConfig(
-        baseConfig({
-          checks: {
-            stylelint: {
-              enabled: false,
-            },
-            styleGovernance: {
-              enabled: true,
-            },
-          },
-        }),
-      ),
-    /styleGovernance.enabled 要求启用 checks.stylelint.enabled/,
-  );
+test('拒绝无效样式字段，规则值由真实 Stylelint 校验', () => {
+  for (const stylelint of [
+    { command: 'lint' },
+    { maxWarnings: -1 },
+    { complexity: {} },
+    { governance: { maxSpecificity: '0,3,0' } },
+  ])
+    assert.throws(
+      () => validateConfig(baseConfig({ checks: { stylelint } })),
+      (e) => e.kind === 'configuration',
+    );
 });
-
 test('validates and normalizes dependency governance configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -1398,7 +1169,7 @@ test('validates and normalizes dependency governance configuration', () => {
           enabled: true,
           requireExactVersions: false,
           requireLockfile: false,
-          allowedProtocols: ['NPM', 'workspace', 'npm'],
+
           bannedPackages: [
             {
               name: 'request',
@@ -1410,15 +1181,12 @@ test('validates and normalizes dependency governance configuration', () => {
       },
     }),
   );
-  assert.deepEqual(config.repository.dependencyPolicy.allowedProtocols, [
-    'npm',
-    'workspace',
-  ]);
+  assert.equal(config.repository.dependencyPolicy.packageManager.name, 'npm');
+  assert.equal(config.repository.dependencyPolicy.allowedProtocols, undefined);
   assert.equal(
     config.repository.dependencyPolicy.bannedPackages[0].replacement,
     'undici',
   );
-
   assert.throws(
     () =>
       validateConfig(
@@ -1430,7 +1198,7 @@ test('validates and normalizes dependency governance configuration', () => {
           },
         }),
       ),
-    /不含冒号的协议名称/,
+    /allowedProtocols/,
   );
   assert.throws(
     () =>
@@ -1451,7 +1219,6 @@ test('validates and normalizes dependency governance configuration', () => {
     /至少包含 10 个字符/,
   );
 });
-
 test('validates and normalizes commit message policy configuration', () => {
   const config = validateConfig(
     baseConfig({
@@ -1478,7 +1245,6 @@ test('validates and normalizes commit message policy configuration', () => {
       },
     }),
   );
-
   assert.deepEqual(config.repository.commitMessage, {
     enabled: true,
     types: ['feat', 'fix'],
@@ -1491,29 +1257,63 @@ test('validates and normalizes commit message policy configuration', () => {
       requireFooter: true,
       requireMajorVersionOnRelease: false,
     },
-    merge: { allowed: false },
-    revert: { allowed: false },
-    fixup: { allowLocal: true, allowPush: true, allowCi: false },
+    merge: {
+      allowed: false,
+    },
+    revert: {
+      allowed: false,
+    },
+    fixup: {
+      allowLocal: true,
+      allowPush: true,
+      allowCi: false,
+    },
   });
-
   for (const [commitMessage, expected] of [
-    [{ enabled: 'yes' }, /commitMessage\.enabled 必须是布尔值/],
-    [{ types: [] }, /commitMessage\.types 必须是非空规范标识符数组/],
-    [{ types: ['feat', 'feat'] }, /commitMessage\.types 不得包含重复值/],
     [
-      { allowedScopes: ['Auth'] },
+      {
+        enabled: 'yes',
+      },
+      /commitMessage\.enabled 必须是布尔值/,
+    ],
+    [
+      {
+        types: [],
+      },
+      /commitMessage\.types 必须是非空规范标识符数组/,
+    ],
+    [
+      {
+        types: ['feat', 'feat'],
+      },
+      /commitMessage\.types 不得包含重复值/,
+    ],
+    [
+      {
+        allowedScopes: ['Auth'],
+      },
       /commitMessage\.allowedScopes 必须是规范标识符数组/,
     ],
     [
-      { headerMaxLength: 9 },
+      {
+        headerMaxLength: 9,
+      },
       /commitMessage\.headerMaxLength 必须是大于或等于 10 的整数/,
     ],
     [
-      { breakingChange: { unknown: true } },
+      {
+        breakingChange: {
+          unknown: true,
+        },
+      },
       /commitMessage\.breakingChange 包含不支持的属性： unknown/,
     ],
     [
-      { fixup: { allowCi: 'yes' } },
+      {
+        fixup: {
+          allowCi: 'yes',
+        },
+      },
       /commitMessage\.fixup\.allowCi 必须是布尔值/,
     ],
   ]) {
@@ -1530,7 +1330,6 @@ test('validates and normalizes commit message policy configuration', () => {
     );
   }
 });
-
 test('validates strict external project gate configuration', () => {
   const entry = {
     id: 'project.api-contract',
@@ -1551,25 +1350,56 @@ test('validates strict external project gate configuration', () => {
     }),
   );
   assert.deepEqual(config.ci.externalGates, [entry]);
-
   for (const [change, pattern] of [
-    [{ id: 'api-contract' }, /project\.<kebab-case>/],
     [
-      { environments: ['pre-push'] },
+      {
+        id: 'api-contract',
+      },
+      /project\.<kebab-case>/,
+    ],
+    [
+      {
+        environments: ['pre-push'],
+      },
       /不重复的 manual、ci-full 或 release-ready/,
     ],
-    [{ script: 'npm test && deploy' }, /准确的 npm 脚本名称/],
-    [{ timeoutMs: 999 }, /介于 1000 到 1800000 之间/],
     [
-      { report: { format: 'junit', path: 'reports/api-contract.json' } },
+      {
+        script: 'npm test && deploy',
+      },
+      /准确的 npm 脚本名称/,
+    ],
+    [
+      {
+        timeoutMs: 999,
+      },
+      /介于 1000 到 1800000 之间/,
+    ],
+    [
+      {
+        report: {
+          format: 'junit',
+          path: 'reports/api-contract.json',
+        },
+      },
       /repo-guard-json-v2/,
     ],
     [
-      { report: { format: 'repo-guard-json-v2', path: '../api.json' } },
+      {
+        report: {
+          format: 'repo-guard-json-v2',
+          path: '../api.json',
+        },
+      },
       /规范化路径/,
     ],
     [
-      { report: { format: 'repo-guard-json-v2', path: 'reports\\api.json' } },
+      {
+        report: {
+          format: 'repo-guard-json-v2',
+          path: 'reports\\api.json',
+        },
+      },
       /规范化路径/,
     ],
     [
@@ -1582,7 +1412,12 @@ test('validates strict external project gate configuration', () => {
       /规范化路径/,
     ],
     [
-      { report: { format: 'repo-guard-json-v2', path: 'reports/CON.json' } },
+      {
+        report: {
+          format: 'repo-guard-json-v2',
+          path: 'reports/CON.json',
+        },
+      },
       /规范化路径/,
     ],
   ]) {

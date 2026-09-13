@@ -189,3 +189,7 @@ git add .repo-guard/build-artifact-baseline.json
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/config/build-artifact-budget-validation.js)
+
+## 前端初始预设与完整产物
+
+前端初始化默认开启严格 PC 预算，完整值见[前端性能预设](frontend-performance-presets.md)。Vite 清单同时验证静态与动态引用产物存在；动态入口不计入静态首屏总量。路径先统一分隔符再校验，拒绝反斜线穿越。

@@ -46,19 +46,21 @@ export async function runPrettierFiles({
   files,
   fix,
   requireConfig,
+  options,
 }) {
   if (files.length === 0) {
     return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'skipped', summary: 'Prettier 没有适用文件' });
   }
 
   const project = await loadProjectPrettier(root);
-  const execution = prepareProjectPrettierExecution({ root, files, project });
+  const execution = prepareProjectPrettierExecution({ root, files, project, options });
   const { formatting, ignoredCount } = await collectFormatting(
     execution,
     root,
     requireConfig,
   );
   const changed = formatting.filter(({ formatted, original }) => formatted !== original);
+  if (options && formatting.length === 0) return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'skipped', summary: '所有文件均被项目 Prettier 配置忽略' });
 
   if (changed.length === 0) {
     return createGateResult({ gateId: PRETTIER_GATE_ID, status: 'passed', summary: `Prettier ${project.version} 已通过`, metrics: { checkedFiles: formatting.length, ignoredFiles: ignoredCount, changedFiles: 0 } });

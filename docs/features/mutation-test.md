@@ -6,11 +6,23 @@
 
 > 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
 
+## 前端默认预设与合并
+
+前端初始化在 checks.mutationTest.options 写入以下预设，可手动修改：
+
+```json
+{"mutate":["src/utils/**/*.{js,ts}","!src/utils/**/*.d.ts","!src/utils/**/*.types.ts","!src/utils/**/generated/**","!src/utils/**/*.{spec,test}.*"],"testRunner":"vitest","thresholds":{"high":80,"low":60,"break":80}}
+```
+
+提供 options 时允许没有外部 Stryker 配置；存在 configFile 指定的 JSON、JS、MJS 或 CJS 时合并，原生值优先，数组整项替换，thresholds 和 vitest 按字段合并。配置其他原生文件名时修改 configFile。安全的本地报告路径、禁止原地变异和禁止隐式上传仍由门禁固定。
+
+消费项目需要 @stryker-mutator/core 10.x、同版本 @stryker-mutator/vitest-runner 和兼容 Vitest。Vitest 原生配置应将 test.include 设为 src/tests/utils/**/*.{test,spec}.{js,ts}，以保证变异测试也仅执行公共方法测试。repo-guard 不自动安装消费项目依赖。
+
 ## 接入与配置
 
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
-变异测试默认关闭，并且不会进入 pre-commit、pre-push 或固定 CI 计划。消费项目先按 [StrykerJS 官方初始化流程](https://stryker-mutator.io/docs/stryker-js/getting-started/)安装自身需要的 `@stryker-mutator/core` 10.x、测试运行器和 `stryker.config.*`；repo-guard 只调用消费项目的安装与配置，不内置测试运行器。
+前端新配置默认开启变异测试，进入 CI full 和 release-ready；不进入 pre-commit、pre-push。已有显式开关保持不变。消费项目先按 [StrykerJS 官方初始化流程](https://stryker-mutator.io/docs/stryker-js/getting-started/)安装自身需要的 `@stryker-mutator/core` 10.x、测试运行器和 `stryker.config.*`；repo-guard 只调用消费项目的安装与配置，不内置测试运行器。
 
 Stryker 的 `thresholds.break` 是必需的构建硬门槛，必须配置为 0 到 100 之间的数值；缺失时也会阻断构建。repo-guard 强制使用本地 `json`、`html`、`clear-text` 和 `progress` reporter，强制关闭 `inPlace`，不会启用 `dashboard` 或隐式上传报告。每次运行前都会删除旧报告，仅接受本次新生成且符合 Stryker `schemaVersion: "1.0"` 的报告。
 
@@ -47,7 +59,16 @@ Stryker 的 `thresholds.break` 是必需的构建硬门槛，必须配置为 0 �
 
 | 字段 | 用途 | 可填值与默认值 | 约束与要求 |
 |---|---|---|---|
-| `checks.mutationTest.enabled` | 启用变异测试命令以及受保护构建编排 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.mutationTest.enabled` | 启用变异测试命令以及受保护构建编排 | `true` / `false`<br>省略补缺：`false`；前端初始化写入 `true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
+| `checks.mutationTest.options` | 可编辑 Stryker 基础选项 | 可选对象；前端初始化写入上述预设 | 原生配置优先 |
+| `checks.mutationTest.options.mutate` | 变异源码范围 | 非空字符串数组 | 支持排除 glob |
+| `checks.mutationTest.options.testRunner` | 测试运行器 | 必填，vitest | 由消费项目安装 |
+| `checks.mutationTest.options.thresholds` | 变异得分要求 | 对象；break 必填 | 不得通过降低阈值掩盖失败 |
+| `checks.mutationTest.options.thresholds.high` | 良好得分显示阈值 | 0–100 整数 | 前端写入 80 |
+| `checks.mutationTest.options.thresholds.low` | 较低得分显示阈值 | 0–100 整数 | 前端写入 60 |
+| `checks.mutationTest.options.thresholds.break` | 阻断得分阈值 | 必填，0–100 整数 | 前端写入 80 |
+| `checks.mutationTest.options.vitest` | Vitest 配置选择 | 可选对象 | 原生配置优先 |
+| `checks.mutationTest.options.vitest.configFile` | Vitest 原生配置路径 | 非空字符串 | 由消费项目提供 |
 | `checks.mutationTest.configFile` | 消费项目中的 Stryker JS 或 JSON 配置文件 | 字符串<br>默认：`"stryker.config.json"` | 至少 1 个字符；仓库相对路径；不能是绝对路径或含 .. 越界，使用 / 分隔；扩展名为 .cjs、.mjs、.js 或 .json |
 | `checks.mutationTest.timeoutMs` | 单次变异测试允许执行的最长时间 | 整数<br>默认：`1800000` | ≥ 1 |
 | `checks.mutationTest.reportsDirectory` | 存放 mutation.json、中文 HTML 和可选 Stryker 原始 HTML 的专用目录 | 字符串<br>默认：`"reports/mutation"` | 至少 9 个字符；仓库内 reports/ 路径；使用 / 分隔，禁止父目录越界、反斜线和平台保留名 |
@@ -94,3 +115,11 @@ Stryker 的 `thresholds.break` 是必需的构建硬门槛，必须配置为 0 �
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/gates/testing/mutation-test-platform-gate.js) · [对应测试](../../test/gates/testing/mutation-test.test.js)
+
+公共方法目录和文件名以用户配置为准，`src/utils` 仅是初始化示例。改名后按需更新 `checks.unitTest.sourcePatterns`、`testPatterns`、`mappings`（含 `sourceRoot` 与 `testTemplates`），覆盖率直接复用单元测试范围；变异范围由 `checks.mutationTest.options.mutate` 或优先级更高的原生 Stryker 配置决定。项目测试脚本与 Vitest 原生配置也应使用实际测试目录。运行时不猜测目录，不回退到 utils，重复启用不覆盖用户保存的路径。
+
+## Node 新建预设
+
+7.1.4 起本项在新建 Node 后端配置中默认开启（类型检查仅限 node-typescript）。原有规则、阈值与配置字段不变；已有项目不因读取或升级而开启。实际工具、脚本和检查范围仍需接入准备，见 [Node 后端规范](node-backend.md)。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

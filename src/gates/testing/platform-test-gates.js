@@ -1,5 +1,4 @@
 import {
-  DEFAULT_ACCESSIBILITY_TEST_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
 } from '../../config/defaults.js';
 import { createGateResult } from '../../core/result/gate-result.js';
@@ -8,8 +7,6 @@ import {
   definePlatformGate,
   readyGateSetup,
 } from '../platform-gate.js';
-import { runAccessibilityTestGate } from './accessibility-test-gate.js';
-import { validateAccessibilityTestSetup } from './accessibility-test-setup.js';
 import { runUnitTestGate } from './unit-test-gate.js';
 import { inspectUnitTestPolicy, unitTestPolicyFindings } from './unit-test-policy.js';
 import { validateUnitTestSetup } from './unit-test-setup.js';
@@ -33,14 +30,7 @@ function unitTestOptions(checks) {
   return {
     ...checks.unitTest,
     coverage: checks.coverage,
-    componentInteraction: checks.componentInteraction,
   };
-}
-
-function inspectAccessibilitySetup({ root, config }) {
-  if (!config.checks.accessibilityTest.enabled) return readyGateSetup('无障碍测试门禁已禁用');
-  validateAccessibilityTestSetup(root, config.checks.accessibilityTest);
-  return readyGateSetup('无障碍测试门禁');
 }
 
 export const unitTestGate = definePlatformGate({
@@ -66,8 +56,7 @@ export const unitTestGate = definePlatformGate({
     });
     const policy = inspectUnitTestPolicy({ root, changes, config: unitTestOptions(config.checks) });
     const violations = policy.missingTests.length
-      + policy.bypasses.length
-      + policy.componentInteractions.length;
+      + policy.bypasses.length;
     return violations === 0
       ? createGateResult({
           gateId: 'quality.unit-test',
@@ -81,24 +70,4 @@ export const unitTestGate = definePlatformGate({
           findings: unitTestPolicyFindings(policy),
         });
   },
-});
-
-export const accessibilityTestGate = definePlatformGate({
-  id: 'quality.accessibility-test', configKey: 'checks.accessibilityTest',
-  featureName: 'accessibilityTest', featureOrder: 100, doctorOrder: 60,
-  environments: ['manual', 'pre-push', 'ci-full', 'release-ready'],
-  defaultTimeoutMs: DEFAULT_ACCESSIBILITY_TEST_CONFIG.timeoutMs,
-  manualCommand: 'accessibility-test', manualOrder: 120,
-  packageScript: 'guard:accessibility-test',
-  supportsCancellation: true,
-  requiredScripts: ['config:checks.accessibilityTest.script'],
-  inspectSetup: inspectAccessibilitySetup,
-  plan: ({ config }) => ({ enabled: config.checks.accessibilityTest.enabled }),
-  run: ({ root, config, plan, ...context }) => plan.enabled
-    ? runAccessibilityTestGate({
-        root,
-        config: config.checks.accessibilityTest,
-        ...processExecutionOptions(context),
-      })
-    : skippedResult('quality.accessibility-test', '无障碍测试已禁用'),
 });

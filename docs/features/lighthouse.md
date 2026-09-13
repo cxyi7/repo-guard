@@ -1,97 +1,47 @@
 # Lighthouse
 
-[返回使用说明](../usage-guide.md) · [功能索引](README.md)
+[功能索引](README.md) · [完整前端预设](frontend-performance-presets.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
+使用 Vue 消费项目的 @lhci/cli、Puppeteer 和 Chrome 自动打开浏览器、采集页面并执行断言；人可以打开 .lighthouseci 的 HTML 报告检查结果。默认仅性能分类，不恢复组件交互或 axe 测试。工具约定见 [Lighthouse CI 官方配置](https://googlechrome.github.io/lighthouse-ci/docs/configuration.html)。
 
-对 Vue 项目的页面进行 Lighthouse CI 采集和断言。使用项目自己的 `@lhci/cli`、Chrome、页面路由与配置，只在本地保存报告。
+## 配置与接入
 
-## 接入与配置
-
-项目必须在 `package.json` 中声明 `vue`，安装兼容的 `@lhci/cli`（包声明范围为 `>=0.13 <0.16`），准备 Chrome、实际构建脚本和可访问的页面。初始化默认关闭此能力。
-
-```bash
-npm install --save-dev --save-exact "@lhci/cli@>=0.13 <0.16"
-```
-
-以下 `lighthouserc.json` 假定项目已经提供 `preview` 脚本，并在指定端口启动生产预览；URL 和阈值需换成团队实际要求：
-
-```json
-{
-  "ci": {
-    "collect": {
-      "startServerCommand": "npm run preview -- --host 127.0.0.1 --port 4173",
-      "url": ["http://127.0.0.1:4173/"],
-      "numberOfRuns": 3
-    },
-    "assert": {
-      "assertions": {
-        "categories:performance": [
-          "error",
-          {
-            "minScore": 0.9
-          }
-        ]
-      }
-    }
-  }
-}
-```
+前端首次创建默认开启；实际脚本、Chrome、生产预览、URL 和业务选择器当前由接入者填写，自动化要求见 [Skill 接入待办清单](skill-integration-backlog.md)。内联 options 与原生 lighthouserc JSON/YAML/JS/CJS/MJS 合并，对象递归、数组整项替换、原生优先，不写回用户文件。显式文件不存在会报错。
 
 <!-- config-fields:start -->
-**字段说明**（属于 `lighthouserc.json`，由项目 Lighthouse CI 读取）：
-
-| 字段 | 用途 | 可填值 | 约束与要求 |
-|---|---|---|---|
-| `ci.collect.startServerCommand` | 启动待测应用预览服务 | 项目可执行的服务启动命令 | 与下面 URL 的主机和端口一致；这是 Lighthouse CI 的命令字段，不是 repo-guard 的 script 名称字段 |
-| `ci.collect.url` | 要采集的真实页面 | 完整 URL 的字符串数组 | 每项需能由当前 Chrome 环境访问；填业务路由，不用不存在的示例页面 |
-| `ci.collect.numberOfRuns` | 每个 URL 的采集次数 | 正整数；示例为 3 | 多次采集增加时间，需与服务和超时设置配合 |
-| `ci.assert.assertions.categories:performance` | 对 Lighthouse 性能分类设置断言 | `[级别, 断言对象]` | 级别为 `off`、`warn` 或 `error`；本例 error 表示不达标即失败 |
-| `ci.assert.assertions.categories:performance[1].minScore` | 性能最低分 | 0～1 的数值；本例 0.9 表示 90 分 | 示例阈值是团队选择，不是 repo-guard 默认值；其他审计项按项目 LHCI 配置维护 |
-
+| 字段 | 初始值与约束 |
+|---|---|
+| `checks.lighthouse.enabled` | 前端初始化 true；普通补缺 false，手动命令可显式执行 |
+| `checks.lighthouse.prePush` | 前端初始化 false，单独选择推送前检查 |
+| `checks.lighthouse.configFile` | null，读取标准文件；显式路径必须存在且在项目内 |
+| `checks.lighthouse.buildScript` | build，页面验证需要生产构建及产物证据 |
+| `checks.lighthouse.timeoutMs` | 前端预设 600000ms，分别应用于构建/collect/assert |
+| `checks.lighthouse.pages` | 初始空数组；每项提供 url、expectedUrl、selector，逐项对应最终采集 URL |
+| `checks.lighthouse.options` | 三次中位数，桌面性能：90 分、FCP 1800ms、LCP 2500ms、TBT 200ms、CLS 0.1 |
 <!-- config-fields:end -->
 
-`repo-guard.config.json` 配置片段：
+不能用空路由完成接入。选择项目真实首页、列表、详情或重页面，用稳定业务标识确认页面，不能只检查通用 #app。需登录时先调用用户 puppeteerScript，通过环境变量读取凭据。配置 startServerCommand 启动本轮产物目录的生产预览并严格匹配端口；staticDistDir 自动改端口，与当前精确 URL 验证不兼容。
 
-```json
-{
-  "checks": {
-    "lighthouse": {
-      "enabled": true,
-      "configFile": "lighthouserc.json",
-      "buildScript": "build",
-      "timeoutMs": 300000
-    }
-  }
-}
-```
+## 执行与报告
 
-<!-- config-fields:start -->
-**字段说明**（以下使用完整的 v2 配置路径）：
+手动 lighthouse、CI full、release-ready 按配置执行，pre-push 可选，不进入 pre-commit。同一进程只复用输入和产物指纹均一致的已通过构建，单独命令先真实构建。--skip-build 缺少可验证同轮证据时返回配置错误，另一次命令留下的产物不会自动获准复用。
 
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `checks.lighthouse.enabled` | 是否启用自动 Lighthouse 检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"；手动 lighthouse 可在该值为 false 时显式检查。 |
-| `checks.lighthouse.configFile` | 项目 Lighthouse CI 配置位置；null 使用标准文件名探测 | 字符串 / null<br>默认：`null` | 非 null 时：至少 1 个字符 |
-| `checks.lighthouse.buildScript` | 采集前的项目 npm 构建脚本；null 表示跳过该构建步骤 | 字符串 / null<br>默认：`"build"` | 非 null 时：至少 1 个字符；与已启用 build.script 同名时跳过内部构建；手动执行前确认产物来自本轮。 |
-| `checks.lighthouse.timeoutMs` | 分别应用到构建、collect、assert 进程的超时，单位毫秒 | 整数<br>默认：`300000` | ≥ 1 |
+页面守卫验证 HTTP 状态、最终地址和业务 selector；采集后逐页验证报告数量、时间、运行错误和最终 URL。旧报告、缺页、错误页面、超时、取消属于执行错误；性能断言失败属于违规。检测期间源码、配置或产物变化需重跑。
 
-<!-- config-fields:end -->
+.lighthouseci 保存原始报告与 repo-guard-summary.json。摘要关联构建指纹，记录 Lighthouse/Node 版本、Chrome 用户代理、性能指标、实际资源传输和解压体积，不保存认证头。LHCI 管理预览及 Chrome，公共进程树处理取消与超时；只执行 collect/assert，不执行 upload/autorun。
 
-```bash
-npx repo-guard enable lighthouse
-npx repo-guard doctor
-npx repo-guard lighthouse
-```
+本地产物指纹无法证明任意外部 URL 的发布版本；使用本轮生产预览验证。自动性能检查不替代业务人工验收。
 
-已有本轮有效构建产物时，可显式执行 `npx repo-guard lighthouse --skip-build`。命令只跳过构建，不跳过页面采集和断言；构建脚本等项目设置仍需符合配置要求。
+[实现](../../src/gates/quality/lighthouse-gate.js) · [测试](../../test/integrations/frontend-performance.test.js)
 
-## 执行与修复
+## 前端预设扩展
 
-手动、可选 pre-push 和 `release-ready` 可执行，不进入 pre-commit 或 CI `full`。手动 `lighthouse` 会显式运行检查，即使自动检查开关关闭。
+前端初始化及显式启用的可编辑全量图片预设、接口/响应字段保留依据、预算、动画、元数据处理、页面图片审计及批量引用更新见[前端图片治理预设](frontend-image-presets.md)。默认执行范围现为 allFiles；changedFiles 仍可由用户显式选择。
 
-当前实现只要发现 `checks.build.enabled: true` 且 `checks.lighthouse.buildScript` 与 `checks.build.script` 相同，就会跳过 Lighthouse 内部的构建阶段，这也适用于手动命令。因此手动复测时应先执行 `npx repo-guard build` 生成本轮产物，再运行 Lighthouse；不能仅凭自动跳过构建就认为现有产物已经最新。
+## 每次执行的独立诊断
 
-报告保存到 `.lighthouseci/`。repo-guard 调用 `collect` 和 `assert`，不隐式执行上传。采集失败时检查 Chrome、预览服务和 URL；断言失败时查看实际页面报告，修复性能或其他未达标项后复测。
+每次执行在应用目录的 `reports/lighthouse-runs/<时间戳>-<随机标识>/result.json` 保存 v2 诊断，产物类型为 `lighthouse-run`；重跑不会覆盖旧记录。内容包含起止时间、结构化状态和已脱敏的第三方输出；沿用公共输出长度上限，截断通过标记说明，不能将其称为无限制原始日志。配置预检异常仍按原入口抛出，记录可从上述目录查看。
 
-源码：[Lighthouse 门禁](../../src/gates/quality/lighthouse-gate.js)。测试：[Lighthouse](../../test/gates/quality/lighthouse.test.js)。
+报告解析失败保留此前构建与采集诊断。当前 LHR 原始报告仍由 LHCI 写入 `.lighthouseci`，可能被下次采集替换；需要保存完整原始报告时应另行归档。repo-guard 摘要使用 v2，不读取旧摘要作为通过依据。
+
+图片审计和设备配置边界见 [图片预设](frontend-image-presets.md#审查后的执行边界)。

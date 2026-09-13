@@ -123,11 +123,11 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   );
   assert.equal(
     packageJson.scripts['guard:unsafe-html'],
-    'repo-guard unsafe-html',
+    undefined,
   );
   assert.equal(
     packageJson.scripts['guard:dynamic-code'],
-    'repo-guard dynamic-code',
+    undefined,
   );
   assert.equal(
     packageJson.scripts['guard:async-resource-cleanup'],
@@ -137,16 +137,17 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     packageJson.scripts['guard:path-naming'],
     'repo-guard path-naming',
   );
-  assert.equal(packageJson.scripts['guard:ui-tokens'], 'repo-guard ui-tokens');
+  assert.equal(packageJson.scripts['guard:stylelint'], 'repo-guard stylelint');
+  assert.equal(packageJson.scripts['guard:ui-tokens'], undefined);
   assert.equal(
     packageJson.scripts['guard:target-blank'],
-    'repo-guard target-blank',
+    undefined,
   );
   assert.equal(
     packageJson.scripts['guard:form-labels'],
-    'repo-guard form-labels',
+    undefined,
   );
-  assert.equal(packageJson.scripts['guard:image-alt'], 'repo-guard image-alt');
+  assert.equal(packageJson.scripts['guard:image-alt'], undefined);
   assert.equal(
     packageJson.scripts['guard:image-assets'],
     'repo-guard image-assets',
@@ -155,30 +156,10 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
     packageJson.scripts['guard:image-optimize'],
     'repo-guard image-optimize',
   );
-  assert.equal(
-    packageJson.scripts['guard:accessibility-test'],
-    'repo-guard accessibility-test',
-  );
-  assert.equal(
-    packageJson.scripts['guard:enable-accessibility-test'],
-    'repo-guard enable accessibilityTest',
-  );
-  assert.equal(
-    packageJson.scripts['guard:style-complexity'],
-    'repo-guard style-complexity',
-  );
-  assert.equal(
-    packageJson.scripts['guard:enable-style-complexity'],
-    'repo-guard enable styleComplexity',
-  );
-  assert.equal(
-    packageJson.scripts['guard:style-governance'],
-    'repo-guard style-governance',
-  );
-  assert.equal(
-    packageJson.scripts['guard:enable-style-governance'],
-    'repo-guard enable styleGovernance',
-  );
+  assert.equal(packageJson.scripts['guard:style-complexity'], undefined);
+  assert.equal(packageJson.scripts['guard:enable-style-complexity'], undefined);
+  assert.equal(packageJson.scripts['guard:style-governance'], undefined);
+  assert.equal(packageJson.scripts['guard:enable-style-governance'], undefined);
   assert.equal(
     packageJson.scripts['guard:enable-quality'],
     'repo-guard enable eslint prettier',
@@ -229,16 +210,13 @@ test('doctor --fix reconciles safe managed repository state', async (context) =>
   assert.equal(config.checks.eslint.enabled, false);
   assert.equal(config.checks.eslint.preset, true);
   assert.equal(config.checks.prettier.enabled, false);
-  assert.equal(config.checks.styleComplexity.enabled, false);
-  assert.equal(config.checks.styleGovernance.enabled, false);
+  assert.equal(config.checks.stylelint.governance.enabled, false);
   assert.equal(config.checks.filePlacement.enabled, true);
   assert.equal(config.checks.lighthouse.enabled, false);
   assert.equal(config.checks.architecture.enabled, false);
   assert.equal(config.checks.build.enabled, false);
   assert.equal(config.checks.typeCheck.enabled, false);
   assert.equal(config.checks.unitTest.enabled, false);
-  assert.equal(config.checks.componentInteraction.enabled, false);
-  assert.equal(config.checks.accessibilityTest.enabled, false);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:repository-governance-policy:start/,

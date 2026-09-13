@@ -18,6 +18,23 @@ const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
 mkdirSync(TEST_ROOT, { recursive: true });
 
+test('失败采集的独立诊断不会被后续成功重跑覆盖', async (t) => {
+  const root = createFixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, 'fail-phase'), 'collect');
+  const failed = await runVueLighthouse({ root, config: lighthouseConfig() });
+  assert.equal(failed.status, 'execution-error');
+  const first = failed.artifacts.find((artifact) => artifact.type === 'lighthouse-run');
+  assert.ok(first, '失败结果必须包含独立诊断');
+  const saved = readFileSync(path.join(root, first.path), 'utf8');
+  assert.equal(JSON.parse(saved).result.status, 'execution-error');
+  rmSync(path.join(root, 'fail-phase'));
+  const passed = await runVueLighthouse({ root, config: lighthouseConfig() });
+  assert.equal(passed.status, 'passed');
+  assert.notEqual(passed.artifacts.find((artifact) => artifact.type === 'lighthouse-run').path, first.path);
+  assert.equal(readFileSync(path.join(root, first.path), 'utf8'), saved);
+});
+
 function git(root, args) {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
@@ -127,67 +144,61 @@ function lighthouseConfig() {
   };
 }
 
-test('builds a Vue project and runs Lighthouse collect then assert', (context) => {
+test('builds a Vue project and runs Lighthouse collect then assert', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const result = runVueLighthouse({ root, config: lighthouseConfig() });
+  const result = await runVueLighthouse({ root, config: lighthouseConfig() });
   assert.equal(result.status, 'passed');
   assert.equal(result.diagnostics.some(({ message }) => message.includes('vue-lighthouse-fixture')), true);
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\nassert\n');
 });
 
-test('supports skipping the Vue build for an already running project', (context) => {
+test('rejects skipping a build without verified current artifacts', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
-
-  assert.equal(runVueLighthouse({
-    root,
-    config: lighthouseConfig(),
-    skipBuild: true,
-  }).status, 'passed');
-  assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'collect\nassert\n');
+  await assert.rejects(() => runVueLighthouse({ root, config: lighthouseConfig(), skipBuild: true }), /不能跳过构建/);
 });
 
-test('exposes the Vue Lighthouse runner through the CLI', (context) => {
+test('exposes the Vue Lighthouse runner through the CLI', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const result = spawnSync(
     process.execPath,
-    [CLI_PATH, 'lighthouse', '--skip-build'],
+    [CLI_PATH, 'lighthouse'],
     { cwd: root, encoding: 'utf8' },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /通过 {2}lighthouse/);
-  assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'collect\nassert\n');
+  assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\nassert\n');
 });
 
-test('stops before assertions when Lighthouse collection fails', (context) => {
+test('stops before assertions when Lighthouse collection fails', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'fail-phase'), 'collect\n');
 
-  assert.equal(runVueLighthouse({ root, config: lighthouseConfig() }).status, 'execution-error');
+  assert.equal((await runVueLighthouse({ root, config: lighthouseConfig() })).status, 'execution-error');
   assert.equal(readFileSync(path.join(root, 'calls.log'), 'utf8'), 'build\ncollect\n');
 });
 
-test('rejects non-Vue projects before running Lighthouse', (context) => {
+test('rejects non-Vue projects before running Lighthouse', async (context) => {
   const root = createFixture({ vue: false });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.throws(
+  await assert.rejects(
     () => runVueLighthouse({ root, config: lighthouseConfig() }),
     /仅支持.*Vue 项目/,
   );
 });
 
-test('requires the Vue project to provide a Lighthouse config', (context) => {
+test('requires the Vue project to provide a Lighthouse config', async (context) => {
   const root = createFixture();
   context.after(() => rmSync(root, { recursive: true, force: true }));
   rmSync(path.join(root, 'lighthouserc.json'));
 
-  assert.throws(
+  await assert.rejects(
     () => runVueLighthouse({ root, config: lighthouseConfig() }),
     /找不到 Lighthouse 配置/,
   );
@@ -212,7 +223,7 @@ test('pre-push only runs Lighthouse when enabled', async (context) => {
   );
 });
 
-test('pre-push reuses an enabled independent build for Lighthouse', async (context) => {
+test('pre-push rebuilds when an independent build has no artifact evidence', async (context) => {
   const root = createFixture({ buildEnabled: true, enabled: true });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   commitFixture(root);
@@ -220,7 +231,7 @@ test('pre-push reuses an enabled independent build for Lighthouse', async (conte
   assert.equal(await runPrePush(root), 0);
   assert.equal(
     readFileSync(path.join(root, 'calls.log'), 'utf8'),
-    'build\ncollect\nassert\n',
+    'build\nbuild\ncollect\nassert\n',
   );
 });
 
@@ -294,4 +305,12 @@ test('pre-push skips historical commits that do not contain repo-guard configura
   assert.equal(await runPrePush(root, {
     input: `refs/tags/historical ${head} refs/tags/historical ${'0'.repeat(40)}\n`,
   }), 0);
+});
+
+test('Lighthouse 超时使用统一执行错误与退出码，不当成性能违规', async (context) => {
+  const root = createFixture();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const result = await runVueLighthouse({ root, config: { ...lighthouseConfig(), buildScript: null, timeoutMs: 1 } });
+  assert.equal(result.status, 'execution-error');
+  assert.equal(result.error.code, 'lighthouse/process-timeout');
 });

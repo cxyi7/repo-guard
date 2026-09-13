@@ -1,4 +1,7 @@
 import path from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolveInlineEslintConfig } from '../../integrations/eslint/configuration.js';
+import { createEslintIndexSnapshot } from '../../integrations/eslint/index-snapshot.js';
 import {
   captureFileContents,
   restoreFileContents,
@@ -103,20 +106,38 @@ export async function runEslintFiles({
   maxWarnings,
   preset = false,
   descriptor = null,
+  options,
+  indexSnapshot = false,
+  sourceBoundary,
 }) {
   if (files.length === 0) {
     return createGateResult({ gateId: ESLINT_GATE_ID, status: 'skipped', summary: 'ESLint 没有适用文件' });
   }
 
+  if (indexSnapshot && options?.typeAware) {
+    const snapshot = createEslintIndexSnapshot(root, files);
+    try {
+      const result = await runEslintFiles({ root: snapshot.root, files: snapshot.files.map(({ target }) => target), fix, maxWarnings, preset, descriptor, options, sourceBoundary: snapshot.boundary });
+      if (fix && result.status === 'passed') {
+        const originals = captureFileContents(snapshot.files.map(({ original }) => original));
+        try { for (const file of snapshot.files) writeFileSync(file.original, readFileSync(file.target)); }
+        catch (error) { restoreFileContents(originals); throw toRepoGuardError(error, { code: 'eslint/snapshot-write-failed', message: '无法写回 ESLint 暂存修复结果。' }); }
+      }
+      return result;
+    } finally { snapshot.cleanup(); }
+  }
+
   const project = await loadProjectEslint(root);
-  const repoGuardPreset = preset
+  const repoGuardPreset = !options && preset
     ? await resolveRepoGuardEslintPreset(root, project.version, descriptor)
     : null;
   const execution = await prepareProjectEslintExecution({
     root,
     files,
     project,
-    baseConfig: repoGuardPreset?.configs ?? null,
+    baseConfig: options ? await resolveInlineEslintConfig(root, options, descriptor) : repoGuardPreset?.configs ?? null,
+    allowMissingConfig: Boolean(options),
+    sourceBoundary,
   });
 
   if (execution.lintableFiles.length === 0) {

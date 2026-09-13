@@ -35,13 +35,20 @@ export function validateFunctionDocConfiguration(checksValue, configPath) {
   }
   assertKnownProperties(
     value,
-    new Set(['enabled', 'include', 'exclude', 'extensions']),
+    new Set(['enabled', 'include', 'exclude', 'extensions', 'exportedOnly', 'requireDescription', 'requireParamDescription', 'requireReturnsDescription', 'requireThrowsDescription', 'requireSideEffectsDescription']),
     label,
   );
   if (value.enabled != null && typeof value.enabled !== 'boolean') {
     throw configValidationError(`${label}.enabled 必须是布尔值`);
   }
+  const options = {};
+  for (const key of ['exportedOnly', 'requireDescription', 'requireParamDescription', 'requireReturnsDescription', 'requireThrowsDescription', 'requireSideEffectsDescription']) {
+    if (value[key] === undefined) continue;
+    if (typeof value[key] !== 'boolean') throw configValidationError(`${label}.${key} 必须是布尔值`);
+    options[key] = value[key];
+  }
   return {
+    ...options,
     enabled: value.enabled ?? DEFAULT_FUNCTION_DOC_CONFIG.enabled,
     include: normalizePatternList(
       value.include ?? DEFAULT_FUNCTION_DOC_CONFIG.include,

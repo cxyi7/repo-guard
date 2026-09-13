@@ -6,6 +6,7 @@ function contentHash(buffer) {
 }
 
 function preserveMetadata(pipeline, metadataPolicy) {
+  if (metadataPolicy === 'display') return pipeline.keepIccProfile();
   return metadataPolicy === 'preserve' && typeof pipeline.keepMetadata === 'function'
     ? pipeline.keepMetadata()
     : pipeline;

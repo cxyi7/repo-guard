@@ -1,3 +1,5 @@
+import { validateBuildOptions, validateBundleAnalysis, validateLighthouseOptions } from './performance-options.js';
+import { validateToolOptions } from './tool-options.js';
 import {
   DEFAULT_BUILD_CONFIG,
   DEFAULT_LIGHTHOUSE_CONFIG,
@@ -16,7 +18,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
   }
   assertKnownProperties(
     buildValue,
-    new Set(['enabled', 'script', 'timeoutMs', 'artifactBudget']),
+    new Set(['enabled', 'script', 'timeoutMs', 'artifactBudget', 'bundleAnalysis', 'options']),
     `${configPath} checks.build`,
   );
   if (buildValue.enabled != null && typeof buildValue.enabled !== 'boolean') {
@@ -44,7 +46,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
   }
   assertKnownProperties(
     lighthouseValue,
-    new Set(['enabled', 'configFile', 'buildScript', 'timeoutMs']),
+    new Set(['enabled', 'configFile', 'buildScript', 'timeoutMs', 'options', 'pages', 'prePush', 'imageUsage']),
     `${configPath} checks.lighthouse`,
   );
   if (lighthouseValue.enabled != null && typeof lighthouseValue.enabled !== 'boolean') {
@@ -78,7 +80,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
   }
   assertKnownProperties(
     typeCheckValue,
-    new Set(['enabled', 'script', 'timeoutMs']),
+    new Set(['enabled', 'script', 'timeoutMs', 'options']),
     `${configPath} checks.typeCheck`,
   );
   if (typeCheckValue.enabled != null && typeof typeCheckValue.enabled !== 'boolean') {
@@ -102,6 +104,8 @@ export function validateExecutionGateConfiguration(value, configPath) {
 
   return {
     build: {
+      ...validateBundleAnalysis(buildValue.bundleAnalysis, configPath),
+      ...validateBuildOptions(buildValue.options, configPath),
       enabled: buildValue.enabled ?? DEFAULT_BUILD_CONFIG.enabled,
       script: buildValue.script?.trim() || DEFAULT_BUILD_CONFIG.script,
       timeoutMs: buildValue.timeoutMs ?? DEFAULT_BUILD_CONFIG.timeoutMs,
@@ -111,6 +115,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
       ),
     },
     lighthouse: {
+      ...validateLighthouseOptions(lighthouseValue, configPath),
       enabled: lighthouseValue.enabled ?? DEFAULT_LIGHTHOUSE_CONFIG.enabled,
       configFile: lighthouseValue.configFile?.trim() || DEFAULT_LIGHTHOUSE_CONFIG.configFile,
       buildScript: lighthouseValue.buildScript === null
@@ -119,6 +124,7 @@ export function validateExecutionGateConfiguration(value, configPath) {
       timeoutMs: lighthouseValue.timeoutMs ?? DEFAULT_LIGHTHOUSE_CONFIG.timeoutMs,
     },
     typeCheck: {
+      ...validateToolOptions('typeCheck', typeCheckValue.options, configPath),
       enabled: typeCheckValue.enabled ?? DEFAULT_TYPE_CHECK_CONFIG.enabled,
       script: typeCheckValue.script?.trim() || DEFAULT_TYPE_CHECK_CONFIG.script,
       timeoutMs: typeCheckValue.timeoutMs ?? DEFAULT_TYPE_CHECK_CONFIG.timeoutMs,

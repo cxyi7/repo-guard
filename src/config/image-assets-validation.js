@@ -10,6 +10,7 @@ import {
   normalizePatternList,
   normalizeRelativePattern,
 } from './validation-primitives.js';
+import { validateImageGovernance } from './image-governance-options.js';
 
 const ACTIONS = Object.freeze(['off', 'report', 'error']);
 
@@ -71,7 +72,7 @@ function validateUnused(value, label) {
   const defaults = DEFAULT_IMAGE_ASSETS_CONFIG.unused;
   assertKnownProperties(unused, new Set([
     'enabled', 'action', 'sourceInclude', 'sourceExclude', 'sourceExtensions',
-    'aliases', 'publicRoots', 'dynamicReferences', 'limits',
+    'aliases', 'publicRoots', 'dynamicReferences', 'limits', 'referenceIntegrity',
   ]), label);
   const aliases = unused.aliases ?? defaults.aliases;
   if (!Array.isArray(aliases)) throw configValidationError(`${label}.aliases 必须是数组`);
@@ -114,9 +115,20 @@ function validateUnused(value, label) {
   const normalizedDynamicReferences = dynamicReferences.map((item, index) => {
     const itemLabel = `${label}.dynamicReferences 第 ${index + 1} 项`;
     const declaration = objectValue(item, itemLabel);
-    assertKnownProperties(declaration, new Set(['sourcePatterns', 'assetPatterns', 'reason']), itemLabel);
+    assertKnownProperties(declaration, new Set(['sourcePatterns', 'assetPatterns', 'reason', 'api']), itemLabel);
     if (typeof declaration.reason !== 'string' || !declaration.reason.trim()) {
       throw configValidationError(`${itemLabel}.reason 必须说明动态引用原因`);
+    }
+    let api;
+    if (declaration.api !== undefined) {
+      api = objectValue(declaration.api, `${itemLabel}.api`);
+      assertKnownProperties(api, new Set(['method', 'endpoint', 'responseField']), `${itemLabel}.api`);
+      for (const key of ['method', 'endpoint', 'responseField']) {
+        if (typeof api[key] !== 'string' || !api[key].trim()) throw configValidationError(`${itemLabel}.api.${key} 必须是非空字符串`);
+      }
+      if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].includes(api.method)) throw configValidationError(`${itemLabel}.api.method 必须是大写 HTTP 方法`);
+      if (!api.endpoint.startsWith('/') || api.endpoint.startsWith('//') || /[?#\r\n]/.test(api.endpoint)) throw configValidationError(`${itemLabel}.api.endpoint 必须是不含查询参数的接口路径`);
+      api = Object.fromEntries(Object.entries(api).map(([key, entry]) => [key, entry.trim()]));
     }
     return {
       sourcePatterns: normalizePatternList(declaration.sourcePatterns, `${itemLabel}.sourcePatterns`)
@@ -124,12 +136,14 @@ function validateUnused(value, label) {
       assetPatterns: normalizePatternList(declaration.assetPatterns, `${itemLabel}.assetPatterns`)
         .map((pattern) => rejectUniversalPattern(pattern, `${itemLabel}.assetPatterns`)),
       reason: declaration.reason.trim(),
+      ...(api ? { api } : {}),
     };
   });
   const limits = objectValue(unused.limits ?? {}, `${label}.limits`);
   assertKnownProperties(limits, new Set(['maxSourceFiles', 'maxSourceBytes', 'maxTotalSourceBytes']), `${label}.limits`);
   return {
     enabled: booleanValue(unused.enabled, defaults.enabled, `${label}.enabled`),
+    referenceIntegrity: booleanValue(unused.referenceIntegrity, false, `${label}.referenceIntegrity`),
     action: enumValue(unused.action, defaults.action, ['report', 'error'], `${label}.action`),
     sourceInclude: normalizePatternList(unused.sourceInclude ?? defaults.sourceInclude, `${label}.sourceInclude`),
     sourceExclude: normalizePatternList(unused.sourceExclude ?? defaults.sourceExclude, `${label}.sourceExclude`, { allowEmpty: true }),
@@ -301,7 +315,7 @@ function validateCompression(value, label) {
     raster: {
       enabled: booleanValue(raster.enabled, defaults.raster.enabled, `${label}.raster.enabled`),
       allowLossy: booleanValue(raster.allowLossy, defaults.raster.allowLossy, `${label}.raster.allowLossy`),
-      metadata: enumValue(raster.metadata, defaults.raster.metadata, ['preserve', 'strip'], `${label}.raster.metadata`),
+      metadata: enumValue(raster.metadata, defaults.raster.metadata, ['preserve', 'strip', 'display'], `${label}.raster.metadata`),
     },
     svg: {
       enabled: booleanValue(svg.enabled, defaults.svg.enabled, `${label}.svg.enabled`),
@@ -338,12 +352,14 @@ export function validateImageAssetsConfiguration(value, configPath) {
       'compression',
       'unused',
       'limits',
+      'governance',
     ]),
     label,
   );
   const defaults = DEFAULT_IMAGE_ASSETS_CONFIG;
   return {
     enabled: booleanValue(imageAssets.enabled, defaults.enabled, `${label}.enabled`),
+    ...validateImageGovernance(imageAssets.governance, `${label}.governance`),
     enforcement: enumValue(imageAssets.enforcement, defaults.enforcement, ['changedFiles', 'allFiles'], `${label}.enforcement`),
     include: normalizePatternList(imageAssets.include ?? defaults.include, `${label}.include`),
     exclude: normalizePatternList(imageAssets.exclude ?? defaults.exclude, `${label}.exclude`, { allowEmpty: true }),

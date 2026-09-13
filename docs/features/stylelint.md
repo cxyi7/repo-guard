@@ -1,96 +1,86 @@
-# Stylelint 与样式规范
+# Stylelint 与统一样式检查
+
+Token 子能力可进一步配置[指定值与生成 CSS 校验](ui-token-values.md)，所有选项仍保存在 `checks.stylelint.uiTokens`。
 
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
-> 阅读约定：示例保持标准 JSON，字段说明紧随其后。默认值指省略字段时的补缺值，不等于示例值；默认值还会受显式项目预设影响；初始化不探测并自动开启能力。主配置片段需合并到原文件，数组整项替换。
+样式配置统一保存在 `checks.stylelint`：原生规则使用 `options`，隔离与全局目录使用 `governance`，设计变量使用 `uiTokens`。新前端初始化及显式启用写入默认规则和已开启的治理；读取既有稀疏配置不暗中开启。Token 主开关在新前端配置中默认开启；必须先完成设计规范、清单和来源文件配置，缺项不能算检查通过。
 
-复用项目自己的 Stylelint 和配置，检查 CSS、预处理样式和 Vue 样式。默认关闭，明确开启后复用项目已经准备好的工具；样式复杂度与样式治理分别配置。
+## 配置与优先级
 
-## 接入与配置
-
-消费项目支持的 Stylelint 范围为 `>=16 <18`。根据项目语言准备规则配置与 custom syntax；Vue、SCSS、Sass、Less 需要对应解析能力。不要用纯 CSS 配置直接替换已有框架配置。
-
-```bash
-npm install --save-dev --save-exact "stylelint@>=16 <18"
-```
-
-纯 CSS 项目可使用以下 `stylelint.config.mjs` 起点：
-
-```js
-export default {
-  rules: {
-    'color-no-invalid-hex': true, // 检查无效十六进制颜色；true 启用，null 关闭
-    'block-no-empty': true, // 检查空样式块；true 启用，null 关闭
-  },
-};
-```
-
-`repo-guard.config.json` 配置片段：
+以下为重点字段片段，完整规则见[前端工具预设](frontend-tool-presets.md)。用户可修改已写入的值，重复启用保留修改；关闭主开关不会删除配置、卸载依赖或清除子开关。
 
 ```json
 {
   "checks": {
-    "styleComplexity": {
-      "enabled": true,
-      "maxCompoundSelectors": 3,
-      "maxNestingDepth": 3
-    },
-    "styleGovernance": {
-      "enabled": true,
-      "maxSpecificity": "0,3,0",
-      "maxIdSelectors": 0,
-      "disallowImportant": true,
-      "allowedGlobalStylePatterns": [
-        "src/styles/**",
-        "src/App.vue"
-      ]
-    },
     "stylelint": {
       "enabled": true,
       "pattern": "**/*.{css,scss,sass,less,vue}",
       "fix": true,
       "maxWarnings": 0,
-      "requireConfig": true
+      "requireConfig": true,
+      "options": {
+        "rules": {
+          "selector-max-compound-selectors": 3,
+          "max-nesting-depth": 3,
+          "selector-max-id": 0,
+          "declaration-no-important": true,
+          "selector-max-specificity": null,
+          "custom-property-no-missing-var-function": true,
+          "declaration-block-no-duplicate-custom-properties": true,
+          "no-descending-specificity": null
+        },
+        "overrides": [
+          {
+            "files": ["**/*.css"],
+            "rules": { "selector-max-specificity": "0,3,1" }
+          },
+          { "files": ["**/*.vue"], "customSyntax": "postcss-html" }
+        ]
+      },
+      "governance": {
+        "enabled": true,
+        "allowedGlobalStylePatterns": ["styles/**"]
+      },
+      "uiTokens": { "enabled": true }
     }
   }
 }
 ```
 
-<!-- config-fields:start -->
-**字段说明**（以下使用完整的 v2 配置路径）：
+| 字段            | 含义与默认值                                                   |
+| --------------- | -------------------------------------------------------------- |
+| `enabled`       | 主开关；读取补缺为 false，新前端初始化为 true                  |
+| `pattern`       | 普通检查范围，默认上述全部样式后缀                             |
+| `fix`           | Hook 修复可修复项，默认 true；手动命令及 CI 只读               |
+| `maxWarnings`   | 警告上限，默认 0                                               |
+| `requireConfig` | 默认 true；内联 options 或原生配置均可满足                     |
+| `options`       | 原生规则、共享配置、插件和语法 overrides                       |
+| `governance`    | 仅隔离和全局目录，见[样式治理](style-governance.md)            |
+| `uiTokens`      | 语言、清单、扫描范围，见[Token 检查](ui-tokens.md) |
 
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `checks.stylelint.enabled` | 是否启用Stylelint 暂存样式处理 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 |
-| `checks.stylelint.pattern` | 选择暂存文件的 glob，使用项目相对路径匹配 | 字符串<br>默认：`"**/*.{css,scss,sass,less,vue}"` | 至少 1 个字符 |
-| `checks.stylelint.fix` | 是否自动修复可修复项；false 使用只读检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `checks.stylelint.maxWarnings` | 允许的工具警告数上限；0 表示不允许警告 | 整数<br>默认：`0` | ≥ 0 |
-| `checks.stylelint.requireConfig` | 是否要求消费项目提供适用的工具配置 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `checks.styleComplexity.enabled` | 是否启用选择器与嵌套复杂度检查 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 启用命令会打开 Stylelint，关闭 Stylelint 会同时关闭本项。 |
-| `checks.styleComplexity.maxCompoundSelectors` | 单个解析后选择器允许的复合选择器数量 | 整数<br>默认：`3` | ≥ 0 |
-| `checks.styleComplexity.maxNestingDepth` | 允许的最大样式规则嵌套深度 | 整数<br>默认：`3` | ≥ 0 |
-| `checks.styleGovernance.enabled` | 是否启用样式优先级与全局位置治理 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false"； 初始化不自动探测启用；需显式开启并准备工具。 启用命令会打开 Stylelint，关闭 Stylelint 会同时关闭本项。 |
-| `checks.styleGovernance.maxSpecificity` | 优先级上限，顺序为 ID、类/属性/伪类、元素/伪元素 | 字符串<br>默认：`"0,3,0"` | 三个非负整数字段，以逗号分隔且不插入空格，例如 0,3,0 |
-| `checks.styleGovernance.maxIdSelectors` | 单个选择器允许的 ID 选择器数量；0 表示禁止 | 整数<br>默认：`0` | ≥ 0 |
-| `checks.styleGovernance.disallowImportant` | 是否禁止 !important 声明 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `checks.styleGovernance.allowedGlobalStylePatterns` | 允许全局样式的仓库相对路径；CSS Module 自动按隔离样式处理 | 字符串数组<br>默认：内置 8 项，见[默认配置](../../src/config/defaults.js) | 至少 1 项；元素不可重复；每项为非空字符串 |
+两层配置逐文件解析合并，用户原生同名规则、关闭值和语法设置优先。复杂度、权重、ID 和 important 只执行最终原生规则。治理和 Token 的开关、路径及例外在 repo-guard 配置修改；原生规则不覆盖 Token 清单事实。
 
-<!-- config-fields:end -->
+消费项目提供 Stylelint、规则包及语法包。Vue 治理使用消费项目 Vue 3.5 编译器解析 SFC，样式还需 postcss-html；预处理语言按实际需要补充语法与规则。使用 `repo-guard tool-config --tool stylelint --file src/App.vue` 检查合并结果。接入 Skill 尚未实现，见[待办](skill-integration-backlog.md)。
+
+## 执行与边界
 
 ```bash
-npx repo-guard enable stylelint styleComplexity styleGovernance
+npx repo-guard enable stylelint
 npx repo-guard doctor
+npx repo-guard stylelint
 ```
 
-启用 `styleComplexity` 或 `styleGovernance` 会同步启用 Stylelint；关闭 Stylelint 会同时关闭这两项。单独启用 Stylelint 不等于自动打开两项增强规则。
+手动入口统一运行普通规则、治理和已启用的 Token，保留各项发现并按公共错误优先级汇总。多应用加 `--project <id>`。无适用文件或全部被忽略时返回跳过，不作为通过证据。
 
-## 执行与修复
+Hook 顺序保持 Stylelint 修复、ESLint 修复、Prettier、Stylelint/ESLint 只读复核、保护文件检查；保留未暂存修改。Token 内部只读步骤仍保留：清单、定义源或相关配置变化时复查全量样式，不能仅检查暂存样式。CI full/release-ready 执行普通样式检查，Token 另支持 policy。
 
-提交阶段先修复样式，再在格式化完成后复核；CI `full` / `release-ready` 只读检查。样式复杂度和样式治理也有手动入口：
+配置或语法无法解析属于配置错误，工具启动和超时属于执行错误，规则发现属于违规。修复失败恢复本次文件修改，不通过放宽阈值或扩大例外掩盖失败。
 
-```bash
-npx repo-guard style-complexity
-npx repo-guard style-governance
-```
+4.0 移除了旧顶层 `checks.styleComplexity`、`checks.styleGovernance`、`checks.uiTokens` 及其独立启用名和执行命令。旧字段明确拒绝，不自动转换，须按当前结构人工审阅调整。
 
-按报告降低选择器或嵌套复杂度，移除不符合约定的优先级写法，或将全局样式放回团队声明的位置，再运行相同检查。源码：[Stylelint 门禁](../../src/gates/quality/stylelint-gate.js)。
+当前普通 Stylelint 门禁仍要求每个 Vue 文件只使用一种 style 语言；混用会返回配置错误，不能视为已支持。
+
+新建预设开启主开关不代表已建立设计规范。values.enabled 与 artifacts.enabled 仍默认关闭，需显式配置指定值和生成 CSS 范围后开启；不得自动填入业务设计值或伪造 Token 清单。通用字段回退值不改变既有配置。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

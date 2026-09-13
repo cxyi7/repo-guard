@@ -37,7 +37,7 @@ function issueFinding(issue) {
       type: 'knip-analysis',
       message: `Knip 问题类型：${issue.type}；名称：${issue.name}`,
     }],
-    expected: '项目依赖图中不存在未使用或无法解析的代码与依赖。',
+    expected: '已确认入口和扫描范围内不存在未使用或无法解析的普通引用；动态及外部使用须另行核对。',
     remediation: {
       goal: `消除${label}，同时保持现有公开接口和运行行为兼容`,
       steps: ['确认 Knip 入口和插件配置正确', '删除无效内容或补齐真实引用与依赖声明'],
@@ -115,6 +115,9 @@ export async function runDeadCodeGate(context) {
     );
   }
   const metrics = {
+    processedFiles: analysis.processedFiles,
+    totalFiles: analysis.totalFiles,
+    skippedSpecialReferences: analysis.skippedSpecialReferences,
     issues: issues.length,
     files: issues.filter(({ type }) => type === 'files').length,
     dependencies: issues.filter(({ type }) => type === 'dependencies').length,
@@ -122,7 +125,7 @@ export async function runDeadCodeGate(context) {
   };
   if (config.mode === 'strict') {
     return issues.length === 0
-      ? passedResult(GATE_ID, `无效代码检查已通过，Knip ${setup.knip.version} 未发现问题`, { diagnostics, metrics })
+      ? passedResult(GATE_ID, `无效代码检查已通过，Knip ${setup.knip.version} 在配置的静态分析范围内未发现问题；不证明动态使用完整覆盖`, { diagnostics, metrics })
       : violationResult(GATE_ID, `无效代码检查发现 ${issues.length} 项问题`, {
           diagnostics,
           metrics,

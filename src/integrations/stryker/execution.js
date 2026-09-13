@@ -18,6 +18,7 @@ export async function executeMutationTest({
       path.relative(root, reports.json),
       path.relative(root, reports.originalHtml),
       String(config.originalHtml),
+      JSON.stringify(config.options ?? null),
     ],
     root,
     timeoutMs: config.timeoutMs,

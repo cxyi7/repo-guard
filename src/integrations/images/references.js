@@ -63,7 +63,14 @@ function scriptReferences(source, relativePath, language = '', offsetBase = 0) {
   };
   traverse(ast, {
     StringLiteral(nodePath) {
-      addReference(nodePath.node.value, nodePath.node.start);
+      const parent = nodePath.parent;
+      const isUrl = parent?.type === 'NewExpression' && parent.callee?.name === 'URL' && parent.arguments[0] === nodePath.node;
+      const base = isUrl ? parent.arguments[1] : null;
+      const localUrl = isUrl && !nodePath.scope.hasBinding('URL') && base?.type === 'MemberExpression' && !base.computed
+        && base.property?.name === 'url' && base.object?.type === 'MetaProperty' && base.object.meta?.name === 'import';
+      if (isUrl && !localUrl) return;
+      const direct = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(parent?.type) && parent.source === nodePath.node || localUrl;
+      addReference(nodePath.node.value, nodePath.node.start, direct ? 'script-resource' : 'script-string');
     },
     TemplateLiteral(nodePath) {
       const value = staticTemplateValue(nodePath.node);
@@ -99,8 +106,10 @@ function splitSrcset(value) {
 }
 
 function quotedExpression(value) {
-  const match = value?.trim().match(/^(?:'([^']+)'|"([^"]+)"|`([^`]+)`)$/s);
-  return match ? match[1] ?? match[2] ?? match[3] : null;
+  try {
+    const node = parseExpression(value, { plugins: ['typescript', 'jsx'] });
+    return node.type === 'StringLiteral' ? node.value : staticTemplateValue(node);
+  } catch { return null; }
 }
 
 function boundExpressionStrings(value) {
@@ -118,11 +127,9 @@ function boundExpressionStrings(value) {
         strings.push(templateValue);
         return;
       }
-      for (const [key, child] of Object.entries(node)) {
-        if (['loc', 'extra', 'comments', 'errors'].includes(key)) continue;
-        if (Array.isArray(child)) child.forEach(visit);
-        else visit(child);
-      }
+      if (node.type === 'ConditionalExpression') { visit(node.consequent); visit(node.alternate); }
+      else if (node.type === 'LogicalExpression') { visit(node.left); visit(node.right); }
+      else if (node.type === 'CallExpression' && node.callee?.type === 'Identifier' && node.callee.name === 'require') visit(node.arguments[0]);
     };
     visit(expression);
     return strings;
@@ -259,6 +266,10 @@ function vueReferences(source, relativePath) {
       block.contentStart,
     ));
   return {
+    uncertain: findVueTemplateAttributes(source).filter((attribute) =>
+      [':src', 'v-bind:src', ':srcset', 'v-bind:srcset', ':poster', 'v-bind:poster'].includes(attribute.name)
+      && attribute.value && quotedExpression(attribute.value) == null)
+      .map((attribute) => ({ offset: attribute.offset, expression: attribute.value })),
     references: [
       ...referencesFromAttributes(findVueTemplateAttributes(source)),
       ...scriptFacts.flatMap(({ references }) => references),

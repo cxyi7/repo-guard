@@ -3,6 +3,7 @@ import { processOutputDiagnostics } from '../../core/execution/process-output.js
 import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
 import { processFailureFinding } from '../../core/result/process-failure-guidance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
+import { aggregateGateResults, processExecutionToStatus } from '../../core/result/exit-code.js';
 import {
   executeProjectTypeCheck,
   validateTypeCheckSetup,
@@ -21,12 +22,25 @@ export async function runTypeCheckGate({
   const setup = validateTypeCheckSetup(root, config);
   const progressMessage = `repo-guard TypeScript：正在运行 npm 脚本 "${config.script}" (${setup.command})...`;
   if (liveOutput) writeProgress?.(progressMessage);
-  const { execution } = await executeProjectTypeCheck({
+  const executionResult = await executeProjectTypeCheck({
     root,
     config,
     signal,
     output: terminalProcessOutput(liveOutput),
   });
+  if (executionResult.executions) {
+    const results = executionResult.executions.map((execution) => ({ execution,
+      status: processExecutionToStatus(execution, { failureStatus: 'violation' }) }));
+    const { status } = aggregateGateResults(results);
+    const error = status === 'execution-error' ? executionError('typecheck/execution-failed', '类型检查未能完成，请检查进程启动、超时或取消诊断。') : null;
+    return createGateResult({ gateId: TYPE_CHECK_GATE_ID, status,
+      summary: status === 'passed' ? 'TypeScript 类型检查已通过' : error?.message ?? 'TypeScript 类型检查失败',
+      error,
+      diagnostics: results.flatMap(({ execution }) => processOutputDiagnostics(execution, { source: 'typescript', root })),
+      durationMs: Date.now() - startedAt,
+    });
+  }
+  const { execution } = executionResult;
   const diagnostics = liveOutput ? [] : [{ level: 'info', message: progressMessage }];
   if (!liveOutput) {
     diagnostics.push(...processOutputDiagnostics(execution, { source: 'typescript', root }));

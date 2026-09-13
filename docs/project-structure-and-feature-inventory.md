@@ -1,5 +1,7 @@
 # repo-guard 项目结构与能力总览
 
+前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](features/frontend-performance-presets.md)。
+
 适用于版本 `2.0.0`。
 
 本文维护当前 **v2 配置模型、模块职责和扩展边界**。repo-guard 通过统一的 npm 命令入口约束 AI 与开发者的工程行为；Vue 前端、Node 后端与 Java Maven 后端各自使用明确配置的工具、规则和执行目录，不承担接口契约、鉴权或其他业务验收判断。
@@ -9,6 +11,10 @@
 本轮内部模型统一、旧 CI 发布链路清理及回归验收记录见 [2.0 重构工作清单](refactor-2.0-remaining-work.md)。源码完成验证不等于已发布 npm 包。
 
 ## 项目结构与职责
+
+性能预设位于 profiles/frontend-performance-presets.js，配置层维护构建/性能 Schema，integrations/build-artifacts 提供 Vite 插件、模块报告与构建指纹；integrations/lighthouse 管理配置合并、页面守卫与报告校验。quality.build 在通过预算和报告后登记证据，quality.lighthouse 消费证据。自动接入 Skill 暂不实现，待补齐的项目分析、依赖安装和配置工作统一记录在 [Skill 接入待办清单](features/skill-integration-backlog.md)。已有交付 Skills 不受影响。
+
+前端工具预设新增 `profiles/frontend-tool-presets.js` 与依赖要求目录；配置层校验可序列化的 `checks.<工具>.options`，初始化/启用编排负责持久化。ESLint、Prettier、Stylelint、TypeScript 集成层分别遵循原生配置语义合并，项目配置优先；`tool-config` 通过质量适配入口只读查询生效设置。类型感知暂存检查使用独立索引工作区，TypeScript 只读检查使用临时配置，均在结束时清理。详见[前端工具预设](features/frontend-tool-presets.md)。
 
 ### 1 工作模型：显式项目、共同检查引擎、独立运维
 
@@ -143,7 +149,7 @@ Java 能力按职责分别维护：`integrations/java/source/` 适配 Checkstyle
 
 Java 工程问题的语义由 `policies/java/engineering/findings.js` 组织，保留模块、报告、规则对象、预期和修复步骤；标识与指纹仍交给公共 GateResult。进程原始状态由 `core/execution/process-output.js` 统一转换为诊断，不由各 Java Gate 另建退出码规则。同根应用仅在托管规范上下文中合成公共提交、交付与归位配置，应用 Gate 始终使用本方配置。
 
-样式 Token 检查沿用这些边界：`config` 校验 `checks.uiTokens.languages` 与 v2 清单；`integrations/ui-tokens/` 使用消费项目的 Stylelint 和语法配置提取 CSS、SCSS/Sass、Less 及 Vue 内联样式事实；`policies/ui-tokens.js` 检查 12 类 Token 的完整别名、类别与变量定义归属；`quality.ui-tokens` 组合清单指纹、扫描范围和只读报告。CSS 断点采用清单允许值，普通 CSS 变量也可在 Sass/Less 声明中使用。UnoCSS 类名、配置与 shortcut 分析已移除；不新增编译器执行、语言自动探测或工具安装职责。该能力仅归前端应用，其清单保护和例外都使用所属应用规则，详见[样式 Token 检查](features/ui-tokens.md)。
+样式 Token 检查沿用这些边界：`config` 校验 `checks.stylelint.uiTokens.languages` 与 v2 清单；`integrations/ui-tokens/` 使用消费项目的 Stylelint 和语法配置提取 CSS、SCSS/Sass、Less 及 Vue 内联样式事实；`policies/ui-tokens.js` 检查 11 类 Token 的完整别名、类别与变量定义归属；`quality.ui-tokens` 组合清单指纹、扫描范围和只读报告。CSS 断点采用清单允许值，普通 CSS 变量也可在 Sass/Less 声明中使用。UnoCSS 类名、配置与 shortcut 分析已移除；不新增编译器执行、语言自动探测或工具安装职责。该能力仅归前端应用，其清单保护和例外都使用所属应用规则，详见[样式 Token 检查](features/ui-tokens.md)。
 
 ## 执行与可信结果
 
@@ -210,3 +216,45 @@ CI 计划通过 `policy → full → release-ready` 逐级复用公共步骤，�
 每个行为变化同步代码测试、README/相关专题、Schema 和 CHANGELOG；能力变化同时维护功能索引。结构变化同步本文、SVG、HTML 与架构约束。配置示例、文档链接、测试入口和 npm 打包内容必须一并复核。
 
 发布前执行 `npm run check`、`npm test`、`npm run pack:check`。本仓库的版本与发布流程统一维护在[发布 Skill](../.agents/skills/repo-guard-publishing/SKILL.md)。
+
+## 前端维护预设与文档门禁
+
+`src/profiles/frontend-maintenance-presets.js` 负责确定性初始化模板；配置层保存项目修改，策略层分析公开函数，`quality.function-documentation` 统一提供暂存后复核及 CI/交付检查。模板不探测业务身份或自动安装工具。详见[维护预设](features/frontend-maintenance-presets.md)。
+
+前端公共方法测试由 Vitest 单元测试、覆盖率和 Stryker 变异测试构成，新配置默认开启；测试集中在 src/tests/utils。Stryker 预设及原生配置合并位于 integrations/stryker，完整 CI 和发布就绪包含变异门禁；组件交互与 axe 测试领域已移除。
+
+前端图片预设支持全量治理、接口字段保留说明、用途预算、动画与页面图片检查，以及显式批量优化。详见 [图片治理预设](features/frontend-image-presets.md)。
+
+Lighthouse 集成新增 `browser-settings.js` 解析消费项目设备配置，`run-journal.js` 保存每次执行的独立 v2 诊断；仍由质量门禁编排，未引入部署或交付审批旁路。
+
+样式域统一公开在 `checks.stylelint`。`integrations/stylelint/governance.js` 使用消费项目 Vue 编译器及选择器 AST 提取隔离事实；`policies/style-governance.js` 只判断事实。`quality.stylelint` 执行最终原生规则与治理，手动统一入口汇总内部 Token 步骤；Token 保留清单变化全量只读复查，主开关共同控制执行。
+
+## Token 指定值与构建衔接（4.1.0）
+
+配置合同由 `src/config/ui-token-values.js` 维护；`integrations/ui-tokens/styles.js` 提取选择器、条件、值与定义种类，`policies/ui-token-values.js` 进行确定的语法比较，门禁负责与清单核对身份并汇总结果。`integrations/ui-tokens/artifacts.js` 有界读取本轮 CSS，`gates/quality/ui-token-build.js` 在构建前后衔接检查，构建证据加入 Token 配置及来源实际指纹。详情见[指定值与生成 CSS](features/ui-token-values.md)。
+
+## 源码安全检查（6.0.0）
+
+`src/config/source-security.js` 管理六组配置；`src/policies/source-security-*.js` 管理明确语法策略；`src/gates/security/source-security-gate.js` 组织文件范围、审批例外和公共结果。只保留统一源码安全门禁，手动、Hook 与 CI 按各自范围执行；不保留旧入口。完整范围与限制见 [源码安全规则](features/source-security.md)。
+
+6.0.0 已删除表单标签和图片替代文本固定门禁及专用适配模块，不保留兼容入口。详见[删除说明](features/template-accessibility-removal.md)。
+
+## 普通依赖与包管理器（7.1.0）
+
+配置位于 repository.dependencyPolicy；config 定义包管理器和就绪开关，git 提供最终索引元数据，integrations/dependencies 提供严格版本和锁文件适配，repository Gate 组合事实与违规。共享配置进程 gates/dependency-tool-worker.js 复用质量适配器。托管工程 CI 按声明生成冻结安装，脚本执行遵循原生包管理器。[依赖检查](features/dependency-policy.md)。
+
+特殊引用范围修正：`workspace:`、别名、本地路径等跳过依赖策略检查，不产生不支持违规；声明检查、锁适配器和就绪元数据检查共用同一引用分类，混合清单继续核对普通依赖。
+
+### 前端 Knip 接入与执行
+
+7.1.0 的配置层接受 checks.deadCode.options，前端预设在新建或显式启用时写入基础选项。integrations/knip/configuration.js 在子进程中复用消费项目公开配置 API；temporary-configuration.js 管理临时合并入口；special-references.js 按问题所属应用过滤特殊依赖。原生 CLI 及报告仍用于实际分析，门禁和基线共享过滤后的结果及处理计数。Knip 配置优先级、空匹配和动态边界见 [能力文档](features/dead-code.md)。
+
+Node 后端适用性和真实消费验证见[Node 后端](features/node-backend.md)；工具需求由前端与 Node 共用现有需求接口，按显式项目身份和启用检查选择，不导入前端治理。
+
+Node 新建检查开关由 src/profiles/node-check-presets.js 提供，经 createProjectDocument 写入配置；运行时补缺和前端预设保持独立。
+
+Java 新建模板开关由 src/profiles/java-check-presets.js 提供；createProjectDocument 返回可编辑模板，不保证 Java 待接入模板已经满足运行配置 Schema。运行校验仍由 normalizeProjectDocument 负责，未补齐即阻断。
+
+目录职责由 config/directory-roles.js 校验和解析，profiles/directory-presets.js 提供按项目身份的初始约定，config/directory-roles-schema.js 维护字段契约。应用配置解析后才交给各门禁，写回保留目录引用与独立用户值；开关命令保留绑定。AI 规范只呈现职责与路径，不执行语义分类。详见 [目录职责](features/directory-roles.md)。
+
+预设声明与绑定生成分离：profiles/directory-presets.js 仅声明目录用途，config/directory-presets.js 从检查预设生成路径绑定，避免预设层依赖运行配置逻辑。

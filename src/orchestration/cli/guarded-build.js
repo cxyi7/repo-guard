@@ -59,6 +59,7 @@ export async function runGuardedBuild(script, {
       timeoutMs: build.timeoutMs,
       artifactBudget: config.checks.build.artifactBudget,
     },
+    stylelintConfig: config.checks.stylelint, exceptionsConfig: config.repository.exceptions,
     liveOutput: true,
   });
   writeGateResultConsole(buildResult, { label: build.packageScript });

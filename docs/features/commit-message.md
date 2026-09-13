@@ -10,7 +10,7 @@
 
 以下主配置片段应合并到 `repo-guard.config.json`；单独标注的文件按指定路径保存。直接编辑 v2 配置后运行 `npx repo-guard doctor --fix` 同步规范，再运行 `npx repo-guard doctor`。
 
-提交信息门禁默认关闭。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
+新建配置默认开启提交信息门禁，禁止 merge commit，默认不强制提升 major。既有配置读取时不改写；省略字段的通用回退值仍保持原行为。显式启用会补齐新预设，用户已填写的值优先。启用后，本地 `commit-msg` 会在自动变更文件摘要定稿前校验人工提交内容；pre-push、CI policy/full 和 release-ready 会重新读取实际提交对象，校验本次 Git revision 范围，不能只靠跳过本地 Hook 绕过。
 
 提交摘要在 Git 元数据目录保存当前 `version: 2` 临时状态。状态缺失时，当前 Hook 会按本次索引重新生成；已有旧版、未知版本、缺少版本或无法解析的状态会以 `commit-message/unsupported-state-version` 拒绝读取、覆盖和清理，原状态、提交消息和索引保持不变。先确认相关提交进程已经退出，再人工核对遗留文件并重新提交；不能改写版本号绕过检查。当前 v2 状态会在索引变化时重新计算，并保留本次提交来源。
 
@@ -44,10 +44,10 @@ npx repo-guard enable commitMessage
         "allowed": true,
         "requireMarker": true,
         "requireFooter": true,
-        "requireMajorVersionOnRelease": true
+        "requireMajorVersionOnRelease": false
       },
       "merge": {
-        "allowed": true
+        "allowed": false
       },
       "revert": {
         "allowed": true
@@ -86,7 +86,7 @@ npx repo-guard enable commitMessage
 
 普通提交使用 `type(scope)!: 简要说明`；`scope` 和 `!` 是否必需由配置决定。`allowedScopes` 为空表示不限制 scope，非空时只接受列出的值。标题长度按 Unicode 字符计数，不按 UTF-16 字节或代码单元计数。
 
-不兼容变更默认必须同时使用标题 `!` 和正文 `BREAKING CHANGE: 迁移说明`。release-ready 发现提交范围包含不兼容变更时，会比较 Git 基准提交与目标提交中的 `package.json`，并要求 major 提升；未提交的工作区版本修改不能绕过校验。普通提交、pre-push 和日常 CI 不根据提交类型自动改版本。
+不兼容变更默认必须同时使用标题 `!` 和正文 `BREAKING CHANGE: 迁移说明`。开启 requireMajorVersionOnRelease 后，release-ready 发现提交范围包含不兼容变更时，会比较 Git 基准提交与目标提交中的 `package.json`，并要求 major 提升；未提交的工作区版本修改不能绕过校验。普通提交、pre-push 和日常 CI 不根据提交类型自动改版本。
 
 Git 自动生成的 merge commit 在本地通过 `MERGE_HEAD` 还原待提交父节点、在已提交历史中通过父节点数量识别，普通标题以及 revert/cherry-pick 使用的 `MERGE_MSG` 不能伪装成 merge；revert 必须保留 Git 生成的 `Revert "..."` 标题和 `This reverts commit <sha>.` 正文。默认策略允许开发者在本地创建 `fixup!`/`squash!`，但 pre-push 和 CI 会阻断，要求先执行交互式 rebase/autosquash。只有业务仓库确认由 GitLab 在进入受保护分支前可靠 squash 时，才应评审后将 `allowPush` 调整为 `true`；最终 CI 仍建议保持 `allowCi: false`。
 
@@ -97,3 +97,11 @@ Git 自动生成的 merge commit 在本地通过 `MERGE_HEAD` 还原待提交父
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/policies/commit-message.js) · [对应测试](../../test/gates/repository/commit-message.test.js)
+
+## 本地自动变更文件摘要
+
+本地 prepare-commit-msg 生成暂存区文件清单预览；commit-msg 剥离自动区块后校验人工标题和正文，通过后定稿。摘要包含文件总数、受保护文件数、变更状态和路径，不计入标题长度。索引变化会重新计算，重复执行替换已有区块。摘要生成与 commitMessage.enabled 独立。
+
+本轮仅保留已有本地摘要行为，不新增摘要在推送或 CI 中的完整性核验。现有提交格式在 pre-push、CI 和 release-ready 中的复核仍保留。禁止 merge 按多个父节点识别，改标题不能绕过；不能识别 fast-forward 或证明普通提交来自 cherry-pick。受控挑拣由交付合同后续处理，当前不新增来源标记、源分支或挑拣清单检查。
+
+新预设写入 enabled=true、merge.allowed=false、breakingChange.requireMajorVersionOnRelease=false；其余沿用字段表。字段表中的通用回退默认值不代表新建预设。关闭只改变开关，不删除用户配置。

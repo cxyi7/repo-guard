@@ -12,66 +12,219 @@ import { createGateRegistry } from '../../../src/core/capability/gate-registry.j
 import { renderGateResultConsole } from '../../../src/core/report/console-renderer.js';
 import { renderGateResultJson } from '../../../src/core/report/json-renderer.js';
 import { orchestratePlan } from '../../../src/orchestration/orchestrator.js';
-
 const require = createRequire(import.meta.url);
 const temporaryRoot = path.resolve('test/.tmp');
-const sha256 = (source) => createHash('sha256').update(source).digest('hex');
+const sha256 = source => createHash('sha256').update(source).digest('hex');
 
+const brandValue = { token: 'color.brand', source: 'src/tokens.css', language: 'css', alias: 'var(--color-brand)', selector: ':root', value: '#123456', conditions: [], outputs: [] };
+
+test('任意消费项目目录与类名按配置检查，不假设已有标准命名', async t => {
+  const f = fixture(t, { include: ['LegacyClient/**/*.css'], values: { enabled: true, definitions: [{ ...brandValue, source: 'LegacyClient/Palette.css' }] } });
+  mkdirSync(path.join(f.root, 'LegacyClient'));
+  const source = ':root/*来源注释*/ { --color-brand: #123456; }';
+  f.write('LegacyClient/Palette.css', source);
+  f.manifest.sources = [{ path: 'LegacyClient/Palette.css', sha256: sha256(source) }]; f.saveManifest();
+  f.write('LegacyClient/Anything.css', '.whatever_NAME123 { color: #123456; }');
+  const failed = await f.run(['LegacyClient/Anything.css']);
+  assert.ok(failed.findings.some(item => item.ruleId === 'ui-token/raw-value'));
+  f.write('LegacyClient/Anything.css', '.whatever_NAME123 { color: var(--color-brand); }');
+  assert.equal((await f.run(['LegacyClient/Anything.css'])).status, 'passed');
+});
+
+test('同一输出属性使用不同大小写也必须拒绝冲突的配置', t => {
+  const f = fixture(t, { values: { enabled: true, definitions: [
+    { ...brandValue, outputs: [{ selector: '.card', property: 'color', value: '#fff' }] },
+    { ...brandValue, selector: '.dark', outputs: [{ selector: '.card', property: 'COLOR', value: '#000' }] },
+  ] } });
+  assert.throws(() => f.plan(), /不同指定值/);
+});
+
+test('指定值源码检查不会因增量范围为空或来源被排除而跳过', async t => {
+  const f = fixture(t, { exclude: ['src/tokens.css'], values: { enabled: true, definitions: [{ ...brandValue, value: '#ffffff' }] } });
+  const result = await f.run([]);
+  assert.equal(result.status, 'violation');
+  assert.ok(result.findings.some(item => item.ruleId === 'ui-token/value-mismatch'));
+});
+
+test('真实 AST 区分主题和条件，并拦截未授权覆盖、缺失定义与 important', async t => {
+  const dark = { ...brandValue, selector: '[data-theme="dark"]', value: '#ffffff' };
+  const f = fixture(t, { values: { enabled: true, definitions: [brandValue, dark] } });
+  for (const [source, expected] of [
+    [':root { --color-brand:#123456 } [data-theme=dark] { --color-brand:#fff }', null],
+    [':root { --color-brand:#123456 }', 'ui-token/missing-definition'],
+    [':root { --color-brand:#123456!important } [data-theme=dark] { --color-brand:#fff }', 'ui-token/value-mismatch'],
+    [':root { --color-brand:#123456 } [data-theme=dark] { --color-brand:#fff } .local { --color-brand:#fff }', 'ui-token/unexpected-definition'],
+    [':root { --color-brand:#123456 } @media (min-width:768px) { [data-theme=dark] { --color-brand:#fff } }', 'ui-token/unexpected-definition'],
+  ]) {
+    f.write('src/tokens.css', source);
+    f.manifest.sources[0].sha256 = sha256(source); f.saveManifest();
+    const result = await f.run([]);
+    if (expected) assert.ok(result.findings.some(item => item.ruleId === expected), JSON.stringify(result));
+    else assert.equal(result.status, 'passed', JSON.stringify(result));
+  }
+});
+
+test('指定值配置必须绑定真实清单；重复和冲突映射不能被忽略', t => {
+  for (const entry of [{ ...brandValue, token: 'missing' }, { ...brandValue, source: 'src/unknown.css' }, { ...brandValue, language: 'less' }]) {
+    const f = fixture(t, { values: { enabled: true, definitions: [entry] } });
+    assert.throws(() => f.plan(), error => error.kind === 'configuration');
+  }
+  const f = fixture(t, { values: { enabled: true, definitions: [brandValue, brandValue] } });
+  assert.throws(() => f.plan(), /重复/);
+});
+
+test('CSS 注册声明不能冒充有值的定义，Sass 与 Less 使用各自语法验证指定值', async t => {
+  const f = fixture(t, { values: { enabled: true, definitions: [brandValue] } });
+  f.write('src/tokens.css', '@property --color-brand { syntax: "<color>"; inherits:true; initial-value:#123456; }');
+  f.manifest.sources[0].sha256 = sha256(readFileSync(path.join(f.root, 'src/tokens.css'))); f.saveManifest();
+  assert.equal((await f.run()).status, 'violation');
+  for (const [language, file, alias] of [['sass', 'src/variables.scss', '$color-brand'], ['less', 'src/variables.less', '@color-brand']]) {
+    const source = `${alias}: #123456;`;
+    f.write(file, source);
+    f.manifest.sources.push({ path: file, sha256: sha256(source) }); f.saveManifest();
+    f.config.checks.stylelint.uiTokens.values.definitions = [{ ...brandValue, source: file, language, alias, selector: '' }];
+    assert.equal((await f.run()).status, 'passed', language);
+    f.config.checks.stylelint.uiTokens.values.definitions[0].value = '#ffffff';
+    assert.ok((await f.run()).findings.some(item => item.ruleId === 'ui-token/value-mismatch'));
+  }
+});
 function fixture(context, overrides = {}) {
-  mkdirSync(temporaryRoot, { recursive: true });
+  mkdirSync(temporaryRoot, {
+    recursive: true
+  });
   const root = mkdtempSync(path.join(temporaryRoot, 'ui-token-gate-'));
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  const initialized = spawnSync('git', ['init', '--quiet'], { cwd: root, encoding: 'utf8' });
+  context.after(() => rmSync(root, {
+    recursive: true,
+    force: true
+  }));
+  const initialized = spawnSync('git', ['init', '--quiet'], {
+    cwd: root,
+    encoding: 'utf8'
+  });
   assert.equal(initialized.status, 0, initialized.stderr);
-  mkdirSync(path.join(root, 'src'), { recursive: true });
+  mkdirSync(path.join(root, 'src'), {
+    recursive: true
+  });
   const source = ':root { --color-brand: #123456; --space-md: 16px; }\n';
   writeFileSync(path.join(root, 'src/tokens.css'), source);
-  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'ui-token-test', type: 'module', devDependencies: { stylelint: '16.26.1' } }));
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+    name: 'ui-token-test',
+    type: 'module',
+    devDependencies: {
+      stylelint: '16.26.1'
+    }
+  }));
   writeFileSync(path.join(root, 'stylelint.config.cjs'), `module.exports = ${JSON.stringify({
     rules: {},
-    overrides: [
-      { files: ['**/*.scss'], customSyntax: require.resolve('postcss-scss') },
-      { files: ['**/*.sass'], customSyntax: require.resolve('postcss-sass') },
-      { files: ['**/*.less'], customSyntax: require.resolve('postcss-less') },
-      { files: ['**/*.vue'], customSyntax: require.resolve('postcss-html') },
-    ],
+    overrides: [{
+      files: ['**/*.scss'],
+      customSyntax: require.resolve('postcss-scss')
+    }, {
+      files: ['**/*.sass'],
+      customSyntax: require.resolve('postcss-sass')
+    }, {
+      files: ['**/*.less'],
+      customSyntax: require.resolve('postcss-less')
+    }, {
+      files: ['**/*.vue'],
+      customSyntax: require.resolve('postcss-html')
+    }]
   })};\n`);
   const manifest = {
     version: 2,
-    sources: [{ path: 'src/tokens.css', sha256: sha256(source) }],
-    tokens: [
-      { id: 'color.brand', category: 'color', aliases: { css: ['var(--color-brand)'], sass: ['$color-brand', 'theme.$color-brand'], less: ['@color-brand'] } },
-      { id: 'spacing.md', category: 'spacing', aliases: { css: ['var(--space-md)'], sass: ['$space-md'], less: ['@space-md'] } },
-      { id: 'breakpoint.md', category: 'breakpoint', aliases: { css: ['768px'], sass: ['$breakpoint-md'], less: ['@breakpoint-md'] } },
-    ],
+    sources: [{
+      path: 'src/tokens.css',
+      sha256: sha256(source)
+    }],
+    tokens: [{
+      id: 'color.brand',
+      category: 'color',
+      aliases: {
+        css: ['var(--color-brand)'],
+        sass: ['$color-brand', 'theme.$color-brand'],
+        less: ['@color-brand']
+      }
+    }, {
+      id: 'spacing.md',
+      category: 'spacing',
+      aliases: {
+        css: ['var(--space-md)'],
+        sass: ['$space-md'],
+        less: ['@space-md']
+      }
+    }, {
+      id: 'breakpoint.md',
+      category: 'breakpoint',
+      aliases: {
+        css: ['768px'],
+        sass: ['$breakpoint-md'],
+        less: ['@breakpoint-md']
+      }
+    }]
   };
   const config = {
     version: 2,
-    checks: { uiTokens: { ...DEFAULT_UI_TOKENS_CONFIG, enabled: true, languages: ['css', 'sass', 'less'], ...overrides } },
-    repository: { exceptions: DEFAULT_EXCEPTIONS_CONFIG },
+    checks: {
+      "stylelint": {
+        "uiTokens": {
+          ...DEFAULT_UI_TOKENS_CONFIG,
+          enabled: true,
+          languages: ['css', 'sass', 'less'],
+          ...overrides
+        },
+        "enabled": true
+      }
+    },
+    repository: {
+      exceptions: DEFAULT_EXCEPTIONS_CONFIG
+    }
   };
-  const saveManifest = () => writeFileSync(path.join(root, config.checks.uiTokens.manifestFile), JSON.stringify(manifest));
+  const saveManifest = () => writeFileSync(path.join(root, config.checks.stylelint.uiTokens.manifestFile), JSON.stringify(manifest));
   saveManifest();
   return {
-    root, config, manifest, saveManifest,
-    write(file, code) { writeFileSync(path.join(root, file), code); },
+    root,
+    config,
+    manifest,
+    saveManifest,
+    write(file, code) {
+      writeFileSync(path.join(root, file), code);
+    },
     plan(files = [], changes = [], configurationChanged = false) {
-      return uiTokenGate.plan({ root, config, files, changes: { entries: changes }, configurationChanged });
+      return uiTokenGate.plan({
+        root,
+        config,
+        files,
+        changes: {
+          entries: changes
+        },
+        configurationChanged
+      });
     },
     async run(files = [], changes = [], configurationChanged = false) {
-      const plan = uiTokenGate.plan({ root, config, files, changes: { entries: changes }, configurationChanged });
-      return await uiTokenGate.run({ root, config, plan });
-    },
+      const plan = uiTokenGate.plan({
+        root,
+        config,
+        files,
+        changes: {
+          entries: changes
+        },
+        configurationChanged
+      });
+      return await uiTokenGate.run({
+        root,
+        config,
+        plan
+      });
+    }
   };
 }
-
-test('门禁使用消费项目 Stylelint 检查四种文件并允许跨语言 CSS 变量引用', async (context) => {
+test('门禁使用消费项目 Stylelint 检查四种文件并允许跨语言 CSS 变量引用', async context => {
   const project = fixture(context);
   const samples = {
     'src/page.css': '.card { color: var(--color-brand); padding: var(--space-md); }',
     'src/page.scss': '.card { color: $color-brand; padding: var(--space-md); }',
     'src/page.sass': '.card\n  color: $color-brand\n  padding: var(--space-md)\n',
-    'src/page.less': '.card { color: @color-brand; padding: var(--space-md); }',
+    'src/page.less': '.card { color: @color-brand; padding: var(--space-md); }'
   };
   for (const [file, code] of Object.entries(samples)) project.write(file, code);
   const result = await project.run(Object.keys(samples));
@@ -80,23 +233,45 @@ test('门禁使用消费项目 Stylelint 检查四种文件并允许跨语言 CS
   assert.equal(result.metrics.checkedStyleFacts, 8);
   for (const [file, code] of Object.entries(samples)) assert.equal(readFileSync(path.join(project.root, file), 'utf8'), code);
 });
+test('移除图标推断后实际 SVG 与图标宽高不受限，但颜色 Token 继续校验', async context => {
+  const project = fixture(context);
+  const file = 'src/icons.css';
+  project.write(file, '.ui-icon { width: 18px; } .ui-icon .label { width: 100%; } svg.chart { height: 240px; color: var(--color-brand); }');
+  assert.equal((await project.run([file])).status, 'passed');
+  project.write(file, '.ui-icon { width: 18px; color: red; }');
+  const result = await project.run([file]);
+  assert.equal(result.status, 'violation');
+  assert.deepEqual(result.findings.map(finding => finding.ruleId), ['ui-token/raw-value']);
+});
 
-test('来源或配置改变时全量复查应用样式，同时继续遵守 exclude', async (context) => {
-  const project = fixture(context, { exclude: ['src/excluded.css'] });
+test('来源或配置改变时全量复查应用样式，同时继续遵守 exclude', async context => {
+  const project = fixture(context, {
+    exclude: ['src/excluded.css']
+  });
   project.write('src/page.css', '.card { color: red; }');
   project.write('src/excluded.css', '.card { color: red; }');
   for (const trigger of ['src/tokens.css', 'ui-tokens.manifest.json', 'custom-project.json']) {
-    const plan = project.plan([trigger], [{ path: trigger, status: 'M' }], trigger === 'custom-project.json');
-    assert.equal(plan.files.some(({ relative }) => relative === 'src/page.css'), true);
-    assert.equal(plan.files.some(({ relative }) => relative === 'src/excluded.css'), false);
-    const result = await uiTokenGate.run({ root: project.root, config: project.config, plan });
+    const plan = project.plan([trigger], [{
+      path: trigger,
+      status: 'M'
+    }], trigger === 'custom-project.json');
+    assert.equal(plan.files.some(({
+      relative
+    }) => relative === 'src/page.css'), true);
+    assert.equal(plan.files.some(({
+      relative
+    }) => relative === 'src/excluded.css'), false);
+    const result = await uiTokenGate.run({
+      root: project.root,
+      config: project.config,
+      plan
+    });
     assert.equal(result.status, 'violation');
     assert.equal(result.findings.length, 1);
     assert.equal(result.findings[0].ruleId, 'ui-token/raw-value');
   }
 });
-
-test('授权来源内变量定义允许，但同文件普通样式声明仍需遵守 Token', async (context) => {
+test('授权来源内变量定义允许，但同文件普通样式声明仍需遵守 Token', async context => {
   const project = fixture(context);
   const source = ':root { --color-brand: red; }\n.card { color: blue; }';
   project.write('src/tokens.css', source);
@@ -104,10 +279,11 @@ test('授权来源内变量定义允许，但同文件普通样式声明仍需�
   project.saveManifest();
   const result = await project.run(['src/tokens.css']);
   assert.equal(result.status, 'violation');
-  assert.deepEqual(result.findings.map(({ ruleId }) => ruleId), ['ui-token/raw-value']);
+  assert.deepEqual(result.findings.map(({
+    ruleId
+  }) => ruleId), ['ui-token/raw-value']);
 });
-
-test('CSS、Sass 模块变量和 Less 不得在组件内覆盖已登记定义', async (context) => {
+test('CSS、Sass 模块变量和 Less 不得在组件内覆盖已登记定义', async context => {
   const project = fixture(context);
   project.write('src/page.css', '.card { --color-brand: red; color: var(--color-brand); }');
   project.write('src/page.scss', 'theme.$color-brand: red; .card { color: theme.$color-brand; }');
@@ -115,10 +291,11 @@ test('CSS、Sass 模块变量和 Less 不得在组件内覆盖已登记定义', 
   const result = await project.run(['src/page.css', 'src/page.scss', 'src/page.less']);
   assert.equal(result.status, 'violation');
   assert.equal(result.findings.length, 3);
-  assert.equal(result.findings.every(({ ruleId }) => ruleId === 'ui-token/unapproved-definition'), true);
+  assert.equal(result.findings.every(({
+    ruleId
+  }) => ruleId === 'ui-token/unapproved-definition'), true);
 });
-
-test('组件参数和循环不得遮蔽团队变量，授权来源中的绑定允许', async (context) => {
+test('组件参数和循环不得遮蔽团队变量，授权来源中的绑定允许', async context => {
   const project = fixture(context);
   const sass = '@mixin card($color-brand: red) { color: $color-brand; }\n@for $space-md from 1 through 3 { .card { padding: $space-md; } }';
   const less = '.card(@color-brand: red) { color: @color-brand; }';
@@ -127,41 +304,49 @@ test('组件参数和循环不得遮蔽团队变量，授权来源中的绑定�
   const result = await project.run(['src/page.scss', 'src/page.less']);
   assert.equal(result.status, 'violation');
   assert.equal(result.findings.length, 3);
-  assert.equal(result.findings.every(({ ruleId }) => ruleId === 'ui-token/unapproved-definition'), true);
-  project.manifest.sources.push({ path: 'src/page.scss', sha256: sha256(sass) }, { path: 'src/page.less', sha256: sha256(less) });
+  assert.equal(result.findings.every(({
+    ruleId
+  }) => ruleId === 'ui-token/unapproved-definition'), true);
+  project.manifest.sources.push({
+    path: 'src/page.scss',
+    sha256: sha256(sass)
+  }, {
+    path: 'src/page.less',
+    sha256: sha256(less)
+  });
   project.saveManifest();
   assert.equal((await project.run(['src/page.scss', 'src/page.less'])).status, 'passed');
 });
-
-test('原生 CSS 断点只接受清单允许值', async (context) => {
+test('原生 CSS 断点只接受清单允许值', async context => {
   const project = fixture(context);
   project.write('src/page.css', '@media (min-width: 768px) { .card { color: var(--color-brand); } }');
   assert.equal((await project.run(['src/page.css'])).status, 'passed');
   project.write('src/page.css', '@media (min-width: 769px) { .card { color: var(--color-brand); } }');
   assert.equal((await project.run(['src/page.css'])).findings[0].ruleId, 'ui-token/unapproved-breakpoint');
 });
-
-test('仅删除或改名来源也会阻断，不能被空样式文件清单跳过', async (context) => {
+test('仅删除或改名来源也会阻断，不能被空样式文件清单跳过', async context => {
   const project = fixture(context);
-  for (const change of [
-    { status: 'D', path: 'src/tokens.css' },
-    { status: 'R100', oldPath: 'src/tokens.css', path: 'src/renamed.css' },
-  ]) {
+  for (const change of [{
+    status: 'D',
+    path: 'src/tokens.css'
+  }, {
+    status: 'R100',
+    oldPath: 'src/tokens.css',
+    path: 'src/renamed.css'
+  }]) {
     const result = await project.run([], [change]);
     assert.equal(result.status, 'violation');
     assert.equal(result.findings[0].ruleId, 'ui-token/stale-manifest');
   }
 });
-
-test('只含不支持的 Vue 样式块时不计为已检查样式文件', async (context) => {
+test('只含不支持的 Vue 样式块时不计为已检查样式文件', async context => {
   const project = fixture(context);
   project.write('src/App.vue', '<template><div /></template><style lang="stylus">color red</style>');
   const result = await project.run(['src/App.vue']);
   assert.equal(result.status, 'passed');
   assert.equal(result.metrics.checkedFiles, 0);
 });
-
-test('真实样式解析失败保留配置错误与标准第三方诊断，不被 GateResult 校验覆盖', async (context) => {
+test('真实样式解析失败保留配置错误与标准第三方诊断，不被 GateResult 校验覆盖', async context => {
   const project = fixture(context);
   project.write('src/broken.css', '.card { color: red;');
   const execution = await orchestratePlan({
@@ -169,21 +354,37 @@ test('真实样式解析失败保留配置错误与标准第三方诊断，不�
     plan: defineExecutionPlan({
       id: 'manual:ui-token-parse-regression',
       environment: 'manual',
-      steps: [{ id: uiTokenGate.id, gateId: uiTokenGate.id, mutation: 'read-only' }],
+      steps: [{
+        id: uiTokenGate.id,
+        gateId: uiTokenGate.id,
+        mutation: 'read-only'
+      }]
     }),
-    context: { root: project.root, config: project.config, files: ['src/broken.css'], changes: { entries: [] } },
+    context: {
+      root: project.root,
+      config: project.config,
+      files: ['src/broken.css'],
+      changes: {
+        entries: []
+      }
+    }
   });
   assert.equal(execution.status, 'configuration-error');
   assert.equal(execution.exitCode, 1);
   const result = execution.results[0];
   assert.equal(result.error.code, 'ui-token/style-parse-failed');
   assert.match(result.summary, /无法完整解析样式文件/);
-  assert.ok(result.diagnostics.some(({ source, stream, level, message, redacted }) => (
-    source === 'stylelint' && stream === 'stderr' && level === 'error'
-    && message.includes('CssSyntaxError') && message.includes('broken.css') && redacted
-  )));
+  assert.ok(result.diagnostics.some(({
+    source,
+    stream,
+    level,
+    message,
+    redacted
+  }) => source === 'stylelint' && stream === 'stderr' && level === 'error' && message.includes('CssSyntaxError') && message.includes('broken.css') && redacted));
   const report = renderGateResultJson(result);
-  const output = renderGateResultConsole(result).map(({ message }) => message).join('\n');
+  const output = renderGateResultConsole(result).map(({
+    message
+  }) => message).join('\n');
   assert.equal(report.status, 'configuration-error');
   assert.match(output, /第三方原始诊断（stylelint stderr）/);
   assert.doesNotMatch(JSON.stringify(report.error), /Unclosed block/);

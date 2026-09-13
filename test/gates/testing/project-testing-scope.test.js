@@ -18,7 +18,6 @@ function testingConfig(extra = {}) {
     testPatterns: ['**/*.spec.ts'],
     exclusions: [],
     mappings: [{ sourcePattern: 'src/**/*.{js,ts,vue}', testTemplates: ['{dir}/{name}.spec.ts'] }],
-    componentInteraction: { enabled: false, componentPatterns: ['src/**/*.vue'] },
     ...extra,
   };
 }
@@ -52,21 +51,7 @@ test('后端单元测试策略读取所选提交中的应用测试，不使用�
   assert.deepEqual(result.bypasses, []);
 });
 
-test('只修改前端测试时仍从应用提交树中定位关联组件', (t) => {
-  const root = createGitProjectFixture(t, {
-    'apps/web/src/Editor.vue': '<template><button @click="save">保存</button></template>\n',
-    'apps/web/src/Editor.spec.ts': EFFECTIVE_TEST,
-    'apps/other/src/Editor.vue': '<template><p>静态内容</p></template>\n',
-  });
-  const headSha = fixtureGit(root, ['rev-parse', 'HEAD']);
-  const result = inspectUnitTestPolicy({
-    root: path.join(root, 'apps/web'),
-    changes: createChangeSet({ source: 'revision', changes: [{ status: 'M', path: 'src/Editor.spec.ts', oldPath: null, headSha }] }),
-    config: testingConfig({ componentInteraction: { enabled: true, componentPatterns: ['src/**/*.vue'] } }),
-  });
-  assert.equal(result.componentInteractions.length, 1);
-  assert.equal(result.componentInteractions[0].sourcePath, 'src/Editor.vue');
-});
+
 
 test('增量覆盖率只计算指定应用和提交范围，不混入其他应用同名源码', (t) => {
   const original = 'export const first = 1;\nexport const second = 2;\nexport const third = 3;\n';

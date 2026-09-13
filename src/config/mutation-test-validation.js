@@ -1,3 +1,4 @@
+import { validateToolOptions } from './tool-options.js';
 import { DEFAULT_MUTATION_TEST_CONFIG } from './defaults.js';
 import {
   assertKnownProperties,
@@ -77,6 +78,7 @@ export function validateMutationTestConfiguration(value, configPath) {
     mutationValue,
     new Set([
       'enabled',
+      'options',
       'configFile',
       'timeoutMs',
       'reportsDirectory',
@@ -103,6 +105,7 @@ export function validateMutationTestConfiguration(value, configPath) {
     throw configValidationError(`${configPath} checks.mutationTest.configFile 必须是 JS 或 JSON 配置文件`);
   }
   return {
+    ...validateToolOptions('mutationTest', mutationValue.options, configPath),
     enabled: mutationValue.enabled ?? DEFAULT_MUTATION_TEST_CONFIG.enabled,
     configFile,
     timeoutMs: mutationValue.timeoutMs ?? DEFAULT_MUTATION_TEST_CONFIG.timeoutMs,

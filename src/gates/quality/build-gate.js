@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { tokenArtifactsEnabled, validateTokenBuildSetup, checkTokenBuildSources, checkTokenBuildArtifacts } from './ui-token-build.js';
+import { buildInputFingerprint, invalidateBuildEvidence, recordBuildEvidence, outputFingerprint } from '../../integrations/build-artifacts/evidence.js';
+import { prepareBundleReports, inspectBundleReports } from '../../integrations/build-artifacts/bundle-analysis.js';
 import { executionError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { processOutputDiagnostics } from '../../core/execution/process-output.js';
 import { terminalProcessOutput } from '../../core/execution/streaming-process.js';
@@ -130,9 +134,9 @@ async function prepareBuildArtifactOutput({ root, config, signal, output, starte
   return Object.freeze({ sentinelSetup, result: null });
 }
 
-async function executeBuildPhase({ root, config, signal, output, sentinelSetup }) {
+async function executeBuildPhase({ root, config, signal, output, sentinelSetup, buildContext }) {
   try {
-    return await executeProjectBuild({ root, config, signal, output });
+    return await executeProjectBuild({ root, config, signal, output, buildContext });
   } catch (error) {
     removeStaleOutputSentinel(sentinelSetup?.sentinel);
     throw toRepoGuardError(error, {
@@ -235,7 +239,8 @@ function buildArtifactBudgetResult(root, config, diagnostics, startedAt) {
   });
 }
 
-export async function runBuildGate({
+async function executeBuildGate({
+  buildContext = null,
   root,
   config,
   signal = null,
@@ -254,7 +259,7 @@ export async function runBuildGate({
   if (preparation.result) return preparation.result;
 
   const { execution } = await executeBuildPhase({
-    root, config, signal, output, sentinelSetup: preparation.sentinelSetup,
+    root, config, signal, output, buildContext, sentinelSetup: preparation.sentinelSetup,
   });
   if (!liveOutput) diagnostics.push(...processOutputDiagnostics(execution, { source: 'build', root }));
   const executionFailure = buildExecutionFailure(
@@ -278,5 +283,36 @@ export async function runBuildGate({
     summary: '项目构建已通过',
     diagnostics,
     durationMs: durationSince(startedAt),
+  });
+}
+
+/** 构建与后置检查共享本轮标识，只有完整通过后才登记可复用的产物。 */
+export async function runBuildGate(args) {
+  const { root, config } = args;
+  invalidateBuildEvidence(root);
+  validateTokenBuildSetup(config, args.stylelintConfig);
+  const tokenArtifacts = tokenArtifactsEnabled(args.stylelintConfig);
+  const guarded = config.artifactBudget?.enabled || config.bundleAnalysis?.enabled || args.requireEvidence;
+  const input = guarded ? buildInputFingerprint(root, config, args.stylelintConfig) : null;
+  if (tokenArtifacts) {
+    const sourceResult = await checkTokenBuildSources(args);
+    if (sourceResult.status !== 'passed') return createGateResult({ ...sourceResult, gateId: BUILD_GATE_ID, summary: '构建前 UI Token 源码检查未通过' });
+  }
+  if (!guarded) return executeBuildGate(args);
+  const runId = randomUUID();
+  const previous = prepareBundleReports(root, config);
+  const result = await executeBuildGate({ ...args, buildContext: { root, config, runId } });
+  if (result.status !== 'passed') return result;
+  const checkedOutput = tokenArtifacts ? outputFingerprint(root, config.artifactBudget.outputDirectory) : undefined;
+  if (tokenArtifacts) {
+    const tokenResult = await checkTokenBuildArtifacts(args);
+    if (tokenResult) return tokenResult;
+  }
+  const analysis = inspectBundleReports(root, config, runId, previous);
+  const evidence = recordBuildEvidence(root, config, input, runId, args.stylelintConfig, checkedOutput);
+  return createGateResult({ ...result,
+    artifacts: [...result.artifacts, ...analysis.artifacts],
+    diagnostics: [...result.diagnostics, { level: 'info', message: `本轮构建已验证，标识 ${evidence.runId}；产物指纹 ${evidence.output ?? '未配置产物目录'}。` },
+      ...(analysis.summary ? [{ level: 'info', message: `包体积分析已生成，${analysis.summary.chunks.length} 个分块，${analysis.summary.repeatedModules.length} 个重复模块；详见中文摘要。` }] : [])],
   });
 }

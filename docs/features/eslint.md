@@ -8,6 +8,8 @@
 
 ## 接入与配置
 
+前端首次接入或明确启用支持在 `checks.eslint.options` 保存完整可修改规则，原生 Flat Config 优先；此模式不要求另建 ESLint 配置文件，也不重复注入 `preset`。包括 script setup、类型感知规则和最终配置查询，见[前端工具预设](frontend-tool-presets.md)。以下 `preset` 说明用于未提供 `options` 的配置。
+
 初始化默认启用 ESLint 和预设。预设要求 ESLint `>=9.19`，并安装 `@eslint/js`；Vue 和 TypeScript 项目还需相应解析器与插件。以下是 JavaScript 项目的依赖示例：
 
 ```bash

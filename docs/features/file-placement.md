@@ -74,3 +74,9 @@ pre-commit 检查暂存变更，CI 三档按可信变更范围复核，手动命
 ## 维护依据
 
 [实现入口](../../src/policies/file-placement.js) · [对应测试](../../test/policies/file-placement.test.js)
+
+## 前端初始化模板
+
+前端初始化的开关、目录、规则及新增字段见[前端维护预设](frontend-maintenance-presets.md)；既有项目读取配置不会被自动改写。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

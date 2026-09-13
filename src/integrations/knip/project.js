@@ -1,3 +1,4 @@
+import semver from 'semver';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
@@ -45,10 +46,10 @@ export function resolveProjectKnip(root, config) {
   const metadata = resolveProjectPackageMetadata(root, 'knip', '无效代码门禁', {
     requireEntry: false,
   });
-  if (parseMajor(metadata.version) !== SUPPORTED_MAJOR) {
+  if (parseMajor(metadata.version) !== SUPPORTED_MAJOR || (config.options !== undefined && !semver.satisfies(metadata.version, ">=6.31.0 <7"))) {
     throw configurationError(
       'dead-code/unsupported-knip-version',
-      `无效代码门禁只支持 Knip ${SUPPORTED_MAJOR}.x；当前版本为 ${metadata.version}`,
+      `无效代码门禁只支持 Knip ${SUPPORTED_MAJOR}.x（内联配置至少 6.31.0）；当前版本为 ${metadata.version}`,
     );
   }
   const packageJson = JSON.parse(readFileSync(metadata.packagePath, 'utf8'));
@@ -66,6 +67,7 @@ export function resolveProjectKnip(root, config) {
     ? null
     : repositoryFile(root, config.configFile, 'Knip 配置文件');
   return Object.freeze({
+    packagePath: metadata.packagePath,
     cliPath,
     configFile,
     version: metadata.version,

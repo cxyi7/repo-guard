@@ -1,3 +1,4 @@
+import { inspectDependencyToolReadiness } from './dependency-tool-readiness.js';
 import path from 'node:path';
 import { defineGate } from '../../core/capability/gate-definition.js';
 import { changeSetEntries } from '../../core/capability/gate-context.js';
@@ -139,23 +140,33 @@ export const dependencyPolicyGate = defineGate({
   id: 'dependencies.policy', configKey: 'repository.dependencyPolicy', featureName: 'dependencies', featureOrder: 80,
   configVersions: CONFIG_VERSION, environments: ['manual', 'pre-commit', 'ci-policy', 'ci-full', 'release-ready'], mutation: 'read-only', defaultTimeoutMs: 120000,
   manualCommand: 'dependencies', manualOrder: 20, doctorOrder: 120, packageScript: 'guard:dependencies',
-  inspectSetup: ({ config }) => ready(config.repository.dependencyPolicy.enabled ? '依赖策略已启用' : '依赖策略已禁用'),
-  plan: ({ config, changes, environment }) => ({
+  inspectSetup: async (context) => {
+    if (!context.config.repository.dependencyPolicy.enabled) return ready('依赖策略已禁用');
+    if (!context.doctor) return ready('依赖策略已启用');
+    const result = inspectDependencyPolicy({ root: context.root, config: context.config.repository.dependencyPolicy, exceptions: context.config.repository.exceptions });
+    if (result.violations.length) return { status: 'invalid', summary: result.violations.map((item) => item.message).join('；') };
+    await inspectDependencyToolReadiness(context);
+    return ready('普通依赖声明、锁文件与工具就绪检查已完成；特殊引用未检查，尚不代表真实安装或工程检查通过');
+  },
+  plan: ({ config, environment }) => ({
     enabled: environment === 'manual' || config.repository.dependencyPolicy.enabled,
-    applicable: environment !== 'pre-commit' || changeSetEntries(changes).some((change) => ['package.json', 'package-lock.json'].includes(change.path ?? change.relative)),
+    applicable: true,
   }),
-  run({ root, config, plan, environment }) {
+  async run({ root, config, plan, environment, files }) {
     if (!plan.enabled) return skippedResult('dependencies.policy', '依赖策略已禁用');
     if (!plan.applicable) return skippedResult('dependencies.policy', '根包元数据未变更');
     const result = environment === 'pre-commit'
       ? inspectStagedDependencyPolicy({ root, config: config.repository.dependencyPolicy, exceptions: config.repository.exceptions })
       : inspectDependencyPolicy({ root, config: config.repository.dependencyPolicy, exceptions: config.repository.exceptions });
-    if (result.violations.length === 0) return passedResult('dependencies.policy', '依赖策略已通过', { metrics: { approvedExceptions: result.approved.length } });
+    if (result.violations.length === 0) {
+      const readiness = environment === 'pre-commit' ? {} : await inspectDependencyToolReadiness({ root, config, files });
+      return passedResult('dependencies.policy', '普通依赖声明与锁文件检查已通过；不代表锁定安装已验证', { metrics: { approvedExceptions: result.approved.length, ...readiness } });
+    }
     return violationResult('dependencies.policy', `依赖策略发现 ${result.violations.length} 项违规`, {
       findings: result.violations.map((item) => policyFinding(
         item,
         item.rule,
-        '请更新 package.json，运行 npm install --package-lock-only，并提交同步后的 package-lock.json；同时保留精确版本、已批准来源和锁文件完整性。',
+        '请按配置的包管理器修正普通依赖声明并生成同步锁文件；特殊引用不参与本项检查，不通过降低版本要求或删除锁文件绕过普通依赖检查。',
       )),
       metrics: { violations: result.violations.length, approvedExceptions: result.approved.length },
     });

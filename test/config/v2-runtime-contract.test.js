@@ -50,8 +50,11 @@ test('所有配置入口共享原生 v2 模型且不泄露旧字段', () => {
   const document = createProjectDocument(project);
   const normalized = normalizeProjectDocument(document);
   assert.deepEqual(validateConfig(document), normalized);
-  assert.deepEqual(serializeProjectConfig(normalized), document);
-  for (const config of [normalized, normalizeRepositoryDocument(document)]) {
+  assert.deepEqual(serializeProjectConfig(normalized), serializeProjectConfig(document));
+  assert.throws(() => normalizeRepositoryDocument(document), /目录职责必须配置在所属应用/);
+  const repositoryDocument = { ...document };
+  delete repositoryDocument.directories;
+  for (const config of [normalized, normalizeRepositoryDocument(repositoryDocument)]) {
     assert.equal(config.version, 2);
     for (const field of [
       'configVersion',

@@ -8,6 +8,8 @@
 
 ## 接入
 
+前端明确启用可生成 `checks.typeCheck.options`，保存工具、配置入口和严格编译选项。此模式读取原生 extends 与项目引用，用户选项优先，不要求先创建 `typecheck` 脚本；已有脚本仍执行并纳入结果。只读临时配置不改写用户文件，完整边界见[前端工具预设](frontend-tool-presets.md)。以下仅脚本模式用于未提供 `options` 的配置。
+
 先在项目提供真实 `typecheck` 脚本，使用项目自己的 TypeScript 或 vue-tsc 及配置。配置片段：
 
 ```json
@@ -50,3 +52,9 @@ npx repo-guard typecheck
 ## 维护依据
 
 [实现入口](../../src/integrations/npm/typecheck.js) · [对应测试](../../test/gates/quality/typecheck.test.js)
+
+前端 TypeScript 新建配置默认开启并保存可修改的类型检查 options；JavaScript 及后端预设不因本次调整开启。实际 tsconfig 路径、脚本、工具依赖需按消费项目准备，原生编译配置仍按既有合并规则优先。类型检查不进入 pre-commit。
+
+## Node 新建预设
+
+7.1.4 起本项在新建 Node 后端配置中默认开启（类型检查仅限 node-typescript）。原有规则、阈值与配置字段不变；已有项目不因读取或升级而开启。实际工具、脚本和检查范围仍需接入准备，见 [Node 后端规范](node-backend.md)。

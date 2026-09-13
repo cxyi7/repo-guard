@@ -12,13 +12,13 @@ test('applies dependency policy defaults when configuration is omitted', () => {
   );
 });
 
-test('normalizes protocols and banned package guidance', () => {
+test('规范化包管理器设置与禁用包说明', () => {
   const result = validateDependencyPolicyConfiguration({
     dependencyPolicy: {
       enabled: false,
       requireExactVersions: false,
       requireLockfile: false,
-      allowedProtocols: [' NPM ', 'workspace', 'npm'],
+
       bannedPackages: [{
         name: ' request ',
         reason: '  This package is no longer maintained.  ',
@@ -31,10 +31,11 @@ test('normalizes protocols and banned package guidance', () => {
   }, CONFIG_PATH);
 
   assert.deepEqual(result, {
+    ...DEFAULT_DEPENDENCY_POLICY_CONFIG,
     enabled: false,
     requireExactVersions: false,
     requireLockfile: false,
-    allowedProtocols: ['npm', 'workspace'],
+
     bannedPackages: [{
       name: 'request',
       reason: 'This package is no longer maintained.',
@@ -58,7 +59,7 @@ test('rejects invalid switches and protocol names', () => {
     () => validateDependencyPolicyConfiguration({
       dependencyPolicy: { allowedProtocols: ['https:'] },
     }, CONFIG_PATH),
-    /不含冒号的协议名称/,
+    /allowedProtocols/,
   );
 });
 

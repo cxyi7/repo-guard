@@ -17,11 +17,21 @@ export function projectFixtureDocument(config, project = FRONTEND_PROJECT) {
     throw configValidationError('常规项目测试必须直接提供 version: 2 配置。');
   const document = {
     ...config,
+    repository: {
+      ...config.repository,
+      dependencyPolicy: {
+        // 常规夹具仅隔离依赖元数据策略；工具安装与就绪由专项真实集成测试覆盖。
+        packageManager: { name: 'npm', root: '.', requireVersionDeclaration: false, checkInstalledVersion: false },
+        toolReadiness: { enabled: false },
+        ...config.repository?.dependencyPolicy,
+      },
+    },
     project: config.project ?? project,
     ...(config.repository
       ? {
           repository: {
             ...config.repository,
+            dependencyPolicy: { packageManager: { name: 'npm', root: '.', requireVersionDeclaration: false, checkInstalledVersion: false }, toolReadiness: { enabled: false }, ...config.repository.dependencyPolicy },
             ...(config.repository.rules
               ? {
                   rules: config.repository.rules.map(

@@ -1,3 +1,4 @@
+import { validateUiTokenValues } from './ui-token-values.js';
 import { DEFAULT_UI_TOKENS_CONFIG, UI_TOKEN_LANGUAGES } from './defaults.js';
 import {
   assertKnownProperties,
@@ -19,7 +20,9 @@ function stringList(value, fallback, label) {
   if (!Array.isArray(normalized) || normalized.length === 0) {
     throw configValidationError(`${label} 必须是非空字符串数组`);
   }
-  if (normalized.some((entry) => typeof entry !== 'string' || entry.trim() === '')) {
+  if (
+    normalized.some((entry) => typeof entry !== 'string' || entry.trim() === '')
+  ) {
     throw configValidationError(`${label} 只能包含非空字符串`);
   }
   const trimmed = normalized.map((entry) => entry.trim());
@@ -39,49 +42,63 @@ function relativeFile(value, label) {
 
 export function validateUiTokenConfiguration(value, configPath) {
   const uiTokensValue = value.uiTokens === undefined ? {} : value.uiTokens;
-  if (!uiTokensValue || typeof uiTokensValue !== 'object' || Array.isArray(uiTokensValue)) {
-    throw configValidationError(`${configPath} checks.uiTokens 必须是对象`);
+  if (
+    !uiTokensValue ||
+    typeof uiTokensValue !== 'object' ||
+    Array.isArray(uiTokensValue)
+  ) {
+    throw configValidationError(
+      `${configPath} checks.stylelint.uiTokens 必须是对象`,
+    );
   }
   assertKnownProperties(
     uiTokensValue,
-    new Set(['enabled', 'languages', 'manifestFile', 'include', 'exclude', 'iconSelectors']),
-    `${configPath} checks.uiTokens`,
+    new Set([
+      'enabled',
+      'languages',
+      'manifestFile',
+      'include',
+      'exclude', 'values', 'artifacts',
+    ]),
+    `${configPath} checks.stylelint.uiTokens`,
   );
   const languages = stringList(
     uiTokensValue.languages,
     DEFAULT_UI_TOKENS_CONFIG.languages,
-    `${configPath} checks.uiTokens.languages`,
+    `${configPath} checks.stylelint.uiTokens.languages`,
   );
   if (languages.some((language) => !UI_TOKEN_LANGUAGES.includes(language))) {
     throw configValidationError(
-      `${configPath} checks.uiTokens.languages 仅支持 ${UI_TOKEN_LANGUAGES.join('、')}`,
+      `${configPath} checks.stylelint.uiTokens.languages 仅支持 ${UI_TOKEN_LANGUAGES.join('、')}`,
     );
   }
   const enabled = booleanValue(
     uiTokensValue.enabled,
     DEFAULT_UI_TOKENS_CONFIG.enabled,
-    `${configPath} checks.uiTokens.enabled`,
+    `${configPath} checks.stylelint.uiTokens.enabled`,
   );
   return {
     enabled,
     languages,
+    ...validateUiTokenValues(uiTokensValue, `${configPath} checks.stylelint.uiTokens`),
     manifestFile: relativeFile(
-      uiTokensValue.manifestFile === undefined ? DEFAULT_UI_TOKENS_CONFIG.manifestFile : uiTokensValue.manifestFile,
-      `${configPath} checks.uiTokens.manifestFile`,
+      uiTokensValue.manifestFile === undefined
+        ? DEFAULT_UI_TOKENS_CONFIG.manifestFile
+        : uiTokensValue.manifestFile,
+      `${configPath} checks.stylelint.uiTokens.manifestFile`,
     ),
     include: normalizePatternList(
-      uiTokensValue.include === undefined ? DEFAULT_UI_TOKENS_CONFIG.include : uiTokensValue.include,
-      `${configPath} checks.uiTokens.include`,
+      uiTokensValue.include === undefined
+        ? DEFAULT_UI_TOKENS_CONFIG.include
+        : uiTokensValue.include,
+      `${configPath} checks.stylelint.uiTokens.include`,
     ),
     exclude: normalizePatternList(
-      uiTokensValue.exclude === undefined ? DEFAULT_UI_TOKENS_CONFIG.exclude : uiTokensValue.exclude,
-      `${configPath} checks.uiTokens.exclude`,
+      uiTokensValue.exclude === undefined
+        ? DEFAULT_UI_TOKENS_CONFIG.exclude
+        : uiTokensValue.exclude,
+      `${configPath} checks.stylelint.uiTokens.exclude`,
       { allowEmpty: true },
-    ),
-    iconSelectors: stringList(
-      uiTokensValue.iconSelectors,
-      DEFAULT_UI_TOKENS_CONFIG.iconSelectors,
-      `${configPath} checks.uiTokens.iconSelectors`,
     ),
   };
 }

@@ -12,6 +12,9 @@ import { workspaceAgentPolicyTargets } from '../workspace/targets.js';
 export function runInit(cwd = process.cwd(), options = {}) {
   const root = findRepositoryRoot(cwd);
   const { created } = ensureProjectConfig(root, { project: options.project });
+  if (created && options.project?.preset === 'java-maven') {
+    writeConsoleMessage('已生成 Java 检查默认全开的待接入配置。请填写真实工具、插件版本、模块、测试报告和产物路径；校验通过前不会安装 Hook，也不代表初始化完成。');
+  }
   const workspace = loadWorkspace(root);
   const result = installHooks({ cwd: root, updatePackageScripts: true });
   const agentPolicies = workspaceAgentPolicyTargets(workspace).map((target) => syncAgentPolicies(target.root, target.config));

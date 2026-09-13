@@ -1,7 +1,9 @@
+import { planImageReferenceUpdates } from './image-reference-updates.js';
 import {
   chmodSync,
   existsSync,
   lstatSync,
+  linkSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -78,7 +80,7 @@ function assertCleanTrackedFile(root, relative) {
   }
 }
 
-function safelyReplace(target, candidate) {
+function safelyReplace(target, candidate, onInstalled = () => {}) {
   const temporary = `${target}.repo-guard-${process.pid}.tmp`;
   const backup = `${target}.repo-guard-${process.pid}.backup`;
   if (pathEntryExists(temporary) || pathEntryExists(backup)) {
@@ -95,8 +97,12 @@ function safelyReplace(target, candidate) {
     try {
       renameSync(temporary, target);
       rmSync(backup);
+      onInstalled();
     } catch (error) {
-      if (pathEntryExists(target)) rmSync(target);
+      if (pathEntryExists(target)) {
+        if (lstatSync(target).isSymbolicLink() || !readFileSync(target).equals(candidate)) throw executionError('image-optimize/restore-conflict', `恢复时目标出现外部修改，原文件备份保留在 ${backup}`, { cause: error });
+        rmSync(target);
+      }
       renameSync(backup, target);
       throw executionError(
         'image-optimize/replace-failed',
@@ -106,11 +112,11 @@ function safelyReplace(target, candidate) {
     }
   } finally {
     if (pathEntryExists(temporary)) rmSync(temporary);
-    if (pathEntryExists(backup) && pathEntryExists(target)) rmSync(backup);
+    // 恢复失败时保留原始备份，不能仅因目标存在就清理备份。
   }
 }
 
-function safelyCreate(target, candidate, displayPath) {
+function safelyCreate(target, candidate, displayPath, onInstalled) {
   if (pathEntryExists(target)) {
     throw configurationError('image-optimize/output-exists', `拒绝覆盖已经存在的目标图片：${displayPath}`);
   }
@@ -123,7 +129,8 @@ function safelyCreate(target, candidate, displayPath) {
   }
   writeFileSync(temporary, candidate, { flag: 'wx' });
   try {
-    renameSync(temporary, target);
+    linkSync(temporary, target);
+    onInstalled();
   } finally {
     if (pathEntryExists(temporary)) rmSync(temporary);
   }
@@ -173,6 +180,7 @@ async function createCandidate({ root, buffer, format, to, config, allowLossy, w
       tool: `svgo ${project.version}`,
     };
   }
+  if (!config.compression.raster.enabled) throw configurationError('image-optimize/raster-disabled', '位图压缩尚未启用，不能执行原格式优化。');
   const project = await loadProjectSharp(root);
   const isLossy = ['jpeg', 'webp'].includes(format);
   if (isLossy && !config.compression.raster.allowLossy) {
@@ -205,12 +213,15 @@ export async function executeImageOptimization({
   to = null,
   write = false,
   allowLossy = false,
+  updateReferences = false,
   cwd = process.cwd(),
   root: applicationRoot,
   config: projectConfig,
 }) {
   const root = applicationRoot ?? findRepositoryRoot(cwd);
-  const config = (projectConfig ?? loadConfig(root)).checks.imageAssets;
+  const fullConfig = projectConfig ?? loadConfig(root);
+  const config = fullConfig.checks.imageAssets;
+  if (updateReferences && to !== "webp") throw configurationError("image-optimize/reference-target", "引用更新只支持显式 WebP 转换");
   if (!config.enabled) {
     throw configurationError('image-optimize/feature-disabled', '图片资源治理尚未启用');
   }
@@ -225,8 +236,10 @@ export async function executeImageOptimization({
   }
 
   const messages = [];
+  const planned = [];
   for (const requestedPath of paths) {
     const target = normalizeTarget(root, requestedPath, config);
+    if (lstatSync(target.absolute).size > config.limits.maxInputBytes) throw configurationError('image-optimize/input-too-large', `${target.relative} 超过安全输入上限`);
     const buffer = readFileSync(target.absolute);
     if (buffer.length > config.limits.maxInputBytes) {
       throw configurationError('image-optimize/input-too-large', `${target.relative} 超过安全输入上限`);
@@ -239,6 +252,7 @@ export async function executeImageOptimization({
       );
     }
     const result = await createCandidate({ root, buffer, format, to, config, allowLossy, write });
+    if (!result.candidate) throw configurationError('image-optimize/candidate-unavailable', '图片未能生成候选，请检查帧数上限与编码支持；原文件未修改。');
     if (!meetsSavingsThreshold(buffer.length, result.candidate.length, result.threshold)) {
       const saving = savings(buffer.length, result.candidate.length);
       messages.push(`${target.relative} 未达到写入阈值：预计节省 ${saving.savedBytes} 字节（${saving.savedPercent.toFixed(1)}%）`);
@@ -250,15 +264,45 @@ export async function executeImageOptimization({
     const outputAbsolute = path.join(root, ...outputRelative.split('/'));
     const saving = savings(buffer.length, result.candidate.length);
     messages.push(`${target.relative} -> ${outputRelative}：${buffer.length} -> ${result.candidate.length} 字节，节省 ${saving.savedPercent.toFixed(1)}%（${result.tool}）`);
-    if (!write) continue;
-    assertCleanTrackedFile(root, target.relative);
-    if (to === 'webp') safelyCreate(outputAbsolute, result.candidate, outputRelative);
-    else safelyReplace(target.absolute, result.candidate);
-    messages.push(
-      to === 'webp'
-        ? `已生成 ${outputRelative}；原图和引用均未修改，请验证兼容性后人工切换引用。`
-        : `已安全更新 ${target.relative}；请检查 Git 差异后再提交。`,
-    );
+    planned.push({ inputRelative: target.relative, outputRelative, absolute: target.absolute, outputAbsolute, buffer, candidate: result.candidate });
+  }
+  if (updateReferences) {
+    const updates = planImageReferenceUpdates(root, planned, fullConfig.checks.unusedImageAssets);
+    planned.push(...updates);
+    messages.push(...updates.map((entry) => `静态引用更新：${entry.inputRelative}`));
+    messages.push('动态接口引用、无法精确定位的引用和原图均保留，请人工核对。');
+  }
+  if (!write) return messages;
+  const outputs = new Set();
+  for (const entry of planned) {
+    assertCleanTrackedFile(root, entry.inputRelative);
+    if (!readFileSync(entry.absolute).equals(entry.buffer)) throw configurationError('image-optimize/source-changed', '规划后源文件发生变化，请重新执行');
+    if (outputs.has(entry.outputAbsolute)) throw configurationError('image-optimize/output-collision', '多张图片生成同一输出路径，拒绝写入');
+    outputs.add(entry.outputAbsolute);
+    if (entry.outputAbsolute !== entry.absolute && pathEntryExists(entry.outputAbsolute)) throw configurationError('image-optimize/output-exists', '拒绝覆盖已经存在的目标图片');
+  }
+  const written = [];
+  try {
+    for (const entry of planned) {
+      assertCleanTrackedFile(root, entry.inputRelative);
+      if (!readFileSync(entry.absolute).equals(entry.buffer)) throw configurationError('image-optimize/source-changed', '写入前源文件发生变化，请重新执行');
+      const onInstalled = () => written.push(entry);
+      if (entry.outputAbsolute === entry.absolute) safelyReplace(entry.absolute, entry.candidate, onInstalled);
+      else safelyCreate(entry.outputAbsolute, entry.candidate, entry.outputRelative, onInstalled);
+      messages.push(`已安全写入 ${entry.outputRelative}；请检查 Git 差异和图片效果。`);
+    }
+  } catch (error) {
+    const rollbackFailures = [];
+    for (const entry of written.reverse()) {
+      try {
+        assertImagePathHasNoSymbolicLink(root, entry.outputAbsolute, entry.outputRelative);
+        if (!readFileSync(entry.outputAbsolute).equals(entry.candidate)) throw executionError('image-optimize/rollback-conflict', '回滚时检测到外部修改，已停止覆盖，请人工恢复');
+        if (entry.outputAbsolute === entry.absolute) safelyReplace(entry.absolute, entry.buffer);
+        else rmSync(entry.outputAbsolute);
+      } catch { rollbackFailures.push(entry.outputRelative); }
+    }
+    if (rollbackFailures.length) throw executionError('image-optimize/rollback-incomplete', `部分文件无法自动恢复，请人工检查：${rollbackFailures.join('、')}`, { cause: error });
+    throw executionError('image-optimize/batch-failed', '批量图片优化失败，已恢复本批写入内容', { cause: error });
   }
   return messages;
 }

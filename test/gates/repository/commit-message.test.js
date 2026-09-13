@@ -357,3 +357,39 @@ test('commit-msg validates the human message before finalizing the automatic fil
   assert.match(finalized, /^feat: 增加第二个文件/u);
   assert.match(finalized, /【自动变更文件】/u);
 });
+
+test('新预设真实 Git 禁止改名后的 merge commit，普通提交保留本地文件摘要', (context) => {
+  const root = createRepository();
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const base = commitFile(root, 'base.js', 'export const base = 1;\n', 'feat: 初始版本');
+  git(root, ['checkout', '-b', 'feature']);
+  commitFile(root, 'feature.js', 'export const feature = 1;\n', 'feat: 分支功能');
+  git(root, ['checkout', '-b', 'target', base]);
+  commitFile(root, 'target.js', 'export const target = 1;\n', 'feat: 目标修改');
+  const config = createStarterConfig();
+  assert.equal(config.repository.commitMessage.enabled, true);
+  assert.equal(config.repository.commitMessage.merge.allowed, false);
+  writeFileSync(path.join(root, 'repo-guard.config.json'), stringifyProjectFixture(config));
+  const hooks = path.join(root, '.githooks');
+  mkdirSync(hooks);
+  git(root, ['config', 'core.hooksPath', '.githooks']);
+  const node = process.execPath.replaceAll('\\', '/');
+  const cli = path.resolve('bin/repo-guard.js').replaceAll('\\', '/');
+  for (const [name, args] of [['prepare-commit-msg', 'prepare "$1" "$2" "$3"'], ['commit-msg', 'finalize "$1"']]) {
+    const file = path.join(hooks, name);
+    writeFileSync(file, `#!/bin/sh\nexec "${node}" "${cli}" hook-message ${args}\n`);
+    chmodSync(file, 0o755);
+  }
+  const head = git(root, ['rev-parse', 'HEAD']);
+  const merge = spawnSync('git', ['merge', '--no-ff', 'feature', '-m', 'feat: 看似普通的标题'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.notEqual(merge.status, 0);
+  assert.match(merge.stdout + merge.stderr, /commit-message\/merge-not-allowed/);
+  assert.equal(git(root, ['rev-parse', 'HEAD']), head);
+  git(root, ['merge', '--abort']);
+  commitFile(root, 'normal.js', 'export const normal = 1;\n', 'fix: 普通修改');
+  const message = git(root, ['log', '-1', '--format=%B']);
+  assert.match(message, /^fix: 普通修改/);
+  assert.equal(message.split('【自动变更文件】').length - 1, 1);
+  assert.match(message, /A normal\.js/);
+  assert.doesNotMatch(message, /feature\.js/);
+});

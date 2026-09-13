@@ -1,4 +1,8 @@
+import { COMMIT_MESSAGE_PRESET } from '../../config/defaults.js';
+import { preserveDirectoryBindings } from '../../config/directory-roles.js';
 import { isDeepStrictEqual } from 'node:util';
+import { frontendToolOptions } from '../../profiles/frontend-tool-presets.js';
+import { frontendMaintenancePresets } from '../../profiles/frontend-maintenance-presets.js';
 import {
   existsSync,
   readFileSync,
@@ -43,10 +47,8 @@ const GATE_FEATURES = gateRegistry.configurable.map(
 );
 export const CONFIGURABLE_FEATURES = Object.freeze([
   ...GATE_FEATURES,
-  'componentInteraction',
   'coverage',
   'fileHeader',
-  'functionDocs',
   'notification',
   'commitAnimation',
   'ci',
@@ -59,7 +61,6 @@ export function createStarterConfig({
     stack: 'node',
     preset: 'vue-typescript',
   },
-  accessibilityTestEnabled = false,
   architectureEnabled = false,
   buildEnabled = false,
   stylelintEnabled = false,
@@ -71,16 +72,14 @@ export function createStarterConfig({
       version: 2,
       project,
       checks: {
-        accessibilityTest: { enabled: accessibilityTestEnabled },
         architecture: { enabled: architectureEnabled },
         build: { enabled: buildEnabled },
-        stylelint: { enabled: stylelintEnabled },
-        styleComplexity: { enabled: stylelintEnabled },
-        styleGovernance: { enabled: stylelintEnabled },
+        stylelint: { enabled: stylelintEnabled, governance: { enabled: stylelintEnabled && project.role === 'frontend' } },
         typeCheck: { enabled: typeCheckEnabled },
         unitTest: { enabled: unitTestEnabled },
       },
       repository: {
+        commitMessage: structuredClone(COMMIT_MESSAGE_PRESET),
         rules: [
           {
             pattern: 'package.json',
@@ -159,7 +158,7 @@ export function ensureProjectConfig(root, options = {}) {
   const document = createProjectDocument(options.project);
   assertManagedDocumentFormats(root);
   assertHookInstallationSupported(root);
-  writeProjectConfig(root, document);
+  writeProjectConfig(root, serializeProjectConfig(document));
   return { created: true };
 }
 
@@ -209,21 +208,13 @@ function effectiveFeaturesFor(requestedFeatures, enabled) {
   if (
     enabled &&
     unique.some((feature) =>
-      ['coverage', 'componentInteraction'].includes(feature),
+      ['coverage'].includes(feature),
     )
   )
     related.push('unitTest');
   if (!enabled && unique.includes('unitTest'))
-    related.push('componentInteraction', 'coverage');
-  if (
-    enabled &&
-    unique.some((feature) =>
-      ['styleComplexity', 'styleGovernance'].includes(feature),
-    )
-  )
-    related.push('stylelint');
-  if (!enabled && unique.includes('stylelint'))
-    related.push('styleComplexity', 'styleGovernance');
+    related.push('coverage');
+
   if (enabled && unique.includes('unusedImageAssets'))
     related.push('imageAssets');
   if (!enabled && unique.includes('imageAssets'))
@@ -296,8 +287,8 @@ function protectProjectArtifacts(rules, config, relativeRoot = '.') {
       },
     }),
     {
-      ...config.checks.uiTokens,
-      manifestFile: relativeFile(config.checks.uiTokens.manifestFile),
+      ...config.checks.stylelint.uiTokens,
+      manifestFile: relativeFile(config.checks.stylelint.uiTokens.manifestFile),
     },
   );
 }
@@ -318,6 +309,17 @@ function protectWorkspaceArtifacts(workspace, replacements) {
       ...document, repository: { ...document.repository, rules },
     });
   }
+}
+
+/** 性能配置按对象补缺，数组整项替换；已写入的用户值始终优先。 */
+function mergePerformanceDefaults(base, override) {
+  const result = structuredClone(base ?? {});
+  for (const [key, value] of Object.entries(override ?? {})) {
+    const object = value !== null && typeof value === 'object' && !Array.isArray(value);
+    result[key] = object && result[key] !== null && typeof result[key] === 'object' && !Array.isArray(result[key])
+      ? mergePerformanceDefaults(result[key], value) : structuredClone(value);
+  }
+  return result;
 }
 
 export function setFeaturesEnabled(
@@ -345,14 +347,25 @@ export function setFeaturesEnabled(
       ? application.config
       : workspace.repositoryConfig;
     const previous = featureConfig(normalized, feature);
-    if (previous.enabled === enabled) {
+    const maintenance = enabled
+      ? feature === 'commitMessage' ? COMMIT_MESSAGE_PRESET : frontendMaintenancePresets(application?.project)[feature]
+      : undefined;
+    const presetOptions = enabled && previous.options === undefined
+      ? frontendToolOptions(feature, application?.project) : undefined;
+    if (previous.enabled === enabled && !presetOptions && !maintenance) {
       unchanged.push(feature);
       continue;
     }
     const document = replacements.get(file) ?? readConfigurationDocument(file);
-    const existing = valueAtPath(document, fields) ?? previous;
-    const next = { ...structuredClone(existing), enabled };
-    replacements.set(file, setValueAtPath(document, fields, next));
+    const existing = valueAtPath(document, fields) ?? {};
+    const values = ['stylelint', 'build', 'lighthouse', 'imageAssets', 'unusedImageAssets', 'deadCode', 'commitMessage'].includes(feature)
+      ? mergePerformanceDefaults(mergePerformanceDefaults(previous, maintenance), existing)
+      : { ...structuredClone(previous), ...maintenance, ...structuredClone(existing) };
+    const next = { ...values, enabled,
+      ...(presetOptions ? { options: presetOptions } : {}) };
+    const updated = preserveDirectoryBindings(setValueAtPath(document, fields, next), document, feature);
+    if (isDeepStrictEqual(document, updated)) { unchanged.push(feature); continue; }
+    replacements.set(file, updated);
     changed.push(feature);
   }
   if (changed.length > 0) {

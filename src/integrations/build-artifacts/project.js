@@ -185,10 +185,28 @@ function compressedBytes(file, kinds, maxInputBytes) {
 }
 
 function normalizeManifestFile(value, label) {
-  if (typeof value !== 'string' || !value || value.startsWith('/') || value.split('/').includes('..')) {
+  const normalized = typeof value === 'string' ? value.replaceAll('\\', '/') : '';
+  if (!normalized || normalized.startsWith('/') || normalized.includes(':') || normalized.split('/').includes('..')) {
     throw configurationError('build-artifact/unsafe-manifest-entry', `${label} 包含不安全的产物路径`);
   }
-  return value.replaceAll('\\', '/');
+  return normalized;
+}
+
+function verifyManifestReferences(manifest, fileByPath) {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) throw configurationError('build-artifact/invalid-manifest', 'Vite 产物清单必须是对象。');
+  for (const [key, chunk] of Object.entries(manifest)) {
+    if (!chunk || typeof chunk !== 'object' || !chunk.file) throw configurationError('build-artifact/invalid-manifest-chunk', `Vite 产物清单缺少文件：${key}`);
+    for (const field of ['css', 'assets', 'imports', 'dynamicImports']) {
+      if (chunk[field] !== undefined && !Array.isArray(chunk[field])) throw configurationError('build-artifact/invalid-manifest-list', `Vite 产物清单 ${key}.${field} 必须是数组。`);
+    }
+    for (const file of [chunk.file, ...(chunk.css ?? []), ...(chunk.assets ?? [])]) {
+      const normalized = normalizeManifestFile(file, `Vite manifest ${key}`);
+      if (!fileByPath.has(normalized)) throw configurationError('build-artifact/missing-manifest-file', `Vite 产物清单引用的文件不存在：${normalized}`);
+    }
+    for (const imported of [...(chunk.imports ?? []), ...(chunk.dynamicImports ?? [])]) {
+      if (typeof imported !== 'string' || !Object.hasOwn(manifest, imported)) throw configurationError('build-artifact/missing-manifest-import', `Vite 产物清单引用了不存在的入口：${imported}`);
+    }
+  }
 }
 
 function initialManifestFiles(manifest) {
@@ -244,6 +262,7 @@ export function inspectPcBuildArtifacts(root, config) {
       );
     }
     const manifest = readJson(manifestPath, 'Vite manifest', root);
+    verifyManifestReferences(manifest, fileByPath);
     initialFiles = [...initialManifestFiles(manifest)].map((filePath) => {
       const file = fileByPath.get(filePath);
       if (!file) {

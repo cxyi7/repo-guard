@@ -50,3 +50,9 @@ npx repo-guard image-optimize --to webp --write -- src/assets/banner.png
 ## 维护依据
 
 [实现入口](../../src/gates/repository/image-assets-optimizer.js) · [对应测试](../../test/gates/repository/image-assets.test.js) · [多应用命令测试](../../test/gates/repository/image-optimization-workspace.test.js)
+
+## 前端预设扩展
+
+前端初始化及显式启用的可编辑全量图片预设、接口/响应字段保留依据、预算、动画、元数据处理、页面图片审计及批量引用更新见[前端图片治理预设](frontend-image-presets.md)。默认执行范围现为 allFiles；changedFiles 仍可由用户显式选择。
+
+批量写入会在输出建立时立即登记回滚记录，临时文件清理失败也触发恢复。回滚逐项执行，遇到外部修改保留该文件并继续恢复其他本批输出；无法完成时报告未恢复路径。关闭位图压缩后不执行原格式位图优化。

@@ -1,37 +1,23 @@
 import path from 'node:path';
-import { configurationError, toRepoGuardError } from '../../core/error/repo-guard-error.js';
+import {
+  configurationError,
+  toRepoGuardError,
+} from '../../core/error/repo-guard-error.js';
 import {
   captureFileContents,
   restoreFileContents,
 } from '../../core/execution/file-snapshot.js';
 import { normalizeStagedFiles } from '../../core/execution/staged-files.js';
 import { findStructuredException } from '../../policies/exception-registry.js';
-import {
-  executeProjectStylelint,
-  executeProjectStylelintRules,
-  inspectProjectStylelintRuleInputs,
-} from '../../integrations/stylelint/execution.js';
+import { executeProjectStylelint } from '../../integrations/stylelint/execution.js';
+import { inspectStyleGovernance } from '../../integrations/stylelint/governance.js';
 import {
   findProjectStylelintConfig,
   loadProjectStylelint,
 } from '../../integrations/stylelint/project.js';
 import { assertVueStyleLanguages } from '../../policies/vue-style-languages.js';
-import { inspectUnexpectedGlobalStyles } from '../../policies/style-governance.js';
 import { createGateResult } from '../../core/result/gate-result.js';
-
 export const STYLELINT_GATE_ID = 'quality.stylelint';
-
-export const STYLE_COMPLEXITY_RULES = Object.freeze({
-  maxCompoundSelectors: 'selector-max-compound-selectors',
-  maxNestingDepth: 'max-nesting-depth',
-});
-export const STYLE_GOVERNANCE_RULES = Object.freeze({
-  maxSpecificity: 'selector-max-specificity',
-  maxIdSelectors: 'selector-max-id',
-  disallowImportant: 'declaration-no-important',
-  unexpectedGlobalStyle: 'no-unexpected-global-style',
-});
-
 function activeResults(results) {
   return results.filter(({ ignored }) => !ignored);
 }
@@ -43,11 +29,15 @@ function activeFileCount(results) {
 function summarize(results) {
   return activeResults(results).reduce(
     (summary, result) => ({
-      errors: summary.errors
-        + (result.warnings || []).filter(({ severity }) => severity === 'error').length
-        + (result.invalidOptionWarnings || []).length,
-      warnings: summary.warnings
-        + (result.warnings || []).filter(({ severity }) => severity === 'warning').length,
+      errors:
+        summary.errors +
+        (result.warnings || []).filter(({ severity }) => severity === 'error')
+          .length +
+        (result.invalidOptionWarnings || []).length,
+      warnings:
+        summary.warnings +
+        (result.warnings || []).filter(({ severity }) => severity === 'warning')
+          .length,
     }),
     { errors: 0, warnings: 0 },
   );
@@ -57,113 +47,14 @@ function hasBlockingProblems(summary, maxWarnings) {
   return summary.errors > 0 || summary.warnings > maxWarnings;
 }
 
-function complexityConfig(projectConfig, complexity) {
-  const customSyntax = projectConfig?.customSyntax;
-  return {
-    ...(customSyntax ? { customSyntax } : {}),
-    rules: {
-      [STYLE_COMPLEXITY_RULES.maxCompoundSelectors]: complexity.maxCompoundSelectors,
-      [STYLE_COMPLEXITY_RULES.maxNestingDepth]: complexity.maxNestingDepth,
-    },
-  };
-}
-
-function governanceConfig(projectConfig, governance) {
-  const customSyntax = projectConfig?.customSyntax;
-  return {
-    ...(customSyntax ? { customSyntax } : {}),
-    rules: {
-      [STYLE_GOVERNANCE_RULES.maxSpecificity]: governance.maxSpecificity,
-      [STYLE_GOVERNANCE_RULES.maxIdSelectors]: governance.maxIdSelectors,
-      ...(governance.disallowImportant
-        ? { [STYLE_GOVERNANCE_RULES.disallowImportant]: true }
-        : {}),
-    },
-  };
-}
-
-async function lintComplexity(project, root, files, complexity) {
-  if (!complexity?.enabled) return { results: [] };
-  const inputs = await inspectProjectStylelintRuleInputs({ project, root, files });
-  return await executeProjectStylelintRules({
-    project,
-    root,
-    bypassProjectIgnores: true,
-    ignoreDisables: true,
-    inputs: inputs.map((input) => ({
-      ...input,
-      config: complexityConfig(input.projectConfig, complexity),
-    })),
-  });
-}
-
-async function lintGovernance(project, root, files, governance) {
-  if (!governance?.enabled) return { results: [] };
-  const inputs = await inspectProjectStylelintRuleInputs({ project, root, files });
-  const report = await executeProjectStylelintRules({
-    project,
-    root,
-    bypassProjectIgnores: true,
-    ignoreDisables: true,
-    inputs: inputs.map((input) => ({
-      ...input,
-      config: governanceConfig(input.projectConfig, governance),
-    })),
-  });
-  return {
-    results: [
-      ...report.results,
-      ...inspectUnexpectedGlobalStyles({
-        root,
-        files,
-        allowedPatterns: governance.allowedGlobalStylePatterns,
-      }).map(({ source, violations }) => ({ source, warnings: violations })),
-    ],
-  };
-}
-
-function mergeLintResults(...reports) {
-  return { results: reports.flatMap((report) => report.results) };
-}
-
-function withoutProjectComplexityMessages(report, complexity) {
-  if (!complexity?.enabled) return report;
-  return {
-    results: report.results.map((result) => ({
-      ...result,
-      warnings: (result.warnings ?? []).filter(
-        ({ rule }) => !Object.values(STYLE_COMPLEXITY_RULES).includes(rule),
-      ),
-    })),
-  };
-}
-
-function withoutProjectGovernanceMessages(report, governance) {
-  if (!governance?.enabled) return report;
-  const activeRules = new Set([
-    STYLE_GOVERNANCE_RULES.maxSpecificity,
-    STYLE_GOVERNANCE_RULES.maxIdSelectors,
-    ...(governance.disallowImportant ? [STYLE_GOVERNANCE_RULES.disallowImportant] : []),
-  ]);
-  return {
-    results: report.results.map((result) => ({
-      ...result,
-      warnings: (result.warnings ?? []).filter(
-        ({ rule }) => !activeRules.has(rule),
-      ),
-    })),
-  };
-}
-
-function applyOwnedRuleExceptions(root, report, exceptions, complexity, governance) {
+function applyOwnedRuleExceptions(root, report, exceptions) {
   const ownedRules = new Set([
-    ...(complexity?.enabled ? Object.values(STYLE_COMPLEXITY_RULES) : []),
-    ...(governance?.enabled ? [
-      STYLE_GOVERNANCE_RULES.maxSpecificity,
-      STYLE_GOVERNANCE_RULES.maxIdSelectors,
-      STYLE_GOVERNANCE_RULES.unexpectedGlobalStyle,
-      ...(governance.disallowImportant ? [STYLE_GOVERNANCE_RULES.disallowImportant] : []),
-    ] : []),
+    'selector-max-compound-selectors',
+    'max-nesting-depth',
+    'selector-max-specificity',
+    'selector-max-id',
+    'declaration-no-important',
+    'no-unexpected-global-style',
   ]);
   const approved = [];
   const results = report.results.map((result) => ({
@@ -189,15 +80,20 @@ function applyOwnedRuleExceptions(root, report, exceptions, complexity, governan
 
 function stylelintFindings(root, results, maxWarnings) {
   const warningCount = results.reduce(
-    (total, result) => total
-      + (result.warnings || []).filter(({ severity }) => severity === 'warning').length,
+    (total, result) =>
+      total +
+      (result.warnings || []).filter(({ severity }) => severity === 'warning')
+        .length,
     0,
   );
   const warningsBlock = warningCount > maxWarnings;
   return results.flatMap((result) => [
     ...(result.warnings || [])
-      .filter((message) => message.severity === 'error'
-        || (warningsBlock && message.severity === 'warning'))
+      .filter(
+        (message) =>
+          message.severity === 'error' ||
+          (warningsBlock && message.severity === 'warning'),
+      )
       .map((message) => ({
         ruleId: message.rule?.startsWith('style/')
           ? message.rule
@@ -217,161 +113,136 @@ function stylelintFindings(root, results, maxWarnings) {
       ruleId: 'stylelint/invalid-option',
       severity: 'error',
       message: message.text || message.message || 'Stylelint 选项无效',
-      location: { path: path.relative(root, result.source).replace(/\\/g, '/') },
+      location: {
+        path: path.relative(root, result.source).replace(/\\/g, '/'),
+      },
       remediation: '修正项目 Stylelint 选项，同时保留该规则。',
     })),
   ]);
 }
 
+/** 普通规则只执行合并后的配置，治理扩展只读检查；失败恢复原始内容。 */
 export async function runStylelintFiles({
   gateId = STYLELINT_GATE_ID,
   root,
   files,
-  fix,
-  maxWarnings,
-  requireConfig,
-  complexity,
+  fix = false,
+  maxWarnings = 0,
+  requireConfig = true,
   governance,
   exceptions = { entries: [] },
-  complexityOnly = false,
-  governanceOnly = false,
+  options,
 }) {
-  if (files.length === 0) {
-    return createGateResult({ gateId, status: 'skipped', summary: 'Stylelint 没有适用文件' });
-  }
-
-  const normalizedFiles = normalizeStagedFiles(root, files, 'Stylelint 检查')
-    .map(({ absolute }) => absolute);
+  if (!files.length)
+    return createGateResult({
+      gateId,
+      status: 'skipped',
+      summary: 'Stylelint 没有适用文件',
+    });
+  const normalizedFiles = normalizeStagedFiles(
+    root,
+    files,
+    'Stylelint 检查',
+  ).map(({ absolute }) => absolute);
   assertVueStyleLanguages(normalizedFiles, root);
-
-  const configFile = findProjectStylelintConfig(root);
-  if (requireConfig && !configFile) {
-    throw configurationError('stylelint/missing-project-config', 'Stylelint 暂存门禁要求项目提供 Stylelint 配置文件');
-  }
-
+  if (requireConfig && !options && !findProjectStylelintConfig(root))
+    throw configurationError(
+      'stylelint/missing-project-config',
+      'Stylelint 要求项目提供配置文件或内联预设',
+    );
   const project = await loadProjectStylelint(root);
-  const initialComplexity = await lintComplexity(
-    project,
-    root,
-    normalizedFiles,
-    complexity,
-  );
-  const initialGovernance = await lintGovernance(
-    project,
-    root,
-    normalizedFiles,
-    governance,
-  );
-  const initial = applyOwnedRuleExceptions(
-    root,
-    complexityOnly
-      ? initialComplexity
-      : governanceOnly
-        ? initialGovernance
-        : mergeLintResults(
-        withoutProjectGovernanceMessages(
-          withoutProjectComplexityMessages(
-            await executeProjectStylelint({
-              project,
-              root,
-              files: normalizedFiles,
-              fix: false,
-            }),
-            complexity,
-          ),
-          governance,
-        ),
-        initialComplexity,
-        initialGovernance,
-      ),
-    exceptions,
-    complexity,
-    governance,
-  );
-  const initialSummary = summarize(initial.results);
-  const lintedCount = activeFileCount(initial.results);
-  const ignoredCount = normalizedFiles.length - lintedCount;
-
-  if (!hasBlockingProblems(initialSummary, maxWarnings)) {
-    return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} 已通过`, metrics: { checkedFiles: lintedCount, ignoredFiles: ignoredCount, approvedExceptions: initial.approved.length } });
-  }
-
-  if (!fix) {
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint 发现 ${initialSummary.errors} 个错误和 ${initialSummary.warnings} 个警告`, findings: stylelintFindings(root, initial.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: initialSummary.errors, warnings: initialSummary.warnings, approvedExceptions: initial.approved.length } });
-  }
-
-  const originalContents = captureFileContents(normalizedFiles);
-  let final;
-  try {
-    await executeProjectStylelint({
+  const inspect = async () => {
+    const report = await executeProjectStylelint({
       project,
       root,
       files: normalizedFiles,
-      fix: true,
+      fix: false,
+      options,
     });
-    final = applyOwnedRuleExceptions(
-      root,
-      mergeLintResults(
-        withoutProjectGovernanceMessages(
-          withoutProjectComplexityMessages(
-            await executeProjectStylelint({
-              project,
-              root,
-              files: normalizedFiles,
-              fix: false,
-            }),
-            complexity,
-          ),
-          governance,
-        ),
-        await lintComplexity(project, root, normalizedFiles, complexity),
-        await lintGovernance(project, root, normalizedFiles, governance),
-      ),
-      exceptions,
-      complexity,
-      governance,
+    const invalid = report.results.filter(
+      (r) =>
+        r.invalidOptionWarnings?.length ||
+        r.parseErrors?.length ||
+        r.warnings?.some((w) => w.rule === 'CssSyntaxError'),
     );
-  } catch (error) {
-    restoreFileContents(originalContents);
-    throw toRepoGuardError(error, {
-      kind: 'execution',
-      code: 'stylelint/execution-failed',
+    if (invalid.length)
+      throw configurationError(
+        'stylelint/invalid-input',
+        'Stylelint 配置或样式语法无法解析，请查看第三方诊断。',
+        {
+          details: {
+            diagnostics: [
+              {
+                level: 'error',
+                source: 'stylelint',
+                message: '第三方原始诊断：' + JSON.stringify(invalid),
+              },
+            ],
+          },
+        },
+      );
+    const active = report.results
+      .filter((r) => !r.ignored)
+      .map((r) => r.source);
+    const extra = governance?.enabled
+      ? await inspectStyleGovernance({
+          project,
+          root,
+          files: active,
+          options,
+          governance,
+        })
+      : [];
+    return applyOwnedRuleExceptions(
+      root,
+      { results: [...report.results, ...extra] },
+      exceptions,
+    );
+  };
+  let report = await inspect();
+  const checkedFiles = activeFileCount(report.results);
+  if (!checkedFiles)
+    return createGateResult({
+      gateId,
+      status: 'skipped',
+      summary: '所有文件均被项目 Stylelint 配置忽略',
     });
+  let summary = summarize(report.results);
+  if (fix && hasBlockingProblems(summary, maxWarnings)) {
+    const snapshot = captureFileContents(normalizedFiles);
+    try {
+      await executeProjectStylelint({
+        project,
+        root,
+        files: normalizedFiles,
+        fix: true,
+        options,
+      });
+      report = await inspect();
+      summary = summarize(report.results);
+      if (hasBlockingProblems(summary, maxWarnings))
+        restoreFileContents(snapshot);
+    } catch (error) {
+      restoreFileContents(snapshot);
+      throw toRepoGuardError(error, {
+        code: 'stylelint/execution-failed',
+        message: 'Stylelint 执行失败，已恢复本次文件修改。',
+      });
+    }
   }
-
-  const finalSummary = summarize(final.results);
-  if (hasBlockingProblems(finalSummary, maxWarnings)) {
-    restoreFileContents(originalContents);
-    return createGateResult({ gateId, status: 'violation', summary: `Stylelint 自动修复后仍有 ${finalSummary.errors} 个错误和 ${finalSummary.warnings} 个警告`, findings: stylelintFindings(root, final.results, maxWarnings), metrics: { checkedFiles: lintedCount, errors: finalSummary.errors, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
-  }
-
-  return createGateResult({ gateId, status: 'passed', summary: `Stylelint ${project.version} 自动修复和校验已通过`, metrics: { checkedFiles: lintedCount, errors: 0, warnings: finalSummary.warnings, approvedExceptions: final.approved.length } });
-}
-
-export async function runStyleComplexityProject({ root, files, config, exceptions }) {
-  return await runStylelintFiles({
-    gateId: 'quality.style-complexity',
-    root,
-    files,
-    fix: false,
-    maxWarnings: 0,
-    requireConfig: true,
-    complexity: config,
-    complexityOnly: true,
-    exceptions,
-  });
-}
-
-export async function runStyleGovernanceProject({ root, files, config, exceptions }) {
-  return await runStylelintFiles({
-    gateId: 'quality.style-governance',
-    root,
-    files,
-    fix: false,
-    maxWarnings: 0,
-    requireConfig: true,
-    governance: config,
-    governanceOnly: true,
-    exceptions,
+  const failed = hasBlockingProblems(summary, maxWarnings);
+  return createGateResult({
+    gateId,
+    status: failed ? 'violation' : 'passed',
+    summary: failed ? 'Stylelint 样式检查发现违规' : 'Stylelint 样式检查已通过',
+    findings: failed
+      ? stylelintFindings(root, report.results, maxWarnings)
+      : [],
+    metrics: {
+      checkedFiles,
+      ignoredFiles: normalizedFiles.length - checkedFiles,
+      ...summary,
+      approvedExceptions: report.approved.length,
+    },
   });
 }

@@ -1,6 +1,8 @@
 import { findStructuredException } from './exception-registry.js';
+import { inspectTokenValueDefinitions, UI_TOKEN_VALUE_RULES } from './ui-token-values.js';
 
 export const UI_TOKEN_RULES = Object.freeze([
+  ...UI_TOKEN_VALUE_RULES,
   'ui-token/raw-value',
   'ui-token/unknown-token',
   'ui-token/category-mismatch',
@@ -70,7 +72,7 @@ function policyFinding(fact, rule, message, expected, remediation, evidence = nu
   };
 }
 
-function directPropertyCategories(property, iconContext = false) {
+function directPropertyCategories(property) {
   const normalized = property.toLowerCase();
   if (/^(?:color|background-color|border(?:-(?:top|right|bottom|left|inline|block|inline-start|inline-end|block-start|block-end))?-color|outline-color|text-decoration-color|caret-color|column-rule-color|fill|stroke)$/.test(normalized)) return ['color'];
   if (/^(?:margin|padding)(?:-(?:top|right|bottom|left|inline|inline-start|inline-end|block|block-start|block-end))?$/.test(normalized)) return ['spacing'];
@@ -84,9 +86,6 @@ function directPropertyCategories(property, iconContext = false) {
   if (normalized === 'z-index') return ['z-index'];
   if (['transition-duration', 'animation-duration'].includes(normalized)) {
     return ['animation-duration'];
-  }
-  if (iconContext && ['width', 'height', 'inline-size', 'block-size'].includes(normalized)) {
-    return ['icon-size'];
   }
   return [];
 }
@@ -123,23 +122,6 @@ function embeddedCategories(property, value) {
 
 function escapeExpression(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function selectorMatches(selector, matcher) {
-  const escaped = escapeExpression(matcher);
-  if (/^[a-z][a-z0-9-]*$/i.test(matcher)) {
-    return new RegExp(`(?:^|[\\s>+~,(])${escaped}(?=$|[\\s>+~.#[:)])`).test(selector);
-  }
-  const prefix = ['.', '#', '['].some((marker) => matcher.startsWith(marker))
-    ? ''
-    : '(?:^|[^a-zA-Z0-9_-])';
-  return new RegExp(`${prefix}${escaped}(?=$|[^a-zA-Z0-9_-])`).test(selector);
-}
-
-function isIconContext(fact, iconSelectors) {
-  return typeof fact.selector === 'string' && iconSelectors.some((selector) => (
-    selectorMatches(fact.selector, selector)
-  ));
 }
 
 function styleVariables(value) {
@@ -225,14 +207,11 @@ function fontRemainderIsSafe(value) {
   return !/[^\s,/]/.test(withoutKeywords);
 }
 
-function inspectStyleFact(fact, aliasMap, iconSelectors) {
+function inspectStyleFact(fact, aliasMap) {
   fact = { ...fact, value: decodeStyleEscapes(fact.value), property: decodeStyleEscapes(fact.property ?? '') };
   if (fact.type === 'responsive-rule') return inspectResponsiveFact(fact, aliasMap);
   if (/#\{|@\{|@@/.test(fact.property)) return [dynamicFinding(fact)];
-  const direct = directPropertyCategories(
-    fact.property,
-    isIconContext(fact, iconSelectors),
-  );
+  const direct = directPropertyCategories(fact.property);
   const embedded = direct.length > 0 ? [] : embeddedCategories(fact.property, fact.value);
   const categories = [...new Set([...direct, ...embedded])];
   if (categories.length === 0) return [];
@@ -389,7 +368,7 @@ function hasUnapprovedColorFunction(value) {
 }
 
 export function inspectUiTokens({ config, manifest, deletedContractPaths = [], styleFacts = [] }) {
-  const findings = [];
+  const findings = config.values?.enabled ? inspectTokenValueDefinitions(config.values.definitions, styleFacts) : [];
   for (const deletedPath of new Set(deletedContractPaths)) {
     findings.push(policyFinding(
       { path: deletedPath, line: 1, column: 1 }, 'ui-token/stale-manifest',
@@ -416,7 +395,7 @@ export function inspectUiTokens({ config, manifest, deletedContractPaths = [], s
     if (!aliasMap) continue;
     findings.push(...(fact.type === 'variable-definition'
       ? inspectDefinition(fact, aliasMap, sourcePaths)
-      : inspectStyleFact(fact, aliasMap, config.iconSelectors)));
+      : inspectStyleFact(fact, aliasMap)));
   }
   return { ...applyExceptions(findings, config.exceptions), checkedStyleFacts: styleFacts.length };
 }

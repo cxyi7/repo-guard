@@ -42,3 +42,11 @@ npx repo-guard doctor
 ## 维护依据
 
 [实现入口](../../src/orchestration/setup/project-initialization.js) · [对应测试](../../test/setup/config-management.test.js)
+
+Node 后端显式开启普通 Stylelint 时不附带前端 governance 或 uiTokens；前端维护预设不会用于后端。后端 ESLint、Prettier 等工具仍使用消费项目安装和原生配置，初始化不是依赖安装。
+
+Node 新建预设默认启用构建、单元测试、覆盖率、变异测试、架构、Knip、路径命名、函数文档和文件头；TypeScript 启用类型检查。普通 Stylelint、图片、代码位置不启用。读取旧配置与重复初始化不改写用户值。
+
+7.1.5 的 java-maven 新建模板开启全部 18 项专属检查，保留待补齐工具与证据字段。创建配置后严格校验；缺项会报错并保留配置，不安装 Hook、不报告初始化成功。重复 init 不覆盖待补齐或已有配置。补齐后重新 init。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

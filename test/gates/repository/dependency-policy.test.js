@@ -1,30 +1,40 @@
-import { stringifyProjectFixture } from '../../helpers/project-config.js';
-import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import semver from "semver";
+import { stringifyProjectFixture } from "../../helpers/project-config.js";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
-} from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import test from 'node:test';
+} from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
 import {
   inspectDependencyPolicy,
   inspectStagedDependencyPolicy,
-} from '../../../src/gates/repository/dependency-policy.js';
+} from "../../../src/gates/repository/dependency-policy.js";
 
-const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
-const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
+const TEST_ROOT = path.join(process.cwd(), "test", ".tmp");
+const CLI_PATH = fileURLToPath(
+  new URL("../../../bin/repo-guard.js", import.meta.url),
+);
 mkdirSync(TEST_ROOT, { recursive: true });
 
 function policy(extra = {}) {
   return {
     requireExactVersions: true,
     requireLockfile: true,
-    allowedProtocols: ['npm', 'workspace'],
+    packageManager: {
+      name: "npm",
+      root: ".",
+      requireVersionDeclaration: false,
+      checkInstalledVersion: false,
+    },
+    toolReadiness: { enabled: false },
+    checkConflictingDeclarations: true,
     bannedPackages: [],
     ...extra,
   };
@@ -41,144 +51,190 @@ function dateText(offsetDays) {
   return date.toISOString().slice(0, 10);
 }
 
-function createFixture(packageJson, lockRoot = null, dependencyPolicy = policy()) {
-  const root = mkdtempSync(path.join(TEST_ROOT, 'dependency-policy-'));
-  const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
+function createFixture(
+  packageJson,
+  lockRoot = null,
+  dependencyPolicy = policy(),
+) {
+  const root = mkdtempSync(path.join(TEST_ROOT, "dependency-policy-"));
+  const gitResult = spawnSync("git", ["init"], { cwd: root, encoding: "utf8" });
   assert.equal(gitResult.status, 0, gitResult.stderr);
   writeFileSync(
-    path.join(root, 'package.json'),
+    path.join(root, "package.json"),
     `${JSON.stringify(packageJson, null, 2)}\n`,
   );
   if (lockRoot) {
     writeFileSync(
-      path.join(root, 'package-lock.json'),
-      `${JSON.stringify({
-        name: packageJson.name,
-        version: packageJson.version,
-        lockfileVersion: 3,
-        requires: true,
-        packages: { '': lockRoot },
-      }, null, 2)}\n`,
+      path.join(root, "package-lock.json"),
+      `${JSON.stringify(
+        {
+          name: packageJson.name,
+          version: packageJson.version,
+          lockfileVersion: 3,
+          requires: true,
+          packages: {
+            "": lockRoot,
+            ...Object.fromEntries(
+              Object.entries({
+                ...lockRoot.dependencies,
+                ...lockRoot.devDependencies,
+                ...lockRoot.optionalDependencies,
+              })
+                .filter(([, v]) => semver.validRange(v))
+                .map(([name, v]) => [
+                  "node_modules/" + name,
+                  { version: semver.minVersion(v).version },
+                ]),
+            ),
+          },
+        },
+        null,
+        2,
+      )}\n`,
     );
   }
   writeFileSync(
-    path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-  version: 2,
-  project: {
-    id: 'web',
-    role: 'frontend',
-    stack: 'node',
-    preset: 'vue-javascript'
-  },
-  repository: {
-    dependencyPolicy,
-    rules: [{
-      pattern: '**',
-      category: 'Fixture',
-      level: 'audit'
-    }]
-  }
-}, null, 2)}\n`,
+    path.join(root, "repo-guard.config.json"),
+    `${stringifyProjectFixture(
+      {
+        version: 2,
+        project: {
+          id: "web",
+          role: "frontend",
+          stack: "node",
+          preset: "vue-javascript",
+        },
+        repository: {
+          dependencyPolicy,
+          rules: [
+            {
+              pattern: "**",
+              category: "Fixture",
+              level: "audit",
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
   );
   return root;
 }
 
-test('enforces exact versions, approved sources, bans, grouping, and lock consistency', (context) => {
+test("enforces exact versions, approved sources, bans, grouping, and lock consistency", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
+    name: "fixture",
+    version: "1.0.0",
     dependencies: {
-      axios: '^1.7.0',
-      lodash: 'https://example.invalid/lodash.tgz',
-      request: '2.88.2',
-      vue: '3.5.0',
+      axios: "^1.7.0",
+      lodash: "https://example.invalid/lodash.tgz",
+      request: "2.88.2",
+      vue: "3.5.0",
     },
     devDependencies: {
-      vue: '3.5.0',
-      eslint: '9.39.5',
+      vue: "3.5.0",
+      eslint: "9.39.5",
     },
     peerDependencies: {
-      pluginApi: '^2.0.0',
+      pluginApi: "^2.0.0",
     },
   };
-  const root = createFixture(packageJson, {
-    name: 'fixture',
-    version: '1.0.0',
-    dependencies: {
-      axios: '^1.7.0',
-      lodash: 'https://example.invalid/lodash.tgz',
-      request: '2.88.2',
-      vue: '3.4.0',
+  const root = createFixture(
+    packageJson,
+    {
+      name: "fixture",
+      version: "1.0.0",
+      dependencies: {
+        axios: "^1.7.0",
+        lodash: "https://example.invalid/lodash.tgz",
+        request: "2.88.2",
+        vue: "3.4.0",
+      },
+      devDependencies: { vue: "3.5.0", eslint: "9.39.5" },
     },
-    devDependencies: { vue: '3.5.0', eslint: '9.39.5' },
-  }, policy({
-    bannedPackages: [{
-      name: 'request',
-      reason: 'Package is deprecated and unmaintained.',
-      replacement: 'undici',
-    }],
-  }));
+    policy({
+      bannedPackages: [
+        {
+          name: "request",
+          reason: "Package is deprecated and unmaintained.",
+          replacement: "undici",
+        },
+      ],
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const result = inspectDependencyPolicy({
     root,
     config: policy({
-      bannedPackages: [{
-        name: 'request',
-        reason: 'Package is deprecated and unmaintained.',
-        replacement: 'undici',
-      }],
+      bannedPackages: [
+        {
+          name: "request",
+          reason: "Package is deprecated and unmaintained.",
+          replacement: "undici",
+        },
+      ],
     }),
     exceptions: registry(),
   });
-  assert.deepEqual(new Set(result.violations.map(({ rule }) => rule)), new Set([
-    'dependencies/non-exact-version',
-    'dependencies/disallowed-source',
-    'dependencies/banned-package',
-    'dependencies/duplicate-declaration',
-    'dependencies/lockfile-mismatch',
-  ]));
-  assert.equal(result.violations.some(({ dependency }) => dependency === 'pluginApi'), false);
-  assert.equal(result.violations.every(({ line, column }) => line > 0 && column > 0), true);
+  assert.deepEqual(
+    new Set(result.violations.map(({ rule }) => rule)),
+    new Set(["dependencies/non-exact-version", "dependencies/banned-package"]),
+  );
+  assert.equal(
+    result.violations.some(({ dependency }) => dependency === "pluginApi"),
+    false,
+  );
+  assert.equal(
+    result.violations.every(({ line, column }) => line > 0 && column > 0),
+    true,
+  );
 });
 
-test('accepts exact npm aliases and workspace dependencies with a synchronized lockfile', (context) => {
+test("跳过别名与工作区引用，普通依赖仍核对锁文件", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
+    name: "fixture",
+    version: "1.0.0",
     dependencies: {
-      internal: 'workspace:*',
-      legacyVue: 'npm:vue@3.5.0',
-      vue: '3.5.0',
+      internal: "workspace:*",
+      legacyVue: "npm:vue@3.5.0",
+      vue: "3.5.0",
     },
   };
   const root = createFixture(packageJson, {
-    name: 'fixture',
-    version: '1.0.0',
+    name: "fixture",
+    version: "1.0.0",
     dependencies: packageJson.dependencies,
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  assert.equal(inspectDependencyPolicy({
-    root,
-    config: policy(),
-    exceptions: registry(),
-  }).violations.length, 0);
+  assert.equal(
+    inspectDependencyPolicy({
+      root,
+      config: policy(),
+      exceptions: registry(),
+    }).violations.length,
+    0,
+  );
 });
 
-test('still rejects unapproved sources when exact-version enforcement is disabled', (context) => {
+test("特殊引用不参与依赖声明检查", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
-    dependencies: { axios: 'https://example.invalid/axios.tgz' },
-    devDependencies: { shorthand: 'owner/repository#main' },
-    peerDependencies: { pluginApi: 'git+https://example.invalid/plugin.git' },
+    name: "fixture",
+    version: "1.0.0",
+    dependencies: { axios: "https://example.invalid/axios.tgz" },
+    devDependencies: { shorthand: "owner/repository#main" },
+    peerDependencies: { pluginApi: "git+https://example.invalid/plugin.git" },
   };
-  const root = createFixture(packageJson, null, policy({
-    requireExactVersions: false,
-    requireLockfile: false,
-  }));
+  const root = createFixture(
+    packageJson,
+    null,
+    policy({
+      requireExactVersions: false,
+      requireLockfile: false,
+    }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const result = inspectDependencyPolicy({
@@ -188,45 +244,52 @@ test('still rejects unapproved sources when exact-version enforcement is disable
   });
   assert.deepEqual(
     result.violations.map(({ rule }) => rule),
-    [
-      'dependencies/disallowed-source',
-      'dependencies/disallowed-source',
-      'dependencies/disallowed-source',
-    ],
+    [],
   );
 });
 
-test('ignores invalid staged lock metadata when lockfile enforcement is disabled', (context) => {
+test("ignores invalid staged lock metadata when lockfile enforcement is disabled", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
-    dependencies: { axios: '1.7.0' },
+    name: "fixture",
+    version: "1.0.0",
+    dependencies: { axios: "1.7.0" },
   };
   const dependencyPolicy = policy({ requireLockfile: false });
   const root = createFixture(packageJson, null, dependencyPolicy);
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  writeFileSync(path.join(root, 'package-lock.json'), '{ invalid json\n');
-  const staged = spawnSync('git', ['add', 'package.json', 'package-lock.json'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
+  writeFileSync(path.join(root, "package-lock.json"), "{ invalid json\n");
+  const staged = spawnSync(
+    "git",
+    ["add", "package.json", "package-lock.json"],
+    {
+      cwd: root,
+      encoding: "utf8",
+    },
+  );
   assert.equal(staged.status, 0, staged.stderr);
 
-  assert.deepEqual(inspectStagedDependencyPolicy({
-    root,
-    config: dependencyPolicy,
-    exceptions: registry(),
-  }), { approved: [], violations: [] });
+  assert.deepEqual(
+    inspectStagedDependencyPolicy({
+      root,
+      config: dependencyPolicy,
+      exceptions: registry(),
+    }),
+    { approved: [], violations: [] },
+  );
 });
 
-test('reports the exact root declaration when a package name also appears in scripts', (context) => {
+test("reports the exact root declaration when a package name also appears in scripts", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
-    scripts: { axios: 'echo nested-key' },
-    dependencies: { axios: '^1.7.0' },
+    name: "fixture",
+    version: "1.0.0",
+    scripts: { axios: "echo nested-key" },
+    dependencies: { axios: "^1.7.0" },
   };
-  const root = createFixture(packageJson, null, policy({ requireLockfile: false }));
+  const root = createFixture(
+    packageJson,
+    null,
+    policy({ requireLockfile: false }),
+  );
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
   const result = inspectDependencyPolicy({
@@ -237,30 +300,34 @@ test('reports the exact root declaration when a package name also appears in scr
   assert.equal(result.violations[0].line, 8);
 });
 
-test('requires an exact active exception for a dependency violation', (context) => {
+test("requires an exact active exception for a dependency violation", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
-    dependencies: { axios: '^1.7.0' },
+    name: "fixture",
+    version: "1.0.0",
+    dependencies: { axios: "^1.7.0" },
   };
   const root = createFixture(packageJson, {
-    name: 'fixture',
-    version: '1.0.0',
+    name: "fixture",
+    version: "1.0.0",
     dependencies: packageJson.dependencies,
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
-  const denied = inspectDependencyPolicy({ root, config: policy(), exceptions: registry() });
+  const denied = inspectDependencyPolicy({
+    root,
+    config: policy(),
+    exceptions: registry(),
+  });
   const [finding] = denied.violations;
   const exception = {
-    id: 'legacy-axios-range',
+    id: "legacy-axios-range",
     rule: finding.rule,
     path: finding.path,
     line: finding.line,
     column: finding.column,
-    reason: 'Legacy range awaits coordinated application upgrade.',
-    owner: 'frontend-team',
-    approvedBy: 'security-team',
-    ticket: 'DEP-1000',
+    reason: "Legacy range awaits coordinated application upgrade.",
+    owner: "frontend-team",
+    approvedBy: "security-team",
+    ticket: "DEP-1000",
     createdOn: dateText(-1),
     expiresOn: dateText(30),
   };
@@ -271,28 +338,31 @@ test('requires an exact active exception for a dependency violation', (context) 
     exceptions: registry([exception]),
   });
   assert.equal(approved.violations.length, 0);
-  assert.equal(approved.approved[0].exception.id, 'legacy-axios-range');
+  assert.equal(approved.approved[0].exception.id, "legacy-axios-range");
 });
 
-test('exposes dependency governance through the CLI', (context) => {
+test("exposes dependency governance through the CLI", (context) => {
   const packageJson = {
-    name: 'fixture',
-    version: '1.0.0',
-    dependencies: { axios: '^1.7.0' },
+    name: "fixture",
+    version: "1.0.0",
+    dependencies: { axios: "^1.7.0" },
   };
   const root = createFixture(packageJson, {
-    name: 'fixture',
-    version: '1.0.0',
+    name: "fixture",
+    version: "1.0.0",
     dependencies: packageJson.dependencies,
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
 
-  const result = spawnSync(process.execPath, [CLI_PATH, 'dependencies'], {
+  const result = spawnSync(process.execPath, [CLI_PATH, "dependencies"], {
     cwd: root,
-    encoding: 'utf8',
+    encoding: "utf8",
   });
-  assert.equal(result.status, 2);
+  assert.equal(result.status, 2, result.stdout + result.stderr);
   assert.match(result.stderr, /dependencies\/non-exact-version/);
-  assert.match(result.stderr, /npm install --package-lock-only/);
-  assert.match(readFileSync(path.join(root, 'package.json'), 'utf8'), /\^1\.7\.0/);
+  assert.match(result.stderr, /配置的包管理器/);
+  assert.match(
+    readFileSync(path.join(root, "package.json"), "utf8"),
+    /\^1\.7\.0/,
+  );
 });

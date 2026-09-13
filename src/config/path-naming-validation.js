@@ -16,13 +16,16 @@ export function validatePathNamingConfiguration(checksValue, configPath) {
   }
   assertKnownProperties(
     value,
-    new Set(['enabled', 'convention', 'include', 'exclude']),
+    new Set(['enabled', 'convention', 'include', 'exclude', 'lowercaseExtension']),
     label,
   );
   if (value.enabled != null && typeof value.enabled !== 'boolean') {
     throw configValidationError(`${label}.enabled 必须是布尔值`);
   }
   const convention = value.convention ?? DEFAULT_PATH_NAMING_CONFIG.convention;
+  if (value.lowercaseExtension !== undefined && typeof value.lowercaseExtension !== 'boolean') {
+    throw configValidationError(`${label}.lowercaseExtension 必须是布尔值`);
+  }
   if (!SUPPORTED_PATH_NAMING_CONVENTIONS.includes(convention)) {
     throw configValidationError(
       `${label}.convention 必须是 camelCase 或 kebab-case 中的一个字符串值`,
@@ -31,6 +34,7 @@ export function validatePathNamingConfiguration(checksValue, configPath) {
   return {
     enabled: value.enabled ?? DEFAULT_PATH_NAMING_CONFIG.enabled,
     convention,
+    ...(value.lowercaseExtension !== undefined ? { lowercaseExtension: value.lowercaseExtension } : {}),
     include: normalizePatternList(
       value.include ?? DEFAULT_PATH_NAMING_CONFIG.include,
       `${label}.include`,

@@ -1,4 +1,5 @@
 import { toRepoGuardError } from '../core/error/repo-guard-error.js';
+import { validateDirectoryRoles, applyDirectoryBindings, carryDirectoryBindingState } from './directory-roles.js';
 import { validateProjectDescriptor } from '../profiles/project-profiles.js';
 import { validateChecksConfiguration } from './checks-validation.js';
 import { validateCiConfiguration } from './ci-validation.js';
@@ -56,6 +57,9 @@ export function validateConfigValue(
   options = {},
 ) {
   validateRootConfigurationContract(value, configPath);
+  const directories = validateDirectoryRoles(value.directories);
+  if (directories && options.repositoryOnly) throw configValidationError('目录职责必须配置在所属应用，不得配置在仓库公共入口');
+  value = applyDirectoryBindings(value, directories);
   const project = options.repositoryOnly
     ? undefined
     : validateProjectDescriptor(value.project, options);
@@ -83,6 +87,7 @@ export function validateConfigValue(
   const normalized = {
     version: 2,
     ...(project ? { project } : {}),
+    ...(directories ? { directories } : {}),
     checks: validateChecksConfiguration(value.checks, project, configPath),
     repository: {
       ...normalizeProtectedFileConfiguration(protectedFiles, configPath),
@@ -109,7 +114,7 @@ export function validateConfigValue(
     ci: validateCiConfiguration(value.ci, configPath),
   };
   assertNoDiscardedNulls(value, normalized, configPath);
-  return normalized;
+  return carryDirectoryBindingState(value, normalized);
 }
 
 export function validateConfig(value, configPath = CONFIG_FILE, options = {}) {

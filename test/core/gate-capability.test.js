@@ -9,7 +9,7 @@ import {
 import { defineGate } from '../../src/core/capability/gate-definition.js';
 import { createGateRegistry } from '../../src/core/capability/gate-registry.js';
 import { gateRegistry } from '../../src/gates/registry.js';
-import { dynamicCodeGate } from '../../src/gates/security/dynamic-code-gate.js';
+import { sourceSecurityGate, SOURCE_SECURITY_RULES } from '../../src/gates/security/source-security-gate.js';
 
 function gate(overrides = {}) {
   return defineGate({
@@ -102,6 +102,12 @@ function reviewedGateDescriptor(id, environments, overrides = {}) {
 }
 
 const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
+  reviewedGateDescriptor('quality.function-documentation', POLICY_ENVIRONMENTS, {
+    configKey: 'checks.functionDocs', featureName: 'functionDocs', featureOrder: 34,
+    manualCommand: 'function-docs', manualOrder: 74, doctorOrder: 74,
+    packageScript: 'guard:function-docs', rules: ['function-docs/missing-description', 'function-docs/destructured-parameter'],
+    ciScopes: ['all-files', 'changed-files'],
+  }),
   reviewedGateDescriptor(
     'quality.vue-async-resource-cleanup',
     POLICY_ENVIRONMENTS,
@@ -118,14 +124,11 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     },
   ),
   reviewedGateDescriptor('quality.ui-tokens', POLICY_ENVIRONMENTS, {
-    configKey: 'checks.uiTokens',
-    featureName: 'uiTokens',
-    featureOrder: 39,
-    manualCommand: 'ui-tokens',
-    manualOrder: 147,
-    doctorOrder: 147,
-    packageScript: 'guard:ui-tokens',
+    configKey: 'checks.stylelint.uiTokens',
     rules: [
+      'ui-token/missing-definition',
+      'ui-token/value-mismatch',
+      'ui-token/unexpected-definition',
       'ui-token/raw-value',
       'ui-token/unknown-token',
       'ui-token/category-mismatch',
@@ -164,6 +167,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       'assets/compression-opportunity',
       'assets/webp-conversion-opportunity',
       'assets/analysis-limit',
+      'assets/image-budget', 'assets/image-format', 'assets/image-metadata', 'assets/image-animation', 'assets/avif-opportunity',
     ],
     requiredTools: ['sharp', 'svgo'],
     ciScopes: ['all-files', 'changed-files'],
@@ -179,48 +183,17 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       manualOrder: 153,
       doctorOrder: 153,
       packageScript: 'guard:unused-image-assets',
-      rules: ['assets/unused'],
+      rules: ['assets/unused', 'assets/reference-integrity'],
       ciScopes: ['all-files'],
     },
   ),
-  reviewedGateDescriptor('security.dynamic-code', POLICY_ENVIRONMENTS, {
-    manualCommand: 'dynamic-code',
-    manualOrder: 70,
-    doctorOrder: 70,
-    packageScript: 'guard:dynamic-code',
-    rules: ['security/no-eval', 'security/no-function-constructor'],
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('security.vue-unsafe-html', POLICY_ENVIRONMENTS, {
-    manualCommand: 'unsafe-html',
-    manualOrder: 80,
-    doctorOrder: 80,
-    packageScript: 'guard:unsafe-html',
-    rules: ['vue/no-v-html'],
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('security.vue-target-blank', POLICY_ENVIRONMENTS, {
-    manualCommand: 'target-blank',
-    manualOrder: 90,
-    doctorOrder: 90,
-    packageScript: 'guard:target-blank',
-    rules: ['vue/target-blank-security'],
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('accessibility.vue-form-label', POLICY_ENVIRONMENTS, {
-    manualCommand: 'form-labels',
-    manualOrder: 100,
-    doctorOrder: 100,
-    packageScript: 'guard:form-labels',
-    rules: ['vue/form-control-label'],
-    ciScopes: ['all-files', 'changed-files'],
-  }),
-  reviewedGateDescriptor('accessibility.vue-image-alt', POLICY_ENVIRONMENTS, {
-    manualCommand: 'image-alt',
-    manualOrder: 110,
-    doctorOrder: 110,
-    packageScript: 'guard:image-alt',
-    rules: ['vue/img-alt'],
+  reviewedGateDescriptor('security.source-security', POLICY_ENVIRONMENTS, {
+    configKey: 'checks.sourceSecurity', featureName: 'sourceSecurity', featureOrder: 36,
+    manualCommand: 'source-security', manualOrder: 76, doctorOrder: 76, packageScript: 'guard:source-security',
+    rules: ['security/no-eval', 'security/no-function-constructor', 'vue/no-v-html', 'vue/target-blank-security',
+      'source-security/string-timer', 'source-security/dom-html', 'source-security/srcdoc',
+      'source-security/inline-event', 'source-security/url-scheme', 'source-security/new-window',
+      'source-security/message-origin', 'source-security/unconfirmed'],
     ciScopes: ['all-files', 'changed-files'],
   }),
   reviewedGateDescriptor(
@@ -349,9 +322,10 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
   ),
   reviewedGateDescriptor(
     'quality.stylelint',
-    ['pre-commit', 'ci-full', 'release-ready'],
+    ['manual', 'pre-commit', 'ci-full', 'release-ready'],
     {
       configKey: 'checks.stylelint',
+      manualCommand: 'stylelint', manualOrder: 160, packageScript: 'guard:stylelint',
       featureName: 'stylelint',
       featureOrder: 30,
       mutation: 'working-tree-fix',
@@ -427,7 +401,7 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       supportsCancellation: true,
     },
   ),
-  reviewedGateDescriptor('quality.mutation-test', ['manual'], {
+  reviewedGateDescriptor('quality.mutation-test', ['manual', 'ci-full', 'release-ready'], {
     configKey: 'checks.mutationTest',
     featureName: 'mutationTest',
     featureOrder: 145,
@@ -444,22 +418,6 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
     ],
     supportsCancellation: true,
   }),
-  reviewedGateDescriptor(
-    'quality.accessibility-test',
-    ['manual', 'pre-push', 'ci-full', 'release-ready'],
-    {
-      configKey: 'checks.accessibilityTest',
-      featureName: 'accessibilityTest',
-      featureOrder: 100,
-      defaultTimeoutMs: 180000,
-      manualCommand: 'accessibility-test',
-      manualOrder: 120,
-      doctorOrder: 60,
-      packageScript: 'guard:accessibility-test',
-      requiredScripts: ['config:checks.accessibilityTest.script'],
-      supportsCancellation: true,
-    },
-  ),
   reviewedGateDescriptor(
     'quality.architecture',
     ['manual', 'pre-push', 'ci-full', 'release-ready'],
@@ -503,15 +461,16 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       doctorOrder: 10,
       packageScript: 'guard:build',
       requiredScripts: ['config:checks.build.script'],
-      artifactTypes: ['build-output'],
+      artifactTypes: ['build-output', 'bundle-html', 'bundle-json', 'bundle-facts', 'bundle-summary'],
       supportsCancellation: true,
     },
   ),
   reviewedGateDescriptor(
     'quality.lighthouse',
-    ['manual', 'pre-push', 'release-ready'],
+    ['manual', 'pre-push', 'ci-full', 'release-ready'],
     {
       configKey: 'checks.lighthouse',
+      supportsCancellation: true,
       featureName: 'lighthouse',
       featureOrder: 120,
       defaultTimeoutMs: 300000,
@@ -521,27 +480,9 @@ const REVIEWED_OFFICIAL_GATE_DESCRIPTORS = Object.freeze([
       doctorOrder: 30,
       packageScript: 'guard:lighthouse',
       requiredTools: ['@lhci/cli'],
-      artifactTypes: ['lighthouse-report'],
+      artifactTypes: ['lighthouse-report', 'lighthouse-summary', 'lighthouse-run'],
     },
   ),
-  reviewedGateDescriptor('quality.style-complexity', ['manual'], {
-    configKey: 'checks.styleComplexity',
-    featureName: 'styleComplexity',
-    featureOrder: 60,
-    manualCommand: 'style-complexity',
-    manualOrder: 130,
-    packageScript: 'guard:style-complexity',
-    requiredTools: ['stylelint'],
-  }),
-  reviewedGateDescriptor('quality.style-governance', ['manual'], {
-    configKey: 'checks.styleGovernance',
-    featureName: 'styleGovernance',
-    featureOrder: 70,
-    manualCommand: 'style-governance',
-    manualOrder: 140,
-    packageScript: 'guard:style-governance',
-    requiredTools: ['stylelint'],
-  }),
   reviewedGateDescriptor('java.format', ['pre-commit', 'manual', 'pre-push', 'ci-full', 'release-ready'], {
     configKey: 'checks.javaFormat', featureName: 'javaFormat', featureOrder: 400,
     doctorOrder: 400, manualOrder: 400, manualCommand: 'java-format',
@@ -653,43 +594,35 @@ function officialGateDescriptor(gateDefinition) {
   return Object.fromEntries(metadataEntries);
 }
 
-test('defines immutable gate metadata and exposes the dynamic-code vertical slice', () => {
-  const dynamicCode = gateRegistry.get('security.dynamic-code');
-  assert.equal(Object.isFrozen(dynamicCode), true);
-  assert.equal(dynamicCode.resultModel, 'GateResult');
-  assert.equal(dynamicCode.manualCommand, 'dynamic-code');
-  assert.equal(dynamicCode.packageScript, 'guard:dynamic-code');
-  assert.equal(dynamicCode.mutation, 'read-only');
-  assert.deepEqual(dynamicCode.allowedMutations, ['read-only']);
-  assert.deepEqual(dynamicCode.environments, [
+test('defines immutable gate metadata and exposes the source-security capability', () => {
+  const sourceSecurity = gateRegistry.get('security.source-security');
+  assert.equal(Object.isFrozen(sourceSecurity), true);
+  assert.equal(sourceSecurity.resultModel, 'GateResult');
+  assert.equal(sourceSecurity.manualCommand, 'source-security');
+  assert.equal(sourceSecurity.packageScript, 'guard:source-security');
+  assert.equal(sourceSecurity.mutation, 'read-only');
+  assert.deepEqual(sourceSecurity.allowedMutations, ['read-only']);
+  assert.deepEqual(sourceSecurity.environments, [
     'manual',
     'pre-commit',
     'ci-policy',
     'ci-full',
     'release-ready',
   ]);
-  assert.deepEqual(dynamicCode.rules, [
-    'security/no-eval',
-    'security/no-function-constructor',
-  ]);
-  assert.deepEqual(dynamicCode.requiredTools, []);
-  assert.deepEqual(dynamicCode.requiredScripts, []);
-  assert.deepEqual(dynamicCode.requiredEnvironment, []);
-  assert.deepEqual(dynamicCode.requiredSecrets, []);
-  assert.deepEqual(dynamicCode.artifactTypes, []);
-  assert.equal(dynamicCode.supportsFix, false);
-  assert.equal(dynamicCode.supportsCancellation, false);
-  assert.equal('renderConsole' in dynamicCodeGate, false);
-  assert.equal('renderConsole' in dynamicCode, false);
-  assert.equal(gateRegistry.findByManualCommand('dynamic-code'), dynamicCode);
-  assert.equal(gateRegistry.ci.includes(dynamicCode), true);
-  assert.deepEqual(dynamicCode.ciScopes, ['all-files', 'changed-files']);
-  assert.deepEqual(dynamicCode.inspectSetup({ config: { version: 2 } }), {
-    status: 'ready',
-    summary:
-      '动态代码暂存门禁（硬性要求，规则=security/no-eval+security/no-function-constructor）',
-    rules: dynamicCode.rules,
-  });
+  assert.deepEqual(sourceSecurity.rules, SOURCE_SECURITY_RULES);
+  assert.deepEqual(sourceSecurity.requiredTools, []);
+  assert.deepEqual(sourceSecurity.requiredScripts, []);
+  assert.deepEqual(sourceSecurity.requiredEnvironment, []);
+  assert.deepEqual(sourceSecurity.requiredSecrets, []);
+  assert.deepEqual(sourceSecurity.artifactTypes, []);
+  assert.equal(sourceSecurity.supportsFix, false);
+  assert.equal(sourceSecurity.supportsCancellation, false);
+  assert.equal('renderConsole' in sourceSecurityGate, false);
+  assert.equal('renderConsole' in sourceSecurity, false);
+  assert.equal(gateRegistry.findByManualCommand('source-security'), sourceSecurity);
+  assert.equal(gateRegistry.ci.includes(sourceSecurity), true);
+  assert.deepEqual(sourceSecurity.ciScopes, ['all-files', 'changed-files']);
+  assert.equal(sourceSecurity.inspectSetup({ config: { checks: { sourceSecurity: { enabled: true } } } }).status, 'ready');
 });
 
 test('keeps every official Gate capability descriptor on the reviewed contract', () => {
@@ -704,7 +637,7 @@ test('keeps a supplied file scope immutable without letting the gate own console
     absolute: 'C:/repo/src/example.js',
     relative: 'src/example.js',
   };
-  const plan = dynamicCodeGate.plan({ root: 'C:/repo', files: [sourceFile] });
+  const plan = sourceSecurityGate.plan({ root: 'C:/repo', files: [sourceFile] });
 
   assert.equal(Object.isFrozen(plan), true);
   assert.equal(Object.isFrozen(plan.files), true);
@@ -713,12 +646,12 @@ test('keeps a supplied file scope immutable without letting the gate own console
   sourceFile.relative = 'src/changed.js';
   assert.equal(plan.files[0].relative, 'src/example.js');
   assert.throws(
-    () => dynamicCodeGate.plan({ root: 'C:/repo' }),
+    () => sourceSecurityGate.plan({ root: 'C:/repo' }),
     /要求明确的文件范围/,
   );
   assert.throws(
     () =>
-      dynamicCodeGate.run({
+      sourceSecurityGate.run({
         root: 'C:/repo',
         config: {
           repository: {
@@ -732,7 +665,7 @@ test('keeps a supplied file scope immutable without letting the gate own console
 
 test('enforces the migrated gate dependency boundary', () => {
   const source = readFileSync(
-    new URL('../../src/gates/security/dynamic-code-gate.js', import.meta.url),
+    new URL('../../src/gates/security/source-security-gate.js', import.meta.url),
     'utf8',
   );
 

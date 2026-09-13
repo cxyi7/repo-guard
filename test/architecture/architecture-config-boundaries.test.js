@@ -145,11 +145,10 @@ const DOMAINS = [
   ],
   ['architecture', 'validateArchitectureConfiguration', 'checks', 'checks'],
   ['execution-gate', 'validateExecutionGateConfiguration', 'checks', 'checks'],
-  ['accessibility', 'validateAccessibilityConfiguration', 'checks', 'checks'],
   ['unit-test', 'validateUnitTestConfiguration', 'checks', null],
   ['file-placement', 'validateFilePlacementConfiguration', 'checks', 'checks'],
   ['max-file-lines', 'validateMaxFileLinesConfiguration', 'checks', 'checks'],
-  ['stylelint', 'validateStylelintConfiguration', 'checks', null],
+  ['stylelint', 'validateStylelintConfiguration', 'checks', 'checks'],
   ['prettier', 'validatePrettierConfiguration', 'checks', 'checks'],
   ['eslint', 'validateEslintConfiguration', 'checks', 'checks'],
   ['notification', 'validateNotificationConfiguration', 'root', 'reporting'],
@@ -215,7 +214,7 @@ test('keeps all engineering checks in one version-independent checks aggregate',
   assert.match(checks(), /from ['"]\.\/validation-primitives\.js['"]/);
   const domainValues = [
     'ci', 'externalGates', 'exceptions', 'dependencyPolicy', 'architecture',
-    'build', 'lighthouse', 'typeCheck', 'accessibilityTest', 'unitTest',
+    'build', 'lighthouse', 'typeCheck', 'unitTest',
     'filePlacement', 'maxFileLines', 'stylelint', 'prettier', 'eslint', 'notification',
   ];
   for (const caller of [configuration(), checks()]) {

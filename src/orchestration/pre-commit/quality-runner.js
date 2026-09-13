@@ -60,7 +60,6 @@ function executionConfig(config, {
   filePlacementConfig,
   maxFileLineFiles,
   prettierFiles,
-  stylelintFiles,
 }) {
   return {
     ...config,
@@ -68,7 +67,8 @@ function executionConfig(config, {
       ...config.checks,
       eslint: { ...config.checks.eslint, enabled: eslintFiles.length > 0 },
       prettier: { ...config.checks.prettier, enabled: prettierFiles.length > 0 },
-      stylelint: { ...config.checks.stylelint, enabled: stylelintFiles.length > 0 },
+      // Token 配置变化可能需要全量复查，不能由暂存样式数量关闭主开关。
+      stylelint: config.checks.stylelint,
       maxFileLines: {
         ...config.checks.maxFileLines,
         enabled: maxFileLineFiles.length > 0,
@@ -97,12 +97,11 @@ function selectQualityFiles(normalizedFiles, config) {
     normalizedFiles,
     asyncResourceCleanupConfig,
   ).map(({ absolute }) => absolute);
-  const dynamicCodeFiles = normalizedFiles
-    .filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue)$/i.test(relative))
-    .map(({ absolute }) => absolute);
-  const vueSecurityFiles = normalizedFiles
-    .filter(({ relative }) => relative.toLowerCase().endsWith('.vue'))
-    .map(({ absolute }) => absolute);
+  const sourceSecurityFiles = config.checks.sourceSecurity?.enabled
+    ? normalizedFiles.filter(({ relative }) => /\.(?:[cm]?[jt]sx?|vue|html)$/i.test(relative)
+      && micromatch.isMatch(relative, config.checks.sourceSecurity.include, { dot: true })
+      && !micromatch.isMatch(relative, config.checks.sourceSecurity.exclude, { dot: true })).map(({ absolute }) => absolute)
+    : [];
   const eslintFiles = eslintConfig.enabled
     ? selectFiles(normalizedFiles, eslintConfig.pattern)
     : [];
@@ -117,7 +116,7 @@ function selectQualityFiles(normalizedFiles, config) {
     : [];
   const fileHeaderFiles = selectFileHeaderFiles(normalizedFiles, fileHeaderConfig);
   const functionDocFiles = selectFunctionDocumentationFiles(normalizedFiles, functionDocsConfig);
-  const uiTokenConfig = config.checks.uiTokens;
+  const uiTokenConfig = { ...config.checks.stylelint.uiTokens, enabled: config.checks.stylelint.enabled && config.checks.stylelint.uiTokens.enabled };
   const uiTokenFiles = selectUiTokenInputFiles(normalizedFiles, uiTokenConfig);
   const javaEnabled = config.project?.stack === 'java'
     && Object.entries(config.checks).some(([feature, value]) => feature.startsWith('java') && value.enabled);
@@ -129,7 +128,6 @@ function selectQualityFiles(normalizedFiles, config) {
     javaFiles,
     javaPolicyFiles: javaEnabled ? normalizedFiles.map(({ absolute }) => absolute) : [],
     asyncResourceFiles,
-    dynamicCodeFiles,
     eslintConfig,
     eslintFiles,
     fileHeaderFiles,
@@ -139,6 +137,7 @@ function selectQualityFiles(normalizedFiles, config) {
     pathNamingConfig,
     prettierFiles,
     relevantFiles: uniqueFiles(
+      sourceSecurityFiles,
       fileHeaderFiles,
       functionDocFiles,
       stylelintFiles,
@@ -146,15 +145,12 @@ function selectQualityFiles(normalizedFiles, config) {
       prettierFiles,
       maxFileLineFiles,
       asyncResourceFiles,
-      dynamicCodeFiles,
-      vueSecurityFiles,
       uiTokenFiles,
       javaFiles,
     ),
     stylelintFiles,
     uiTokenConfig,
     uiTokenFiles,
-    vueSecurityFiles,
   });
 }
 
@@ -242,15 +238,11 @@ async function executeQualityStep({ gate, step, stepContext, selection }) {
     case 'repository.path-naming':
       if (selection.pathNamingConfig.enabled) return runGateWithFiles(gate, stepContext);
       break;
-    case 'security.dynamic-code':
-      if (selection.dynamicCodeFiles.length > 0) return runGateWithFiles(gate, stepContext);
+    case 'quality.function-documentation':
+      if (selection.functionDocFiles.length > 0) return runGateWithFiles(gate, stepContext, selection.functionDocFiles);
       break;
-    case 'security.vue-unsafe-html':
-    case 'security.vue-target-blank':
-    case 'accessibility.vue-form-label':
-    case 'accessibility.vue-image-alt':
-      if (selection.vueSecurityFiles.length > 0) return runGateWithFiles(gate, stepContext);
-      break;
+    case 'security.source-security':
+      return runGateWithFiles(gate, stepContext);
     case 'repository.maximum-file-lines':
       if (selection.maxFileLineFiles.length > 0) return runGateWithFiles(gate, stepContext);
       break;
@@ -297,7 +289,7 @@ function prepareQualityProject({ root, repositoryRoot = root, files, config, con
   return { root, repositoryRoot, config, configurationChanged, normalizedFiles, selection, stagedChanges };
 }
 
-function normalizeProjectContents({ root, selection, stagedChanges }) {
+function normalizeProjectContents({ root, selection, stagedChanges, config }) {
     synchronizeStagedFileHeaders({
       root,
       files: selection.fileHeaderFiles,
@@ -306,6 +298,7 @@ function normalizeProjectContents({ root, selection, stagedChanges }) {
     const functionDocResult = synchronizeStagedFunctionDocumentation({
       root,
       files: selection.functionDocFiles,
+      config: config.checks.functionDocs,
     });
     writeFunctionDocumentationWarnings(functionDocResult.warnings);
 }

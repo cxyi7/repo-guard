@@ -125,7 +125,6 @@ function ensurePackageScripts(root, workspace, projectId) {
   for (const application of applications.filter((entry) => entry.root === root)) {
     synchronizeGuardedBuildScripts(packageJson, application, root);
   }
-  packageJson.scripts['guard:enable-accessibility-test'] ||= 'repo-guard enable accessibilityTest';
   packageJson.scripts['guard:enable-quality'] ||= 'repo-guard enable eslint prettier';
   packageJson.scripts['guard:enable-architecture'] ||= 'repo-guard enable architecture';
   packageJson.scripts['guard:enable-commit-message'] ||= 'repo-guard enable commitMessage';
@@ -136,8 +135,6 @@ function ensurePackageScripts(root, workspace, projectId) {
   packageJson.scripts['guard:build-artifact-baseline-prune'] ||= 'repo-guard build-artifact-baseline prune';
   packageJson.scripts['guard:image-optimize'] ||= 'repo-guard image-optimize';
   packageJson.scripts['guard:enable-stylelint'] ||= 'repo-guard enable stylelint';
-  packageJson.scripts['guard:enable-style-complexity'] ||= 'repo-guard enable styleComplexity';
-  packageJson.scripts['guard:enable-style-governance'] ||= 'repo-guard enable styleGovernance';
   packageJson.scripts['guard:enable-build'] ||= 'repo-guard enable build';
   packageJson.scripts['guard:enable-lighthouse'] ||= 'repo-guard enable lighthouse';
   packageJson.scripts['guard:enable-typecheck'] ||= 'repo-guard enable typeCheck';

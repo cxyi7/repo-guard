@@ -120,11 +120,11 @@ const EXPECTED_BOUNDARY_RULES = Object.freeze([
 ]);
 
 const REVIEWED_TOP_LEVEL_GATE_FILES = Object.freeze([
+  'dependency-tool-worker.js',
   'native-result.js',
   'platform-gate.js',
   'project-applicability.js',
   'registry.js',
-  'vue-policy-gate.js',
 ]);
 
 const LEGACY_TOP_LEVEL_ARCHITECTURE_FILES = Object.freeze([]);
@@ -596,34 +596,8 @@ test('keeps shared Vue template parsing in an integration without a root compati
     /\b(?:createGateResult|createFinding|configurationError|executionError)\b/,
   );
   assert.match(parserSource, /export function findVueTemplateAttributes/);
-  assert.match(parserSource, /export function findVueTemplateElements/);
+  assert.doesNotMatch(parserSource, /findVueTemplateElements|scanTemplateElements/);
   assert.match(parserSource, /export function sourceLocation/);
-});
-
-test('keeps Vue component interaction analysis in an integration without a root helper', () => {
-  assert.equal(
-    existsSync(path.join(SOURCE_ROOT, 'vue-component-interaction.js')),
-    false,
-  );
-  const analysisPath = path.join(
-    SOURCE_ROOT,
-    'integrations',
-    'vue',
-    'component-interaction.js',
-  );
-  assert.equal(existsSync(analysisPath), true);
-
-  const analysisSource = readFileSync(analysisPath, 'utf8');
-  assert.match(analysisSource, /\.\/template-parser\.js/);
-  assert.match(analysisSource, /export function findVueInteractionEntries/);
-  assert.match(
-    analysisSource,
-    /export function analyzeVueComponentInteractionTest/,
-  );
-  assert.doesNotMatch(
-    analysisSource,
-    /\b(?:createGateResult|changeSetEntries|unitTestPolicyFindings|remediation)\b/,
-  );
 });
 
 test('keeps Lighthouse project inspection in its integration without a root compatibility path', () => {
@@ -818,42 +792,6 @@ test('separates Knip facts, debt policy, gate decisions, and baseline CLI routin
   assert.doesNotMatch(cliSource, /integrations\/knip\//);
 });
 
-test('separates axe project and execution facts from accessibility test decisions', () => {
-  assert.equal(existsSync(path.join(SOURCE_ROOT, 'accessibility-test-runner.js')), false);
-  const axeProjectPath = path.join(SOURCE_ROOT, 'integrations', 'axe', 'project.js');
-  const executionPath = path.join(
-    SOURCE_ROOT,
-    'integrations',
-    'npm',
-    'accessibility.js',
-  );
-  const gatePath = path.join(
-    SOURCE_ROOT,
-    'gates',
-    'testing',
-    'accessibility-test-gate.js',
-  );
-  const setupPath = path.join(
-    SOURCE_ROOT,
-    'gates',
-    'testing',
-    'accessibility-test-setup.js',
-  );
-  for (const target of [axeProjectPath, executionPath, gatePath, setupPath]) {
-    assert.equal(existsSync(target), true);
-  }
-
-  const integrationSource = `${readFileSync(axeProjectPath, 'utf8')}\n${readFileSync(executionPath, 'utf8')}`;
-  assert.doesNotMatch(
-    integrationSource,
-    /\b(?:createGateResult|processFailureFinding|remediation|problems)\b/,
-  );
-  assert.match(integrationSource, /export async function executeAccessibilityTests/);
-  assert.match(readFileSync(gatePath, 'utf8'), /integrations\/npm\/accessibility\.js/);
-  assert.match(readFileSync(gatePath, 'utf8'), /\.\/accessibility-test-setup\.js/);
-  assert.match(readFileSync(setupPath, 'utf8'), /integrations\/axe\/project\.js/);
-});
-
 test('separates Vitest coverage facts from testing gate decisions', () => {
   assert.equal(existsSync(path.join(SOURCE_ROOT, 'coverage-runner.js')), false);
   const integrationPath = path.join(
@@ -920,43 +858,14 @@ test('separates Vitest project and execution facts from unit-test policy decisio
   assert.doesNotMatch(readFileSync(policyPath, 'utf8'), /\bspawnSync\b/);
 });
 
-test('keeps native policy gates in their owning domains', () => {
-  const legacyPath = path.join(SOURCE_ROOT, 'gates', 'repository', 'native-policy-gates.js');
-  const helperPath = path.join(SOURCE_ROOT, 'gates', 'vue-policy-gate.js');
-  const repositoryPath = path.join(
-    SOURCE_ROOT,
-    'gates',
-    'repository',
-    'repository-policy-gates.js',
-  );
-  const securityPath = path.join(SOURCE_ROOT, 'gates', 'security', 'vue-policy-gates.js');
-  const accessibilityPath = path.join(
-    SOURCE_ROOT,
-    'gates',
-    'accessibility',
-    'vue-policy-gates.js',
-  );
-  assert.equal(existsSync(legacyPath), false);
-  for (const target of [helperPath, repositoryPath, securityPath, accessibilityPath]) {
-    assert.equal(existsSync(target), true);
+test('策略门禁按领域维护，已删除的模板可访问性实现不再保留', () => {
+  for (const name of ['gates/vue-policy-gate.js', 'gates/accessibility/vue-policy-gates.js', 'policies/vue-form-label.js', 'policies/vue-image-alt.js']) {
+    assert.equal(existsSync(path.join(SOURCE_ROOT, name)), false);
   }
-
-  const helperSource = readFileSync(helperPath, 'utf8');
-  const repositorySource = readFileSync(repositoryPath, 'utf8');
-  const securitySource = readFileSync(securityPath, 'utf8');
-  const accessibilitySource = readFileSync(accessibilityPath, 'utf8');
-  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates', 'registry.js'), 'utf8');
-  assert.match(helperSource, /export function defineVuePolicyGate/);
-  assert.doesNotMatch(helperSource, /vue-(?:unsafe-html|target-blank|form-label|image-alt)/);
-  assert.match(repositorySource, /export const repositoryPolicyGates/);
-  assert.doesNotMatch(repositorySource, /security\.vue-|accessibility\.vue-/);
-  assert.match(securitySource, /security\.vue-unsafe-html/);
-  assert.match(securitySource, /security\.vue-target-blank/);
-  assert.doesNotMatch(securitySource, /accessibility\.vue-/);
-  assert.match(accessibilitySource, /accessibility\.vue-form-label/);
-  assert.match(accessibilitySource, /accessibility\.vue-image-alt/);
-  assert.doesNotMatch(accessibilitySource, /security\.vue-/);
-  assert.match(registrySource, /\.\.\.vueSecurityGates,[\s\S]*\.\.\.vueAccessibilityGates,[\s\S]*\.\.\.repositoryPolicyGates/);
+  const registrySource = readFileSync(path.join(SOURCE_ROOT, 'gates/registry.js'), 'utf8');
+  assert.match(registrySource, /sourceSecurityGate/);
+  assert.match(registrySource, /nativePolicyGates/);
+  assert.doesNotMatch(registrySource, /vueAccessibilityGates/);
 });
 
 test('keeps platform gates in cohesive quality and testing modules', () => {
@@ -986,10 +895,9 @@ test('keeps platform gates in cohesive quality and testing modules', () => {
   assert.match(projectSource, /export const buildGate/);
   assert.match(projectSource, /export const lighthouseGate/);
   assert.match(testingSource, /export const unitTestGate/);
-  assert.match(testingSource, /export const accessibilityTestGate/);
   assert.match(
     registrySource,
-    /stylelintGate,[\s\S]*eslintGate,[\s\S]*prettierGate,[\s\S]*typecheckGate,[\s\S]*unitTestGate,[\s\S]*accessibilityTestGate,[\s\S]*architectureGate,[\s\S]*buildGate,[\s\S]*lighthouseGate,[\s\S]*styleComplexityGate,[\s\S]*styleGovernanceGate/,
+    /stylelintGate,[\s\S]*eslintGate,[\s\S]*prettierGate,[\s\S]*typecheckGate,[\s\S]*unitTestGate,[\s\S]*architectureGate,[\s\S]*buildGate,[\s\S]*lighthouseGate,/,
   );
 });
 
@@ -1277,8 +1185,10 @@ test('separates package and staged metadata facts from dependency policy decisio
   assert.match(metadataSource, /export function readPackageMetadataFile/);
   assert.match(readFileSync(gitPath, 'utf8'), /from ['"]\.\/execution\.js['"]/);
   const gateSource = readFileSync(gatePath, 'utf8');
-  assert.match(gateSource, /\.\.\/\.\.\/git\/staged-package-metadata\.js/);
-  assert.match(gateSource, /integrations\/npm\/package-metadata\.js/);
+  assert.match(gateSource, /dependency-snapshot\.js/);
+  const snapshot = readFileSync(path.join(SOURCE_ROOT, 'gates/repository/dependency-snapshot.js'), 'utf8');
+  assert.match(snapshot, /git\/staged-package-metadata\.js/);
+  assert.match(snapshot, /integrations\/npm\/package-metadata\.js/);
   assert.doesNotMatch(gateSource, /\b(?:mkdtempSync|writeFileSync|rmSync|runGit)\b/);
 });
 
@@ -1364,8 +1274,8 @@ test('separates Stylelint project and execution facts from quality policy', () =
   const gateSource = readFileSync(gatePath, 'utf8');
   assert.match(gateSource, /integrations\/stylelint\/execution\.js/);
   assert.match(gateSource, /integrations\/stylelint\/project\.js/);
-  assert.match(gateSource, /bypassProjectIgnores: true/);
-  assert.match(gateSource, /ignoreDisables: true/);
+  assert.match(gateSource, /inspectStyleGovernance/);
+  assert.match(readFileSync(path.join(SOURCE_ROOT, 'integrations/stylelint/governance.js'), 'utf8'), /bypassProjectIgnores: true/);
   assert.doesNotMatch(
     gateSource,
     /\bstylelint\.(?:lint|resolveConfig)\b|\b(?:pathToFileURL|randomUUID|readFileSync)\b/,
@@ -1644,10 +1554,8 @@ test('keeps style scope governance in policies without a root helper', () => {
   const styleGovernanceSource = readFileSync(styleGovernancePath, 'utf8');
   assert.match(
     styleGovernanceSource,
-    /export function inspectUnexpectedGlobalStyles/,
+    /export function inspectStyleGovernanceFacts/,
   );
-  assert.match(styleGovernanceSource, /function governanceViolation/);
-  assert.match(styleGovernanceSource, /function inspectVueStyleViolations/);
   assert.match(styleGovernanceSource, /no-unexpected-global-style/);
   assert.doesNotMatch(styleGovernanceSource, /\b(?:warning|warnings|vueWarnings)\b/);
   assert.doesNotMatch(
@@ -1684,86 +1592,11 @@ test('keeps Vue style language rules in policies without a root helper', () => {
   );
 });
 
-test('keeps Vue target blank security rules in policies without a root helper', () => {
-  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-target-blank.js')), false);
-  const targetBlankPolicyPath = path.join(
-    SOURCE_ROOT,
-    'policies',
-    'vue-target-blank.js',
-  );
-  assert.equal(existsSync(targetBlankPolicyPath), true);
-
-  const targetBlankPolicySource = readFileSync(targetBlankPolicyPath, 'utf8');
-  assert.match(targetBlankPolicySource, /integrations\/vue\/template-parser\.js/);
-  assert.match(targetBlankPolicySource, /export const VUE_TARGET_BLANK_RULE/);
-  assert.match(targetBlankPolicySource, /export function findVueTargetBlankIssues/);
-  assert.match(targetBlankPolicySource, /export function inspectVueTargetBlank/);
-  assert.match(targetBlankPolicySource, /findStructuredException/);
-  assert.doesNotMatch(
-    targetBlankPolicySource,
-    /from ['"][^'"]*(?:gates|orchestration)\//,
-  );
-});
-
-test('keeps Vue unsafe HTML security rules in policies without a root helper', () => {
-  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-unsafe-html.js')), false);
-  const unsafeHtmlPolicyPath = path.join(
-    SOURCE_ROOT,
-    'policies',
-    'vue-unsafe-html.js',
-  );
-  assert.equal(existsSync(unsafeHtmlPolicyPath), true);
-
-  const unsafeHtmlPolicySource = readFileSync(unsafeHtmlPolicyPath, 'utf8');
-  assert.match(unsafeHtmlPolicySource, /integrations\/vue\/template-parser\.js/);
-  assert.match(unsafeHtmlPolicySource, /export const VUE_NO_V_HTML_RULE/);
-  assert.match(unsafeHtmlPolicySource, /export function findVueVHtml/);
-  assert.match(unsafeHtmlPolicySource, /export function inspectUnsafeVueHtml/);
-  assert.match(unsafeHtmlPolicySource, /findStructuredException/);
-  assert.doesNotMatch(
-    unsafeHtmlPolicySource,
-    /from ['"][^'"]*(?:gates|orchestration)\//,
-  );
-});
-
-test('keeps Vue form label rules in policies without a root helper', () => {
-  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-form-label.js')), false);
-  const formLabelPolicyPath = path.join(
-    SOURCE_ROOT,
-    'policies',
-    'vue-form-label.js',
-  );
-  assert.equal(existsSync(formLabelPolicyPath), true);
-
-  const formLabelPolicySource = readFileSync(formLabelPolicyPath, 'utf8');
-  assert.match(formLabelPolicySource, /integrations\/vue\/template-parser\.js/);
-  assert.match(formLabelPolicySource, /export function findVueFormLabelIssues/);
-  assert.match(formLabelPolicySource, /export function inspectVueFormLabels/);
-  assert.match(formLabelPolicySource, /findStructuredException/);
-  assert.doesNotMatch(
-    formLabelPolicySource,
-    /from ['"][^'"]*(?:gates|orchestration)\//,
-  );
-});
-
-test('keeps Vue image alt rules in policies without a root helper', () => {
-  assert.equal(existsSync(path.join(SOURCE_ROOT, 'vue-image-alt.js')), false);
-  const imageAltPolicyPath = path.join(
-    SOURCE_ROOT,
-    'policies',
-    'vue-image-alt.js',
-  );
-  assert.equal(existsSync(imageAltPolicyPath), true);
-
-  const imageAltPolicySource = readFileSync(imageAltPolicyPath, 'utf8');
-  assert.match(imageAltPolicySource, /integrations\/vue\/template-parser\.js/);
-  assert.match(imageAltPolicySource, /export function findVueImageAltIssues/);
-  assert.match(imageAltPolicySource, /export function inspectVueImageAlts/);
-  assert.match(imageAltPolicySource, /findStructuredException/);
-  assert.doesNotMatch(
-    imageAltPolicySource,
-    /from ['"][^'"]*(?:gates|orchestration)\//,
-  );
+test('源码安全只保留当前策略和入口，不保留旧实现', () => {
+  for (const name of ['policies/vue-target-blank.js', 'policies/vue-unsafe-html.js', 'gates/security/dynamic-code-gate.js', 'gates/security/vue-policy-gates.js']) assert.equal(existsSync(path.join(SOURCE_ROOT,name)), false);
+  const policy = readFileSync(path.join(SOURCE_ROOT, 'policies/source-security-attributes.js'), 'utf8');
+  assert.match(policy, /inspectSecurityAttributes/);
+  assert.doesNotMatch(policy, /from ['"][^'"]*(?:gates|orchestration)\//);
 });
 
 test('separates WeCom notification policy from network integration without a root helper', () => {
@@ -1905,6 +1738,7 @@ test('keeps package exports on reviewed contracts and schemas', () => {
     './gate-result.schema.json': './gate-result.schema.json',
     './delivery.schema.json': './delivery.schema.json',
     './delivery-contract.schema.json': './delivery-contract.schema.json',
+    './vite': './src/integrations/build-artifacts/vite-plugin.js',
   });
 
   const publicEntry = readFileSync(path.join(SOURCE_ROOT, 'index.js'), 'utf8');

@@ -64,7 +64,7 @@ export function resolveMutationTestSetup(root, config) {
     );
   }
   const configPath = path.resolve(root, config.configFile);
-  if (!existsSync(configPath) || !lstatSync(configPath).isFile()) {
+  if ((!existsSync(configPath) && !config.options) || (existsSync(configPath) && !lstatSync(configPath).isFile())) {
     throw configurationError(
       'mutation-test/missing-config-file',
       `找不到变异测试配置文件：${config.configFile}`,

@@ -24,6 +24,7 @@ export function validateRootConfigurationContract(value, configPath) {
       '$schema',
       'version',
       'project',
+      'directories',
       'checks',
       'repository',
       'reporting',

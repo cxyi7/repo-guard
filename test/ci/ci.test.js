@@ -237,15 +237,12 @@ test('runs a read-only policy profile and always writes structured JSON', async 
       { name: 'java.files', status: 'skipped' },
       { name: 'java.path-naming', status: 'skipped' },
       { name: 'repository.agent-policy', status: 'passed' },
+      { name: 'quality.function-documentation', status: 'skipped' },
       { name: 'repository.commit-message', status: 'skipped' },
       { name: 'async-resource-cleanup', status: 'skipped' },
       { name: 'path-naming', status: 'skipped' },
       { name: 'ui-tokens', status: 'skipped' },
-      { name: 'dynamic-code', status: 'passed' },
-      { name: 'security.vue-unsafe-html', status: 'passed' },
-      { name: 'security.vue-target-blank', status: 'passed' },
-      { name: 'accessibility.vue-form-label', status: 'passed' },
-      { name: 'accessibility.vue-image-alt', status: 'passed' },
+      { name: 'security.source-security', status: 'passed' },
       { name: 'dependencies.policy', status: 'skipped' },
       { name: 'repository.file-placement', status: 'skipped' },
       { name: 'repository.image-assets', status: 'skipped' },
@@ -261,12 +258,12 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     true,
   );
   const dynamicCodeStep = report.steps.find(
-    ({ name }) => name === 'dynamic-code',
+    ({ name }) => name === 'security.source-security',
   );
   assert.equal(dynamicCodeStep.exitCode, 0);
   assert.deepEqual(dynamicCodeStep.gateResult, {
     schemaVersion: 2,
-    gateId: 'security.dynamic-code',
+    gateId: 'security.source-security',
     status: 'passed',
     summary: dynamicCodeStep.gateResult.summary,
     findings: [],
@@ -274,6 +271,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
     metrics: {
       checkedFiles: 2,
       approvedExceptions: 0,
+      unconfirmed: 0,
       violations: 0,
     },
     artifacts: [],
@@ -433,7 +431,7 @@ test('writes native dynamic-code findings with the unified CI exit contract', as
   const report = JSON.parse(
     readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
   );
-  const step = report.steps.find(({ name }) => name === 'dynamic-code');
+  const step = report.steps.find(({ name }) => name === 'security.source-security');
   assert.deepEqual(
     { status: step.status, exitCode: step.exitCode },
     {
@@ -445,6 +443,7 @@ test('writes native dynamic-code findings with the unified CI exit contract', as
   assert.equal(step.gateResult.findings[0].ruleId, 'security/no-eval');
   assert.deepEqual(step.gateResult.metrics, {
     checkedFiles: 3,
+    unconfirmed: 0,
     approvedExceptions: 0,
     violations: 1,
   });
@@ -482,7 +481,7 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
     },
   ];
   for (const item of cases) {
-    const policy = { 'security.dynamic-code': { mode: item.mode } };
+    const policy = { 'security.source-security': { mode: item.mode } };
     assert.equal(
       await runCiGate({
         root: fixture.root,
@@ -496,7 +495,7 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
     const report = JSON.parse(
       readFileSync(path.join(fixture.root, item.reportPath), 'utf8'),
     );
-    const step = report.steps.find(({ name }) => name === 'dynamic-code');
+    const step = report.steps.find(({ name }) => name === 'security.source-security');
     assert.equal(report.status, item.status);
     assert.equal(step.status, item.step);
     assert.deepEqual(step.gatePolicy, {
@@ -511,7 +510,7 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
     await runCiGate({
       root: fixture.root,
       config: configWithCiGatePolicy(changedReportPath, {
-        'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+        'security.source-security': { mode: 'enforce', scope: 'changed-files' },
       }),
       base: fixture.base,
       head: fixture.head,
@@ -523,7 +522,7 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
     readFileSync(path.join(fixture.root, changedReportPath), 'utf8'),
   );
   const changedStep = changedReport.steps.find(
-    ({ name }) => name === 'dynamic-code',
+    ({ name }) => name === 'security.source-security',
   );
   assert.equal(changedStep.status, 'passed');
   assert.deepEqual(changedStep.gatePolicy, {
@@ -575,11 +574,11 @@ test('keeps dynamic-code execution errors distinct from policy violations', asyn
   const report = JSON.parse(
     readFileSync(path.join(fixture.root, 'reports', 'repo-guard.json'), 'utf8'),
   );
-  const step = report.steps.find(({ name }) => name === 'dynamic-code');
+  const step = report.steps.find(({ name }) => name === 'security.source-security');
   assert.equal(step.status, 'error');
   assert.equal(step.exitCode, 1);
   assert.equal(step.gateResult.status, 'execution-error');
-  assert.match(step.gateResult.error.message, /动态代码门禁无法解析/);
+  assert.match(step.gateResult.error.message, /源码安全检查无法解析/);
 });
 
 test('installs a managed GitLab include and preserves existing pipeline jobs', async (context) => {
@@ -1005,8 +1004,8 @@ test('requires the current managed marker and detects any template modification'
   writeFileSync(
     templatePath,
     readFileSync(templatePath, 'utf8').replace(
-      '    - npm ci',
-      '    # - npm ci',
+      '    - "npm ci"',
+      '    # - "npm ci"',
     ),
   );
   const installedConfig = loadConfig(modified.root, { repositoryOnly: true });

@@ -12,7 +12,7 @@ function resolveIgnorePaths(root) {
     .filter((file) => existsSync(file));
 }
 
-export function prepareProjectPrettierExecution({ root, files, project }) {
+export function prepareProjectPrettierExecution({ root, files, project, options }) {
   const ignorePaths = resolveIgnorePaths(root);
   const normalizedFiles = normalizeStagedFiles(root, files, 'Prettier 格式化')
     .map(({ absolute }) => absolute);
@@ -30,7 +30,8 @@ export function prepareProjectPrettierExecution({ root, files, project }) {
         return { file, ignored: true };
       }
 
-      const config = await project.prettier.resolveConfig(file, { editorconfig: true });
+      const nativeConfig = await project.prettier.resolveConfig(file, { editorconfig: true, useCache: false });
+      const config = options ? { ...options, ...nativeConfig } : nativeConfig;
       if (config?.plugins) {
         fileInfo = await project.prettier.getFileInfo(file, {
           ...fileInfoOptions,

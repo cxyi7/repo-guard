@@ -15,7 +15,7 @@ function fixture(context) {
   const root = mkdtempSync(path.join(base, 'quality-installer-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'package-lock.json'), '{}');
-  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ devDependencies: { '@cxyi7/repo-guard': '2.0.0' } }));
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ packageManager: 'npm@10.9.8', devDependencies: { '@cxyi7/repo-guard': '2.0.0' } }));
   return root;
 }
 

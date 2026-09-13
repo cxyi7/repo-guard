@@ -19,7 +19,9 @@ import {
   createSvgCompressionCandidate,
   createWebpCandidate,
   normalizedPixelHash,
+  rasterMetadata,
 } from '../../integrations/images/optimization.js';
+import { inspectImageGovernance, IMAGE_GOVERNANCE_RULES, imageGovernanceNeedsMetadata } from '../../policies/image-governance.js';
 import {
   contentHash,
   detectImageFormat,
@@ -179,6 +181,7 @@ async function inspectPixelDuplicates({ sharp, entries, readBuffer, changedPaths
       filePath,
       `${filePath} 与 ${duplicates.join('、')} 解码后的静态像素一致`,
       `确认资源语义后优先保留 ${canonical}；不要自动删除或批量替换动态引用。`,
+      { severity: config.duplicates.pixel === 'error' ? 'error' : 'warning' },
     ));
 }
 
@@ -239,6 +242,8 @@ async function inspectCandidates({
   ));
   const svgEntries = analyzable.filter(({ path: filePath }) => imageAssetExtension(filePath) === 'svg');
   const needsSharp = rasterEntries.length > 0 && (
+    imageGovernanceNeedsMetadata(config.governance)
+    ||
     config.duplicates.pixel !== 'off'
     || (config.compression.enabled && (
       config.compression.raster.enabled
@@ -246,6 +251,29 @@ async function inspectCandidates({
     ))
   );
   const sharpProject = needsSharp ? await loadProjectSharp(root) : null;
+  let governanceSharp = sharpProject;
+  if (config.governance) {
+    for (const entry of analyzable) {
+      const buffer = buffers.get(entry.path);
+      const format = detectImageFormat(buffer);
+      let metadata = null;
+      if (imageGovernanceNeedsMetadata(config.governance) && ['png', 'jpeg', 'webp', 'avif', 'gif', 'tiff'].includes(format)) {
+        governanceSharp ??= await loadProjectSharp(root);
+        metadata = await rasterMetadata(governanceSharp.sharp, buffer, config.limits);
+        if ((metadata.pages ?? 1) > config.limits.maxFrames) {
+          findings.push(policyFinding('assets/analysis-limit', 'image-assets/frame-limit', entry.path, `${entry.path} 超过配置的帧数分析上限`, '核对动画用途并调整安全分析上限。'));
+          continue;
+        }
+      }
+      findings.push(...inspectImageGovernance(entry.path, buffer.length, format, metadata, config.governance));
+      const avif = config.governance.avif;
+      if (avif.enabled && ['png', 'jpeg', 'webp'].includes(format) && (metadata?.pages ?? 1) === 1) {
+        const candidate = await governanceSharp.sharp(buffer, { limitInputPixels: config.limits.maxPixels }).rotate().avif({ quality: avif.quality, effort: avif.effort }).toBuffer();
+        if (meetsSavingsThreshold(buffer.length, candidate.length, { ...avif, minInputBytes: 8192 })) findings.push(policyFinding('assets/avif-opportunity', 'image-assets/avif-opportunity', entry.path,
+          `${entry.path} 转为 AVIF 可减少 ${buffer.length - candidate.length} 字节；候选使用有损编码，需人工验证`, '确认浏览器兼容性与画质后再采用 AVIF。', { severity: avif.action === 'error' ? 'error' : 'warning' }));
+      }
+    }
+  }
   const svgoProject = config.compression.enabled
     && config.compression.svg.enabled
     && svgEntries.length > 0
@@ -347,7 +375,7 @@ export const imageAssetsGate = defineGate({
   manualOrder: 152,
   doctorOrder: 152,
   packageScript: 'guard:image-assets',
-  rules: IMAGE_ASSET_RULES,
+  rules: [...IMAGE_ASSET_RULES, ...IMAGE_GOVERNANCE_RULES],
   requiredTools: ['sharp', 'svgo'],
   requiredScripts: [],
   requiredEnvironment: [],
@@ -363,9 +391,11 @@ export const imageAssetsGate = defineGate({
       };
     }
     const rasterEnabled = config.checks.imageAssets.extensions.some((extension) => (
-      ['png', 'jpg', 'jpeg', 'webp', 'avif'].includes(extension)
+      ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif', 'tif', 'tiff'].includes(extension)
     ));
     const needsSharp = rasterEnabled && (
+      imageGovernanceNeedsMetadata(config.checks.imageAssets.governance)
+      ||
       config.checks.imageAssets.duplicates.pixel !== 'off'
       || (config.checks.imageAssets.compression.enabled
         && (
@@ -422,7 +452,7 @@ export const imageAssetsGate = defineGate({
       );
       const entries = plan.entries.map((entry) => ({
         ...entry,
-        ...(entry.oid ? {} : { hash: contentHash(readBuffer(entry.path)) }),
+        ...(entry.oid || entry.size > config.checks.imageAssets.limits.maxInputBytes ? {} : { hash: contentHash(readBuffer(entry.path)) }),
       }));
       const findings = [
         ...inspectImageAssetNames(

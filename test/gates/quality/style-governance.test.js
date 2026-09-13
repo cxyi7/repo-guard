@@ -1,198 +1,96 @@
-import { stringifyProjectFixture } from '../../helpers/project-config.js';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { inspectUnexpectedGlobalStyles } from '../../../src/policies/style-governance.js';
-import { runStyleGovernanceProject } from '../../../src/gates/quality/stylelint-gate.js';
+import { styleFixture } from '../../helpers/stylelint.js';
 
-const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
-const CLI_PATH = fileURLToPath(new URL('../../../bin/repo-guard.js', import.meta.url));
-mkdirSync(TEST_ROOT, { recursive: true });
-
-function fixture(context) {
-  const root = mkdtempSync(path.join(TEST_ROOT, 'style-governance-'));
-  context.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(path.join(root, 'src', 'components'), { recursive: true });
-  mkdirSync(path.join(root, 'src', 'styles'), { recursive: true });
-  return root;
-}
-
-test('detects unscoped Vue blocks and explicit global escapes', (context) => {
-  const root = fixture(context);
-  const file = path.join(root, 'src', 'components', 'Panel.vue');
-  writeFileSync(file, [
-    '<template><div class="panel" /></template>',
-    '<style>.panel { color: red; }</style>',
-    '<style scoped>.panel :global(body) { margin: 0; } .panel ::v-global(html) { padding: 0; }</style>',
-    '',
-  ].join('\n'));
-
-  const results = inspectUnexpectedGlobalStyles({
-    root,
-    files: [file],
-    allowedPatterns: ['src/styles/**'],
-  });
-  assert.equal(results[0].violations.length, 3);
-  assert.deepEqual(
-    results[0].violations.map(({ rule }) => rule),
-    [
-      'no-unexpected-global-style',
-      'no-unexpected-global-style',
-      'no-unexpected-global-style',
-    ],
+test('预处理器插值可解析，混合 Vue 语言明确拒绝', async (t) => {
+  const f = styleFixture(t);
+  f.write('src/theme.module.scss', '$name: card; .#{$name} { color: red; }');
+  f.write('src/theme.module.less', '@name: card; .@{name} { color: red; }');
+  f.write(
+    'src/mixed.vue',
+    '<template><div /></template><style scoped lang="scss">$name: card; .#{$name} { color: red; }</style><style scoped>.a{color:blue}</style>',
   );
-  assert.equal(results[0].violations.every(({ severity }) => severity === 'error'), true);
-  assert.equal(Object.hasOwn(results[0], 'warnings'), false);
-});
-
-test('allows scoped, module, CSS Modules, and approved global files', (context) => {
-  const root = fixture(context);
-  const files = [
-    ['src/components/Scoped.vue', '<style scoped>.a { color: red; }</style>\n'],
-    ['src/components/Module.vue', '<style module>.a { color: red; }</style>\n'],
-    ['src/components/panel.module.css', '.panel { color: red; }\n'],
-    ['src/styles/reset.css', 'html { color: black; }\n'],
-  ].map(([relative, content]) => {
-    const file = path.join(root, relative);
-    writeFileSync(file, content);
-    return file;
-  });
-
-  assert.deepEqual(inspectUnexpectedGlobalStyles({
-    root,
-    files,
-    allowedPatterns: ['src/styles/**'],
-  }), []);
-});
-
-test('does not treat comment text as a global escape', (context) => {
-  const root = fixture(context);
-  const file = path.join(root, 'src', 'components', 'Comment.vue');
-  writeFileSync(
-    file,
-    '<style scoped>/* :global(body) */\n.comment { color: red; }</style>\n',
+  assert.equal(
+    (await f.run(['src/theme.module.scss', 'src/theme.module.less'])).status,
+    'passed',
   );
-
-  assert.deepEqual(inspectUnexpectedGlobalStyles({
-    root,
-    files: [file],
-    allowedPatterns: ['src/styles/**'],
-  }), []);
-});
-
-test('does not treat style examples in SFC comments or scripts as real blocks', (context) => {
-  const root = fixture(context);
-  const file = path.join(root, 'src', 'components', 'Examples.vue');
-  writeFileSync(file, [
-    '<template><p class="example" /></template>',
-    '<!-- <style>.fake { color: red; }</style> -->',
-    '<script setup>const example = "<style>.fake { color: red; }</style>";</script>',
-    '<style scoped>.example { color: green; }</style>',
-    '',
-  ].join('\n'));
-
-  assert.deepEqual(inspectUnexpectedGlobalStyles({
-    root,
-    files: [file],
-    allowedPatterns: ['src/styles/**'],
-  }), []);
-});
-
-test('explicit CLI audits ignored files while the staged enhancement is disabled', (context) => {
-  const root = fixture(context);
-  spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
-  writeFileSync(
-    path.join(root, 'package.json'),
-    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
+  await assert.rejects(
+    () => f.run(['src/mixed.vue']),
+    (error) => error.code === 'stylelint/multiple-vue-style-languages',
   );
-  writeFileSync(path.join(root, 'stylelint.config.mjs'), 'export default { rules: {} };\n');
-  writeFileSync(path.join(root, '.stylelintignore'), 'src/components/unsafe.css\n');
-  writeFileSync(
-    path.join(root, 'repo-guard.config.json'),
-    `${stringifyProjectFixture({
-  version: 2,
-  project: {
-    id: 'web',
-    role: 'frontend',
-    stack: 'node',
-    preset: 'vue-javascript'
-  },
-  checks: {
-    stylelint: {
-      enabled: true
-    },
-    styleGovernance: {
-      enabled: false,
-      maxSpecificity: '0,3,0',
-      maxIdSelectors: 0,
-      disallowImportant: true,
-      allowedGlobalStylePatterns: ['src/styles/**']
-    }
-  },
-  repository: {
-    rules: [{
-      pattern: '**',
-      category: 'Fixture',
-      level: 'audit'
-    }]
+});
+
+test('真实 Vue 解析发现未隔离样式与全局逃逸', async (t) => {
+  const f = styleFixture(t);
+  f.write(
+    'src/panel.vue',
+    '<template><div /></template><style>.a {color:red}</style><style scoped>.a :global(body) {margin:0}</style>',
+  );
+  const result = await f.run(['src/panel.vue']);
+  assert.equal(result.status, 'violation');
+  assert.equal(result.findings.length, 2);
+});
+test('真实解析不把属性值及声明字符串里的 global 当成选择器', async (t) => {
+  const f = styleFixture(t);
+  f.write(
+    'src/panel.vue',
+    `<template><div /></template><style scoped>.a[data-text=":global(body)"] {content: ":global(html)"}</style>`,
+  );
+  assert.equal((await f.run(['src/panel.vue'])).status, 'passed');
+});
+test('CSS Modules 的两种全局逃逸都被检测', async (t) => {
+  const f = styleFixture(t);
+  for (const selector of [':global(.a)', ':global .a']) {
+    f.write('src/panel.module.css', selector + ' {color:red}');
+    assert.equal((await f.run(['src/panel.module.css'])).status, 'violation');
   }
-}, null, 2)}\n`,
-  );
-  writeFileSync(path.join(root, 'src', 'components', 'unsafe.css'), '#app { color: red; }\n');
-
-  const result = spawnSync(process.execPath, [CLI_PATH, 'style-governance'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
-  assert.equal(result.status, 2);
-  assert.match(result.stderr, /style\/selector-max-id/);
-  assert.match(result.stderr, /style\/no-unexpected-global-style/);
 });
-
-test('allows only an exact active structured governance exception', async (context) => {
-  const root = fixture(context);
-  writeFileSync(
-    path.join(root, 'package.json'),
-    `${JSON.stringify({ name: 'fixture', version: '1.0.0' }, null, 2)}\n`,
+test('真实 scoped、module 和批准全局目录正常通过', async (t) => {
+  const f = styleFixture(t);
+  f.write(
+    'src/a.vue',
+    '<template><div /></template><style scoped>.a{color:red}</style><style module>.b{color:blue}</style>',
   );
-  writeFileSync(path.join(root, 'stylelint.config.mjs'), 'export default { rules: {} };\n');
-  const file = path.join(root, 'src', 'components', 'legacy.css');
-  writeFileSync(file, '.legacy { color: red; }\n');
-  const createdOn = new Date(Date.now() - (24 * 60 * 60 * 1000))
-    .toISOString().slice(0, 10);
-  const expiresOn = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000))
-    .toISOString().slice(0, 10);
-
-  const result = await runStyleGovernanceProject({
-    root,
-    files: [file],
-    config: {
-      enabled: true,
-      maxSpecificity: '0,3,0',
-      maxIdSelectors: 0,
-      disallowImportant: true,
-      allowedGlobalStylePatterns: ['src/styles/**'],
-    },
-    exceptions: {
-      warningDays: 14,
-      maxDays: 90,
-      entries: [{
-        id: 'legacy-global-style',
-        rule: 'style/no-unexpected-global-style',
-        path: 'src/components/legacy.css',
-        line: 1,
-        column: 1,
-        reason: 'Legacy stylesheet awaits reviewed CSS Module migration.',
-        owner: 'frontend-team',
-        approvedBy: 'architecture-team',
-        ticket: 'STYLE-2000',
-        createdOn,
-        expiresOn,
-      }],
-    },
-  });
-  assert.equal(result.status, 'passed');
+  f.write('styles/reset.css', 'body{margin:0}');
+  f.write('src/b.module.scss', '.b{color:red}');
+  assert.equal(
+    (await f.run(['src/a.vue', 'styles/reset.css', 'src/b.module.scss']))
+      .status,
+    'passed',
+  );
+});
+test('项目可修改全局目录，根 styles 不被硬编码', async (t) => {
+  const f = styleFixture(t);
+  f.write('theme/base.less', '@color: red; .a { color: @color; }');
+  assert.equal((await f.run(['theme/base.less'])).status, 'violation');
+  assert.equal(
+    (
+      await f.run(['theme/base.less'], {
+        governance: { enabled: true, allowedGlobalStylePatterns: ['theme/**'] },
+      })
+    ).status,
+    'passed',
+  );
+});
+test('关闭治理仅停止扩展，不关闭正常 Stylelint 规则', async (t) => {
+  const f = styleFixture(t);
+  f.write('src/a.css', '.a {}');
+  const result = await f.run(['src/a.css'], { governance: { enabled: false } });
+  assert.equal(result.status, 'violation');
+  assert.ok(
+    result.findings.every(
+      (f) => f.ruleId !== 'style/no-unexpected-global-style',
+    ),
+  );
+});
+test('Vue 源码语法失败不能变成通过', async (t) => {
+  const f = styleFixture(t);
+  f.write(
+    'src/a.vue',
+    '<template><div></template><style scoped>.a{color:red}</style>',
+  );
+  await assert.rejects(
+    () => f.run(['src/a.vue']),
+    (e) => e.kind === 'configuration',
+  );
 });

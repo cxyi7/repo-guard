@@ -27,7 +27,8 @@ test('Manifest 读取仅支持 v2，拒绝旧文件时不改写原内容', (cont
   writeManifest(root, current);
   const loaded = loadUiTokenManifest(root, DEFAULT_UI_TOKENS_CONFIG);
   assert.equal(loaded.version, 2);
-  assert.equal(loaded.tokens.length, 12);
+  assert.equal(loaded.tokens.length, 11);
+  assert.ok(loaded.tokens.every(token => token.category !== 'icon-size'));
   assert.equal(loaded.sources[0].actualSha256, digest(source));
   assert.deepEqual(loaded.tokens[0].aliases, {
     css: ['var(--color-brand)'], sass: ['$color-brand'], less: ['@color-brand'],

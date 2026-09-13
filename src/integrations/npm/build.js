@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { resolveProjectPackageMetadata } from '../../core/project/package.js';
 import { runProjectScript } from './run-script.js';
 
 function readProjectPackage(root) {
@@ -16,6 +17,7 @@ function readProjectPackage(root) {
 
 export function validateBuildSetup(root, config) {
   const packageJson = readProjectPackage(root);
+  if (config.bundleAnalysis?.enabled) resolveProjectPackageMetadata(root, 'rollup-plugin-visualizer', '包体积分析工具');
   const command = packageJson.scripts?.[config.script];
   if (typeof command !== 'string' || !command.trim()) {
     throw configurationError(
@@ -49,11 +51,12 @@ export async function executeProjectBuildClean({ root, config, signal = null, ou
   });
 }
 
-export async function executeProjectBuild({ root, config, signal = null, output = null }) {
+export async function executeProjectBuild({ root, config, signal = null, output = null, buildContext = null }) {
   const setup = validateBuildSetup(root, config);
   const execution = await runProjectScript({
     root,
     script: config.script,
+    env: buildContext ? { ...process.env, REPO_GUARD_BUILD_CONTEXT: JSON.stringify(buildContext) } : process.env,
     timeoutMs: config.timeoutMs,
     signal,
     output,

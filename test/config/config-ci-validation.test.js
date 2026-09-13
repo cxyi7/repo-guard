@@ -60,7 +60,7 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
       gatePolicy: {
         defaultMode: 'report',
         gates: {
-          'security.dynamic-code': {
+          'security.source-security': {
             mode: 'enforce',
             scope: 'changed-files',
           },
@@ -76,7 +76,7 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
   assert.deepEqual(result.gatePolicy, {
     defaultMode: 'report',
     gates: {
-      'security.dynamic-code': { mode: 'enforce', scope: 'changed-files' },
+      'security.source-security': { mode: 'enforce', scope: 'changed-files' },
       'project.future-check': { mode: 'off', scope: 'all-files' },
     },
   });
@@ -84,10 +84,10 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
     [{ defaultMode: 'warn' }, /defaultMode 必须为/],
     [{ gates: [] }, /gates 必须是对象/],
     [{ gates: { invalid: { mode: 'off' } } }, /点分隔的 kebab-case/],
-    [{ gates: { 'security.dynamic-code': {} } }, /mode 为必填项/],
-    [{ gates: { 'security.dynamic-code': { mode: 'warn' } } }, /mode 必须为/],
+    [{ gates: { 'security.source-security': {} } }, /mode 为必填项/],
+    [{ gates: { 'security.source-security': { mode: 'warn' } } }, /mode 必须为/],
     [
-      { gates: { 'security.dynamic-code': { mode: 'off', scope: 'staged' } } },
+      { gates: { 'security.source-security': { mode: 'off', scope: 'staged' } } },
       /scope 必须为/,
     ],
   ]) {

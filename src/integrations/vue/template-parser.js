@@ -163,22 +163,6 @@ function scanTemplate(source, openingTag) {
   return attributes;
 }
 
-const VOID_ELEMENTS = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr',
-]);
 const RAW_TEXT_ELEMENTS = new Set(['script', 'style', 'textarea', 'title']);
 
 function findTemplateClosingTag(source, openingTag) {
@@ -308,75 +292,9 @@ function findRootTemplateOpening(source) {
   return null;
 }
 
-function scanTemplateElements(source, openingTag) {
-  const root = {
-    end: openingTag.end,
-    name: openingTag.name,
-    parentStart: null,
-    start: openingTag.start,
-  };
-  const elements = [];
-  const stack = [root];
-  let cursor = openingTag.end;
-
-  while (cursor < source.length && stack.length > 0) {
-    const tagStart = source.indexOf('<', cursor);
-    const mustacheStart = source.indexOf('{{', cursor);
-    if (mustacheStart !== -1 && (tagStart === -1 || mustacheStart < tagStart)) {
-      cursor = skipMustache(source, mustacheStart);
-      continue;
-    }
-    if (tagStart === -1) break;
-    const tag = readTag(source, tagStart);
-    if (!tag) {
-      cursor = tagStart + 1;
-      continue;
-    }
-    cursor = tag.end;
-    if (tag.type === 'comment') continue;
-
-    if (tag.closing) {
-      const matchingIndex = stack.findLastIndex(({ name }) => name === tag.name);
-      if (matchingIndex !== -1) {
-        stack[matchingIndex].closingEnd = tag.end;
-        stack[matchingIndex].contentEnd = tag.start;
-        stack.splice(matchingIndex);
-      }
-      continue;
-    }
-
-    const parent = stack.at(-1);
-    const element = {
-      attributes: tagAttributes(source, tag),
-      contentEnd: tag.end,
-      end: tag.end,
-      name: tag.name,
-      parentStart: parent?.start ?? null,
-      selfClosing: tag.selfClosing || VOID_ELEMENTS.has(tag.name),
-      start: tag.start,
-    };
-    elements.push(element);
-    if (RAW_TEXT_ELEMENTS.has(element.name) && !element.selfClosing) {
-      const closing = findRawClosingTagMatch(source, element.name, element.end);
-      element.contentEnd = closing?.start ?? source.length;
-      element.closingEnd = closing?.end ?? source.length;
-      cursor = closing?.end ?? source.length;
-    } else if (!element.selfClosing) {
-      stack.push(element);
-    }
-  }
-
-  return elements;
-}
-
 export function findVueTemplateAttributes(source) {
   const openingTag = findRootTemplateOpening(source);
   return openingTag ? scanTemplate(source, openingTag) : [];
-}
-
-export function findVueTemplateElements(source) {
-  const openingTag = findRootTemplateOpening(source);
-  return openingTag ? scanTemplateElements(source, openingTag) : [];
 }
 
 export function sourceLocation(source, offset) {

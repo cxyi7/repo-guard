@@ -44,7 +44,7 @@ for (const profile of ['full', 'release-ready']) {
     context.after(() => rmSync(root, { recursive: true, force: true }));
     const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
     assert.equal(gitResult.status, 0, gitResult.stderr);
-    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '1.0.0' }));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', packageManager: 'npm@10.9.8', version: '1.0.0' }));
     const configPath = path.join(root, 'repo-guard.config.json');
     const original = `${JSON.stringify({
       version: 2,
@@ -149,35 +149,27 @@ test('CLI 初始化 v2 后启用选定检查并同步规范', (context) => {
     'eslint',
     'prettier',
     'stylelint',
-    'styleComplexity',
-    'styleGovernance',
     'functionDocs',
     'maxFileLines',
     'architecture',
     'build',
     'typeCheck',
     'unitTest',
-    'componentInteraction',
-    'accessibilityTest',
     'coverage',
     'lighthouse',
   ]);
   assert.equal(enableResult.status, 0, enableResult.stderr);
   assert.match(enableResult.stdout, /eslint: 已启用/);
   assert.match(enableResult.stdout, /prettier: 已启用/);
-  assert.match(enableResult.stdout, /stylelint: 已启用/);
-  assert.match(enableResult.stdout, /styleComplexity: 已启用/);
-  assert.match(enableResult.stdout, /styleGovernance: 已启用/);
-  assert.match(enableResult.stdout, /functionDocs: 已启用/);
-  assert.match(enableResult.stdout, /lighthouse: 已启用/);
+  assert.match(enableResult.stdout, /stylelint：已经是 已启用/);
+  assert.match(enableResult.stdout, /functionDocs：已经是 已启用/);
+  assert.match(enableResult.stdout, /lighthouse：已经是 已启用/);
   assert.match(enableResult.stdout, /maxFileLines: 已启用/);
-  assert.match(enableResult.stdout, /architecture: 已启用/);
-  assert.match(enableResult.stdout, /build: 已启用/);
+  assert.match(enableResult.stdout, /architecture：已经是 已启用/);
+  assert.match(enableResult.stdout, /build：已经是 已启用/);
   assert.match(enableResult.stdout, /typeCheck: 已启用/);
-  assert.match(enableResult.stdout, /unitTest: 已启用/);
-  assert.match(enableResult.stdout, /componentInteraction: 已启用/);
-  assert.match(enableResult.stdout, /accessibilityTest: 已启用/);
-  assert.match(enableResult.stdout, /coverage: 已启用/);
+  assert.match(enableResult.stdout, /unitTest：已经是 已启用/);
+  assert.match(enableResult.stdout, /coverage：已经是 已启用/);
 
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
@@ -185,8 +177,7 @@ test('CLI 初始化 v2 后启用选定检查并同步规范', (context) => {
   assert.equal(config.checks.eslint.enabled, true);
   assert.equal(config.checks.prettier.enabled, true);
   assert.equal(config.checks.stylelint.enabled, true);
-  assert.equal(config.checks.styleComplexity.enabled, true);
-  assert.equal(config.checks.styleGovernance.enabled, true);
+  assert.equal(config.checks.stylelint.governance.enabled, true);
   assert.equal(config.checks.functionDocs.enabled, true);
   assert.equal(config.checks.lighthouse.enabled, true);
   assert.equal(config.checks.maxFileLines.enabled, true);
@@ -194,8 +185,6 @@ test('CLI 初始化 v2 后启用选定检查并同步规范', (context) => {
   assert.equal(config.checks.build.enabled, true);
   assert.equal(config.checks.typeCheck.enabled, true);
   assert.equal(config.checks.unitTest.enabled, true);
-  assert.equal(config.checks.componentInteraction.enabled, true);
-  assert.equal(config.checks.accessibilityTest.enabled, true);
   assert.equal(config.checks.coverage.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
@@ -207,7 +196,7 @@ test('CLI 初始化 v2 后启用选定检查并同步规范', (context) => {
   );
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
-    /axe 可访问性测试使用 npm 脚本/,
+    /公共方法按适用性覆盖正常值/,
   );
 
   const disableResult = run(root, ['disable', 'notification']);
@@ -219,7 +208,7 @@ test('CLI 初始化 v2 后启用选定检查并同步规范', (context) => {
   assert.equal(disabledConfig.reporting.notification.enabled, false);
 });
 
-test('初始化显式前端身份，不因已有 Stylelint 配置自动启用检查', (context) => {
+test('初始化按显式前端预设开启 Stylelint 与样式治理', (context) => {
   const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-stylelint-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
@@ -240,15 +229,15 @@ test('初始化显式前端身份，不因已有 Stylelint 配置自动启用检
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
-  assert.equal(config.checks.stylelint.enabled, false);
-  assert.equal(config.checks.styleGovernance.enabled, false);
+  assert.equal(config.checks.stylelint.enabled, true);
+  assert.equal(config.checks.stylelint.governance.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:repository-governance-policy:start/,
   );
 });
 
-test('初始化不因已有 build 脚本自动启用构建门禁', (context) => {
+test('前端初始化按显式预设启用构建预算和分析，不依赖脚本探测', (context) => {
   const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-build-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
@@ -273,10 +262,12 @@ test('初始化不因已有 build 脚本自动启用构建门禁', (context) => 
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
-  assert.equal(config.checks.build.enabled, false);
+  assert.equal(config.checks.build.enabled, true);
+  assert.equal(config.checks.build.artifactBudget.enabled, true);
+  assert.equal(config.checks.build.bundleAnalysis.enabled, true);
 });
 
-test('初始化不因已有 Vitest 自动启用单元测试', (context) => {
+test('前端初始化按预设启用单元测试，与是否已安装 Vitest 无关', (context) => {
   const root = mkdtempSync(path.join(TEST_ROOT, 'configure-init-unit-test-'));
   context.after(() => rmSync(root, { recursive: true, force: true }));
   const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
@@ -308,7 +299,7 @@ test('初始化不因已有 Vitest 自动启用单元测试', (context) => {
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
-  assert.equal(config.checks.unitTest.enabled, false);
+  assert.equal(config.checks.unitTest.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:testing-policy:start/,
@@ -343,7 +334,7 @@ test('初始化不因已有 typecheck 脚本自动启用类型检查', (context)
   assert.equal(config.checks.typeCheck.enabled, false);
 });
 
-test('初始化不因已有 dependency-cruiser 自动启用架构检查', (context) => {
+test('前端初始化按显式预设开启架构检查，不依赖工具探测决定开关', (context) => {
   const root = mkdtempSync(
     path.join(TEST_ROOT, 'configure-init-architecture-'),
   );
@@ -386,7 +377,7 @@ test('初始化不因已有 dependency-cruiser 自动启用架构检查', (conte
   const config = parseProjectFixture(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
-  assert.equal(config.checks.architecture.enabled, false);
+  assert.equal(config.checks.architecture.enabled, true);
   assert.match(
     readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /repo-guard:dependency-health-policy:start/,

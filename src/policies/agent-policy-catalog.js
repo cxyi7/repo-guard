@@ -1,4 +1,5 @@
 import { gateAppliesToProject } from '../profiles/gate-applicability.js';
+import { resolveDirectoryPaths } from '../config/directory-roles.js';
 
 const GROUP_DEFINITIONS = [
   ['repository-governance-policy', '仓库与变更治理'],
@@ -50,6 +51,29 @@ function entry({ id, groupId, gates = [], features = [], capabilities = [], when
 
 const entries = [
   entry({
+    id: 'directory-roles', groupId: 'repository-structure-policy',
+    when: ({ config }) => Boolean(config.directories),
+    lines: ({ config }) => {
+      const paths = resolveDirectoryPaths(config.directories);
+      return [
+        '- 按以下目录职责放置新增文件；职责说明是团队约定，不代表程序已确认代码业务语义。目录与检查绑定以项目配置为准，不得写死默认目录名。',
+        ...Object.entries(config.directories.entries).map(([id, item]) => `- 目录职责 ${code(id)}：${code(paths[id])}；用途：${safeInline(item.purpose)}`),
+        '- 修改目录后同步规范并重新检查；原生工具配置和未绑定路径须单独核对，不自动移动文件。',
+      ];
+    },
+  }),
+  entry({
+    id: 'source-security', groupId: 'source-safety-policy', gates: ['security.source-security'], features: ['sourceSecurity'],
+    when: enabled('checks.sourceSecurity'),
+    lines: ({ config }) => [
+      `- 源码安全检查包含 ${list(config.checks.sourceSecurity.include)}，排除 ${list(config.checks.sourceSecurity.exclude)}；不得假定业务源码已遵循命名或目录约定。`,
+      '- 只检查已支持的明确语法；不推导动态数据、不猜测对象身份或安全封装，不把无法确认项当成完整通过证据。',
+      '- Vue 模板、HTML 和脚本分别使用对应语法解析器；具体禁用项和保护要求以下方六组项目配置为准。',
+      ...['dynamicCode', 'htmlInjection', 'inlineEventCode', 'urlScheme', 'newWindow', 'crossWindowMessage'].map((group) => `- 源码安全分类 ${code(group)} 的项目配置为 ${code(JSON.stringify(config.checks.sourceSecurity[group]))}，按各检查项开关执行。`),
+      '- 使用 `repo-guard source-security` 验证；必要例外必须保留路径、行列、规则和独立审批信息，不为接入成功自动放宽规则。',
+    ],
+  }),
+  entry({
     id: 'repository-global-file-placement', groupId: 'repository-structure-policy',
     gates: ['repository.global-file-placement'], features: ['repositoryFilePlacement'],
     when: enabled('repository.filePlacement'),
@@ -66,7 +90,7 @@ const entries = [
     when: ({ config }) => config.project?.stack === 'java',
     lines: () => [
       '- 本应用使用 Java/Maven 工程检查；Node.js 仅作为 repo-guard 宿主运行时，Java 应用不需要 package.json。',
-      '- Java 检查默认关闭；须先显式准备 JDK、Maven、检查工具和项目配置，再启用对应检查。检查命令与 Doctor 不会安装或升级工具。',
+      '- Java 新建模板默认开启检查；须先显式准备 JDK、Maven、检查工具和项目配置，缺项时不得执行或认定通过，已有显式配置保留。检查命令与 Doctor 不会安装或升级工具。',
       '- Java 源码规则只读取应用自身的配置、源码与报告；编译、构建、测试和覆盖率使用消费项目提供的命令，关闭或跳过检查不能作为交付通过证据。',
     ],
   }),
@@ -176,6 +200,7 @@ const entries = [
     features: ['commitMessage'],
     when: enabled('repository.commitMessage'),
     lines: ({ config }) => [
+      `- ${config.repository.commitMessage.merge.allowed ? '允许' : '禁止'}创建多父节点 merge commit；本地 Hook 按暂存区自动追加文件摘要，摘要不代替人工说明或业务验收。`,
       `- 提交信息必须符合 Conventional Commit；允许类型为 ${list(config.repository.commitMessage.types)}，标题最长 ${config.repository.commitMessage.headerMaxLength} 个字符。`,
       `- scope ${config.repository.commitMessage.requireScope ? '为必填项' : '可选'}；允许值为 ${list(config.repository.commitMessage.allowedScopes)}。fixup!/squash! 在本地${config.repository.commitMessage.fixup.allowLocal ? '允许' : '禁止'}、pre-push 阶段${config.repository.commitMessage.fixup.allowPush ? '允许' : '禁止'}、CI 阶段${config.repository.commitMessage.fixup.allowCi ? '允许' : '禁止'}；最终合并历史必须按项目流程完成整理。`,
     ],
@@ -193,11 +218,14 @@ const entries = [
   entry({
     id: 'function-docs',
     groupId: 'repository-governance-policy',
+    gates: ['quality.function-documentation'],
     features: ['functionDocs'],
     when: enabled('checks.functionDocs'),
     lines: ({ config }) => [
       `- 函数文档适用于 ${list(config.checks.functionDocs.extensions)}；新增或删除参数、返回值及异常路径时同步 @param、@returns、@throws，保留人工 @Description。`,
       `- 函数文档包含范围为 ${list(config.checks.functionDocs.include)}，排除范围为 ${list(config.checks.functionDocs.exclude)}；TypeScript JSDoc 不重复声明类型。`,
+      ...(config.checks.functionDocs.requireDescription ? ['- 公开函数必须提供真实非空用途说明；参数、返回、异常及副作用说明按配置检查，不以空标签代替业务说明。'] : []),
+      ...(config.checks.functionDocs.exportedOnly ? ['- 仅同步模块公开函数与公开方法，不为内部局部函数自动增加空文档。'] : []),
     ],
   }),
   entry({
@@ -232,36 +260,21 @@ const entries = [
     ],
   }),
   entry({
-    id: 'style-complexity',
-    groupId: 'staged-quality-policy',
-    gates: ['quality.style-complexity'],
-    features: ['styleComplexity'],
-    when: enabled('checks.styleComplexity'),
-    lines: ({ config }) => [
-      `- 样式选择器最多包含 ${config.checks.styleComplexity.maxCompoundSelectors} 个复合段，嵌套深度最多为 ${config.checks.styleComplexity.maxNestingDepth}；不得用 disable 注释绕过。`,
-    ],
-  }),
-  entry({
-    id: 'style-governance',
-    groupId: 'staged-quality-policy',
-    gates: ['quality.style-governance'],
-    features: ['styleGovernance'],
-    when: enabled('checks.styleGovernance'),
-    lines: ({ config }) => [
-      `- 样式优先级不得高于 ${code(config.checks.styleGovernance.maxSpecificity)}，ID 选择器最多 ${config.checks.styleGovernance.maxIdSelectors} 个，${config.checks.styleGovernance.disallowImportant ? '禁止' : '按项目配置控制'} !important。`,
-    ],
+    id: 'style-governance', groupId: 'staged-quality-policy', gates: [], features: [],
+    when: ({ config }) => config.checks.stylelint.enabled && config.checks.stylelint.governance?.enabled,
+    lines: ({ config }) => [`- 全局样式只能位于 ${list(config.checks.stylelint.governance.allowedGlobalStylePatterns)}；组件使用 scoped 或 module，不得在未批准文件中使用全局逃逸。`],
   }),
   entry({
     id: 'ui-tokens',
     groupId: 'staged-quality-policy',
     gates: ['quality.ui-tokens'],
-    features: ['uiTokens'],
-    when: enabled('checks.uiTokens'),
+    features: [],
+    when: ({ config }) => config.checks.stylelint.enabled && config.checks.stylelint.uiTokens?.enabled,
     lines: ({ config }) => [
-      `- UI Token 门禁检查 ${list(config.checks.uiTokens.languages)} 样式；sass 包含 .scss 与 .sass；检查范围为 ${list(config.checks.uiTokens.include)}，排除 ${list(config.checks.uiTokens.exclude)}。`,
-      `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点、动画时长和图标尺寸必须精确映射到 ${code(config.checks.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
-      `- CSS、Sass、Less 文件及 Vue 中对应语言的 style 块必须使用完整且类别匹配的别名，图标尺寸只在 ${list(config.checks.uiTokens.iconSelectors)} 选择器中检查；普通 CSS var(--name) 别名也可用于 Sass 与 Less，CSS 断点长度别名只用于 CSS，且必须是大于零的 px、em 或 rem。`,
-      `- ${code(config.checks.uiTokens.manifestFile)} 不得自引用；清单声明的 CSS、Sass、Less 变量只能在来源文件定义；Manifest、来源文件或已启用配置不得从提交快照中被直接删除，来源文件变更后必须重新生成清单指纹。`,
+      `- UI Token 门禁检查 ${list(config.checks.stylelint.uiTokens.languages)} 样式；sass 包含 .scss 与 .sass；检查范围为 ${list(config.checks.stylelint.uiTokens.include)}，排除 ${list(config.checks.stylelint.uiTokens.exclude)}。`,
+      `- 颜色、间距、字体、字号、行高、字重、圆角、阴影、z-index、响应式断点和动画时长必须精确映射到 ${code(config.checks.stylelint.uiTokens.manifestFile)}；其他样式属性不受该门禁管理。`,
+      `- CSS、Sass、Less 文件及 Vue 中对应语言的 style 块必须使用完整且类别匹配的别名；普通 CSS var(--name) 别名也可用于 Sass 与 Less，CSS 断点长度别名只用于 CSS，且必须是大于零的 px、em 或 rem。`,
+      `- ${code(config.checks.stylelint.uiTokens.manifestFile)} 不得自引用；清单声明的 CSS、Sass、Less 变量只能在来源文件定义；Manifest、来源文件或已启用配置不得从提交快照中被直接删除，来源文件变更后必须重新生成清单指纹。`,
     ],
   }),
   entry({
@@ -285,34 +298,12 @@ const entries = [
     ],
   }),
   entry({
-    id: 'dynamic-code', groupId: 'source-safety-policy', gates: ['security.dynamic-code'],
-    when: () => true,
-    lines: () => ['- 禁止使用 eval 或 Function 构造器动态执行字符串；确需例外时必须登记精确的结构化例外。'],
-  }),
-  entry({
-    id: 'vue-security', groupId: 'source-safety-policy',
-    gates: ['security.vue-unsafe-html', 'security.vue-target-blank'],
-    when: () => true,
-    lines: () => [
-      '- Vue 模板禁止未经精确结构化例外批准的 v-html。',
-      '- target="_blank" 必须同时包含 rel="noopener noreferrer"。',
-    ],
-  }),
-  entry({
-    id: 'vue-accessibility', groupId: 'source-safety-policy',
-    gates: ['accessibility.vue-form-label', 'accessibility.vue-image-alt'],
-    when: () => true,
-    lines: () => [
-      '- Vue 原生表单控件必须具有可静态验证的关联 label 或无障碍名称。',
-      '- Vue 原生图片必须具有符合用途的 alt；装饰图片必须使用空 alt 和静态 none/presentation 角色。',
-    ],
-  }),
-  entry({
     id: 'path-naming', groupId: 'repository-structure-policy',
     gates: ['repository.path-naming'], features: ['pathNaming'],
     when: enabled('checks.pathNaming'),
     lines: ({ config }) => [
       `- 目录和文件名统一使用 ${code(config.checks.pathNaming.convention)}；包含 ${list(config.checks.pathNaming.include)}，排除 ${list(config.checks.pathNaming.exclude)}，同一项目不得混用命名风格。`,
+      ...(config.checks.pathNaming.lowercaseExtension ? ['- 文件扩展名必须小写；类型文件可使用 order.types.ts 或 order.d.ts 这样的多段名称。'] : []),
     ],
   }),
   entry({
@@ -339,7 +330,7 @@ const entries = [
           `- 图片资源必须遵守${requirements}；包含 ${list(config.checks.imageAssets.include)}，排除 ${list(config.checks.imageAssets.exclude)}。Hook 与 CI 只能检查，不得自动删除资源、改写引用或执行有损转换。`,
         ] : []),
         ...(config.checks.unusedImageAssets.enabled ? [
-          `- 无效图片资源按 ${code(config.checks.imageAssets.enforcement)} 模式治理；静态引用源码包含 ${list(config.checks.unusedImageAssets.sourceInclude)}，排除 ${list(config.checks.unusedImageAssets.sourceExclude)}。动态路径必须使用带原因且同时匹配真实源码和图片的 ${code('checks.unusedImageAssets.dynamicReferences')} 声明；不得使用整个仓库通配或未经确认自动删除图片。`,
+          `- 无效图片资源按 ${code(config.checks.imageAssets.enforcement)} 模式治理；静态引用源码包含 ${list(config.checks.unusedImageAssets.sourceInclude)}，排除 ${list(config.checks.unusedImageAssets.sourceExclude)}。动态路径必须使用带原因且同时匹配真实源码和图片的 ${code('checks.unusedImageAssets.dynamicReferences')} 声明；接口驱动的图片应填写 api.method、api.endpoint、api.responseField，报告保留理由但不能作为接口响应已验证的证据；不得使用整个仓库通配或未经确认自动删除图片。`,
         ] : []),
       ];
     },
@@ -373,7 +364,7 @@ const entries = [
     gates: ['dependencies.policy'], features: ['dependencies'],
     when: enabled('repository.dependencyPolicy'),
     lines: ({ config }) => [
-      `- 依赖必须遵守精确版本、批准协议和锁文件同步策略；允许协议为 ${list(config.repository.dependencyPolicy.allowedProtocols)}，${config.repository.dependencyPolicy.requireLockfile ? '必须提交同步锁文件' : '按项目配置维护锁文件'}。`,
+      `- 普通直接依赖必须遵守精确版本和锁文件同步要求；别名、工作区协议、本地路径或 Git 等特殊引用不参与依赖策略检查；${config.repository.dependencyPolicy.requireLockfile ? '必须提交同步锁文件' : '按配置维护锁文件'}。`,
     ],
   }),
   entry({
@@ -390,7 +381,7 @@ const entries = [
     gates: ['quality.dead-code'], features: ['deadCode'], capabilities: ['dead-code-baseline'],
     when: enabled('checks.deadCode'),
     lines: ({ config }) => [
-      `- Knip 无效代码检查使用 ${code(config.checks.deadCode.mode)} 模式，问题类型为 ${list(config.checks.deadCode.issueTypes)}；基线文件为 ${code(config.checks.deadCode.baselineFile)}。`,
+      `- Knip 无效代码检查使用 ${code(config.checks.deadCode.mode)} 模式，问题类型为 ${list(config.checks.deadCode.issueTypes)}；基线文件为 ${code(config.checks.deadCode.baselineFile)}；按真实入口和扫描范围分析，原生配置优先，特殊依赖引用跳过，不自动删除代码或扩大基线。`,
       '- baseline 模式只允许阻止新增债务；基线只能通过确认后的专用命令收缩或更新，不得手工删除问题掩盖结果。',
     ],
   }),
@@ -406,7 +397,7 @@ const entries = [
     when: enabled('checks.unitTest'),
     lines: ({ config }) => [
       `- 单元测试使用 npm 脚本 ${code(config.checks.unitTest.script)}；源码范围为 ${list(config.checks.unitTest.sourcePatterns)}，测试变更要求为 ${code(config.checks.unitTest.requireTests)}。`,
-      '- 工具函数覆盖正常值、边界值和非法值；Composable、Store、API、Vue 组件及 Bug 修复必须覆盖相应状态和回归路径，禁止空测试及 skip/only/todo 绕过。',
+      '- 公共方法按适用性覆盖正常值、零值、边界、精度、非法输入和缺陷回归；断言实际返回值、异常或副作用，禁止空测试及 skip/only/todo 绕过。',
     ],
   }),
   entry({
@@ -416,19 +407,6 @@ const entries = [
       const thresholds = config.checks.coverage.thresholds;
       return [`- 覆盖率阈值（行/语句/函数/分支/变更行）为 ${thresholds.lines}%/${thresholds.statements}%/${thresholds.functions}%/${thresholds.branches}%/${thresholds.changedLines}%；不得降低阈值或扩大生产源码排除项绕过。`];
     },
-  }),
-  entry({
-    id: 'component-interaction', groupId: 'testing-policy', features: ['componentInteraction'],
-    when: enabled('checks.componentInteraction'),
-    lines: ({ config }) => [`- Vue 组件交互测试范围为 ${list(config.checks.componentInteraction.componentPatterns)}；必须触发真实交互并断言交互后的 DOM、状态、emit 或依赖调用结果。`],
-  }),
-  entry({
-    id: 'accessibility-test', groupId: 'testing-policy',
-    gates: ['quality.accessibility-test'], features: ['accessibilityTest'],
-    when: enabled('checks.accessibilityTest'),
-    lines: ({ config }) => [
-      `- axe 可访问性测试使用 npm 脚本 ${code(config.checks.accessibilityTest.script)}，文件范围为 ${list(config.checks.accessibilityTest.testPatterns)}；每个测试必须扫描真实 DOM 并断言零违规。`,
-    ],
   }),
   entry({
     id: 'mutation-test', groupId: 'testing-policy',
@@ -444,6 +422,10 @@ const entries = [
     when: enabled('checks.build'),
     lines: ({ config }) => [
       `- 构建门禁使用 npm 脚本 ${code(config.checks.build.script)}，失败或超时必须阻断当前交付流程。`,
+      ...(config.checks.build.bundleAnalysis?.enabled ? [
+        `- 包体积分析必须来自同次生产构建，报告目录为 ${code(config.checks.build.bundleAnalysis.reportsDirectory)}；保留用户原生构建配置，不得用旧报告通过检查。`,
+        '- 前端依赖或路径接入未完成时，先核对兼容版本并补齐项目配置，再完成真实验证，不得关闭失败检查。',
+      ] : []),
       ...(config.checks.build.artifactBudget.enabled ? [
         `- 当前项目构建平台固定为 ${code(config.checks.build.artifactBudget.platform)}，产物目录为 ${code(config.checks.build.artifactBudget.outputDirectory)}；不得同时引入另一平台配置，不得保留旧产物或通过符号链接、跟踪产物、扩大预算绕过检查。`,
         ...(config.checks.build.artifactBudget.platform === 'pc' ? [
@@ -457,7 +439,10 @@ const entries = [
   entry({
     id: 'lighthouse', groupId: 'delivery-policy', gates: ['quality.lighthouse'], features: ['lighthouse'],
     when: enabled('checks.lighthouse'),
-    lines: ({ config }) => [`- Lighthouse 使用消费项目的 Chrome、路由、断言及 ${code(config.checks.lighthouse.configFile ?? '自动发现的配置文件')}；不得进入 pre-commit，也不得隐式上传报告。`],
+    lines: ({ config }) => [
+      `- Lighthouse 使用消费项目的 Chrome、路由、断言及 ${code(config.checks.lighthouse.configFile ?? '内联配置与原生配置')}；不得进入 pre-commit，也不得隐式上传报告。`,
+      ...(config.checks.lighthouse.pages ? ['- Lighthouse 业务页面必须按配置验证最终地址与页面标识；仅复用本轮指纹一致的生产构建，缺少路径或页面配置时先完成接入。'] : []),
+    ],
   }),
   entry({
     id: 'ci', groupId: 'delivery-policy', features: ['ci'],
@@ -529,8 +514,8 @@ function entryAppliesToProject(item, config) {
   if (item.gates.length > 0
     && item.gates.every((gate) => !gateAppliesToProject(gate, config.project))) return false;
   return config.project.role !== 'backend'
-    || !['vue-security', 'vue-accessibility', 'async-resource-cleanup', 'component-interaction',
-      'accessibility-test', 'lighthouse', 'ui-tokens'].includes(item.id);
+    || !['vue-security', 'async-resource-cleanup',
+      'lighthouse', 'ui-tokens'].includes(item.id);
 }
 
 function renderProjectEntry(item, context) {

@@ -43,3 +43,6 @@ CI 的 `repository.agent-policy` 比较配置应生成的内容与现有文件�
 [实现入口](../../src/policies/agent-policies.js) · [对应测试](../../test/policies/agent-policy.test.js) · [多应用 CI 回归](../../test/ci/workspace-ci.test.js)
 
 [启停与同步](configuration-management.md) · [根与应用配置边界](../../src/config/workspace-scopes.js)
+提交规范区块按实际 merge.allowed 显示允许或禁止多父节点合并提交，并说明本地自动文件摘要不能代替人工说明或业务验收。不生成受控挑拣流程。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

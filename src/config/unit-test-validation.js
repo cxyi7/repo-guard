@@ -1,6 +1,5 @@
 import path from 'node:path';
 import {
-  DEFAULT_COMPONENT_INTERACTION_CONFIG,
   DEFAULT_UNIT_TEST_CONFIG,
   DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
 } from './defaults.js';
@@ -32,7 +31,6 @@ function validateUnitTestValue(value, configPath) {
       'script',
       'timeoutMs',
       'coverage',
-      'componentInteraction',
       'requireTests',
       'sourcePatterns',
       'testPatterns',
@@ -120,42 +118,6 @@ function validateCoverageConfiguration(unitTestValue, configPath) {
   };
 }
 
-function validateComponentInteractionConfiguration(
-  unitTestValue,
-  unitTestEnabled,
-  configPath,
-) {
-  const componentInteractionValue = unitTestValue.componentInteraction
-    ?? DEFAULT_UNIT_TEST_CONFIG.componentInteraction;
-  if (!componentInteractionValue
-    || typeof componentInteractionValue !== 'object'
-    || Array.isArray(componentInteractionValue)) {
-    throw configValidationError(`${configPath} checks.componentInteraction 必须是对象`);
-  }
-  assertKnownProperties(
-    componentInteractionValue,
-    new Set(['enabled', 'componentPatterns']),
-    `${configPath} checks.componentInteraction`,
-  );
-  if (componentInteractionValue.enabled != null
-    && typeof componentInteractionValue.enabled !== 'boolean') {
-    throw configValidationError(`${configPath} checks.componentInteraction.enabled 必须是布尔值`);
-  }
-  const componentPatterns = normalizePatternList(
-    componentInteractionValue.componentPatterns
-      ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.componentPatterns,
-    `${configPath} checks.componentInteraction.componentPatterns`,
-  );
-  const enabled = componentInteractionValue.enabled
-    ?? DEFAULT_COMPONENT_INTERACTION_CONFIG.enabled;
-  if (enabled && !unitTestEnabled) {
-    throw configValidationError(
-      `${configPath} checks.componentInteraction.enabled 要求启用 checks.unitTest.enabled`,
-    );
-  }
-  return { enabled, componentPatterns };
-}
-
 function normalizeUnitTestPatternField(
   unitTestValue,
   field,
@@ -184,7 +146,7 @@ function normalizeUnitTestMappings(unitTestValue, configPath) {
   if (!Array.isArray(mappingsValue) || mappingsValue.length === 0) {
     throw configValidationError(`${configPath} checks.unitTest.mappings 必须是非空数组`);
   }
-  const allowedTemplatePlaceholders = /\{(?:dir|ext|name|path)\}/g;
+  const allowedTemplatePlaceholders = /\{(?:dir|ext|name|path|relativePath)\}/g;
   return mappingsValue.map((mapping, index) => {
     const label = `${configPath} checks.unitTest.mappings 第 ${index + 1}`;
     if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
@@ -192,7 +154,7 @@ function normalizeUnitTestMappings(unitTestValue, configPath) {
     }
     assertKnownProperties(
       mapping,
-      new Set(['sourcePattern', 'testTemplates']),
+      new Set(['sourcePattern', 'sourceRoot', 'testTemplates']),
       label,
     );
     const sourcePattern = normalizeRelativePattern(
@@ -209,14 +171,21 @@ function normalizeUnitTestMappings(unitTestValue, configPath) {
           `${label}.testTemplates 包含不支持的占位符： ${template}`,
         );
       }
-      if (!template.includes('{path}') && !template.includes('{name}')) {
+      if (!template.includes('{path}') && !template.includes('{name}') && !template.includes('{relativePath}')) {
         throw configValidationError(
-          `${label}.testTemplates 必须包含 {path} 或 {name}： ${template}`,
+          `${label}.testTemplates 必须包含 {path}、{name} 或 {relativePath}： ${template}`,
         );
       }
       return template;
     });
-    return { sourcePattern, testTemplates };
+    const sourceRoot = mapping.sourceRoot === undefined ? undefined : normalizeRelativePattern(mapping.sourceRoot, `${label}.sourceRoot`);
+    if (sourceRoot !== undefined && /[*?{}[\\\]]/.test(sourceRoot)) {
+      throw configValidationError(`${label}.sourceRoot 必须是明确目录`);
+    }
+    if (testTemplates.some((template) => template.includes('{relativePath}')) && sourceRoot === undefined) {
+      throw configValidationError(`${label}.sourceRoot 是 {relativePath} 的必需配置`);
+    }
+    return { sourcePattern, ...(sourceRoot === undefined ? {} : { sourceRoot }), testTemplates };
   });
 }
 
@@ -224,11 +193,6 @@ export function validateUnitTestConfiguration(value, configPath) {
   const unitTestValue = validateUnitTestValue(value, configPath);
   const coverage = validateCoverageConfiguration(unitTestValue, configPath);
   const enabled = unitTestValue.enabled ?? DEFAULT_UNIT_TEST_CONFIG.enabled;
-  const componentInteraction = validateComponentInteractionConfiguration(
-    unitTestValue,
-    enabled,
-    configPath,
-  );
   if (
     unitTestValue.requireTests != null
     && !['newFiles', 'changedFiles'].includes(unitTestValue.requireTests)
@@ -263,7 +227,6 @@ export function validateUnitTestConfiguration(value, configPath) {
     script: unitTestValue.script?.trim() || DEFAULT_UNIT_TEST_CONFIG.script,
     timeoutMs: unitTestValue.timeoutMs ?? DEFAULT_UNIT_TEST_CONFIG.timeoutMs,
     coverage,
-    componentInteraction,
     requireTests: unitTestValue.requireTests ?? DEFAULT_UNIT_TEST_CONFIG.requireTests,
     sourcePatterns,
     testPatterns,

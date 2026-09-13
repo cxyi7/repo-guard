@@ -75,3 +75,7 @@
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/gates/quality/vue-async-resource-cleanup-gate.js) · [对应测试](../../test/gates/quality/async-resource-cleanup.test.js)
+
+## 前端初始化模板
+
+前端初始化的开关、目录、规则及新增字段见[前端维护预设](frontend-maintenance-presets.md)；既有项目读取配置不会被自动改写。

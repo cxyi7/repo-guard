@@ -144,11 +144,10 @@ function baselineImageConfig(root, repositoryRoot, revision, config) {
   }
 }
 
-function findingsWithExceptions(paths, config) {
+function findingsWithExceptions(findings, config) {
   const approved = [];
   const violations = [];
-  for (const filePath of paths) {
-    const finding = unusedImageAssetFinding(filePath, config.checks.unusedImageAssets.action);
+  for (const finding of findings) {
     const exception = findStructuredException(config.repository.exceptions, finding);
     if (exception) approved.push({ finding, exception });
     else violations.push(finding);
@@ -170,7 +169,7 @@ export const unusedImageAssetsGate = defineGate({
   manualOrder: 153,
   doctorOrder: 153,
   packageScript: 'guard:unused-image-assets',
-  rules: [UNUSED_IMAGE_ASSET_RULE],
+  rules: [UNUSED_IMAGE_ASSET_RULE, 'assets/reference-integrity'],
   requiredTools: [],
   requiredScripts: [],
   requiredEnvironment: [],
@@ -204,10 +203,11 @@ export const unusedImageAssetsGate = defineGate({
         ? worktreeSnapshot(root, plan.files, imageConfig)
         : revisionSnapshot(root, plan.revision?.head ?? 'HEAD', imageConfig);
       const current = inspectSnapshot(currentSnapshot, imageConfig, true);
-      if (current.assetPaths.length === 0) {
+      if (current.assetPaths.length === 0 && current.referenceFindings.length === 0) {
         return skippedResult(UNUSED_IMAGE_ASSETS_GATE_ID, '没有匹配配置范围的图片资源');
       }
       let governedPaths = current.unusedPaths;
+      let governedReferences = current.referenceFindings;
       let baselineUnusedCount = 0;
       if (plan.environment !== 'manual' && config.checks.imageAssets.enforcement === 'changedFiles') {
         if (!plan.revision?.base) {
@@ -230,14 +230,24 @@ export const unusedImageAssetsGate = defineGate({
         const baselineUnused = new Set(baseline.unusedPaths);
         baselineUnusedCount = baselineUnused.size;
         governedPaths = current.unusedPaths.filter((filePath) => !baselineUnused.has(filePath));
+        const identity = (finding) => JSON.stringify([finding.path, finding.issue, finding.line, finding.column, finding.message]);
+        const priorReferences = new Set(baseline.referenceFindings.map(identity));
+        governedReferences = current.referenceFindings.filter((finding) => !priorReferences.has(identity(finding)));
       }
-      const result = findingsWithExceptions(governedPaths, config);
+      const result = findingsWithExceptions([
+        ...governedPaths.map((filePath) => unusedImageAssetFinding(filePath, config.checks.unusedImageAssets.action)),
+        ...governedReferences,
+      ], config);
       const errors = result.violations.filter(({ severity }) => severity === 'error');
       const warnings = result.violations.filter(({ severity }) => severity === 'warning');
       const diagnostics = result.approved.map(({ finding, exception }) => ({
         level: 'warn',
         message: `无效图片资源规则已使用批准例外：${finding.path}（${exception.id}，到期日期=${exception.expiresOn}）`,
       }));
+      diagnostics.push(...current.retained.map((entry) => ({ level: 'info',
+        message: `动态图片保留：${entry.path}；使用位置=${entry.sourcePatterns.join('、')}；${entry.api ? `接口=${entry.api.method} ${entry.api.endpoint}；响应字段=${entry.api.responseField}；` : ''}原因=${entry.reason}。此为配置声明，未验证接口响应。`,
+      })));
+      diagnostics.push(...current.uncertainSources.map((source) => ({ level: 'warn', message: `${source} 存在运行时图片绑定，静态扫描无法证明全部取值；请核对接口、响应字段和动态图片声明，勿据此自动删除图片。` })));
       const options = {
         diagnostics,
         findings: result.violations.map((finding) => findingFromPolicy(finding, {
@@ -248,6 +258,7 @@ export const unusedImageAssetsGate = defineGate({
           sourceFiles: current.sourcePaths.length,
           references: current.referenceCount,
           dynamicGlobs: current.dynamicGlobCount,
+          dynamicallyRetained: current.retained.length,
           currentUnused: current.unusedPaths.length,
           baselineUnused: baselineUnusedCount,
           governedUnused: governedPaths.length,

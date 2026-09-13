@@ -31,14 +31,25 @@ function writeJson(root, file, value) {
   writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-test('纯 Java 无 package.json 时可初始化、修复和诊断，宿主工具由已有入口提供', async (context) => {
+test('Java 新建全开模板缺项阻断；已有显式关闭配置仍可初始化和诊断', async (context) => {
   const { root, lines } = fixture(context);
-  assert.equal(runInit(root, { project: javaProject }), 0);
+  assert.throws(() => runInit(root, { project: javaProject }), /必须显式指定已准备的工具/);
+  assert.equal(existsSync(path.join(root, '.githooks')), false);
+  assert.ok(lines.some((line) => line.includes('待接入配置')));
   assert.equal(existsSync(path.join(root, 'package.json')), false);
   assert.equal(existsSync(path.join(root, 'pom.xml')), false);
   const document = JSON.parse(readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'));
+  for (const [feature, check] of Object.entries(document.checks)) {
+    if (feature.startsWith('java')) assert.equal(check.enabled, true);
+  }
+  const original = readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8');
+  assert.throws(() => runInit(root, { project: javaProject }), /必须显式指定已准备的工具/);
+  assert.equal(readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'), original);
+  // 独立验证已有明确关闭配置的流程，不把未接入模板当作检查通过。
+  for (const check of Object.values(document.checks)) check.enabled = false;
   document.reporting.notification.enabled = false;
   writeJson(root, 'repo-guard.config.json', document);
+  assert.equal(runInit(root, { project: javaProject }), 0);
   const hooks = installHooks({ cwd: root, updatePackageScripts: true });
   assert.equal(hooks.skipped, false);
   assert.match(readFileSync(path.join(root, '.githooks/pre-commit'), 'utf8'), /command -v repo-guard/);
@@ -49,7 +60,7 @@ test('纯 Java 无 package.json 时可初始化、修复和诊断，宿主工具
   assert.equal(inspectAgentPolicies(root, config).changed, false);
   const policies = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   assert.match(policies, /Java\/Maven 工程检查/);
-  assert.match(policies, /Java 检查默认关闭/);
+  assert.match(policies, /Java 新建模板默认开启检查/);
   assert.match(policies, /通过 lint-staged.*暂存 Java 文件格式化，然后只读复核格式/);
   assert.match(policies, /保留部分暂存与未暂存内容/);
   assert.match(policies, /尚未提供 Java 运维部署适配/);

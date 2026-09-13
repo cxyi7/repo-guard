@@ -403,10 +403,10 @@ test('跨应用重命名在原应用显示删除、目标应用显示新增，�
   ]);
 });
 
-test('同样的 Vue 文件只对明确声明的前端运行 Vue 门禁', async (context) => {
+test('移除标签与替代文本门禁后，前后端均不因缺少这两项声明而阻断', async (context) => {
   const { root } = fixture(context);
   quiet(context);
-  const content = '<template><input placeholder="名称"></template>\n';
+  const content = '<template><input placeholder="名称"><img src="/photo.png"></template>\n';
   const apiFile = path.join(root, 'apps/api/src/sample.vue');
   writeFileSync(apiFile, content);
   git(root, ['add', 'apps/api/src/sample.vue']);
@@ -420,8 +420,7 @@ test('同样的 Vue 文件只对明确声明的前端运行 Vue 门禁', async (
   const frontend = await runWorkspaceQualityExecution(loadWorkspace(root), [
     webFile,
   ]);
-  assert.notEqual(frontend.exitCode, 0);
-  assert.equal(frontend.decisiveResult.gateId, 'accessibility.vue-form-label');
+  assert.equal(frontend.exitCode, 0);
 });
 
 test('关闭 Prettier 时 ESLint 修复之后仍执行独立只读复核', async (context) => {

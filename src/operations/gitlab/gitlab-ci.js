@@ -1,3 +1,4 @@
+import { dependencyInstallation } from './dependency-installation.js';
 import {
   existsSync,
   mkdirSync,
@@ -46,7 +47,8 @@ function rootJobContent(content) {
   return /^repo_guard:\s*\r?\n((?:^[ \t]+.*(?:\r?\n|$))*)/m.exec(content)?.[1] ?? '';
 }
 
-function templateContent() {
+function templateContent(root, config) {
+  const installation = dependencyInstallation(root, config);
   return `${TEMPLATE_MARKER}
 .repo_guard_base:
   image: node:22.23.2
@@ -59,12 +61,12 @@ function templateContent() {
   cache:
     key:
       files:
-        - package-lock.json
+        - ${JSON.stringify(installation.lockfile)}
     paths:
       - .npm/
   before_script:
     - node --version
-    - npm ci
+${installation.commands.map((command) => `    - ${JSON.stringify(command)}`).join("\n")}
   artifacts:
     when: always
     paths:
@@ -77,17 +79,17 @@ function templateContent() {
 .repo_guard_policy:
   extends: .repo_guard_base
   script:
-    - npx --no-install repo-guard ci --profile policy
+    - ${installation.runner} repo-guard ci --profile policy
 
 .repo_guard_full:
   extends: .repo_guard_base
   script:
-    - npx --no-install repo-guard ci --profile full
+    - ${installation.runner} repo-guard ci --profile full
 
 .repo_guard_release_ready:
   extends: .repo_guard_base
   script:
-    - npx --no-install repo-guard ci --profile release-ready
+    - ${installation.runner} repo-guard ci --profile release-ready
 
 `;
 }
@@ -218,8 +220,9 @@ export function inspectGitLabCi(root, config) {
   if (!config.ci.enabled) problems.push('项目配置中已禁用 repo-guard CI');
   if (!existsSync(rootPath)) problems.push(`${GITLAB_CI_FILE} 缺失`);
   if (!existsSync(templatePath)) problems.push(`${GITLAB_TEMPLATE_FILE} 缺失`);
-  if (!existsSync(path.join(root, 'package-lock.json'))) {
-    problems.push('托管 GitLab 作业会运行 npm ci，因此必须提供 package-lock.json');
+  const installation = dependencyInstallation(root, config);
+  if (!existsSync(path.join(root, installation.lockfile))) {
+    problems.push(`托管 GitLab 作业要求锁文件 ${installation.lockfile}`);
   }
   if (!directDependencyVersion(root)) {
     problems.push('使用 npx --no-install 时，@cxyi7/repo-guard 必须是项目的直接依赖');
@@ -228,7 +231,7 @@ export function inspectGitLabCi(root, config) {
   const template = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : '';
   if (template && !isManagedTemplate(template)) {
     problems.push(`${GITLAB_TEMPLATE_FILE} 未由 repo-guard 托管`);
-  } else if (template && normalizeNewlines(template) !== templateContent()) {
+  } else if (template && normalizeNewlines(template) !== templateContent(root, config)) {
     problems.push(`${GITLAB_TEMPLATE_FILE} 已被修改或过期；请运行 repo-guard install-ci`);
   }
 
@@ -292,7 +295,7 @@ export function installGitLabCiFiles(root, config, {
   const templatePath = path.join(root, GITLAB_TEMPLATE_FILE);
   const currentRoot = existsSync(rootPath) ? readFileSync(rootPath, 'utf8') : '';
   const currentTemplate = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : '';
-  if (currentTemplate && normalizeNewlines(currentTemplate) !== templateContent()) {
+  if (currentTemplate && normalizeNewlines(currentTemplate) !== templateContent(root, config)) {
     throw securityError(
       'gitlab-ci/non-managed-template',
       `拒绝覆盖非托管或人工修改的 GitLab 模板： ${GITLAB_TEMPLATE_FILE}`,
@@ -315,7 +318,7 @@ export function installGitLabCiFiles(root, config, {
     selectedStage || stage || '<existing-stage>',
   );
   const nextRoot = conflict ? currentRoot : replaceManagedRootBlock(currentRoot, block);
-  const nextTemplate = templateContent();
+  const nextTemplate = templateContent(root, config);
   const preview = {
     profile,
     stage: selectedStage,

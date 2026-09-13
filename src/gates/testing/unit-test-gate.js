@@ -26,8 +26,7 @@ export async function runUnitTestGate({
   const setup = validateUnitTestSetup(root, config);
   const policy = inspectUnitTestPolicy({ root, changes, config });
   if (policy.missingTests.length > 0
-    || policy.bypasses.length > 0
-    || policy.componentInteractions.length > 0) {
+    || policy.bypasses.length > 0) {
     return createGateResult({
       gateId: 'quality.unit-test',
       status: 'violation',
@@ -36,7 +35,6 @@ export async function runUnitTestGate({
       metrics: {
         missingTests: policy.missingTests.length,
         bypasses: policy.bypasses.length,
-        componentInteractions: policy.componentInteractions.length,
       },
     });
   }

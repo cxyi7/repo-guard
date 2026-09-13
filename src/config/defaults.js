@@ -1,5 +1,6 @@
 export const DEFAULT_ESLINT_PATTERN = '*.{js,jsx,ts,tsx,vue}';
-export const DEFAULT_PRETTIER_PATTERN = '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
+export const DEFAULT_PRETTIER_PATTERN =
+  '*.{js,jsx,mjs,cjs,ts,tsx,vue,json,json5,jsonc,css,scss,less,html,md,mdx,yml,yaml}';
 export const DEFAULT_STYLELINT_PATTERN = '**/*.{css,scss,sass,less,vue}';
 export const SUPPORTED_FILE_HEADER_EXTENSIONS = Object.freeze([
   '.vue',
@@ -75,15 +76,8 @@ export const SUPPORTED_PATH_NAMING_CONVENTIONS = Object.freeze([
 export const DEFAULT_PATH_NAMING_CONFIG = Object.freeze({
   enabled: false,
   convention: 'camelCase',
-  include: Object.freeze([
-    'src/**',
-    'utils/**',
-  ]),
-  exclude: Object.freeze([
-    '**/.*',
-    '**/.*/**',
-    '**/generated/**',
-  ]),
+  include: Object.freeze(['src/**', 'utils/**']),
+  exclude: Object.freeze(['**/.*', '**/.*/**', '**/generated/**']),
 });
 export const UI_TOKEN_LANGUAGES = Object.freeze(['css', 'sass', 'less']);
 export const UI_TOKEN_CATEGORIES = Object.freeze([
@@ -98,14 +92,16 @@ export const UI_TOKEN_CATEGORIES = Object.freeze([
   'z-index',
   'breakpoint',
   'animation-duration',
-  'icon-size',
 ]);
 export const DEFAULT_UI_TOKENS_CONFIG = Object.freeze({
   enabled: false,
   languages: Object.freeze(['css']),
   manifestFile: 'ui-tokens.manifest.json',
+  values: Object.freeze({ enabled: false, definitions: Object.freeze([]) }),
+  artifacts: Object.freeze({ enabled: false, patterns: Object.freeze(['**/*.css']) }),
   include: Object.freeze([
     'src/**/*.{vue,css,scss,sass,less}',
+    'styles/**/*.{css,scss,sass,less}',
   ]),
   exclude: Object.freeze([
     '**/generated/**',
@@ -113,7 +109,6 @@ export const DEFAULT_UI_TOKENS_CONFIG = Object.freeze({
     '**/coverage/**',
     '**/reports/**',
   ]),
-  iconSelectors: Object.freeze(['svg', '.icon', '.ui-icon', '.svg-icon']),
 });
 export const SUPPORTED_IMAGE_ASSET_EXTENSIONS = Object.freeze([
   'png',
@@ -149,7 +144,7 @@ export const SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS = Object.freeze([
 ]);
 export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
   enabled: false,
-  enforcement: 'changedFiles',
+  enforcement: 'allFiles',
   include: Object.freeze([
     'src/assets/**/*.{png,jpg,jpeg,webp,avif,svg,gif,ico,bmp,tif,tiff}',
     'public/assets/**/*.{png,jpg,jpeg,webp,avif,svg,gif,ico,bmp,tif,tiff}',
@@ -172,7 +167,11 @@ export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
   duplicates: Object.freeze({
     exact: 'error',
     pixel: 'off',
-    canonicalRoots: Object.freeze(['src/assets', 'public/assets', 'docs/assets']),
+    canonicalRoots: Object.freeze([
+      'src/assets',
+      'public/assets',
+      'docs/assets',
+    ]),
   }),
   compression: Object.freeze({
     enabled: true,
@@ -206,11 +205,13 @@ export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
   }),
   unused: Object.freeze({
     enabled: false,
+    referenceIntegrity: false,
     action: 'error',
     sourceInclude: Object.freeze([
       '*.{html,md}',
       'src/**/*.{vue,nvue,html,wxml,js,jsx,ts,tsx,mjs,cjs,css,less,scss,sass,wxss,json}',
       'public/**/*.html',
+      'styles/**/*.{css,less,scss,sass}',
       'docs/**/*.md',
     ]),
     sourceExclude: Object.freeze([
@@ -224,9 +225,7 @@ export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
       '**/reports/**',
     ]),
     sourceExtensions: SUPPORTED_IMAGE_REFERENCE_SOURCE_EXTENSIONS,
-    aliases: Object.freeze([
-      Object.freeze({ prefix: '@/', directory: 'src' }),
-    ]),
+    aliases: Object.freeze([Object.freeze({ prefix: '@/', directory: 'src' })]),
     publicRoots: Object.freeze([
       Object.freeze({ directory: 'public', urlPrefix: '/' }),
     ]),
@@ -243,26 +242,9 @@ export const DEFAULT_IMAGE_ASSETS_CONFIG = Object.freeze({
     maxFrames: 1,
   }),
 });
-export const DEFAULT_STYLE_COMPLEXITY_CONFIG = Object.freeze({
-  enabled: false,
-  maxCompoundSelectors: 3,
-  maxNestingDepth: 3,
-});
 export const DEFAULT_STYLE_GOVERNANCE_CONFIG = Object.freeze({
   enabled: false,
-  maxSpecificity: '0,3,0',
-  maxIdSelectors: 0,
-  disallowImportant: true,
-  allowedGlobalStylePatterns: Object.freeze([
-    'src/styles/**',
-    'src/assets/styles/**',
-    'src/assets/css/**',
-    'src/assets/main.{css,scss,sass,less}',
-    'src/main.{css,scss,sass,less}',
-    'src/index.{css,scss,sass,less}',
-    'src/style.{css,scss,sass,less}',
-    'src/App.vue',
-  ]),
+  allowedGlobalStylePatterns: Object.freeze(['styles/**']),
 });
 export const DEFAULT_ESLINT_CONFIG = Object.freeze({
   enabled: true,
@@ -283,8 +265,8 @@ export const DEFAULT_STYLELINT_CONFIG = Object.freeze({
   fix: true,
   maxWarnings: 0,
   requireConfig: true,
-  complexity: DEFAULT_STYLE_COMPLEXITY_CONFIG,
   governance: DEFAULT_STYLE_GOVERNANCE_CONFIG,
+  uiTokens: DEFAULT_UI_TOKENS_CONFIG,
 });
 export const DEFAULT_BUILD_ARTIFACT_BUDGET_CONFIG = Object.freeze({
   enabled: false,
@@ -316,11 +298,18 @@ export const DEFAULT_MUTATION_TEST_CONFIG = Object.freeze({
   originalHtml: true,
   guardedBuilds: Object.freeze([]),
 });
+export const DEPENDENCY_MANAGER_DEFAULTS = Object.freeze({ name: 'npm', root: '.', requireVersionDeclaration: true, checkInstalledVersion: true });
+export const DEPENDENCY_LOCK_DEFAULTS = Object.freeze({ path: null, checkManifestSync: true, checkConflictingLockfiles: true });
+export const DEPENDENCY_TOOL_DEFAULTS = Object.freeze({ enabled: true, requireDeclaredDependencies: true, checkToolVersions: true, checkNodeEngines: true, checkPeerDependencies: true, checkConfigLoading: true, checkRequiredScripts: true });
+
 export const DEFAULT_DEPENDENCY_POLICY_CONFIG = Object.freeze({
   enabled: true,
   requireExactVersions: true,
   requireLockfile: true,
-  allowedProtocols: Object.freeze(['npm', 'workspace']),
+  checkConflictingDeclarations: true,
+  packageManager: DEPENDENCY_MANAGER_DEFAULTS,
+  lockfile: Object.freeze({ ...DEPENDENCY_LOCK_DEFAULTS, path: 'package-lock.json' }),
+  toolReadiness: DEPENDENCY_TOOL_DEFAULTS,
   bannedPackages: Object.freeze([]),
 });
 export const DEFAULT_COMMIT_MESSAGE_CONFIG = Object.freeze({
@@ -354,6 +343,16 @@ export const DEFAULT_COMMIT_MESSAGE_CONFIG = Object.freeze({
     allowCi: false,
   }),
 });
+/** 新建仓库和显式启用时写入；读取既有配置继续尊重其原值。 */
+export const COMMIT_MESSAGE_PRESET = Object.freeze({
+  ...DEFAULT_COMMIT_MESSAGE_CONFIG,
+  enabled: true,
+  merge: Object.freeze({ allowed: false }),
+  breakingChange: Object.freeze({
+    ...DEFAULT_COMMIT_MESSAGE_CONFIG.breakingChange,
+    requireMajorVersionOnRelease: false,
+  }),
+});
 const DEFAULT_ARCHITECTURE_TEST_PATTERN = String.raw`(?:^|/)(?:__tests__|tests?)/|\.(?:spec|test)\.[cm]?[jt]sx?$`;
 export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
   enabled: false,
@@ -380,7 +379,10 @@ export const DEFAULT_ARCHITECTURE_CONFIG = Object.freeze({
       name: 'no-production-to-tests',
       comment: '生产代码不得导入仅供测试使用的模块。',
       severity: 'error',
-      from: Object.freeze({ path: '^src/', pathNot: DEFAULT_ARCHITECTURE_TEST_PATTERN }),
+      from: Object.freeze({
+        path: '^src/',
+        pathNot: DEFAULT_ARCHITECTURE_TEST_PATTERN,
+      }),
       to: Object.freeze({ path: DEFAULT_ARCHITECTURE_TEST_PATTERN }),
     }),
   ]),
@@ -431,9 +433,7 @@ export const DEFAULT_FILE_PLACEMENT_CONFIG = Object.freeze({
         'public/assets/**',
         'docs/assets/**',
       ]),
-      exceptions: Object.freeze([
-        'public/favicon.{ico,png,svg}',
-      ]),
+      exceptions: Object.freeze(['public/favicon.{ico,png,svg}']),
       suggestedDirectory: 'src/assets',
     }),
     Object.freeze({
@@ -480,15 +480,6 @@ export const DEFAULT_TYPE_CHECK_CONFIG = Object.freeze({
   script: 'typecheck',
   timeoutMs: 180000,
 });
-export const DEFAULT_ACCESSIBILITY_TEST_CONFIG = Object.freeze({
-  enabled: false,
-  script: 'test:a11y',
-  timeoutMs: 180000,
-  testPatterns: Object.freeze([
-    '**/*.a11y.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
-    '**/accessibility/**/*.{spec,test}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
-  ]),
-});
 export const DEFAULT_UNIT_TEST_COVERAGE_CONFIG = Object.freeze({
   enabled: false,
   reportsDirectory: 'coverage',
@@ -500,18 +491,11 @@ export const DEFAULT_UNIT_TEST_COVERAGE_CONFIG = Object.freeze({
     changedLines: 90,
   }),
 });
-export const DEFAULT_COMPONENT_INTERACTION_CONFIG = Object.freeze({
-  enabled: false,
-  componentPatterns: Object.freeze([
-    'src/components/**/*.vue',
-  ]),
-});
 export const DEFAULT_UNIT_TEST_CONFIG = Object.freeze({
   enabled: false,
   script: 'test:unit',
   timeoutMs: 120000,
   coverage: DEFAULT_UNIT_TEST_COVERAGE_CONFIG,
-  componentInteraction: DEFAULT_COMPONENT_INTERACTION_CONFIG,
   requireTests: 'newFiles',
   sourcePatterns: Object.freeze([
     'src/utils/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',

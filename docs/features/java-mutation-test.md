@@ -94,7 +94,7 @@ repo-guard java-mutation-test --project api
 
 单应用可以省略 `--project api`。先填完整配置，再使用 `repo-guard enable javaMutationTest --project api`；关闭使用对应 `disable` 命令。
 
-门禁默认关闭。启用后可手动运行，或进入可选 pre-push、CI `full`、`release-ready` 检查。它不进入 pre-commit 和 CI `policy`；CI 还需要启用公共 CI 能力，并根据模式配置继承、报告或阻断策略。
+新建模板中门禁默认开启，已有配置省略值保持关闭。配置齐全后可手动运行，或进入可选 pre-push、CI `full`、`release-ready` 检查。它不进入 pre-commit 和 CI `policy`；CI 还需要启用公共 CI 能力，并根据模式配置继承、报告或阻断策略。
 
 执行顺序：
 
@@ -136,3 +136,7 @@ POM 采用允许字段校验，未知字段也会拒绝。不能通过历史文�
 - 原生测试使用 `REPO_GUARD_JAVA_NATIVE_PIT=1` 和显式 `REPO_GUARD_JAVA_MAVEN_REPOSITORY` 启动；在已准备缓存后验证离线成功、阈值失败、基线失败和全部跳过，默认单元测试不下载 PIT。
 
 原生协议依据：[PIT Maven 接入](https://pitest.org/quickstart/maven/)、[PIT 状态定义](https://github.com/hcoles/pitest/blob/master/pitest/src/main/java/org/pitest/mutationtest/DetectionStatus.java)、[PIT XML 输出实现](https://github.com/hcoles/pitest/blob/master/pitest-entry/src/main/java/org/pitest/mutationtest/report/xml/XMLReportListener.java)。
+
+## Java 新建模板
+
+7.1.5 起 java-maven 新建模板默认开启全部 18 项专属检查。上文和 Schema 的字段默认值仍用于已有配置补缺，不改变显式关闭值。新建模板保留 command=null、modules=[]、pluginVersion 等真实接入缺项，不填写虚构路径或版本；这些缺项不满足严格运行配置 Schema，init 会保留待补齐配置并报错，校验通过前不安装 Hook。由人或后续 Skill 补齐工具、模块、报告、产物和插件版本后，再运行 init 与 Doctor 验证。

@@ -56,3 +56,13 @@ repo-guard 使用消费项目 dependency-cruiser 执行分析，不承诺理解�
 ## 维护依据
 
 [实现入口](../../src/gates/quality/architecture-gate.js) · [对应测试](../../test/gates/quality/architecture.test.js)
+
+## 前端初始化模板
+
+前端初始化的开关、目录、规则及新增字段见[前端维护预设](frontend-maintenance-presets.md)；既有项目读取配置不会被自动改写。
+
+## Node 新建预设
+
+7.1.4 起本项在新建 Node 后端配置中默认开启（类型检查仅限 node-typescript）。原有规则、阈值与配置字段不变；已有项目不因读取或升级而开启。实际工具、脚本和检查范围仍需接入准备，见 [Node 后端规范](node-backend.md)。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

@@ -35,7 +35,7 @@ npx repo-guard ci --profile full --project api --base <sha> --head <sha>
 
 | 配置档 | 内容 |
 |---|---|
-| `policy` | 结构化例外、AGENTS、提交信息、异步资源、路径命名、UI Token、安全与基础可访问性、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
+| `policy` | 结构化例外、AGENTS、提交信息、异步资源、路径命名、UI Token、源码安全、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
 | `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、Knip、无效图片、完整单元测试/覆盖率、axe、架构和构建 |
 | `release-ready` | 使用 `full` 的通用工程检查，加适用且启用的 Lighthouse 和最终交付证据复核；不强制项目提供固定的 `check`、`test`、`pack:check` 脚本，不执行 npm 发布 |
 
@@ -82,11 +82,11 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
     "gatePolicy": {
       "defaultMode": "inherit",
       "gates": {
-        "security.dynamic-code": {
+        "security.source-security": {
           "mode": "enforce",
           "scope": "changed-files"
         },
-        "accessibility.vue-image-alt": {
+        "dependencies.policy": {
           "mode": "report"
         },
         "repository.maximum-file-lines": {
@@ -108,9 +108,9 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 | `ci.reportPath` | 整体 CI JSON 报告的仓库相对路径 | 字符串<br>默认：`"reports/repo-guard.json"` | 仓库相对 reports/*.json 路径；必须在 reports/ 下以 .json 结尾，不覆盖已跟踪文件，不经过符号链接。 |
 | `ci.protectedFiles.action` | report 报告受保护变更；fail 阻断此类变更；block 级规则始终阻断 | `"report"` / `"fail"`<br>默认：`"report"` | 只接受列出的值 |
 | `ci.gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>单应用默认：`"inherit"`；多应用未指定时继承根默认模式 | 只接受列出的值；填写其他 Gate 覆盖不会重置本字段 |
-| `ci.gatePolicy.gates.security.dynamic-code.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `ci.gatePolicy.gates.security.dynamic-code.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
-| `ci.gatePolicy.gates.accessibility.vue-image-alt.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.gatePolicy.gates.dependencies.policy.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
+| `ci.gatePolicy.gates.security.source-security.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
+| `ci.gatePolicy.gates.security.source-security.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 | `ci.gatePolicy.gates.repository.maximum-file-lines.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
 
 <!-- config-fields:end -->
@@ -137,3 +137,9 @@ CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；�
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 
 [实现入口](../../src/orchestration/execution-plans.js) · [多应用调度](../../src/orchestration/ci/workspace-runner.js) · [多应用测试](../../test/ci/workspace-ci.test.js)
+
+## 包管理器与冻结安装
+
+托管质量 CI 根据单应用的 `repository.dependencyPolicy.packageManager` 及安装根清单中的 `packageManager` 精确版本生成准备命令。多应用根目录仅作管理入口时，使用根清单明确声明的包管理器。npm 执行 `npm ci`，pnpm 执行 `pnpm install --frozen-lockfile`，Yarn 1 执行 `yarn install --frozen-lockfile`，Yarn 现代版本执行 `yarn install --immutable`。启动门禁分别使用 `npx --no-install`、`pnpm exec`、`yarn exec`，以保留项目解析环境，包括 Yarn PnP。
+
+托管模板目前仅接受对应包管理器的默认锁文件路径；自定义锁路径需要项目自行维护并验证安装流程，不能把缓存键指向自定义文件后宣称原生安装消费了该文件。静态锁文件核对不替代冻结安装，也不替代真实工程检查。上述变更仅影响质量 CI；独立部署仍按运维配置执行。

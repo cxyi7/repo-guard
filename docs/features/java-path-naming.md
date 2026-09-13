@@ -1,6 +1,6 @@
 # Java 文件与目录命名
 
-`javaPathNaming` 独立检查 Java 文件名和目录名，命令为 `repo-guard java-path-naming`，门禁标识为 `java.path-naming`。默认关闭；启用后可用于手动检查、`pre-commit`、`pre-push`、`ci-policy`、`ci-full` 和 `release-ready`。本轮支持 Java Maven 项目。
+`javaPathNaming` 独立检查 Java 文件名和目录名，命令为 `repo-guard java-path-naming`，门禁标识为 `java.path-naming`。新建模板默认开启，已有配置省略时关闭；启用后可用于手动检查、`pre-commit`、`pre-push`、`ci-policy`、`ci-full` 和 `release-ready`。本轮支持 Java Maven 项目。
 
 检查读取当前应用的完整 Git index 路径，即使本次变更列表为空，也会检查范围内已暂存和此前已跟踪的路径。暂存删除的路径不再参与；未跟踪文件不参与。未暂存的文件重命名不会改变 index 中被检查的名称。门禁不需要 JDK，不读取 Java 语法，不修改或重命名文件，也不调整暂存区。
 
@@ -107,3 +107,9 @@
 命名违规使用公共违规状态和退出码；配置错误或无法读取 Git index 使用公共配置、执行错误，不把空读取结果当作成功。门禁关闭时为跳过。当前仅声明 `all-files` 范围，不能把部分变更检查当作完整命名检查。
 
 本门禁负责名称；`javaFiles` 和 `filePlacement` 负责文件位置或禁止产物，文件保护负责禁止未授权变更，`javaNaming` 负责 Java 语义中的标识符命名。它们独立配置和报告。团队目录后缀规则由项目明确配置，不内置业务分层或业务类职责。
+
+## Java 新建模板
+
+7.1.5 起 java-maven 新建模板默认开启全部 18 项专属检查。上文和 Schema 的字段默认值仍用于已有配置补缺，不改变显式关闭值。新建模板保留 command=null、modules=[]、pluginVersion 等真实接入缺项，不填写虚构路径或版本；这些缺项不满足严格运行配置 Schema，init 会保留待补齐配置并报错，校验通过前不安装 Hook。由人或后续 Skill 补齐工具、模块、报告、产物和插件版本后，再运行 init 与 Doctor 验证。
+
+本项可关联应用的[目录职责与路径绑定](directory-roles.md)。新建预设的已绑定范围随目录引用解析，用户显式路径优先；原生工具配置须按接入规则单独核对。职责说明不代表业务语义已验证。

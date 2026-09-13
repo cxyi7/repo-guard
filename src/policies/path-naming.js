@@ -67,6 +67,12 @@ export function inspectPathNaming({ files, config, skipFiles = [] }) {
   const violations = [];
 
   for (const file of selectedFiles) {
+    const extension = path.posix.extname(file);
+    if (config.lowercaseExtension && extension !== extension.toLowerCase()) {
+      violations.push({ ...namingViolation(file, extension, 'file', config.convention),
+        issue: 'path-naming/uppercase-extension', message: `文件扩展名 ${extension} 必须小写`,
+        expected: `使用扩展名 ${extension.toLowerCase()}`, remediation: '将扩展名改为小写并同步引用。' });
+    }
     for (const name of fileNameSegments(file)) {
       if (!pattern.test(name)) {
         violations.push(namingViolation(file, name, 'file', config.convention));

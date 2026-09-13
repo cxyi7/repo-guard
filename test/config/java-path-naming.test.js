@@ -156,7 +156,7 @@ test("功能文档完整配置示例通过路径命名 Schema 与规范化校验
     new URL("../../docs/features/java-path-naming.md", import.meta.url),
     "utf8",
   );
-  const examples = [...documentation.matchAll(/```json\n([\s\S]*?)\n```/g)].map(
+  const examples = [...documentation.matchAll(/```json\r?\n([\s\S]*?)\r?\n```/g)].map(
     (match) => JSON.parse(match[1]),
   );
   assert.equal(examples.length, 1);

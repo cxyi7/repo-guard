@@ -122,7 +122,7 @@ test('forbids untyped Error and AggregateError construction across project bound
     'core/policy/managed-policy.js',
     'core/result/gate-result.js',
     'core/result/exit-code.js',
-    'gates/security/dynamic-code-gate.js',
+    'gates/security/source-security-gate.js',
     'integrations/npm/external-script.js',
   ]);
   for (const root of [SOURCE_ROOT, TEST_ROOT]) {
@@ -194,7 +194,6 @@ test('keeps managed AGENTS prompts and process repair guidance in central catalo
     'quality.typecheck',
     'quality.build',
     'quality.unit-test',
-    'quality.accessibility-test',
     'quality.lighthouse:build',
     'quality.lighthouse:collect',
     'quality.lighthouse:assert',

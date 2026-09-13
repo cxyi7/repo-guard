@@ -108,7 +108,6 @@ function gateContext(root, projectConfig) {
 test('所有消费项目使用同一个工程交付检查计划，而不是 npm 包发布计划', () => {
   const expected = [
     ...ciFullPlan.steps.map(({ id }) => id),
-    'quality.lighthouse',
     'release.delivery-evidence',
   ];
   assert.deepEqual(

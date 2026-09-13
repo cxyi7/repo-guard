@@ -16,7 +16,7 @@ export const mutationTestGate = definePlatformGate({
   featureName: 'mutationTest',
   featureOrder: 145,
   doctorOrder: 55,
-  environments: ['manual'],
+  environments: ['manual', 'ci-full', 'release-ready'],
   defaultTimeoutMs: DEFAULT_MUTATION_TEST_CONFIG.timeoutMs,
   manualCommand: 'mutation-test',
   manualOrder: 65,

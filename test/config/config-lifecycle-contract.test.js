@@ -76,7 +76,8 @@ test('keeps starter top-level configuration synchronized with the public schema'
   );
   assert.doesNotThrow(() => normalizeProjectDocument(starter));
   assert.equal(validateSchema(starter), true, JSON.stringify(validateSchema.errors));
-  assert.deepEqual(collectSchemaDefaultDifferences(singleSchema, starter), []);
+  const runtimeDefaults = normalizeProjectDocument({ version: 2, project: frontend });
+  assert.deepEqual(collectSchemaDefaultDifferences(singleSchema, runtimeDefaults), []);
 });
 
 test('keeps every configurable Gate connected to starter config and schema paths', () => {
@@ -97,13 +98,13 @@ test('keeps every configurable Gate connected to starter config and schema paths
   }
 });
 
-test('50 个开关在新文档、真实 Schema 和运行时保持一致', () => {
+test('46 个顶层开关在新文档、真实 Schema 和运行时保持一致', () => {
   const externalFeatures = [
     ...Object.keys(singleSchema.properties.checks.properties),
     'codePlacement', 'commitMessage', 'dependencies', 'deliveryContract', 'repositoryFilePlacement',
     'notification', 'commitAnimation', 'ci',
   ];
-  assert.equal(externalFeatures.length, 50);
+  assert.equal(externalFeatures.length, 46);
   assert.deepEqual([...externalFeatures].sort(), [...CONFIGURABLE_FEATURES].sort());
   for (const preset of ['vue-typescript', 'vue-javascript', 'node-typescript', 'node-javascript']) {
     const descriptor = { id: 'app', role: preset.startsWith('node') ? 'backend' : 'frontend', stack: 'node', preset };
@@ -124,10 +125,8 @@ test('50 个开关在新文档、真实 Schema 和运行时保持一致', () => 
 test('derives configurable Gate feature names from the Registry without omissions', () => {
   const registryFeatures = gateRegistry.configurable.map(({ featureName }) => featureName);
   const nonGateFeatures = [
-    'componentInteraction',
     'coverage',
     'fileHeader',
-    'functionDocs',
     'notification',
     'commitAnimation',
     'ci',
@@ -139,6 +138,10 @@ test('derives configurable Gate feature names from the Registry without omission
 
 test('Java 与 Node 检查的技术栈隔离同时受公开 Schema 和运行时约束', () => {
   const java = createProjectDocument({ id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' });
+  assert.equal(validateSchema(java), false);
+  assert.throws(() => normalizeProjectDocument(java), /必须显式指定已准备的工具/);
+  // 用已有明确关闭配置隔离技术栈校验，避免被无关的工具缺项遮蔽。
+  for (const check of Object.values(java.checks)) check.enabled = false;
   assert.equal(validateSchema(java), true, JSON.stringify(validateSchema.errors));
   const badJava = structuredClone(java);
   badJava.checks.eslint.enabled = true;
@@ -161,6 +164,8 @@ test('公开 Java Schema 与功能模块维护的约束同步，并拒绝开启�
     assert.deepEqual(singleSchema.properties.checks.properties[feature], fragment, feature);
   }
   const java = createProjectDocument({ id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' });
+  for (const check of Object.values(java.checks)) check.enabled = false;
+  assert.equal(validateSchema(java), true, JSON.stringify(validateSchema.errors));
   for (const feature of ['javaFormat', 'javaArchitecture', 'javaDependencies', 'javaCompile', 'javaBuild', 'javaTest', 'javaCoverage', 'javaSpotbugs', 'javaMutationTest']) {
     const enabled = structuredClone(java);
     enabled.checks[feature].enabled = true;

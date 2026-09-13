@@ -95,7 +95,7 @@ function createFixture() {
     "  : JSON.stringify({ issues: [] });",
     'process.stdout.write(result);',
     "const configurationHintCount = existsSync('knip-hint.txt') ? 1 : 0;",
-    "process.stdout.write(`\\n@@REPO_GUARD_KNIP_METADATA@@${JSON.stringify({ configurationHintCount })}\\n`);",
+    "process.stdout.write(`\\n@@REPO_GUARD_KNIP_METADATA@@${JSON.stringify({ configurationHintCount, processedFiles: 1, totalFiles: 1 })}\\n`);",
     "process.exit(result.includes('\\\"issues\\\":[]') && configurationHintCount === 0 ? 0 : 1);",
     '',
   ].join('\n'));

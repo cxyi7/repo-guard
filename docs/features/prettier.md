@@ -8,6 +8,8 @@
 
 ## 接入与配置
 
+前端预设可保存到 `checks.prettier.options`，作为 `requireConfig` 接受的配置来源；逐文件原生配置与 overrides 优先，未覆盖项使用内联值，重复启用保留修改。完整模板和查询方式见[前端工具预设](frontend-tool-presets.md)。
+
 ```bash
 npm install --save-dev --save-exact "prettier@>=3 <4"
 ```

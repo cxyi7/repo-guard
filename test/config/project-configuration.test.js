@@ -50,11 +50,10 @@ test('Node 默认覆盖后端源码且不启用前端专用能力', () => {
   assert.deepEqual(document.checks.unitTest.sourcePatterns, [
     'src/**/*.{js,mjs,cjs,ts,mts,cts}',
   ]);
-  assert.equal(document.checks.componentInteraction.enabled, false);
   assert.equal(document.checks.lighthouse.enabled, false);
   assert.deepEqual(
     serializeProjectConfig(normalizeProjectDocument(document)),
-    document,
+    serializeProjectConfig(document),
   );
 });
 

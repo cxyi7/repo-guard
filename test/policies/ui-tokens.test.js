@@ -13,7 +13,7 @@ function inspect(styleFacts, manifest = loadedManifest(), config = policyConfig(
 }
 
 for (const language of ['css', 'sass', 'less']) {
-  test(`${language} 的十二类样式允许已登记值，阻断原始值`, () => {
+  test(`${language} 的十一类样式允许已登记值，阻断原始值`, () => {
     const manifest = loadedManifest();
     for (const [index, [, category, property, raw]] of TOKEN_CASES.entries()) {
       const reference = manifest.tokens[index].aliases[language][0];
@@ -36,7 +36,7 @@ for (const language of ['css', 'sass', 'less']) {
     assert.equal(inspect([fact(language, 'background', `linear-gradient(${missing}, transparent)`)]).violations.length, 1);
   });
 
-  test(`${language} 图标尺寸限定于指定选择器，保留中性常量和非受控属性`, () => {
+  test(`${language} 不按选择器推断图标身份，保留中性常量和非受控属性`, () => {
     assert.deepEqual(inspect([
       fact(language, 'padding', '0 auto'),
       fact(language, 'box-shadow', 'none'),
@@ -46,7 +46,7 @@ for (const language of ['css', 'sass', 'less']) {
       fact(language, 'border', '1px solid transparent'),
       fact(language, 'background', 'url("/images/red.png")'),
     ]).violations, []);
-    assert.equal(inspect([fact(language, 'width', '24px', { selector: 'button.icon:hover' })]).violations.length, 1);
+    for (const selector of ['button.icon:hover', '.ui-icon .label', 'svg.chart']) assert.equal(inspect([fact(language, 'width', '24px', { selector })]).violations.length, 0);
   });
 
   test(`${language} 变量只允许在清单来源定义，不允许组件覆盖`, () => {

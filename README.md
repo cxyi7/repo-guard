@@ -1,5 +1,9 @@
 # repo-guard
 
+当前重构目标版本为 **2.0.0（未发布）**。本轮各功能统一在 `refactor/node-engineering-2.0.0` 汇总；历史审查文件名中的较高版本号仅保留为开发阶段索引。
+
+前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](docs/features/frontend-performance-presets.md)。
+
 **把团队的开发规范变成自动检查。**
 
 repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**，用于 Vue 前端、Node.js 后端和 Java Maven 后端。人或 AI 明确配置项目身份与团队要求，它在 Git 提交、推送和 CI 阶段检查代码格式、目录规范、依赖、测试和构建，让不同成员和 AI 按同一套要求开发。
@@ -24,11 +28,11 @@ repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**�
 
 无论代码由开发者还是 AI 编写，都按同一套约定接受检查。你可以用它做三件事：
 
-- **按项目选择规则**：提供 **50 个可配置功能**，其中 18 项为 Java 专用检查。按应用的技术栈启用能力、调整范围和要求，例如约束 Java 文件与目录命名、检查字节码缺陷或验证测试能否发现错误。
+- **按项目选择规则**：提供 **46 个可配置功能**，其中 18 项为 Java 专用检查。按应用的技术栈启用能力、调整范围和要求，例如约束 Java 文件与目录命名、检查字节码缺陷或验证测试能否发现错误。
 - **统一团队规范**：把约定保存在项目配置中，在提交前自动检查，减少人工反复提醒和代码评审中的基础问题。
 - **管理完整交付过程**：按需关联需求、开发任务、测试结果、人工验收和反馈，让发现的问题推动下一轮需求、测试与规则改进。
 
-[看看实际效果](#提交检查示例) · [安装](#安装) · [50 项可配置功能](#配置规则) · [Java 检查](#java-后端检查) · [交付流程](#完整交付闭环) · [猫狗动画](#提交时的小伙伴) · [功能](#功能) · [使用说明](docs/usage-guide.md)
+[看看实际效果](#提交检查示例) · [安装](#安装) · [46 项可配置功能](#配置规则) · [Java 检查](#java-后端检查) · [交付流程](#完整交付闭环) · [猫狗动画](#提交时的小伙伴) · [功能](#功能) · [使用说明](docs/usage-guide.md)
 
 ## 提交检查示例
 
@@ -63,7 +67,7 @@ npx repo-guard init --project api --role backend --stack node --preset node-type
 - `init` 按明确选择的预设创建配置，安装 Git Hook，让相应检查在 Git 操作时自动执行；同时同步项目脚本和 `AGENTS.md` 中供开发者与 AI 阅读的团队规范。
 - `doctor` 检查配置、依赖与托管文件是否就绪，告诉你还需要补齐什么。
 
-repo-guard 使用项目已有的工具：Node 项目使用 ESLint、Prettier、Stylelint 及测试、构建脚本；Java 项目使用自己的 JDK 与 Java 检查工具。安装这个包后，仍需按 `doctor` 提示准备对应依赖与配置。Node 预设首次初始化会启用部分基础检查，Java 的工程检查默认关闭；已有非托管 Hook 会提示冲突。详见[接入准备与默认开关](docs/usage-guide.md#快速开始)。
+repo-guard 使用项目已有的工具：Node 项目使用 ESLint、Prettier、Stylelint 及测试、构建脚本；Java 项目使用自己的 JDK 与 Java 检查工具。安装这个包后，仍需按 `doctor` 提示准备对应依赖与配置。Node 预设首次初始化会启用部分基础检查，Java 新建模板的 18 项检查默认开启，工具和模块等缺项必须补齐后才能完成初始化；已有非托管 Hook 会提示冲突。详见[接入准备与默认开关](docs/usage-guide.md#快速开始)。
 
 项目与工作区配置只支持 `version: 2`，不提供旧配置转换命令或兼容执行。已有旧配置会被拒绝且保持原文件不变；请人工保存原资料，按新架构重新建立配置。详见[配置管理与规则启停](docs/features/configuration-management.md)。
 
@@ -84,11 +88,10 @@ git commit -m "feat: 添加用户信息"
 
 ## 配置规则
 
-**50 个可配置功能，按应用需要选择。** 包含原有 31 项前端、Node 与通用能力、18 项 Java 能力，以及仓库级文件归位；不同技术栈的专用检查不会互相套用。
+**46 个可配置功能，按应用需要选择。** 包含27 项前端、Node 与通用能力、18 项 Java 能力，以及仓库级文件归位；不同技术栈的专用检查不会互相套用。
 
-[![前端、Node 与通用能力的 31 项功能表；Java 新增能力见下方](docs/images/configurable-features-table.png)](docs/images/configurable-features-table.png)
 
-*上图展示原有的 31 项能力，点击可查看大图。Java 检查见下方；全部 50 个可复制功能名、用法和开关联动见[使用说明 · 能力开关表](docs/usage-guide.md#启用或关闭能力)。*
+全部功能及其默认状态见[使用说明 · 能力开关表](docs/usage-guide.md#启用或关闭能力)。
 
 单应用的团队约定保存在项目根目录的 `repo-guard.config.json` 中。多应用分别维护自己的工程规则，根配置只保存公共约定。提交这些配置，让同一应用的成员和 AI 使用同一套要求。
 
@@ -115,7 +118,7 @@ npx repo-guard doctor --fix
 npx repo-guard doctor
 ```
 
-动态代码检查适用于 Node 技术栈。Vue 的 `v-html`、新窗口链接、表单标签和图片替代文本检查只适用于前端；这些硬性检查不计入 50 个开关。
+前端新增 [源码安全六组规则](docs/features/source-security.md)，统一由 `checks.sourceSecurity` 控制。只提供 `source-security` 命令和 `security.source-security` 门禁；Node 后端默认只开启动态代码分类。
 
 ### Java 后端检查
 
@@ -132,7 +135,7 @@ repo-guard doctor
 | 工程约束 | 架构规则、依赖与插件策略、文件存放与禁止产物入库 |
 | 可执行验证 | 编译、构建产物、单元与集成测试、覆盖率 |
 
-Java 的 18 项检查默认关闭；先由人或 AI 准备工具与基础配置，再按需开启。源码格式修复只作用于本次暂存文件；编译、构建、测试、覆盖率、SpotBugs 和 PIT 留在推送、CI 或手动检查。必需测试没有运行、报告过期或缺失、工具启动失败均会阻断，不能只凭命令返回成功就通过。
+Java 新建模板的 18 项检查默认开启；先由人或 AI 补齐工具与基础配置，缺项时严格阻断，已有配置保留。源码格式修复只作用于本次暂存文件；编译、构建、测试、覆盖率、SpotBugs 和 PIT 留在推送、CI 或手动检查。必需测试没有运行、报告过期或缺失、工具启动失败均会阻断，不能只凭命令返回成功就通过。
 
 Maven 检查共用启动配置预检，防止 `.mvn` 文件或环境参数暗中关闭规则。遇到不支持的覆盖会明确提示调整位置；允许的资源参数与配置方式见 [Java 工程检查](docs/features/java-engineering.md)。
 
@@ -214,7 +217,7 @@ npx repo-guard animation-preview --theme dog --type perf
 | 每个人的代码格式、文件命名和目录习惯不同 | 格式检查与修复、路径命名、文件归位、行数限制 | [代码与团队规范](docs/usage-guide.md#常用使用方式) |
 | 提交信息不统一，AI 缺少明确的项目约定 | 提交信息检查、AGENTS 规范同步 | [提交信息](docs/features/commit-message.md) · [团队规范](docs/features/managed-agent-policies.md) |
 | 页面颜色、间距、字号各写各的，AI 随意使用数值 | 样式 Token 检查，支持原生 CSS、SCSS/Sass、Less | [样式 Token](docs/features/ui-tokens.md) |
-| Vue 代码容易遗漏资源清理和安全要求 | 异步资源清理、安全与可访问性检查 | [能力索引](docs/features/README.md#提交阶段质量与安全) |
+| Vue 代码容易遗漏资源清理和安全要求 | 异步资源清理、源码安全检查 | [能力索引](docs/features/README.md#提交阶段质量与安全) |
 | 图片重复、文件无效、依赖声明混乱 | 图片治理、无效图片与代码检查、依赖策略 | [仓库与代码治理](docs/features/README.md#仓库与代码治理) |
 | 测试、构建和性能要求靠人工记忆执行 | 类型检查、测试与覆盖率、架构、构建预算、Lighthouse、接口压测 | [测试与性能](docs/features/README.md#测试构建与性能) |
 | CI 与本地规范脱节，交付依据难以追踪 | CI 规则复核、GitLab 流水线、交付合同与发布前检查 | [GitLab CI](docs/features/gitlab-ci.md) · [交付合同](docs/features/delivery-contract.md) |
@@ -247,6 +250,50 @@ npm test
 npm run pack:check
 ```
 
+## 前端工具预设
+
+Vue 项目启用 ESLint、Prettier、Stylelint 或类型检查时，可将完整规则保存到 `repo-guard.config.json` 的 `checks.<工具>.options`。重复启用保留修改，原生工具配置优先。使用 `repo-guard tool-config --tool prettier --file src/App.vue` 查看合并结果；依赖仍使用消费项目安装，不在 Hook 中下载。详见[前端工具预设](docs/features/frontend-tool-presets.md)。
+
 ## 许可证
 
 [MIT](LICENSE) © cxyi7
+
+前端初始化默认开启文件归位、src 命名与规模、架构分层、异步清理、函数文档和文件头。测试位于 `src/tests/`、专用类型位于 `src/types/`、独立样式位于根 `styles/`。架构预设不限制依赖包内部路径。见[维护预设](docs/features/frontend-maintenance-presets.md)。
+
+前端图片预设支持全量治理、接口字段保留说明、用途预算、动画与页面图片检查，以及显式批量优化。详见 [图片治理预设](docs/features/frontend-image-presets.md)。
+
+前端图片治理的审查修复、真实复现与验证边界见 [3.2.0 图片治理审查记录](docs/reviews/frontend-image-governance-3.2.0.md)。Lighthouse 每次执行独立保存诊断，重跑不覆盖之前的失败记录。
+
+样式能力统一在 `checks.stylelint`：`options` 保存可修改的原生规则，`governance` 管理隔离与全局目录，`uiTokens` 管理设计变量。新前端预设开启 Stylelint 与治理，Token 待设计规范确认后开启；命令统一为 `repo-guard stylelint`。见[统一样式配置](docs/features/stylelint.md)。
+
+2.0.0 为当前未发布源码版本，本轮未执行 npm 发布。
+
+本轮样式合并的复现、修复与验证记录见 [4.0.0 统一 Stylelint 审查](docs/reviews/unified-stylelint-4.0.0.md)。
+
+UI Tokens 已移除图标尺寸专项及 `iconSelectors`，不根据命名猜测组件身份；其他设计类别仍依据明确属性和项目清单校验。
+
+### Token 指定值与生成 CSS
+
+为消费项目提供最佳配置时，先按[消费项目预设设计原则](docs/features/consumer-preset-design-principles.md)建立规范和确认范围，不假设其代码已经符合推荐结构。
+
+`checks.stylelint.uiTokens.values` 可核对源码定义的位置、条件和指定值；可选 `artifacts` 在真实构建后校验 CSS 输出。配置仍由用户修改，源码检查无需浏览器，不承诺运行时渲染结果。详见[配置与边界](docs/features/ui-token-values.md)。
+
+6.0.0 已删除表单标签和图片替代文本固定门禁及专用适配模块，不保留兼容入口。详见[删除说明](docs/features/template-accessibility-removal.md)。
+
+7.1.0 的[依赖策略](docs/features/dependency-policy.md)支持 npm、pnpm、Yarn 普通依赖声明、锁文件与已启用工具就绪检查。删除特殊引用白名单，特殊引用跳过检查；安装根与包管理器由项目明确配置。静态检查不等于真实冻结安装成功。
+
+7.1.0 前端新建预设默认开启 Knip 核心检查，支持可修改的内联配置及用户原生配置优先。实际入口、工作区、扫描范围和插件由项目配置确定，接入工作见 [Knip 配置说明](docs/features/dead-code.md)。
+
+7.1.1 新建配置默认开启[提交规范](docs/features/commit-message.md)，禁止 merge commit，保留本地自动变更文件摘要；既有用户设置不被读取或启用操作覆盖。受控挑拣属于交付合同后续计划。
+
+7.1.2 前端 TypeScript 新预设默认开启类型检查；前端 Stylelint 默认开启 UI Tokens 主开关，实际设计清单必须由项目提供。已有显式设置保留。
+
+7.1.3 完成前端与 [Node 后端适用性审查](docs/features/node-backend.md)，修正工具需求、模块扩展名、Prettier 配置加载目标、脚本就绪与 Windows 路径处理；Node 后端继续使用独立原生工具配置。
+
+7.1.4 默认开启 Node 后端的通用工程检查，TypeScript 开启类型检查；普通 Stylelint、图片和代码位置保持关闭。已有配置不改写，详见 [Node 后端规范](docs/features/node-backend.md)。
+
+7.1.5 将 Java 新建模板的 18 项检查默认开启。真实工具、模块、报告与插件版本必须补齐；缺项时 init 保留待接入配置并报错，不安装 Hook。已有配置保持。
+
+7.2.0 新增 [目录职责与路径绑定](docs/features/directory-roles.md)：目录名称与用途可修改，测试、归位、架构、Java 源码根等按引用解析；用户显式路径优先，职责说明不证明业务语义。
+
+前端与 Node 后端分别提供通用目录职责模板：前端 23 项、Node 13 项，JavaScript 与 TypeScript 均适用。默认路径与用途可编辑，具体清单和查找范围联动见[目录职责与路径绑定](docs/features/directory-roles.md)。
