@@ -1,0 +1,3063 @@
+{
+  "date": "2026-09-14",
+  "scope": "固定 Vue TypeScript 与 Java Maven 项目当前配置的 CI 专项验收",
+  "package": {
+    "version": "2.0.0",
+    "commit": "3ca30dde1864a385251c9e372357fbcef3fc5462",
+    "sha256": "4984bcaae98dbcb9f153bc41e0c60653b59fb1323e469de6c005f3ec2b5726d1"
+  },
+  "packageTests": {
+    "tests": 1548,
+    "passed": 1528,
+    "skipped": 20,
+    "failed": 0
+  },
+  "notificationUserConfirmed": true,
+  "credentialLeaks": 0,
+  "localBoundaries": [
+    {
+      "project": "repo-guard-acceptance",
+      "scenario": "未提交源码",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance",
+      "scenario": "暂存源码",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance",
+      "scenario": "未跟踪文件",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance",
+      "scenario": "无效Git范围",
+      "exitCode": 3,
+      "expected": 3,
+      "status": "range-error",
+      "code": "ci-range/base-revision-unavailable",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance",
+      "scenario": "未提交配置",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "scenario": "未提交源码",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "scenario": "暂存源码",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "scenario": "未跟踪文件",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "scenario": "无效Git范围",
+      "exitCode": 3,
+      "expected": 3,
+      "status": "range-error",
+      "code": "ci-range/base-revision-unavailable",
+      "credentialsRedacted": true
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "scenario": "未提交配置",
+      "exitCode": 1,
+      "expected": 1,
+      "status": "configuration-error",
+      "code": "ci/subject-mismatch",
+      "credentialsRedacted": true
+    }
+  ],
+  "publicGateRejection": [
+    {
+      "project": "repo-guard-acceptance",
+      "head": "4f54b978b679805012324ddf29d98b8ce62e3a4d",
+      "exitCode": 1,
+      "status": "configuration-error",
+      "code": "ci-gate-policy/required-gate"
+    },
+    {
+      "project": "repo-guard-acceptance-back",
+      "head": "30a6440953c20841d199367b3f331bb9f67e9f57",
+      "exitCode": 1,
+      "status": "configuration-error",
+      "code": "ci-gate-policy/required-gate"
+    }
+  ],
+  "pipelines": [
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3318,
+      "sha": "90c2553c9cdee60d95dd0765dccebd95368cbc76",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3318",
+      "jobs": [
+        {
+          "id": 7845,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 1,
+          "credentialLeak": false,
+          "notification": [],
+          "report": {
+            "status": "range-error",
+            "base": null,
+            "head": null,
+            "errorCode": "ci-range/base-revision-unavailable",
+            "steps": []
+          }
+        },
+        {
+          "id": 7846,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3321,
+      "sha": "93fa286bb8f673cf20181ec589e09ab311908a58",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3321",
+      "jobs": [
+        {
+          "id": 7850,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "90c2553c9cdee60d95dd0765dccebd95368cbc76",
+            "head": "93fa286bb8f673cf20181ec589e09ab311908a58",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7852,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3322,
+      "sha": "8428d388b10339272d4bb3e4c478cb6081486e63",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3322",
+      "jobs": [
+        {
+          "id": 7853,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "93fa286bb8f673cf20181ec589e09ab311908a58",
+            "head": "8428d388b10339272d4bb3e4c478cb6081486e63",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7854,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3325,
+      "sha": "17807087544dd0018dd03bbdd6fc2acb7f1dd91c",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3325",
+      "jobs": [
+        {
+          "id": 7859,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 2,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "failed",
+            "base": "8428d388b10339272d4bb3e4c478cb6081486e63",
+            "head": "17807087544dd0018dd03bbdd6fc2acb7f1dd91c",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "failed",
+                "exitCode": 2,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7860,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3326,
+      "sha": "18340113d6f4acef26b67a90a2add94fba1b384c",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3326",
+      "jobs": [
+        {
+          "id": 7861,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 3,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "range-error",
+            "base": null,
+            "head": null,
+            "errorCode": "ci-range/base-revision-unavailable",
+            "steps": []
+          }
+        },
+        {
+          "id": 7862,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3328,
+      "sha": "7c6437096de68eab51a37b1440ed40804924b5f2",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3328",
+      "jobs": [
+        {
+          "id": 7865,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "18340113d6f4acef26b67a90a2add94fba1b384c",
+            "head": "7c6437096de68eab51a37b1440ed40804924b5f2",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7866,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance",
+      "id": 3329,
+      "sha": "7c6437096de68eab51a37b1440ed40804924b5f2",
+      "ref": "refs/merge-requests/1/head",
+      "source": "merge_request_event",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance/-/pipelines/3329",
+      "jobs": [
+        {
+          "id": 7867,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "87a4d292653177470c28cb558712b3a0ce0f151b",
+            "head": "7c6437096de68eab51a37b1440ed40804924b5f2",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7868,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3319,
+      "sha": "95986baec42963b19bcb05c503082e427937f089",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3319",
+      "jobs": [
+        {
+          "id": 7847,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 1,
+          "credentialLeak": false,
+          "notification": [],
+          "report": {
+            "status": "range-error",
+            "base": null,
+            "head": null,
+            "errorCode": "ci-range/base-revision-unavailable",
+            "steps": []
+          }
+        },
+        {
+          "id": 7848,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3320,
+      "sha": "a6fa4c8923e896f7e2b3c68fc94471d5fcaea2e1",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3320",
+      "jobs": [
+        {
+          "id": 7849,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "95986baec42963b19bcb05c503082e427937f089",
+            "head": "a6fa4c8923e896f7e2b3c68fc94471d5fcaea2e1",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7851,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3323,
+      "sha": "60f5ced300161ca3be988f1c9db33da238949436",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3323",
+      "jobs": [
+        {
+          "id": 7855,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 1,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "error",
+            "base": "a6fa4c8923e896f7e2b3c68fc94471d5fcaea2e1",
+            "head": "60f5ced300161ca3be988f1c9db33da238949436",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "failed",
+                "exitCode": 2,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "error",
+                "exitCode": 1,
+                "errorCode": "java/native-process-failed"
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7856,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3324,
+      "sha": "1b4ced9ebe898012eb7a26f8bab533af9bc9cec0",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "failed",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3324",
+      "jobs": [
+        {
+          "id": 7857,
+          "name": "repo_guard",
+          "status": "failed",
+          "exitCode": 1,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "configuration-error",
+            "base": "60f5ced300161ca3be988f1c9db33da238949436",
+            "head": "1b4ced9ebe898012eb7a26f8bab533af9bc9cec0",
+            "errorCode": "ci-gate-policy/required-gate",
+            "steps": []
+          }
+        },
+        {
+          "id": 7858,
+          "name": "acceptance_build",
+          "status": "skipped",
+          "exitCode": null,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3327,
+      "sha": "07964a21a924bdea5ff732b89ae098520c1ad6e7",
+      "ref": "test/ci-acceptance-2.0.0",
+      "source": "push",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3327",
+      "jobs": [
+        {
+          "id": 7863,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "1b4ced9ebe898012eb7a26f8bab533af9bc9cec0",
+            "head": "07964a21a924bdea5ff732b89ae098520c1ad6e7",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7864,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    },
+    {
+      "project": "xgjy/repo-guard-acceptance-back",
+      "id": 3330,
+      "sha": "07964a21a924bdea5ff732b89ae098520c1ad6e7",
+      "ref": "refs/merge-requests/1/head",
+      "source": "merge_request_event",
+      "status": "success",
+      "url": "http://47.120.4.95:7188/xgjy/repo-guard-acceptance-back/-/pipelines/3330",
+      "jobs": [
+        {
+          "id": 7869,
+          "name": "repo_guard",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": [
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu",
+            "飞书已确认通知发送成功",
+            "通过  ci.notification-feishu"
+          ],
+          "report": {
+            "status": "passed",
+            "base": "ba32e1bafa0539a47255e3ed9ffb91c779f4f757",
+            "head": "07964a21a924bdea5ff732b89ae098520c1ad6e7",
+            "errorCode": null,
+            "steps": [
+              {
+                "name": "repository.structured-exceptions",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "repository.global-file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.agent-policy",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.function-documentation",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.commit-message",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "async-resource-cleanup",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "path-naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "ui-tokens",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "security.source-security",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dependencies.policy",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.file-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.code-placement",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.maximum-file-lines",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "repository.delivery-contract",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "protected-files",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "stylelint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "eslint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "prettier",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "type-check",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "dead-code",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "unused-image-assets",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.unit-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "quality.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "build",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.format",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.naming",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.layout",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.imports",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.size",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.docs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.lint",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.duplication",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.dependencies",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.compile",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.spotbugs",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.architecture",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.test",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "java.coverage",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.mutation-test",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              },
+              {
+                "name": "java.build",
+                "status": "passed",
+                "exitCode": 0,
+                "errorCode": null
+              },
+              {
+                "name": "quality.lighthouse",
+                "status": "skipped",
+                "exitCode": null,
+                "errorCode": null
+              }
+            ]
+          }
+        },
+        {
+          "id": 7870,
+          "name": "acceptance_build",
+          "status": "success",
+          "exitCode": 0,
+          "credentialLeak": false,
+          "notification": []
+        }
+      ]
+    }
+  ]
+}

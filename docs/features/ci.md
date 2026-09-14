@@ -109,3 +109,5 @@ npx repo-guard ci-notification-test
 GitLab 托管模板启用 Bash 退出码保留机制；更新包后重新生成模板，防止旧 Runner 执行方式将非零作业码合并为 1。真实验收须同时核对进程退出码、JSON 报告和后续构建的阻断状态。
 
 [GitLab 接入](gitlab-ci.md) · [公共结果](gate-result-and-reporting.md) · [交付合同](delivery-contract.md) · [执行入口](../../src/orchestration/ci/command.js)
+
+固定真实消费项目的当前配置验收见 [2026-09-14 CI 记录](../ci-acceptance-2026-09-14.md)，不包含合同与发布部署闭环，也不代表全部可选能力和接入组合均已验证。
