@@ -1,6 +1,6 @@
 # repo-guard
 
-CI 可在本地或 GitLab 运行，按项目配置执行，公共检查不可关闭；成功与失败通知支持仓库配置的企业微信、飞书机器人。配置后运行 `repo-guard ci-notification-test`，日常运行 `repo-guard ci`，最终验收运行 `repo-guard delivery-check`。[CI 使用与配置](docs/features/ci.md)。
+CI 可在本地或 GitLab 运行，按项目配置执行，公共检查不可关闭；成功与失败通知支持仓库配置的企业微信、飞书机器人。配置后运行 `repo-guard ci-notification-test`，日常运行 `repo-guard ci`，最终验收运行 `repo-guard delivery-check`。GitLab 托管模板启用 Bash 退出码保留机制，升级后重新运行 `install-ci --provider gitlab`。[CI 使用与配置](docs/features/ci.md)。
 
 当前重构目标版本为 **2.0.0（未发布）**。本轮各功能统一在 `refactor/node-engineering-2.0.0` 汇总；历史审查文件名中的较高版本号仅保留为开发阶段索引。
 

@@ -610,6 +610,8 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   );
   assert.match(template, /node:22\.23\.2/);
   assert.match(template, /GIT_DEPTH: "0"/);
+  assert.match(template, /FF_USE_NEW_BASH_EVAL_STRATEGY: "true"/);
+  assert.match(template, /FF_ENABLE_BASH_EXIT_CODE_CHECK: "true"/);
   assert.match(template, /REPO_GUARD_SKIP_HOOKS: "1"/);
   assert.match(template, /CI_PIPELINE_SOURCE == "merge_request_event"/);
   assert.match(template, /CI_OPEN_MERGE_REQUESTS'\n {6}when: never/);

@@ -56,6 +56,8 @@ function templateContent(root, config) {
   image: node:22.23.2
   variables:
     GIT_DEPTH: "0"
+    FF_USE_NEW_BASH_EVAL_STRATEGY: "true"
+    FF_ENABLE_BASH_EXIT_CODE_CHECK: "true"
     REPO_GUARD_SKIP_HOOKS: "1"
     npm_config_cache: "$CI_PROJECT_DIR/.npm"
     NPM_CONFIG_AUDIT: "false"

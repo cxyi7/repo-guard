@@ -761,7 +761,7 @@
         },
         "ci": {
           "type": "object",
-          "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。",
+          "description": "CI 按项目启用配置执行，公共必查项不可关闭；GitLab 生成模板启用 Bash 退出码保留机制，部署独立接入。",
           "additionalProperties": false,
           "properties": {
             "enabled": {

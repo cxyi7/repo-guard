@@ -26,6 +26,8 @@ ci.branches 默认包含 dev、main，可配置为实际需要的完整分支名
 
 质量命令在目标提交的干净工作区运行。Git 历史深度设置为 0，依赖安装跳过 Hook。通过 npx --no-install、pnpm exec 或 yarn exec 调用已安装的工具；不在检查时自动下载新版 repo-guard。
 
+模板启用 `FF_USE_NEW_BASH_EVAL_STRATEGY` 和 `FF_ENABLE_BASH_EXIT_CODE_CHECK`，避免采用旧 Bash 执行方式的 Runner 将不同非零退出码统一显示为 1。使用当前模板重新运行 `install-ci --provider gitlab` 后，仍需在实际 Runner 核对配置错误 1、违规 2、范围错误 3；这些变量不改变包内退出码映射。验收环境 Runner 版本为 18.6.2，其[官方标志定义](https://gitlab.com/gitlab-org/gitlab-runner/-/blob/v18.6.2/helpers/featureflags/flags.go)说明了子 Shell 与逐命令退出检查的行为。
+
 ## 包管理器与冻结安装
 
 按项目声明的 npm、pnpm 或 Yarn 版本生成准备命令：npm ci、pnpm install --frozen-lockfile、Yarn 1 的 yarn install --frozen-lockfile、现代 Yarn 的 yarn install --immutable。模板只接受原生默认锁文件路径，自定义路径由项目单独维护并验证安装流程。

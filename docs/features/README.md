@@ -37,7 +37,7 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护，区分快照缺失与 Git 执行失败 |
 | 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
 | AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护，核验仓库及所选应用规范一致性 |
-| GitLab CI 安装与触发 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护，项目配置驱动、公共必检与独立通知 |
+| GitLab CI 安装与触发 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护，项目配置驱动、公共必检、独立通知与 Bash 退出码保留 |
 
 ## 提交阶段质量与安全
 

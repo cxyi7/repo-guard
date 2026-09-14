@@ -106,4 +106,6 @@ npx repo-guard ci-notification-test
 
 退出码：成功或未阻断 0；配置/执行错误 1；违规或交付未满足 2；Git 范围不可信 3。多个失败使用公共优先级，不取首个非零值。关闭项显示跳过，不显示为通过。
 
+GitLab 托管模板启用 Bash 退出码保留机制；更新包后重新生成模板，防止旧 Runner 执行方式将非零作业码合并为 1。真实验收须同时核对进程退出码、JSON 报告和后续构建的阻断状态。
+
 [GitLab 接入](gitlab-ci.md) · [公共结果](gate-result-and-reporting.md) · [交付合同](delivery-contract.md) · [执行入口](../../src/orchestration/ci/command.js)
