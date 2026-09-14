@@ -45,12 +45,12 @@ export function aggregateWorkspaceGateResults(targets) {
   });
 }
 
-function failedTargetReport(error, profile, range, target) {
+function failedTargetReport(error, phase, range, target) {
   const typed = toRepoGuardError(error, { kind: 'execution', code: 'ci/target-failed' });
   const status = errorStatus(typed);
   const result = createGateResult({ gateId: 'ci.execution', status, summary: typed.message, error: typed });
   return {
-    version: CI_REPORT_VERSION, status: 'error', profile, base: range.base, head: range.head,
+    version: CI_REPORT_VERSION, status: 'error', phase, base: range.base, head: range.head,
     projectId: target.projectId, projectRoot: target.projectRoot, scope: target.scope,
     steps: [], error: typed.message, gateResult: renderGateResultJson(result),
   };
@@ -58,11 +58,11 @@ function failedTargetReport(error, profile, range, target) {
 
 /** 仓库门禁执行一次；应用使用各自目录、配置与报告，最后复核交付证据。 */
 export async function runWorkspaceCi({ workspace, options = {} }) {
-  const profile = options.profile ?? workspace.repositoryConfig.ci.profile;
+  const phase = options.phase ?? 'ci';
   const reportPath = options.reportPath ?? workspace.repositoryConfig.ci.reportPath;
   const range = options.resolvedRange ?? resolveCiRange(workspace.root, options);
   const projects = selectProjects(workspace, options.projectId).filter((project) =>
-    options.projectId !== undefined || profile === 'release-ready' || projectAffected(workspace, project, range.changes));
+    options.projectId !== undefined || phase === 'delivery-check' || projectAffected(workspace, project, range.changes));
   const hasRootProject = projects.some((application) => application.root === workspace.root);
   const rootApplication = workspace.projects.find((application) => application.root === workspace.root);
   // 规范归属由应用清单决定；没有应用变更时，仍须核验同一份合成后的根规范。
@@ -79,7 +79,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
     configurationChanged: projectConfigurationChanged(workspace, application, range.changes),
     reportPath: `reports/repo-guard-workspace/projects/${application.id}.json`,
   }))];
-  if (profile === 'release-ready') targets.push({
+  if (phase === 'delivery-check') targets.push({
     ...repositoryTarget, scope: 'evidence', reportPath: 'reports/repo-guard-workspace/evidence.json',
   });
   const aggregatePath = path.resolve(workspace.root, reportPath).toLowerCase();
@@ -109,14 +109,14 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
         skipRepositoryAgentPolicy: target.scope === 'repository' && hasRootProject,
         agentPolicyConfig: target.root === workspace.root ? rootAgentPolicyConfig : null,
         reportPath: target.reportPath,
-        profile,
+        phase,
         resolvedRange: range,
         repositoryProtectedChanges: target.scope === 'repository' ? scopeRepositoryProtectionChanges(workspace, range.changes) : null,
         initialPriorResults: target.scope === 'evidence' ? aggregateWorkspaceGateResults(completed) : [],
         onReport: (value) => { report = value; },
       });
     } catch (error) {
-      report = failedTargetReport(error, profile, range, target);
+      report = failedTargetReport(error, phase, range, target);
       exitCode = gateStatusToExitCode(report.gateResult.status);
       writeCiReport(target.root, target.reportPath, report);
     }
@@ -130,7 +130,7 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
   const report = {
     version: CI_REPORT_VERSION,
     status: exitCode === 0 ? 'passed' : 'failed',
-    profile, base: range.base, head: range.head,
+    phase, base: range.base, head: range.head,
     selectedProjects: projects.map(({ id }) => id),
     targets: completed,
     gateResults: aggregateWorkspaceGateResults(completed),
@@ -139,5 +139,6 @@ export async function runWorkspaceCi({ workspace, options = {} }) {
       .map((step) => ({ projectId: target.projectId, projectRoot: target.projectRoot, gateResult: step.gateResult }))),
   };
   writeCiReport(workspace.root, reportPath, report);
+  options.onReport?.(report);
   return exitCode;
 }

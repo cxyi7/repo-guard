@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
@@ -21,26 +22,30 @@ function application(id, role, stack, preset) {
   delete document.repository.deliveryContract;
   delete document.repository.filePlacement;
   delete document.reporting;
-  document.ci = { gatePolicy: { defaultMode: 'off' } };
+  document.ci = { gatePolicy: { } };
   return JSON.stringify(document);
 }
 
-function fixture(t, { files = {}, mode = 'enforce' } = {}) {
-  return createGitProjectFixture(t, {
-    '.gitignore': 'reports/\n',
+function fixture(t, { files = {}, mode = 'inherit' } = {}) {
+  const root = createGitProjectFixture(t, {
+    '.gitignore': '**/reports/\n',
     'repo-guard.config.json': JSON.stringify({
       version: 2,
       projects: [{ id: 'web', root: 'apps/web' }, { id: 'api', root: 'services/api' }],
       repository: { rules: [{ pattern: 'protected-config.txt', category: '团队规则', level: 'block' }], commitMessage: { enabled: false }, filePlacement: { enabled: true, rules: [RULE] } },
-      ci: { enabled: true, gatePolicy: { defaultMode: 'off', gates: { [GATE_ID]: { mode } } } },
+      ci: { enabled: true, gatePolicy: { gates: { [GATE_ID]: { mode } } } },
       reporting: { notification: { enabled: false }, commitAnimation: { enabled: false } },
     }),
     'apps/web/repo-guard.config.json': application('web', 'frontend', 'node', 'vue-typescript'),
+    'apps/web/package.json': '{"name":"web","version":"1.0.0"}',
     'services/api/repo-guard.config.json': application('api', 'backend', 'java', 'java-maven'),
     'database/sql/schema.sql': 'select 1;\n',
     'notes.txt': '初始说明\n',
     ...files,
   });
+  synchronizeCiFixture(root);
+  commitCiFixture(root);
+  return root;
 }
 
 function cli(root, ...args) {
@@ -91,22 +96,24 @@ test('手动命令从 Java 子目录仍检查整个仓库，未跟踪 SQL 也参
   assert.ok(result.output.includes('shared/new.sql'), result.output);
 });
 
-for (const mode of ['enforce', 'report']) {
+for (const mode of ['inherit', 'off']) {
   test(`CI 选择 Java 应用仍执行一次根规则，${mode} 模式保留统一违规证据`, (t) => {
     const root = fixture(t, { mode, files: { 'apps/web/legacy.sql': 'select 1;\n', 'shared/legacy.sql': 'select 1;\n' } });
     const base = fixtureGit(root, ['rev-parse', 'HEAD']);
     stageNote(root);
     fixtureGit(root, ['commit', '-m', 'test: 更新公共说明']);
     const head = fixtureGit(root, ['rev-parse', 'HEAD']);
-    // 本地删除不改变 CI 所验证提交中的路径事实。
+    // 未提交删除必须先阻断，恢复后才检查提交中的违规。
     rmSync(path.join(root, 'shared/legacy.sql'));
-    const result = cli(root, 'ci', '--profile', 'policy', '--base', base, '--head', head, '--project', 'api');
-    assert.equal(result.status, mode === 'enforce' ? EXIT_CODES.violation : EXIT_CODES.success, result.output);
+    assert.equal(cli(root, 'ci', '--base', base, '--head', head, '--project', 'api').status, EXIT_CODES.error);
+    writeProjectFile(root, 'shared/legacy.sql', 'select 1;\n');
+    const result = cli(root, 'ci', '--base', base, '--head', head, '--project', 'api');
+    assert.equal(result.status, mode === 'inherit' ? EXIT_CODES.violation : EXIT_CODES.success, result.output);
     const report = JSON.parse(readFileSync(path.join(root, 'reports/repo-guard-workspace/repository.json'), 'utf8'));
     const matches = report.steps.filter(({ gateId, gateResult }) => (gateId ?? gateResult?.gateId) === GATE_ID);
     assert.equal(matches.length, 1, JSON.stringify(report));
-    assert.equal(matches[0].gateResult.status, 'violation');
-    assert.equal(matches[0].gateResult.metrics.violations, 2);
+    assert.equal(matches[0].gateResult.status, mode === 'inherit' ? 'violation' : 'skipped');
+    if (mode === 'inherit') assert.equal(matches[0].gateResult.metrics.violations, 2);
     const child = JSON.parse(readFileSync(path.join(root, 'services/api/reports/repo-guard-workspace/projects/api.json'), 'utf8'));
     assert.equal(child.steps.some(({ gateResult }) => gateResult?.gateId === GATE_ID), false);
   });

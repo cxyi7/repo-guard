@@ -25,16 +25,15 @@ function gate(id, configKey, executions) {
   });
 }
 
-async function executePolicy(defaultMode, { applicationDefault, enabled = false } = {}) {
-  const shared = { ci: { enabled: true, profile: 'full', gatePolicy: {
-    defaultMode, gates: { 'quality.typecheck': { mode: 'off' } },
+async function executePolicy({ enabled = false } = {}) {
+  const shared = { ci: { enabled: true, gatePolicy: {
+    gates: { 'quality.typecheck': { mode: 'off' } },
   } } };
   const document = {
     version: 2,
     project: { id: 'api', role: 'backend', stack: 'node', preset: 'node-typescript' },
     checks: { typeCheck: { enabled }, build: { enabled: true } },
     ci: { gatePolicy: {
-      ...(applicationDefault === undefined ? {} : { defaultMode: applicationDefault }),
       gates: { 'quality.build': { mode: 'off' } },
     } },
   };
@@ -61,34 +60,13 @@ async function executePolicy(defaultMode, { applicationDefault, enabled = false 
   return { executions, execution, evaluated: controller.evaluate(execution) };
 }
 
-test('继承 report 的应用激活必要检查并报告违规，局部 off 不改变其他门禁模式', async () => {
-  const result = await executePolicy('report');
+test('应用开关独立：根的关闭项不覆盖应用，应用关闭构建不影响类型检查', async () => {
+  const result = await executePolicy({ enabled: true });
   assert.deepEqual(result.executions, [{ id: 'quality.typecheck', enabled: true }]);
-  assert.equal(result.execution.results[0].status, 'violation');
-  assert.equal(result.evaluated.exitCode, 0);
-});
-
-test('继承 enforce 的应用激活已关闭检查并阻断 CI', async () => {
-  const result = await executePolicy('enforce');
-  assert.deepEqual(result.executions, [{ id: 'quality.typecheck', enabled: true }]);
-  assert.equal(result.evaluated.status, 'violation');
   assert.equal(result.evaluated.exitCode, 2);
 });
-
-test('继承 off 的应用在执行前跳过检查，不受应用原开关影响', async () => {
-  const result = await executePolicy('off', { enabled: true });
-  assert.deepEqual(result.executions, []);
-  assert.ok(result.execution.results.every(({ status }) => status === 'skipped'));
+test('项目关闭的类型检查不被 CI 重新开启', async () => {
+  const result = await executePolicy({ enabled: false });
+  assert.deepEqual(result.executions, [{ id: 'quality.typecheck', enabled: false }]);
   assert.equal(result.evaluated.exitCode, 0);
-});
-
-test('应用显式默认模式保留覆盖权，inherit 继续尊重应用检查开关', async () => {
-  const enforced = await executePolicy('report', { applicationDefault: 'enforce' });
-  assert.equal(enforced.evaluated.exitCode, 2);
-  const observed = await executePolicy('enforce', { applicationDefault: 'report' });
-  assert.equal(observed.execution.results[0].status, 'violation');
-  assert.equal(observed.evaluated.exitCode, 0);
-  const inherited = await executePolicy('enforce', { applicationDefault: 'inherit' });
-  assert.deepEqual(inherited.executions, [{ id: 'quality.typecheck', enabled: false }]);
-  assert.equal(inherited.evaluated.exitCode, 0);
 });

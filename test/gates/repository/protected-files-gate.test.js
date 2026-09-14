@@ -30,7 +30,6 @@ function protectedConfig({ action = 'report', level = 'block', rules = null } = 
   },
   ci: {
     enabled: true,
-    profile: 'policy',
     reportPath: 'reports/repo-guard.json',
     protectedFiles: {
       action

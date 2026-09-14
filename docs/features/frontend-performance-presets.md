@@ -23,7 +23,7 @@ Lighthouse 的 URL/pages 初始为空，目前需由接入者根据实际业务�
 | 包体积分析 | HTML + JSON，treemap，gzip + Brotli，不弹出浏览器 |
 | Lighthouse | 三次采集中位数，桌面环境，仅性能分类 |
 | 页面阈值 | 90 分、FCP 1800ms、LCP 2500ms、TBT 200ms、CLS 0.1 |
-| 页面检查阶段 | 手动、CI full、release-ready；prePush 默认 false |
+| 页面检查阶段 | 手动、CI 与交付复核；prePush 默认 false |
 
 这些是可修改的初始工程目标，不保证适合所有业务。AI 不得为通过检查自行降低阈值。
 

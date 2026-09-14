@@ -224,7 +224,6 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
     baseConfig({
       ci: {
         enabled: true,
-        profile: 'full',
         reportPath: 'reports/custom.json',
         protectedFiles: {
           action: 'fail',
@@ -233,14 +232,15 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
     }),
   );
   assert.deepEqual(config.ci, {
+    branches: ['dev', 'main'],
+    notification: { enabled: true, channels: [] },
     enabled: true,
-    profile: 'full',
     reportPath: 'reports/custom.json',
     protectedFiles: {
       action: 'fail',
     },
     gatePolicy: {
-      defaultMode: 'inherit',
+
       gates: {},
     },
     externalGates: [],
@@ -254,7 +254,7 @@ test('validates read-only CI profiles, reports, and protected-file actions', () 
           },
         }),
       ),
-    /ci.profile 必须为 policy、full 或 release-ready/,
+    /不支持的属性： profile/,
   );
   assert.throws(
     () =>
@@ -1509,7 +1509,6 @@ test('validates strict external project gate configuration', () => {
         baseConfig({
           ci: {
             enabled: true,
-            profile: 'full',
             reportPath: 'reports/api-contract.json',
             protectedFiles: {
               action: 'report',

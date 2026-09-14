@@ -30,7 +30,7 @@ function config(mode, scope = 'all-files') {
     },
     ci: {
       gatePolicy: {
-        defaultMode: 'inherit',
+
         gates: {
           'quality.example': {
             mode,
@@ -43,7 +43,7 @@ function config(mode, scope = 'all-files') {
   };
 }
 
-function fixture(mode, scope = 'all-files') {
+function fixture(mode, scope = 'all-files', enabled = false) {
   const observations = [];
   const gate = defineGate({
     id: 'quality.example',
@@ -79,6 +79,7 @@ function fixture(mode, scope = 'all-files') {
     steps: ['quality.example'],
   });
   const projectConfig = config(mode, scope);
+  projectConfig.checks.example.enabled = enabled;
   const context = createGateContext({
     root: 'C:/repo',
     environment: 'ci-full',
@@ -126,29 +127,17 @@ test('off skips a CI Gate before setup or execution', async () => {
   });
 });
 
-test('report activates a disabled Gate only inside CI and never blocks CI', async () => {
-  const value = fixture('report');
-  const execution = await executeFixture(value);
-  const evaluated = value.controller.evaluate(execution);
-
-  assert.equal(execution.status, 'violation');
-  assert.equal(evaluated.status, 'passed');
-  assert.equal(evaluated.exitCode, 0);
-  assert.equal(
-    value.observations[0].context.config.checks.example.enabled,
-    true,
-  );
-  assert.equal(value.projectConfig.checks.example.enabled, false);
-  assert.equal(value.context.config.checks.example.enabled, false);
+test('旧 report 与 enforce 模式明确拒绝，不自动激活项目功能', () => {
+  assert.throws(() => fixture('report'), /mode 无效/);
+  assert.throws(() => fixture('enforce'), /mode 无效/);
 });
 
-test('enforce activates a disabled Gate in CI and preserves blocking failures', async () => {
-  const value = fixture('enforce');
+test('跟随项目的已启用检查失败会阻断且不修改配置', async () => {
+  const value = fixture('inherit', 'all-files', true);
   const evaluated = value.controller.evaluate(await executeFixture(value));
-
   assert.equal(evaluated.status, 'violation');
   assert.equal(evaluated.exitCode, 2);
-  assert.equal(value.observations.at(-1).phase, 'run');
+  assert.equal(value.projectConfig.checks.example.enabled, true);
 });
 
 test('inherit preserves the existing Gate enabled setting', async () => {
@@ -165,7 +154,7 @@ test('inherit preserves the existing Gate enabled setting', async () => {
 });
 
 test('changed-files narrows only the CI Gate file scope', async () => {
-  const value = fixture('enforce', 'changed-files');
+  const value = fixture('inherit', 'changed-files');
   await executeFixture(value);
 
   assert.deepEqual(value.observations[1].context.files, ['src/changed.js']);
@@ -173,7 +162,7 @@ test('changed-files narrows only the CI Gate file scope', async () => {
 });
 
 test('rejects unknown CI Gate ids and unsupported scopes at the Registry boundary', () => {
-  const value = fixture('enforce');
+  const value = fixture('inherit');
   assert.throws(
     () =>
       validateCiGatePolicy(
@@ -181,7 +170,7 @@ test('rejects unknown CI Gate ids and unsupported scopes at the Registry boundar
           ...value.projectConfig,
           ci: {
             gatePolicy: {
-              defaultMode: 'inherit',
+
               gates: { 'quality.unknown': { mode: 'off', scope: 'all-files' } },
             },
           },
@@ -193,7 +182,7 @@ test('rejects unknown CI Gate ids and unsupported scopes at the Registry boundar
   assert.throws(
     () =>
       createCiGatePolicyController({
-        config: config('enforce', 'changed-files'),
+        config: config('inherit', 'changed-files'),
         registry: createGateRegistry([
           defineGate({
             ...value.registry.get('quality.example'),

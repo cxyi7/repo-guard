@@ -8,7 +8,11 @@ import {
 } from '../../core/result/gate-result.js';
 import { aggregateGateResults } from '../../core/result/exit-code.js';
 
-const BLOCKING_MODES = new Set(['inherit', 'enforce']);
+const BLOCKING_MODES = new Set(['inherit', 'required']);
+export const REQUIRED_CI_GATES = new Set([
+  'repository.commit-message', 'repository.protected-files', 'repository.agent-policy',
+  'repository.structured-exceptions', 'repository.delivery-contract', 'release.delivery-evidence',
+]);
 
 function gatePolicyError(code, message) {
   return configurationError(`ci-gate-policy/${code}`, message, {
@@ -25,7 +29,7 @@ function gatePolicyError(code, message) {
 function policyFor(config, gate) {
   const override = config.ci.gatePolicy.gates[gate.id];
   return Object.freeze({
-    mode: override?.mode ?? config.ci.gatePolicy.defaultMode,
+    mode: gate.id === 'repository.commit-message' ? 'required' : override?.mode ?? 'inherit',
     scope: override?.scope ?? 'all-files',
   });
 }
@@ -72,14 +76,14 @@ function changedFileSet(context) {
 }
 
 function validatePolicies(config, registry) {
-  if (!CI_GATE_POLICY_MODES.includes(config.ci.gatePolicy.defaultMode)) {
-    throw gatePolicyError('invalid-default-mode', 'ci.gatePolicy.defaultMode 无效');
-  }
   const ciGates = new Map(registry.ci.map((gate) => [gate.id, gate]));
   for (const [gateId, policy] of Object.entries(config.ci.gatePolicy.gates)) {
     const gate = ciGates.get(gateId);
     if (!gate) {
       throw gatePolicyError('unknown-gate', `ci.gatePolicy 引用了未知或非 CI 门禁：${gateId}`);
+    }
+    if (REQUIRED_CI_GATES.has(gateId) && (policy.mode !== 'inherit' || policy.scope !== 'all-files')) {
+      throw gatePolicyError('required-gate', '公共必查项不能关闭或缩小检查范围');
     }
     if (!CI_GATE_POLICY_MODES.includes(policy.mode)) {
       throw gatePolicyError('invalid-mode', `CI 门禁 ${gateId} 的 mode 无效`);
@@ -119,7 +123,7 @@ export function createCiGatePolicyController({ config, registry, plan }) {
     const files = policy.scope === 'changed-files'
       ? Object.freeze(context.files.filter((file) => changed.has(relativeFile(file))))
       : context.files;
-    const gateConfig = policy.mode === 'report' || policy.mode === 'enforce'
+    const gateConfig = policy.mode === 'required'
       ? activateGateConfig(context.config, gate)
       : context.config;
     return Object.freeze({

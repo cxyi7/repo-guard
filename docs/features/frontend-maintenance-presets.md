@@ -49,7 +49,7 @@
 - shared、components、utils、types、constants 不依赖具体 features。
 - `src/features/<业务>/` 内部可互相引用，跨业务只能引用目标的 `index` 脚本入口，不允许访问其内部文件。
 
-具体规则在 [模板源码](../../src/profiles/frontend-maintenance-presets.js) 中定义并在初始化时写出。不得只改目录名绕过团队边界；调整项目布局时同步规则及引用。架构检查运行在手动、可选 pre-push、CI full 和 release-ready，不进入 pre-commit。
+具体规则在 [模板源码](../../src/profiles/frontend-maintenance-presets.js) 中定义并在初始化时写出。不得只改目录名绕过团队边界；调整项目布局时同步规则及引用。架构检查运行在手动、可选 pre-push、CI 与交付复核，不进入 pre-commit。
 
 ## 函数文档
 
@@ -80,7 +80,7 @@ export function findOrder(id: string) {
 
 同步只维护签名相关标签，不编造参数单位、边界条件或业务说明。程序检查结构和非空，说明准确性由 AI 与负责人检查。匿名解构参数暂不自动同步，严格参数说明模式会阻断并要求人工处理；可使用具名参数后在函数内部解构。Generator 返回标签仍提示人工维护。
 
-新增只读 `function-docs` 命令和 `quality.function-documentation` 门禁，在 pre-commit 格式修复和 ESLint/Stylelint 复核之后检查最终内容；CI policy/full、release-ready 同样检查。缺少说明返回违规状态与公共退出码 2；没有文件或已禁用是跳过，不是交付通过证据。源码解析失败使用公共执行错误状态。CI 与手动检查不写文件；pre-commit 的同步仍受 lint-staged 隔离与失败恢复保护。
+新增只读 `function-docs` 命令和 `quality.function-documentation` 门禁，在 pre-commit 格式修复和 ESLint/Stylelint 复核之后检查最终内容；CI 与交付复核 同样检查。缺少说明返回违规状态与公共退出码 2；没有文件或已禁用是跳过，不是交付通过证据。源码解析失败使用公共执行错误状态。CI 与手动检查不写文件；pre-commit 的同步仍受 lint-staged 隔离与失败恢复保护。
 
 ## 文件头、异步资源和保留关闭项
 

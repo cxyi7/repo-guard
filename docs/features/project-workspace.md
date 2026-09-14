@@ -100,7 +100,7 @@ repo/
       { "pattern": ".githooks/**", "category": "公共提交检查", "level": "notify" }
     ]
   },
-  "ci": { "enabled": true, "profile": "full" }
+  "ci": { "enabled": true }
 }
 ```
 
@@ -114,7 +114,7 @@ repo/
 | 根 `repository` | 提交信息、仓库基础文件保护、仓库级文件归位，以及可选的仓库内合同包入口；不接受依赖策略、代码片段归位或应用豁免 |
 | 根 `repository.filePlacement` | 可选的全仓目录约束，默认 `{ "enabled": false, "rules": [] }`；启用必须至少配置一条规则，没有 `mode`。路径相对 Git 根目录，子应用不能声明或覆盖，详见[仓库级文件归位](repository-file-placement.md) |
 | `reporting` | 仓库通知和提交动画；子应用不能覆盖 |
-| `ci` | 仓库质量策略，`profile` 为 `policy`、`full`、`release-ready`；部署放在独立 ops 文件 |
+| `ci` | 仓库质量策略，统一跟随项目已启用检查；部署放在独立 ops 文件 |
 | `sharedPaths` | 可选数组，每项为 `{ "path": "shared", "projects": ["api"] }`；共享文件或目录变更时触发列出的应用。路径相对仓库，不使用 glob 或 `..`；应用标识必须已登记 |
 | `repository.rules[].level` | `block`、`notify` 或 `audit`，完整含义与匹配顺序见[保护文件](protected-files.md) |
 
@@ -140,22 +140,22 @@ repo/
 | `ci` | `protectedFiles`、`gatePolicy`、`externalGates` | 本应用检查的模式、保护行为和自定义门禁 |
 | 根 `reporting` | `notification`、`commitAnimation` | 同一次提交统一展示，应用不能覆盖 |
 
-根 `ci.enabled/profile` 管理公共执行流程，根 `gatePolicy.defaultMode` 提供共同执行模式；具体 Gate 覆盖与外部门禁在应用中配置。应用不得覆盖根 CI 开关、档案或汇总报告路径。同名外部门禁可分别存在于不同应用，命令和报告在各自目录运行。
+根 `ci.enabled` 管理 CI 开关，根通知和触发分支统一维护。应用不得覆盖根开关、通知、分支或汇总报告路径；各自维护可选门禁覆盖及外部检查。
 
-子应用只填写 `gatePolicy.gates` 或空的 `gatePolicy` 时，仍继承根 `defaultMode`；只有显式填写子应用 `defaultMode` 才覆盖。比如根设置 `enforce`，api 只将 `quality.build` 设为 `off`，其他适用 Gate 仍按 `enforce` 执行；根设置 `report` 时，其他 Gate 仍只报告。根的具体 `gates` 覆盖不会继承到应用，非法的 `gatePolicy` 对象也不会被默认值掩盖。
+子应用未填写覆盖时跟随本应用功能配置。`gatePolicy.gates` 仅接受 inherit/off，根的逐项覆盖不继承到应用；公共必检项不可关闭。
 
 ```bash
 # 应用检查与开关明确选择目标
 npx repo-guard enable unitTest coverage --project api
 npx repo-guard doctor --project api
 npx repo-guard unit-test --project api
-npx repo-guard ci --project api --profile full
+npx repo-guard ci --project api
 
 # 不指定应用的普通 CI 按 Git 变更选择应用
-npx repo-guard ci --profile full
+npx repo-guard ci
 
 # 最终交付复核覆盖完整清单
-npx repo-guard ci --profile release-ready
+npx repo-guard delivery-check
 ```
 
 共享规则的开关写入根配置，应用开关只修改对应子配置。手动编辑配置后执行 `repo-guard doctor --fix` 同步 AGENTS，再运行检查。

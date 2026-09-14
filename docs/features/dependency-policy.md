@@ -89,7 +89,7 @@ pnpm exec repo-guard dependencies
 yarn exec repo-guard dependencies
 ```
 
-pre-commit 只检查最终 Git 索引，不调用包管理器、不安装、不加载工作区可执行配置。Doctor 检查当前磁盘事实及工具就绪；manual、CI policy/full、release-ready 在静态策略通过后执行就绪检查。实际代码规则、测试、覆盖率、变异测试和构建仍由各自门禁执行。
+pre-commit 只检查最终 Git 索引，不调用包管理器、不安装、不加载工作区可执行配置。Doctor 检查当前磁盘事实及工具就绪；manual、CI 与交付复核 在静态策略通过后执行就绪检查。实际代码规则、测试、覆盖率、变异测试和构建仍由各自门禁执行。
 
 托管 GitLab 工程模板按配置和原生版本声明生成准确版本的包管理器准备与冻结安装。自定义 CI、独立运维配置仍由自身入口管理，不因启用依赖策略自动部署。自动接入 Skill 暂不实现，需求见[Skill 待办](skill-integration-backlog.md)。
 

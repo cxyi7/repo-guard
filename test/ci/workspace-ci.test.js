@@ -1,10 +1,11 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { runCiCommand } from '../../src/orchestration/ci/command.js';
+import { runCiCommand as executeCiCommand } from '../../src/orchestration/ci/command.js';
 import { aggregateWorkspaceGateResults } from '../../src/orchestration/ci/workspace-runner.js';
 import { createProjectReleaseReadyPlan } from '../../src/orchestration/execution-plans.js';
 import { normalizeProjectDocument } from '../../src/config/project-configuration.js';
@@ -14,6 +15,11 @@ import { renderGateResultJson } from '../../src/core/report/json-renderer.js';
 import { configurationError } from '../../src/core/error/repo-guard-error.js';
 import { loadWorkspace } from '../../src/config/configuration-loader.js';
 import { syncAgentPolicies } from '../../src/policies/agent-policies.js';
+
+async function runCiCommand(root, options) {
+  const head = commitCiFixture(root);
+  return executeCiCommand(root, { ...options, head });
+}
 
 const descriptor = { id: 'api', role: 'backend', stack: 'node', preset: 'node-javascript' };
 function git(root, ...args) { return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim(); }
@@ -36,7 +42,7 @@ function fixture(t, { otherId = 'worker' } = {}) {
         : { ...descriptor, id },
       checks: { eslint: { enabled: false }, prettier: { enabled: false } },
       repository: { dependencyPolicy: { enabled: false } },
-      ci: { gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
+      ci: { gatePolicy: { gates: {} } },
     });
     writeFileSync(path.join(app, 'src', 'service.js'), 'export const ready = true;\n');
   }
@@ -44,8 +50,9 @@ function fixture(t, { otherId = 'worker' } = {}) {
     version: 2,
     projects: [{ id: 'api', root: 'api' }, { id: otherId, root: otherId }],
     reporting: { notification: { enabled: false } },
-    ci: { enabled: true, profile: 'full', gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
+    ci: { enabled: true, gatePolicy: { gates: {} } },
   });
+  synchronizeCiFixture(root);
   git(root, 'add', '.');
   git(root, '-c', 'core.hooksPath=', 'commit', '-m', 'chore: 初始化测试仓库');
   const base = git(root, 'rev-parse', 'HEAD');
@@ -65,12 +72,12 @@ function report(root) {
 function enableAndSynchronizeAgentPolicies(root) {
   const file = path.join(root, 'repo-guard.config.json');
   const document = JSON.parse(readFileSync(file, 'utf8'));
-  document.ci.gatePolicy = { defaultMode: 'inherit', gates: {} };
+  document.ci.gatePolicy = {  gates: {} };
   json(file, document);
   for (const entry of document.projects) {
     const file = path.join(root, entry.root, entry.config ?? 'repo-guard.config.json');
     const application = JSON.parse(readFileSync(file, 'utf8'));
-    application.ci = { ...application.ci, gatePolicy: { defaultMode: 'inherit', gates: {} } };
+    application.ci = { ...application.ci, gatePolicy: {  gates: {} } };
     json(file, application);
   }
   const workspace = loadWorkspace(root);
@@ -97,7 +104,7 @@ test('CI 分别核验前后端 AGENTS，单选 web 不检查 api，公共规范�
   const repo = fixture(t, { otherId: 'web' });
   enableAndSynchronizeAgentPolicies(repo.root);
   tamperAgentPolicy(path.join(repo.root, 'api'));
-  const options = { base: repo.base, head: repo.head, profile: 'policy', env: {} };
+  const options = { base: repo.base, head: repo.head, env: {} };
   assert.notEqual(await runCiCommand(repo.root, options), 0);
   const all = report(repo.root);
   assert.equal(agentPolicyStep(all.targets.find((target) => target.projectId === 'api')).gateResult.status, 'violation');
@@ -131,7 +138,7 @@ test('清单声明 root 为点时，AGENTS 只按该应用配置核验一次', a
     repository: { dependencyPolicy: { enabled: false } },
   });
   enableAndSynchronizeAgentPolicies(repo.root);
-  const options = { base: repo.base, head: repo.head, profile: 'policy', env: {} };
+  const options = { base: repo.base, head: repo.head, env: {} };
   assert.equal(await runCiCommand(repo.root, options), 0);
   const result = report(repo.root);
   assert.equal(agentPolicyStep(result.targets.find((target) => target.scope === 'repository')), undefined);
@@ -166,8 +173,10 @@ test('清单声明仓库根应用时，应用标识也不能与公共报告命�
     version: 2, project: { ...descriptor, id: 'repository' },
     checks: { eslint: { enabled: false }, prettier: { enabled: false } },
     repository: { dependencyPolicy: { enabled: false } },
-    ci: { gatePolicy: { gates: { 'repository.agent-policy': { mode: 'off' } } } },
+    ci: { gatePolicy: { gates: {} } },
   });
+  json(path.join(repo.root, 'package.json'), { name: 'root-app' });
+  synchronizeCiFixture(repo.root);
   assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
   const targets = report(repo.root).targets;
   assert.equal(new Set(targets.map(({ reportPath }) => reportPath)).size, 2);
@@ -186,7 +195,7 @@ test('明确选择应用时仅运行该应用，其他应用失败不伪装为�
   assert.equal(report(repo.root).targets.find((target) => target.projectId === 'worker').exitCode, 2);
 });
 
-test('多应用违规和工具配置错误按统一优先级汇总，不受应用顺序影响且保留仅报告策略', async (t) => {
+test('多应用违规和工具配置错误按统一优先级汇总，不受应用顺序影响且可关闭可选检查', async (t) => {
   const repo = fixture(t);
   const rootFile = path.join(repo.root, 'repo-guard.config.json');
   const rootDocument = JSON.parse(readFileSync(rootFile, 'utf8'));
@@ -194,6 +203,7 @@ test('多应用违规和工具配置错误按统一优先级汇总，不受应�
   const application = JSON.parse(readFileSync(applicationFile, 'utf8'));
   application.checks.typeCheck = { enabled: true, script: 'missing-typecheck' };
   json(applicationFile, application);
+  synchronizeCiFixture(repo.root);
   writeFileSync(path.join(repo.root, 'api/src/service.js'), 'eval("unknown()");\n');
   const options = { base: repo.base, head: repo.head, env: {} };
   for (const projects of [rootDocument.projects, [...rootDocument.projects].reverse()]) {
@@ -203,12 +213,12 @@ test('多应用违规和工具配置错误按统一优先级汇总，不受应�
     assert.equal(targets.find(({ projectId }) => projectId === 'api').exitCode, 2);
     assert.equal(targets.find(({ projectId }) => projectId === 'worker').exitCode, 1);
   }
-  application.ci.gatePolicy.gates['quality.typecheck'] = { mode: 'report' };
+  application.ci.gatePolicy.gates['quality.typecheck'] = { mode: 'off' };
   json(applicationFile, application);
   assert.equal(await runCiCommand(repo.root, options), 2);
   writeFileSync(path.join(repo.root, 'api/src/service.js'), 'export const ready = false;\n');
   assert.equal(await runCiCommand(repo.root, options), 0);
-  assert.equal(report(repo.root).gateResults.find(({ gateId }) => gateId === 'quality.typecheck').status, 'configuration-error');
+  assert.equal(report(repo.root).gateResults.find(({ gateId }) => gateId === 'quality.typecheck').status, 'skipped');
 });
 
 test('CI 单选应用跳过损坏的其他配置，目标配置错误返回结构化结果', async (t) => {
@@ -230,13 +240,16 @@ test('CI 根目录的宽泛保护规则不越界拦截应用源码', async (t) =
   const document = JSON.parse(readFileSync(file, 'utf8'));
   document.repository = { rules: [{ pattern: '**/*', category: '仓库文件', level: 'block' }] };
   json(file, document);
+  synchronizeCiFixture(repo.root);
+  repo.base = commitCiFixture(repo.root);
+  writeFileSync(path.join(repo.root, 'api/src/service.js'), 'export const next = true;\n');
   assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
   assert.deepEqual(report(repo.root).targets.find(({ scope }) => scope === 'repository').report.protectedFiles, []);
 });
 
 test('v2 发布就绪执行通用工程检查且最后复核证据，不要求 npm 包发布脚本', async (t) => {
   const repo = fixture(t);
-  assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {}, profile: 'release-ready' }), 0);
+  assert.equal(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {}, phase: 'delivery-check' }), 0);
   const result = report(repo.root);
   assert.equal(result.targets.at(-1).scope, 'evidence');
   assert.equal(result.targets.at(-1).report.steps[0].name, 'release.delivery-evidence');

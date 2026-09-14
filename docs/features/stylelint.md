@@ -73,7 +73,7 @@ npx repo-guard stylelint
 
 手动入口统一运行普通规则、治理和已启用的 Token，保留各项发现并按公共错误优先级汇总。多应用加 `--project <id>`。无适用文件或全部被忽略时返回跳过，不作为通过证据。
 
-Hook 顺序保持 Stylelint 修复、ESLint 修复、Prettier、Stylelint/ESLint 只读复核、保护文件检查；保留未暂存修改。Token 内部只读步骤仍保留：清单、定义源或相关配置变化时复查全量样式，不能仅检查暂存样式。CI full/release-ready 执行普通样式检查，Token 另支持 policy。
+Hook 顺序保持 Stylelint 修复、ESLint 修复、Prettier、Stylelint/ESLint 只读复核、保护文件检查；保留未暂存修改。Token 内部只读步骤仍保留：清单、定义源或相关配置变化时复查全量样式，不能仅检查暂存样式。CI 与交付复核 执行普通样式检查，Token 另支持 policy。
 
 配置或语法无法解析属于配置错误，工具启动和超时属于执行错误，规则发现属于违规。修复失败恢复本次文件修改，不通过放宽阈值或扩大例外掩盖失败。
 

@@ -391,21 +391,13 @@ export function enableQualityGates(root, requestedGates, options = {}) {
   };
 }
 
-export function configureCi(root, { profile = 'policy' } = {}) {
-  if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    throw configurationError(
-      'config/management-invalid',
-      'CI 配置档必须为 policy、full 或 release-ready',
-    );
-  }
+export function configureCi(root) {
   const workspace = loadWorkspace(root);
   assertManagedDocumentFormats(root, { workspace });
-  const changed =
-    !workspace.repositoryConfig.ci.enabled ||
-    workspace.repositoryConfig.ci.profile !== profile;
+  const changed = !workspace.repositoryConfig.ci.enabled;
   const document = {
     ...workspace.document,
-    ci: { ...workspace.document.ci, enabled: true, profile },
+    ci: { ...workspace.document.ci, enabled: true },
   };
   if (changed)
     validateAndWriteDocuments(

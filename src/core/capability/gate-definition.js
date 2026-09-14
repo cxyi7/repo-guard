@@ -7,8 +7,6 @@ import {
 export const CI_GATE_POLICY_MODES = Object.freeze([
   'inherit',
   'off',
-  'report',
-  'enforce',
 ]);
 export const CI_GATE_SCOPES = Object.freeze(['all-files', 'changed-files']);
 

@@ -1,5 +1,7 @@
 # GateResult 与报告
 
+CI 取消公开档位和 report/enforce 模式，执行失败按公共优先级阻断；已关闭可选项保持 skipped。版本不一致是配置错误 1，Git 范围不可解析为 3。CI 通知发送失败不覆盖质量退出码；独立 ci-notification-test 返回公共成功 0 或错误 1。CI 报告使用 phase（ci/delivery-check），不再输出 profile。
+
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
 用统一结构回答“检查了什么、是否通过、为什么、怎么修”，便于人阅读，也便于 CI 与交付证据复核。
@@ -46,7 +48,7 @@ Java 检查遵循相同协议。Checkstyle、PMD 和 Maven 的原始数字只保
 ## 报告在哪里
 
 ```bash
-npx repo-guard ci --profile full --report-json reports/repo-guard.json
+npx repo-guard ci --report-json reports/repo-guard.json
 ```
 
 先按[CI 接入](gitlab-ci.md)配置可信范围与环境。整体 CI 报告包含计划、步骤和单项结果，不是一个裸 GateResult。产物路径遵守报告写入边界；不要覆盖源码或受跟踪业务文件。
@@ -110,7 +112,7 @@ Git 非零退出、无法启动或被信号终止时，主错误说明、退出�
 
 ## 公开函数文档结果
 
-`quality.function-documentation` 在 pre-commit、CI policy/full、release-ready 和手动入口使用统一 GateResult。缺失说明为 violation（公共退出码 2），源码解析错误为 execution-error（公共退出码 1），无匹配文件或关闭时 skipped，不能作为通过证据。
+`quality.function-documentation` 在 pre-commit、CI 与交付复核 和手动入口使用统一 GateResult。缺失说明为 violation（公共退出码 2），源码解析错误为 execution-error（公共退出码 1），无匹配文件或关闭时 skipped，不能作为通过证据。
 
 3.0.0 移除组件交互与 axe 测试入口；quality.mutation-test 纳入 ci-full 和 release-ready，继续通过公共 GateResult 映射配置错误、执行错误与得分违规，不透传 Stryker 退出码。
 

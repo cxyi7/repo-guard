@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -15,11 +16,12 @@ import { createGitProjectFixture, fixtureGit, writeProjectFile } from '../helper
 function fixture(t) {
   t.mock.method(console, 'log', () => {});
   t.mock.method(console, 'error', () => {});
-  return createGitProjectFixture(t, {
+  const root = createGitProjectFixture(t, {
+    '.gitignore': '**/reports/\n',
     'repo-guard.config.json': JSON.stringify({
       version: 2,
       projects: [{ id: 'api', root: 'apps/api' }, { id: 'web', root: 'apps/web' }],
-      ci: { enabled: true, gatePolicy: { defaultMode: 'off' } },
+      ci: { enabled: true, gatePolicy: { } },
       reporting: { notification: { enabled: false } },
     }),
     'apps/api/repo-guard.config.json': JSON.stringify({
@@ -42,20 +44,24 @@ function fixture(t) {
         },
       },
       repository: { rules: [{ pattern: 'pom.xml', category: '构建规则', level: 'block' }] },
-      ci: { gatePolicy: { defaultMode: 'off', gates: {
-        'java.path-naming': { mode: 'enforce' },
-        'repository.file-placement': { mode: 'enforce' },
-        'repository.protected-files': { mode: 'enforce' },
+      ci: { gatePolicy: { gates: {
+        'java.path-naming': { mode: 'inherit' },
+        'repository.file-placement': { mode: 'inherit' },
+        'repository.protected-files': { mode: 'inherit' },
       } } },
     }),
     'apps/web/repo-guard.config.json': JSON.stringify({
       version: 2,
       project: { id: 'web', role: 'frontend', stack: 'node', preset: 'vue-typescript' },
     }),
+    'apps/web/package.json': '{"name":"web","version":"1.0.0"}',
     'apps/api/pom.xml': '<project/>\n',
     'apps/api/src/main/java/sample/controller/OrderController.java': 'package sample.controller;\nclass OrderController {}\n',
     'apps/web/src/order-service.ts': 'export const value = 1;\n',
   });
+  synchronizeCiFixture(root);
+  commitCiFixture(root);
+  return root;
 }
 
 test('Java 目录后缀规则在真实暂存、手动和 CI 一致阻断，前端路径不参与', async (t) => {
@@ -71,7 +77,7 @@ test('Java 目录后缀规则在真实暂存、手动和 CI 一致阻断，前�
   assert.equal(gateResultToExitCode(manual), EXIT_CODES.violation);
   assert.ok(manual.findings.every(({ location }) => !location.path.includes('apps/web')));
   fixtureGit(root, ['commit', '-m', 'test: 验证命名规则']);
-  assert.equal(await runCiCommand(root, { base, head: fixtureGit(root, ['rev-parse', 'HEAD']), profile: 'policy', env: {} }), EXIT_CODES.violation);
+  assert.equal(await runCiCommand(root, { base, head: fixtureGit(root, ['rev-parse', 'HEAD']), env: {} }), EXIT_CODES.violation);
   const configPath = 'apps/api/repo-guard.config.json';
   writeProjectFile(root, configPath, `${readFileSync(path.join(root, configPath), 'utf8')}\n`);
   fixtureGit(root, ['add', configPath]);

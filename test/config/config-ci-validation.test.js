@@ -32,7 +32,6 @@ test('normalizes CI configuration and copies external gate environments', () => 
   const result = validateCiConfiguration(
     {
       enabled: true,
-      profile: 'full',
       reportPath: 'reports/custom.json',
       protectedFiles: {
         action: 'fail',
@@ -43,11 +42,11 @@ test('normalizes CI configuration and copies external gate environments', () => 
   );
 
   assert.deepEqual(result, {
+    ...DEFAULT_CI_CONFIG,
     enabled: true,
-    profile: 'full',
     reportPath: 'reports/custom.json',
     protectedFiles: { action: 'fail' },
-    gatePolicy: { defaultMode: 'inherit', gates: {} },
+    gatePolicy: {  gates: {} },
     externalGates: [gate],
   });
   assert.deepEqual(result.externalGates, [gate]);
@@ -58,10 +57,9 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
   const result = validateCiConfiguration(
     {
       gatePolicy: {
-        defaultMode: 'report',
-        gates: {
+            gates: {
           'security.source-security': {
-            mode: 'enforce',
+            mode: 'inherit',
             scope: 'changed-files',
           },
           'project.future-check': {
@@ -74,14 +72,13 @@ test('validates and normalizes CI-only Gate policies without enumerating Gate id
   );
 
   assert.deepEqual(result.gatePolicy, {
-    defaultMode: 'report',
     gates: {
-      'security.source-security': { mode: 'enforce', scope: 'changed-files' },
+      'security.source-security': { mode: 'inherit', scope: 'changed-files' },
       'project.future-check': { mode: 'off', scope: 'all-files' },
     },
   });
   for (const [gatePolicy, message] of [
-    [{ defaultMode: 'warn' }, /defaultMode 必须为/],
+    [{ defaultMode: 'warn' }, /不支持的属性/],
     [{ gates: [] }, /gates 必须是对象/],
     [{ gates: { invalid: { mode: 'off' } } }, /点分隔的 kebab-case/],
     [{ gates: { 'security.source-security': {} } }, /mode 为必填项/],

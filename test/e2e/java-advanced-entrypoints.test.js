@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -27,14 +28,15 @@ function configuration(feature, { enabled, mode = 'inherit' }) {
     version: 2,
     project: { id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' },
     checks: { [feature.key]: { ...feature.config, enabled, executable: 'repo-guard-unavailable-maven-test' } },
-    ci: { enabled: true, gatePolicy: { defaultMode: 'off', gates: { [feature.id]: { mode } } } },
+    ci: { enabled: true, gatePolicy: { gates: { [feature.id]: { mode } } } },
     reporting: { notification: { enabled: false } },
   };
 }
 
 for (const feature of features) {
-  test(`${feature.command} 真实入口区分关闭、缺工具与 CI 只报告，保持统一退出码`, (t) => {
+  test(`${feature.command} 真实入口区分关闭、缺工具与 CI 可选关闭，保持统一退出码`, (t) => {
     const root = createGitProjectFixture(t, {
+      '.gitignore': '**/reports/\n',
       'repo-guard.config.json': JSON.stringify(configuration(feature, { enabled: false })),
       'pom.xml': '<project/>\n',
       'src/main/java/example/Sample.java': 'package example;\nclass Sample {}\n',
@@ -48,17 +50,20 @@ for (const feature of features) {
     assert.match(unavailable.stdout + unavailable.stderr, /找不到|工具/);
 
     const base = fixtureGit(root, ['rev-parse', 'HEAD']);
-    writeProjectFile(root, 'repo-guard.config.json', JSON.stringify(configuration(feature, { enabled: false, mode: 'report' })));
-    fixtureGit(root, ['add', 'repo-guard.config.json']);
+    writeProjectFile(root, 'repo-guard.config.json', JSON.stringify(configuration(feature, { enabled: true, mode: 'off' })));
+    synchronizeCiFixture(root);
+    fixtureGit(root, ['add', '.']);
     fixtureGit(root, ['commit', '-m', 'test: 验证报告模式']);
-    const args = ['ci', '--profile', 'full', '--base', base, '--head', fixtureGit(root, ['rev-parse', 'HEAD'])];
+    const args = ['ci', '--base', base, '--head', fixtureGit(root, ['rev-parse', 'HEAD'])];
     const reportOnly = run(root, args);
     assert.equal(reportOnly.status, EXIT_CODES.success, reportOnly.stdout + reportOnly.stderr);
     const report = JSON.parse(readFileSync(path.join(root, 'reports/repo-guard.json'), 'utf8'));
     assert.ok(JSON.stringify(report).includes(feature.id));
-    assert.ok(JSON.stringify(report).includes('execution-error'));
+    assert.equal(report.steps.find(({ gateResult }) => gateResult.gateId === feature.id).gateResult.status, 'skipped');
 
-    writeProjectFile(root, 'repo-guard.config.json', JSON.stringify(configuration(feature, { enabled: false, mode: 'enforce' })));
+    writeProjectFile(root, 'repo-guard.config.json', JSON.stringify(configuration(feature, { enabled: true, mode: 'inherit' })));
+    synchronizeCiFixture(root);
+    args[args.length - 1] = commitCiFixture(root);
     const enforced = run(root, args);
     assert.equal(enforced.status, EXIT_CODES.error, enforced.stdout + enforced.stderr);
   });

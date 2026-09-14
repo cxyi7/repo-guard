@@ -1,5 +1,7 @@
 # repo-guard 项目结构与能力总览
 
+CI 命令与平台安装分离：orchestration/ci 负责统一执行、版本一致性、通知测试和结果汇总；gates/release/ci-notification 组合结果，integrations/notifications 调用企业微信/飞书。部署仍独立。公开档位已取消，详见 [CI](features/ci.md)。
+
 前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](features/frontend-performance-presets.md)。
 
 适用于版本 `2.0.0`。

@@ -1,5 +1,7 @@
 # 功能说明文档索引
 
+当前 CI 已取消公开档位，统一按项目配置执行；本地使用、公共必查项、独立企业微信/飞书通知与接入测试见 [CI 使用说明](ci.md)。最终验收使用独立 delivery-check 命令。
+
 本轮全部新增功能统一归入 2.0.0 重构；链接中的 2.1.0～7.2.0 审查文件保留为历史开发记录，不代表独立发布。
 
 完整流程尚未完成的六项工作见 [AI 接入、合同交付与发布流程待办](../end-to-end-workflow-backlog.md)，包含当前状态、实施内容、前置条件与验收标准。
@@ -35,7 +37,7 @@ v2 工程能力按应用维护：`checks`、应用 `repository` 策略及 `ci.ex
 | 托管 Git Hook | [docs/features/managed-git-hooks.md](managed-git-hooks.md) | 已维护，区分快照缺失与 Git 执行失败 |
 | 小猫与小狗提交动画（十种类型道具、内置彩蛋、中断恢复） | [docs/features/commit-animation.md](commit-animation.md) | 已维护，含动图预览 |
 | AGENTS 托管规范 | [docs/features/managed-agent-policies.md](managed-agent-policies.md) | 已维护，核验仓库及所选应用规范一致性 |
-| GitLab CI 安装与配置档 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护，默认模式继承与应用显式覆盖分别处理 |
+| GitLab CI 安装与触发 | [docs/features/gitlab-ci.md](gitlab-ci.md) | 已维护，项目配置驱动、公共必检与独立通知 |
 
 ## 提交阶段质量与安全
 

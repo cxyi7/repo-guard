@@ -13,19 +13,18 @@ import {
 
 export function runInstallCiCommand(cwd = process.cwd(), {
   provider,
-  profile,
   stage,
   dryRun,
 } = {}) {
   if (provider !== 'gitlab') throw configurationError('install-ci/unsupported-provider', '仅支持 gitlab CI 提供方');
   const root = findRepositoryRoot(cwd);
-  const result = installGitLabCi(root, { profile, stage, dryRun });
+  const result = installGitLabCi(root, { stage, dryRun });
   if (!dryRun) {
     for (const target of workspaceAgentPolicyTargets(loadWorkspace(root))) syncAgentPolicies(target.root, target.config);
   }
   writeConsoleMessage(`repo-guard GitLab CI 操作：${dryRun ? '预览' : '安装'}`);
   writeConsoleMessage(`- 模板：${GITLAB_TEMPLATE_FILE}（${result.templateChanged ? '已更新' : '当前版本'}）`);
-  writeConsoleMessage(`- 配置档： ${result.profile}`);
+  writeConsoleMessage('CI 将按项目启用的检查配置执行。');
   writeConsoleMessage('- 此入口只安装质量检查；构建、产物与部署请使用独立运维配置和 `repo-guard ops install`。');
   if (result.integrated) {
     writeConsoleMessage(`- ${GITLAB_CI_FILE}：已集成到 stage ${result.stage}`);

@@ -52,7 +52,7 @@ test('实际运维 CLI 从仓库和应用目录预览两应用，保持相对路
   for (const [cwd, args] of [[root, ['plan']], [path.join(root, 'apps/api'), ['install', '--dry-run']]]) {
     const output = run(cwd, ...args);
     for (const id of ['web', 'api']) {
-      assert.match(output, new RegExp(`repo-guard ci --project ${id} --profile full`));
+      assert.match(output, new RegExp(`repo-guard ci --project ${id}`));
       assert.match(output, new RegExp(`apps/${id}/dist`));
     }
     assert.equal(existsSync(path.join(root, '.gitlab-ci.yml')), false);

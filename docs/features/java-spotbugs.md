@@ -10,7 +10,7 @@
 | 命令 | `repo-guard java-spotbugs --project api` |
 | 门禁标识 | `java.spotbugs` |
 | 原生工具 | 项目提供的 JDK、Maven、固定版本 SpotBugs Maven 插件 4.x |
-| 自动阶段 | 可进入 pre-push、CI full 和 release-ready；不进入 pre-commit |
+| 自动阶段 | 可进入 pre-push、CI 与交付复核；不进入 pre-commit |
 | 修改范围 | 不修复源码；Maven 会清理并重新生成应用构建目录中的产物 |
 | 当前边界 | Maven Java 应用、生产类、每模块独立原生 XML；不包含 Gradle 适配 |
 

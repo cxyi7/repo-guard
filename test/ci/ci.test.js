@@ -28,8 +28,11 @@ const TEST_ROOT = path.join(process.cwd(), 'test', '.tmp');
 mkdirSync(TEST_ROOT, { recursive: true });
 
 async function runCiGate(options) {
+  writeFileSync(path.join(options.root,'repo-guard.config.json'),stringifyProjectFixture(options.config));
   syncAgentPolicies(options.root, options.config);
-  return executeCiGate(options);
+  git(options.root,['add','.']);
+  git(options.root,['-c','core.hooksPath=','commit','--allow-empty','-m','chore: 准备本轮检查配置']);
+  return executeCiGate({...options,head:git(options.root,['rev-parse','HEAD'])});
 }
 
 function git(root, args) {
@@ -84,7 +87,6 @@ function config(extra = {}) {
     },
     ci: {
       enabled: true,
-      profile: 'policy',
       reportPath: 'reports/repo-guard.json',
       protectedFiles: {
         action: 'report',
@@ -129,14 +131,13 @@ function sparseCiConfig() {
   };
 }
 
-function configWithCiGatePolicy(reportPath, gates, defaultMode = 'inherit') {
+function configWithCiGatePolicy(reportPath, gates) {
   return config({
     ci: {
       enabled: true,
-      profile: 'policy',
       reportPath,
       protectedFiles: { action: 'report' },
-      gatePolicy: { defaultMode, gates },
+      gatePolicy: { gates },
     },
   });
 }
@@ -147,6 +148,7 @@ function repository() {
   git(root, ['config', 'user.email', 'test@example.com']);
   git(root, ['config', 'user.name', 'Test']);
   mkdirSync(path.join(root, 'src'));
+  writeFileSync(path.join(root,'.gitignore'),'reports/\nnode_modules/\n');
   writeFileSync(
     path.join(root, 'src', 'safe.js'),
     'export const safe = true;\n',
@@ -160,14 +162,14 @@ function repository() {
     '{"name":"fixture","version":"1.0.0","lockfileVersion":3,"packages":{}}\n',
   );
   git(root, ['add', '.']);
-  git(root, ['commit', '-m', 'base']);
+  git(root, ['commit', '-m', 'chore: 基准']);
   const base = git(root, ['rev-parse', 'HEAD']);
   writeFileSync(
     path.join(root, 'src', 'next.js'),
     'export const next = true;\n',
   );
   git(root, ['add', '.']);
-  git(root, ['commit', '-m', 'next']);
+  git(root, ['commit', '-m', 'feat: 新增实现']);
   return { root, base, head: git(root, ['rev-parse', 'HEAD']) };
 }
 
@@ -227,10 +229,10 @@ test('runs a read-only policy profile and always writes structured JSON', async 
   );
   assert.equal(report.status, 'passed');
   assert.equal(report.version, 2);
-  assert.equal(report.profile, 'policy');
+  assert.equal(report.phase, 'ci');
   assert.equal(report.protectedFiles.length, 1);
   assert.deepEqual(
-    report.steps.map(({ name, status }) => ({ name, status })),
+    report.steps.slice(0, 18).map(({ name, status }) => ({ name, status })),
     [
       { name: 'repository.structured-exceptions', status: 'passed' },
       { name: 'repository.global-file-placement', status: 'skipped' },
@@ -238,7 +240,7 @@ test('runs a read-only policy profile and always writes structured JSON', async 
       { name: 'java.path-naming', status: 'skipped' },
       { name: 'repository.agent-policy', status: 'passed' },
       { name: 'quality.function-documentation', status: 'skipped' },
-      { name: 'repository.commit-message', status: 'skipped' },
+      { name: 'repository.commit-message', status: 'passed' },
       { name: 'async-resource-cleanup', status: 'skipped' },
       { name: 'path-naming', status: 'skipped' },
       { name: 'ui-tokens', status: 'skipped' },
@@ -249,7 +251,6 @@ test('runs a read-only policy profile and always writes structured JSON', async 
       { name: 'repository.code-placement', status: 'skipped' },
       { name: 'repository.maximum-file-lines', status: 'skipped' },
       { name: 'repository.delivery-contract', status: 'skipped' },
-      { name: 'unit-test-policy', status: 'skipped' },
       { name: 'protected-files', status: 'passed' },
     ],
   );
@@ -289,7 +290,6 @@ test('runs a read-only policy profile and always writes structured JSON', async 
       config: config({
         ci: {
           enabled: true,
-          profile: 'policy',
           reportPath: 'reports/failed.json',
           protectedFiles: { action: 'fail' },
         },
@@ -316,12 +316,13 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
     '<script setup>\nconst timer = setInterval(refresh, 1000);\n</script>\n',
   );
   git(fixture.root, ['add', '.']);
-  git(fixture.root, ['commit', '-m', 'add leaking component']);
+  git(fixture.root, ['commit', '-m', 'test: 异步资源错误']);
   const head = git(fixture.root, ['rev-parse', 'HEAD']);
 
   const enforceConfig = configWithCiGatePolicy('reports/async-enforce.json', {
-    'quality.vue-async-resource-cleanup': { mode: 'enforce' },
+    'quality.vue-async-resource-cleanup': { mode: 'inherit' },
   });
+  enforceConfig.checks.asyncResourceCleanup.enabled = true;
   assert.equal(
     await runCiGate({
       root: fixture.root,
@@ -346,7 +347,7 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
   assert.equal(enforceStep.gateResult.findings[0].severity, 'error');
 
   const reportConfig = configWithCiGatePolicy('reports/async-report.json', {
-    'quality.vue-async-resource-cleanup': { mode: 'report' },
+    'quality.vue-async-resource-cleanup': { mode: 'off' },
   });
   assert.equal(
     await runCiGate({
@@ -366,7 +367,7 @@ test('CI enforce 模式启用并阻断异步资源清理错误', async (context)
   );
   assert.equal(
     report.steps.find(({ name }) => name === 'async-resource-cleanup').status,
-    'failed',
+    'skipped',
   );
 });
 
@@ -378,14 +379,15 @@ test('CI enforce 模式启用并阻断全项目路径命名错误', async (conte
     'export const committeeInfo = true;\n',
   );
   git(fixture.root, ['add', '.']);
-  git(fixture.root, ['commit', '-m', 'add invalid path']);
+  git(fixture.root, ['commit', '-m', 'test: 路径命名错误']);
   const head = git(fixture.root, ['rev-parse', 'HEAD']);
   const enforceConfig = configWithCiGatePolicy(
     'reports/path-naming-enforce.json',
     {
-      'repository.path-naming': { mode: 'enforce' },
+      'repository.path-naming': { mode: 'inherit' },
     },
   );
+  enforceConfig.checks.pathNaming.enabled = true;
 
   assert.equal(
     await runCiGate({
@@ -466,14 +468,7 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
       step: 'skipped',
     },
     {
-      mode: 'report',
-      exitCode: 0,
-      reportPath: 'reports/report.json',
-      status: 'passed',
-      step: 'failed',
-    },
-    {
-      mode: 'enforce',
+      mode: 'inherit',
       exitCode: 2,
       reportPath: 'reports/enforce.json',
       status: 'failed',
@@ -501,18 +496,19 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
     assert.deepEqual(step.gatePolicy, {
       mode: item.mode,
       scope: 'all-files',
-      blocking: item.mode === 'enforce',
+      blocking: item.mode === 'inherit',
     });
   }
 
+  const changedBase = git(fixture.root, ['rev-parse', 'HEAD']);
   const changedReportPath = 'reports/changed-files.json';
   assert.equal(
     await runCiGate({
       root: fixture.root,
       config: configWithCiGatePolicy(changedReportPath, {
-        'security.source-security': { mode: 'enforce', scope: 'changed-files' },
+        'security.source-security': { mode: 'inherit', scope: 'changed-files' },
       }),
-      base: fixture.base,
+      base: changedBase,
       head: fixture.head,
       env: {},
     }),
@@ -524,9 +520,9 @@ test('applies off, report, enforce, and changed-file modes only to CI', async (c
   const changedStep = changedReport.steps.find(
     ({ name }) => name === 'security.source-security',
   );
-  assert.equal(changedStep.status, 'passed');
+  assert.equal(changedStep.status, 'skipped');
   assert.deepEqual(changedStep.gatePolicy, {
-    mode: 'enforce',
+    mode: 'inherit',
     scope: 'changed-files',
     blocking: true,
   });
@@ -592,7 +588,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
     `${stringifyProjectFixture(sparseCiConfig(), null, 2)}\n`,
   );
 
-  const result = installGitLabCi(fixture.root, { profile: 'policy' });
+  const result = installGitLabCi(fixture.root, { });
   assert.equal(result.integrated, true);
   const installedRoot = readFileSync(
     path.join(fixture.root, '.gitlab-ci.yml'),
@@ -600,21 +596,25 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   );
   assert.match(installedRoot, /existing_job:/);
   assert.match(installedRoot, /local: \/\.gitlab\/ci\/repo-guard\.yml/);
-  assert.match(installedRoot, /extends: \.repo_guard_policy/);
+  assert.match(installedRoot, /extends: \.repo_guard_ci/);
   assert.match(installedRoot, /stage: verify/);
   const template = readFileSync(
     path.join(fixture.root, GITLAB_TEMPLATE_FILE),
     'utf8',
   );
-  assert.match(template, /repo-guard-gitlab-template:v3/);
-  assert.match(template, /npx --no-install repo-guard ci --profile policy/);
+  assert.match(template, /repo-guard-gitlab-template:v4/);
+  assert.match(template, /npx --no-install repo-guard ci/);
   assert.match(
     template,
-    /npx --no-install repo-guard ci --profile release-ready/,
+    /npx --no-install repo-guard ci/,
   );
   assert.match(template, /node:22\.23\.2/);
   assert.match(template, /GIT_DEPTH: "0"/);
   assert.match(template, /REPO_GUARD_SKIP_HOOKS: "1"/);
+  assert.match(template, /CI_PIPELINE_SOURCE == "merge_request_event"/);
+  assert.match(template, /CI_OPEN_MERGE_REQUESTS'\n {6}when: never/);
+  assert.ok(template.includes(JSON.stringify('$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "dev"')));
+  assert.ok(template.includes(JSON.stringify('$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"')));
   assert.match(template, /- reports\//);
   const installedConfig = loadConfig(fixture.root, { repositoryOnly: true });
   assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
@@ -628,7 +628,7 @@ test('installs a managed GitLab include and preserves existing pipeline jobs', a
   writeFileSync(rootPath, windowsRoot);
   writeFileSync(templatePath, windowsTemplate);
 
-  const repeat = installGitLabCi(fixture.root, { profile: 'policy' });
+  const repeat = installGitLabCi(fixture.root, { });
   assert.equal(repeat.rootChanged, false);
   assert.equal(repeat.templateChanged, false);
   assert.equal(readFileSync(rootPath, 'utf8'), windowsRoot);
@@ -659,7 +659,7 @@ test('v2 质量安装不消费独立运维配置，也不生成部署或改写�
     'stages: [test, build, deploy]\nrepo_guard_verify:\n  stage: build\n  script:\n    - npm run verify\n';
   writeFileSync(path.join(fixture.root, '.gitlab-ci.yml'), existing);
 
-  const installed = installGitLabCi(fixture.root, { profile: 'full' });
+  const installed = installGitLabCi(fixture.root, { });
   assert.equal(Object.hasOwn(installed, 'pipelineEnabled'), false);
   assert.equal(installed.integrated, true);
   const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
@@ -685,18 +685,18 @@ test('installs the release-ready GitLab profile without embedding publish or dep
     path.join(fixture.root, 'repo-guard.config.json'),
     `${stringifyProjectFixture(sparseCiConfig(), null, 2)}\n`,
   );
-  const installed = installGitLabCi(fixture.root, { profile: 'release-ready' });
+  const installed = installGitLabCi(fixture.root, {});
   assert.equal(installed.integrated, true);
   const root = readFileSync(path.join(fixture.root, '.gitlab-ci.yml'), 'utf8');
   const template = readFileSync(
     path.join(fixture.root, GITLAB_TEMPLATE_FILE),
     'utf8',
   );
-  assert.match(root, /extends: \.repo_guard_release_ready/);
-  assert.match(template, /repo-guard ci --profile release-ready/);
+  assert.match(root, /extends: \.repo_guard_ci/);
+  assert.doesNotMatch(template, /repo-guard delivery-check/);
   assert.doesNotMatch(template, /npm publish|\bdeploy\b/);
   const installedConfig = loadConfig(fixture.root, { repositoryOnly: true });
-  assert.equal(installedConfig.ci.profile, 'release-ready');
+  assert.equal(Object.hasOwn(installedConfig.ci, 'profile'), false);
   assert.deepEqual(inspectGitLabCi(fixture.root, installedConfig).problems, []);
 });
 
@@ -710,7 +710,7 @@ test('generates the GitLab template but does not rewrite complex existing includ
     `${stringifyProjectFixture(sparseCiConfig(), null, 2)}\n`,
   );
 
-  const result = installGitLabCi(fixture.root, { profile: 'full' });
+  const result = installGitLabCi(fixture.root, { });
   assert.equal(result.integrated, false);
   assert.match(result.conflict, /已定义 include/);
   assert.equal(
@@ -730,11 +730,15 @@ test('exposes install-ci and ci through the package CLI', (context) => {
   const cli = path.join(process.cwd(), 'bin', 'repo-guard.js');
   const install = spawnSync(
     process.execPath,
-    [cli, 'install-ci', '--provider', 'gitlab', '--profile', 'policy'],
+    [cli, 'install-ci', '--provider', 'gitlab'],
     { cwd: fixture.root, encoding: 'utf8' },
   );
   assert.equal(install.status, 0, install.stderr);
 
+  syncAgentPolicies(fixture.root, loadConfig(fixture.root));
+  git(fixture.root, ['add', '.']);
+  git(fixture.root, ['commit', '-m', 'chore: 配置 CI']);
+  fixture.head = git(fixture.root, ['rev-parse', 'HEAD']);
   const run = spawnSync(
     process.execPath,
     [
@@ -750,6 +754,8 @@ test('exposes install-ci and ci through the package CLI', (context) => {
     { cwd: fixture.root, encoding: 'utf8' },
   );
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  const delivery = spawnSync(process.execPath, [cli, 'delivery-check', '--project', 'web', '--base', fixture.base, '--head', fixture.head], { cwd: fixture.root, encoding: 'utf8' });
+  assert.equal(delivery.status, 0, `${delivery.stdout}\n${delivery.stderr}`);
   assert.equal(
     JSON.parse(
       readFileSync(path.join(fixture.root, 'reports', 'cli.json'), 'utf8'),
@@ -831,8 +837,8 @@ test('rejects report paths that could modify project files', async (context) => 
   assert.equal(invalidConfigReport.gateResult.issues[0].kind, 'configuration');
 
   writeFileSync(path.join(fixture.root, 'reports', 'tracked.json'), '{}\n');
-  git(fixture.root, ['add', 'reports/tracked.json']);
-  git(fixture.root, ['commit', '-m', 'track report']);
+  git(fixture.root, ['add', '-f', 'reports/tracked.json']);
+  git(fixture.root, ['commit', '-m', 'test: 跟踪报告']);
   await assert.rejects(
     runCiGate({
       root: fixture.root,
@@ -849,6 +855,7 @@ test('rejects report paths that could modify project files', async (context) => 
     '{}\n',
   );
 
+  fixture.head = git(fixture.root, ['rev-parse', 'HEAD']);
   assert.equal(
     await runCiCommand(fixture.root, {
       base: fixture.base,

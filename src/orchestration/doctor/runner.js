@@ -141,7 +141,7 @@ function inspectManagedHooks(root, { checks, errors }) {
   }
 }
 
-export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, projectId } = {}) {
+export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, gitlab = false, projectId } = {}) {
   const errors = [];
   const warnings = [];
   const checks = [];
@@ -199,21 +199,26 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
     }
   } else if (config) {
     checks.push('CI 模式不需要本地 Git Hook 或企业微信凭据');
+    if (!config.ci.notification.enabled) checks.push('CI 通知已明确关闭');
+    else if (!config.ci.notification.channels.length) warnings.push('CI 通知默认开启但尚未配置渠道；请填写 ci.notification.channels 并运行 repo-guard ci-notification-test，或明确关闭 ci.notification.enabled');
+    else checks.push('CI 通知已配置；请运行 repo-guard ci-notification-test 验证平台接收结果');
     try {
+      if (gitlab) {
       const operations = loadOperationsConfig(root);
       const ciInspection = operations.enabled
         ? inspectOperationsGitLabPipeline(root, operations, workspace.projects.map((application) => ({
           ...application.project, root: application.relativeRoot,
         }))) : inspectGitLabCi(root, config);
       if (ciInspection.problems.length > 0) errors.push(...ciInspection.problems);
-      else checks.push(operations.enabled ? 'GitLab 独立运维集成' : `GitLab CI 集成（${config.ci.profile} 配置档）`);
+      else checks.push(operations.enabled ? 'GitLab 独立运维集成' : 'GitLab CI 集成');
+      } else checks.push('本地 CI 环境检查，不要求 GitLab 流水线文件');
     } catch (error) {
       errors.push(error.message);
     }
     try {
       validateCiGatePolicy(config, createProjectGateRegistry(config));
       checks.push(
-        `CI 门禁策略（默认模式=${config.ci.gatePolicy.defaultMode}，`
+        `CI 门禁策略（按项目配置执行，`
         + `${Object.keys(config.ci.gatePolicy.gates).length} 项覆盖）`,
       );
     } catch (error) {
@@ -225,8 +230,7 @@ export async function runDoctor(cwd = process.cwd(), { fix = false, ci = false, 
     for (const application of selectProjects(workspace, projectId)) {
       inspectGuardedBuilds(application, root, { checks, errors });
     }
-    const environment = ci && config.ci.profile === 'release-ready'
-      ? 'release-ready' : ci ? `ci-${config.ci.profile}` : 'manual';
+    const environment = ci ? 'ci-full' : 'manual';
     const targets = createWorkspaceTargets({
       workspace, projectId, environment,
       changes: createChangeSet({ source: 'doctor', changes: [] }),

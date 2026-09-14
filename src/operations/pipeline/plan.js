@@ -30,7 +30,7 @@ function projectPlan(repositoryRoot, id, unit, projects) {
     runtime: 'node',
     quality: {
       job: `repo_guard_quality__${id}`,
-      command: `npx --no-install repo-guard ci --project ${id} --profile ${unit.qualityProfile}`,
+      command: `npx --no-install repo-guard ${unit.verifyDelivery ? 'delivery-check' : 'ci'} --project ${id}`,
     },
     build: {
       job: `repo_guard_build__${id}`,

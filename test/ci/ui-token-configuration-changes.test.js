@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -35,10 +36,8 @@ function fixture(context, changedFile) {
       },
       ci: {
         enabled: true,
-        profile: 'policy',
         gatePolicy: {
-          defaultMode: 'off'
-        }
+          }
       }
     }),
     'apps/web/stylelint.config.cjs': 'module.exports = { rules: {} };\n',
@@ -87,10 +86,10 @@ function fixture(context, changedFile) {
       },
       ci: {
         gatePolicy: {
-          defaultMode: 'off',
           gates: id === 'web' ? {
+            'quality.stylelint': { mode: 'off' },
             'quality.ui-tokens': {
-              mode: 'enforce',
+              mode: 'inherit',
               scope: 'changed-files'
             }
           } : {}
@@ -99,7 +98,8 @@ function fixture(context, changedFile) {
     });
   }
   const root = createGitProjectFixture(context, files);
-  const base = fixtureGit(root, ['rev-parse', 'HEAD']);
+  synchronizeCiFixture(root);
+  const base = commitCiFixture(root);
   writeProjectFile(root, changedFile, `${readFileSync(path.join(root, changedFile), 'utf8')}\n`);
   fixtureGit(root, ['add', changedFile]);
   fixtureGit(root, ['commit', '-m', 'test: 调整应用检查配置']);
@@ -130,7 +130,6 @@ for (const changedFile of [WEB_CONFIG, ROOT_CONFIG]) {
       options: {
         base,
         head,
-        profile: 'policy',
         env: {}
       }
     });

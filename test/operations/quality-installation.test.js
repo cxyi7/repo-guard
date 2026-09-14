@@ -6,7 +6,7 @@ import {
   GITLAB_TEMPLATE_FILE, inspectGitLabCi, installGitLabCiFiles,
 } from '../../src/operations/gitlab/gitlab-ci.js';
 
-const config = { version: 2, ci: { enabled: true, profile: 'policy' } };
+const config = { version: 2, ci: { enabled: true, } };
 const unsupportedTemplate = '# repo-guard-gitlab-template:v2\n.repo_guard_previous:\n  script: npm run previous\n';
 
 function fixture(context) {
@@ -26,7 +26,7 @@ test('质量安装只生成质量模板，直接使用新配置且不要求部�
   assert.equal(Object.hasOwn(result, 'pipelineEnabled'), false);
   assert.deepEqual(inspectGitLabCi(root, config).problems, []);
   const template = readFileSync(path.join(root, GITLAB_TEMPLATE_FILE), 'utf8');
-  assert.match(template, /^# repo-guard-gitlab-template:v3/);
+  assert.match(template, /^# repo-guard-gitlab-template:v4/);
   assert.doesNotMatch(template, /repo_guard_pipeline|deploy|ci-notify/);
   assert.equal(installGitLabCiFiles(root, config).rootChanged, false);
 });
@@ -79,13 +79,13 @@ test('根区块包含非当前作业时要求人工接入，冲突时根文件�
 test('质量根块人工添加脚本或弱化规则时拒绝覆写，但允许修改 profile 的正常升级', (context) => {
   const root = fixture(context);
   installGitLabCiFiles(root, config);
-  const full = { version: 2, ci: { enabled: true, profile: 'full' } };
-  assert.equal(installGitLabCiFiles(root, full, { profile: 'full' }).integrated, true);
+  const full = { version: 2, ci: { enabled: true, } };
+  assert.equal(installGitLabCiFiles(root, full, { }).integrated, true);
   assert.deepEqual(inspectGitLabCi(root, full).problems, []);
   const file = path.join(root, '.gitlab-ci.yml');
   const changed = readFileSync(file, 'utf8').replace('  stage: test', '  stage: test\n  allow_failure: true');
   writeFileSync(file, changed);
-  assert.match(installGitLabCiFiles(root, full, { profile: 'full' }).conflict, /人工修改/);
+  assert.match(installGitLabCiFiles(root, full, { }).conflict, /人工修改/);
   assert.equal(readFileSync(file, 'utf8'), changed);
 });
 

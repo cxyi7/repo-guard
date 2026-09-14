@@ -573,7 +573,7 @@
                 "enabled": {
                   "type": "boolean",
                   "default": false,
-                  "description": "是否在 pre-commit 和 CI policy 中强制执行代码位置策略。"
+                  "description": "是否在 pre-commit 和 CI 中强制执行代码位置策略。"
                 },
                 "rules": {
                   "type": "array",
@@ -761,28 +761,21 @@
         },
         "ci": {
           "type": "object",
-          "description": "质量 CI 的检查策略与结构化报告配置；门禁只读检查源码，不生成应用部署或流水线通知作业。应用构建产物、部署和流水线通知通过独立的 repo-guard.ops.json 配置。GitLab 质量模板作为托管 include 安装，保留无关的根流水线内容。",
+          "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。",
           "additionalProperties": false,
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": false
             },
-            "profile": {
-              "type": "string",
-              "enum": [
-                "policy",
-                "full",
-                "release-ready"
-              ],
-              "default": "policy",
-              "description": "policy 执行仓库策略检查；full 复用 policy 完整步骤，再执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 复用 full 通用工程检查，再执行适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
-            },
             "reportPath": {
               "type": "string",
               "pattern": "^reports/.+\\.json$",
               "default": "reports/repo-guard.json",
-              "description": "Repository-relative JSON report path retained as a CI artifact."
+              "description": "Repository-relative JSON report path retained as a CI artifact.",
+              "not": {
+                "const": "reports/ci-notification-test.json"
+              }
             },
             "protectedFiles": {
               "type": "object",
@@ -800,20 +793,9 @@
             },
             "gatePolicy": {
               "type": "object",
-              "description": "仅控制 CI 中的 Gate 启用与阻断，不由 pre-commit 或 pre-push 读取。report 和 enforce 只在独立 CI 上下文启用适用检查。多应用的默认模式按字段继承，具体 Gate 覆盖按应用独立配置。",
+              "description": "默认跟随项目功能开关，仅允许逐项关闭可选检查；公共必查项不可关闭或缩小范围。",
               "additionalProperties": false,
               "properties": {
-                "defaultMode": {
-                  "type": "string",
-                  "enum": [
-                    "inherit",
-                    "off",
-                    "report",
-                    "enforce"
-                  ],
-                  "default": "inherit",
-                  "description": "inherit 沿用功能开关；off 跳过；report 执行但不阻断；enforce 执行且失败阻断。单应用未指定时为 inherit；多应用子配置未指定时继承仓库默认模式，只有显式填写才覆盖，局部 gates 覆盖不会重置默认模式。"
-                },
                 "gates": {
                   "type": "object",
                   "default": {},
@@ -832,10 +814,9 @@
                         "type": "string",
                         "enum": [
                           "inherit",
-                          "off",
-                          "report",
-                          "enforce"
-                        ]
+                          "off"
+                        ],
+                        "description": "inherit 跟随项目配置；off 关闭可选检查。执行失败会阻断。"
                       },
                       "scope": {
                         "type": "string",
@@ -854,7 +835,7 @@
             "externalGates": {
               "type": "array",
               "default": [],
-              "description": "项目自有只读检查，仅通过精确 npm 脚本名执行；可手动运行或追加至 CI full、release-ready 的固定末尾，必须在 reports/ 下生成 schemaVersion 为 2 的 repo-guard-json-v2 报告，不支持旧协议。",
+              "description": "项目自有只读检查，仅通过精确 npm 脚本名执行；可手动运行或追加至 CI 与交付复核 的固定末尾，必须在 reports/ 下生成 schemaVersion 为 2 的 repo-guard-json-v2 报告，不支持旧协议。",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
@@ -912,12 +893,100 @@
                       "path": {
                         "type": "string",
                         "pattern": "^reports/(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))(?:(?!(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.|/|$))[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?/)*[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?\\.json$",
-                        "description": "Fresh untracked report path inside reports/."
+                        "description": "Fresh untracked report path inside reports/.",
+                        "not": {
+                          "const": "reports/ci-notification-test.json"
+                        }
                       }
                     }
                   }
                 }
               }
+            },
+            "notification": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "CI 独立通知；默认开启，凭据直接保存于仓库配置，不读取环境变量。",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "channels": {
+                  "type": "array",
+                  "maxItems": 2,
+                  "default": [],
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "provider",
+                      "webhook"
+                    ],
+                    "properties": {
+                      "provider": {
+                        "enum": [
+                          "wecom",
+                          "feishu"
+                        ]
+                      },
+                      "webhook": {
+                        "type": "string",
+                        "description": "对应平台官方群机器人 HTTPS Webhook 完整地址。"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "飞书机器人可选签名密钥；企业微信不支持。"
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "provider": {
+                              "const": "wecom"
+                            }
+                          }
+                        },
+                        "then": {
+                          "not": {
+                            "required": [
+                              "secret"
+                            ]
+                          },
+                          "properties": {
+                            "webhook": {
+                              "pattern": "^https://qyapi\\.weixin\\.qq\\.com/cgi-bin/webhook/send\\?key=[^&#]+$"
+                            }
+                          }
+                        },
+                        "else": {
+                          "properties": {
+                            "webhook": {
+                              "pattern": "^https://open\\.feishu\\.cn/open-apis/bot/v2/hook/[A-Za-z0-9-]+$"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "branches": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                "dev",
+                "main"
+              ],
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+              },
+              "description": "GitLab 推送触发的明确分支名；默认 dev、main。"
             }
           }
         },
@@ -1245,7 +1314,7 @@
                     "enabled": {
                       "type": "boolean",
                       "default": false,
-                      "description": "是否在 pre-commit、CI policy、CI full 与 release-ready 中启用 UI Token 门禁；新前端预设默认开启，读取既有配置保留原值。"
+                      "description": "是否在 pre-commit、CI 与交付复核 中启用 UI Token 门禁；新前端预设默认开启，读取既有配置保留原值。"
                     },
                     "languages": {
                       "type": "array",
@@ -2596,7 +2665,7 @@
             },
             "unusedImageAssets": {
               "type": "object",
-              "description": "项目级静态引用分析；手动命令做全量审计，pre-push、CI full 和发布就绪阶段按 enforcement 阻止无效图片。",
+              "description": "项目级静态引用分析；手动命令做全量审计，pre-push、CI 和交付复核阶段按 enforcement 阻止无效图片。",
               "additionalProperties": false,
               "properties": {
                 "enabled": {
@@ -3416,7 +3485,8 @@
                         "assert": {
                           "type": "object"
                         }
-                      }
+                      },
+                      "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。"
                     }
                   }
                 },
@@ -6341,7 +6411,8 @@
                               "assert": {
                                 "type": "object"
                               }
-                            }
+                            },
+                            "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。"
                           }
                         }
                       },
@@ -6991,28 +7062,21 @@
         },
         "ci": {
           "type": "object",
-          "description": "质量 CI 的检查策略与结构化报告配置；门禁只读检查源码，不生成应用部署或流水线通知作业。应用构建产物、部署和流水线通知通过独立的 repo-guard.ops.json 配置。GitLab 质量模板作为托管 include 安装，保留无关的根流水线内容。",
+          "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。",
           "additionalProperties": false,
           "properties": {
             "enabled": {
               "type": "boolean",
               "default": false
             },
-            "profile": {
-              "type": "string",
-              "enum": [
-                "policy",
-                "full",
-                "release-ready"
-              ],
-              "default": "policy",
-              "description": "policy 执行仓库策略检查；full 复用 policy 完整步骤，再执行项目适用且已启用的代码质量、测试、类型、架构和构建检查；release-ready 复用 full 通用工程检查，再执行适用且启用的 Lighthouse 及最终交付证据复核，不默认将消费项目视为 npm 发布包，也不执行发布或部署。"
-            },
             "reportPath": {
               "type": "string",
               "pattern": "^reports/.+\\.json$",
               "default": "reports/repo-guard.json",
-              "description": "Repository-relative JSON report path retained as a CI artifact."
+              "description": "Repository-relative JSON report path retained as a CI artifact.",
+              "not": {
+                "const": "reports/ci-notification-test.json"
+              }
             },
             "protectedFiles": {
               "type": "object",
@@ -7030,20 +7094,9 @@
             },
             "gatePolicy": {
               "type": "object",
-              "description": "仅控制 CI 中的 Gate 启用与阻断，不由 pre-commit 或 pre-push 读取。report 和 enforce 只在独立 CI 上下文启用适用检查。多应用的默认模式按字段继承，具体 Gate 覆盖按应用独立配置。",
+              "description": "默认跟随项目功能开关，仅允许逐项关闭可选检查；公共必查项不可关闭或缩小范围。",
               "additionalProperties": false,
               "properties": {
-                "defaultMode": {
-                  "type": "string",
-                  "enum": [
-                    "inherit",
-                    "off",
-                    "report",
-                    "enforce"
-                  ],
-                  "default": "inherit",
-                  "description": "inherit 沿用功能开关；off 跳过；report 执行但不阻断；enforce 执行且失败阻断。未指定时为 inherit；子应用未指定时继承这里的默认模式，只有显式填写才覆盖，局部 gates 覆盖不会重置默认模式。"
-                },
                 "gates": {
                   "type": "object",
                   "default": {},
@@ -7062,10 +7115,9 @@
                         "type": "string",
                         "enum": [
                           "inherit",
-                          "off",
-                          "report",
-                          "enforce"
-                        ]
+                          "off"
+                        ],
+                        "description": "inherit 跟随项目配置；off 关闭可选检查。执行失败会阻断。"
                       },
                       "scope": {
                         "type": "string",
@@ -7080,6 +7132,91 @@
                   }
                 }
               }
+            },
+            "notification": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "CI 独立通知；默认开启，凭据直接保存于仓库配置，不读取环境变量。",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "channels": {
+                  "type": "array",
+                  "maxItems": 2,
+                  "default": [],
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "provider",
+                      "webhook"
+                    ],
+                    "properties": {
+                      "provider": {
+                        "enum": [
+                          "wecom",
+                          "feishu"
+                        ]
+                      },
+                      "webhook": {
+                        "type": "string",
+                        "description": "对应平台官方群机器人 HTTPS Webhook 完整地址。"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "飞书机器人可选签名密钥；企业微信不支持。"
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "provider": {
+                              "const": "wecom"
+                            }
+                          }
+                        },
+                        "then": {
+                          "not": {
+                            "required": [
+                              "secret"
+                            ]
+                          },
+                          "properties": {
+                            "webhook": {
+                              "pattern": "^https://qyapi\\.weixin\\.qq\\.com/cgi-bin/webhook/send\\?key=[^&#]+$"
+                            }
+                          }
+                        },
+                        "else": {
+                          "properties": {
+                            "webhook": {
+                              "pattern": "^https://open\\.feishu\\.cn/open-apis/bot/v2/hook/[A-Za-z0-9-]+$"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "branches": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "default": [
+                "dev",
+                "main"
+              ],
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+              },
+              "description": "GitLab 推送触发的明确分支名；默认 dev、main。"
             }
           }
         },

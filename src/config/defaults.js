@@ -570,12 +570,12 @@ export const DEFAULT_NOTIFICATION_CONFIG = Object.freeze({
   enabled: true,
 });
 export const DEFAULT_CI_GATE_POLICY_CONFIG = Object.freeze({
-  defaultMode: 'inherit',
   gates: Object.freeze({}),
 });
 export const DEFAULT_CI_CONFIG = Object.freeze({
   enabled: false,
-  profile: 'policy',
+  notification: Object.freeze({ enabled: true, channels: Object.freeze([]) }),
+  branches: Object.freeze(['dev', 'main']),
   reportPath: 'reports/repo-guard.json',
   protectedFiles: Object.freeze({ action: 'report' }),
   gatePolicy: DEFAULT_CI_GATE_POLICY_CONFIG,

@@ -7,7 +7,7 @@
 - 删除命令：`form-labels`、`image-alt`。
 - 删除 Gate ID：`accessibility.vue-form-label`、`accessibility.vue-image-alt`。
 - 删除规则：`vue/form-control-label`、`vue/img-alt`。
-- pre-commit、CI policy/full、release-ready 和 Doctor 不再执行或列出这两项；初始化不再生成对应 npm scripts；托管 AI 规范不再提出这两项要求。
+- pre-commit、CI 与交付复核 和 Doctor 不再执行或列出这两项；初始化不再生成对应 npm scripts；托管 AI 规范不再提出这两项要求。
 
 消费项目升级时，请删除自行保存的 `guard:form-labels`、`guard:image-alt` 脚本以及其他对旧命令的调用，删除 `ci.gatePolicy.gates` 中的两个旧 Gate ID，并清理仅用于两条旧规则的结构化例外。旧命令与旧 CI Gate ID 会报错，不会跳转或静默忽略。按当前规范同步命令重新生成托管 AI 区块；不读取或转换旧格式。
 

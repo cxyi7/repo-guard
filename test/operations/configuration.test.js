@@ -41,7 +41,7 @@ test('拒绝越界产物、命令注入、通配分支和弱化质量档位', ()
   const make = (extra) => ({ version: 2, enabled: true, projects: { api: { ...unit, ...extra } } });
   assert.throws(() => validateOperationsConfig(make({ artifactPaths: ['../web/dist'] })), /相对路径/);
   assert.throws(() => validateOperationsConfig(make({ buildScript: 'build && echo done' })), /脚本名/);
-  assert.throws(() => validateOperationsConfig(make({ qualityProfile: 'policy' })), /full/);
+  assert.throws(() => validateOperationsConfig(make({ verifyDelivery: 'policy' })), /verifyDelivery/);
   assert.throws(() => validateOperationsConfig(make({ environments: { production: { script: 'deploy', branches: ['*'] } } })), /允许部署的分支/);
 });
 

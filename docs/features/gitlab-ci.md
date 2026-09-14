@@ -1,145 +1,41 @@
-# GitLab CI 与逐 Gate 策略
+# GitLab CI 接入
 
-用固定配置档复核可信 Git 范围，并保存结构化报告。
+[按项目配置执行 CI](ci.md)介绍本地用法、必查与可选规则、配置和独立通知。CI 不再提供档位；部署使用独立的 repo-guard.ops.json，不由质量接入自动开启。
 
-[返回使用说明](../usage-guide.md) · [功能索引](README.md)
+## 准备与安装
 
-> 阅读约定：示例使用配置 v2。项目身份由人或 AI 显式提供；基础预设决定默认值，不根据已安装工具自动开启能力。主配置片段合并到已有文件，数组整项替换。
-
-## 接入与配置
-
-本页 JSON 是单应用配置片段，合并到已有 `repo-guard.config.json`。多应用时，根 `ci` 保存流程开关、配置档、聚合报告路径和公共 Gate 策略；应用 `ci` 保存自己的 `protectedFiles / gatePolicy / externalGates`。根 `gatePolicy.defaultMode` 提供默认模式，应用可明确覆盖本方模式；根目录针对具体 Gate 的覆盖不会自动套用到应用。直接编辑 v2 配置后运行 `npx repo-guard doctor`。
-
-子应用只添加具体 Gate 覆盖，或填写空的 `gatePolicy`，都不会重置继承的默认模式。根为 `enforce` 时，子应用只关闭 build，其他适用检查仍强制执行；根为 `report` 时，其他检查仍不阻断。应用显式填写 `defaultMode` 后才使用本方默认模式；这一覆盖不会修改根配置或其他应用。`null`、数组或字符串等非法 `gatePolicy` 仍作为配置错误拒绝。
-
-安装或检查 CI：
+准备 GitLab 项目、可用 Runner、项目工具及锁文件。模板使用 Node 镜像；Java 的 JDK/Maven、Lighthouse 的 Chrome 等环境按实际启用的能力补齐。
 
 ```bash
-npx repo-guard install-ci --provider gitlab --profile policy --dry-run
-npx repo-guard install-ci --provider gitlab --profile policy
-npx repo-guard doctor --ci
+npx repo-guard install-ci --provider gitlab --dry-run
+npx repo-guard install-ci --provider gitlab
+npx repo-guard doctor --gitlab
 ```
 
-`install-ci` 未传 `--profile` 时沿用当前 `ci.profile`，不会将已有 `full` 或 `release-ready` 降为 `policy`；只有显式传入该选项才覆盖配置档，预览和实际安装遵循相同规则。
+模板 .gitlab/ci/repo-guard.yml 只提供 .repo_guard_ci 作业，执行 repo-guard ci。根 .gitlab-ci.yml 引用模板并选择 stage。未传 stage 时从已有 verify、test、quality 中选择；没有声明时使用 test。
 
-安装先只读校验已有 Skill 清单和各相关目录的 `AGENTS.md` 标记。旧格式会在写入 CI 模板、主配置或规范前拒绝，原文件保持不变；缺失文件和当前格式下待同步的正文不会因此被拒绝。
+安装只接受带内容指纹的当前 v4 模板与当前根区块；旧版、未知格式和人工修改均拒绝覆盖，原文件保持。已有自定义 include 时按预览人工合并。没有转换旧配置或模板的入口。
 
-显式执行：
+## 触发
 
-```bash
-npx repo-guard ci --profile policy --base <sha> --head <sha>
-npx repo-guard ci --profile full --base <sha> --head <sha>
-npx repo-guard ci --profile release-ready --base <sha> --head <sha>
-npx repo-guard ci --profile full --project api --base <sha> --head <sha>
-```
+ci.branches 默认包含 dev、main，可配置为实际需要的完整分支名。分支推送且没有已打开的合并请求时执行；创建或更新合并请求时执行合并请求任务，避免同一推送重复执行两条流水线。
 
-| 配置档 | 内容 |
-|---|---|
-| `policy` | 结构化例外、AGENTS、提交信息、异步资源、路径命名、UI Token、源码安全、依赖、文件归位、图片、代码位置、行数、交付合同、单元测试资料策略、保护文件 |
-| `full` | `policy` 加只读 Stylelint、ESLint、Prettier、类型检查、Knip、无效图片、完整单元测试/覆盖率、axe、架构和构建 |
-| `release-ready` | 使用 `full` 的通用工程检查，加适用且启用的 Lighthouse 和最终交付证据复核；不强制项目提供固定的 `check`、`test`、`pack:check` 脚本，不执行 npm 发布 |
+修改 ci.branches 后重新运行 install-ci，未被人工修改的当前模板会更新触发规则；可先用 --dry-run 预览，再一同提交配置和模板。只修改 JSON 不会直接改变远端已经保存的流水线规则。
 
-CI 不执行源码 fix、不安装 Hook、不读取本地企业微信凭据；测试、构建和报告仍会生成产物。流水线生成与部署由独立的[运维模块](managed-delivery-pipeline.md)管理，开启 CI 质量检查不会连带开启部署。
+例如：开发分支的五个提交 cherry-pick 到本地 dev，再推送 dev，触发一轮检查。GitLab 提供推送前后的提交号作为 base/head。第一次推送缺少有效 base 时需显式配置真实基准，不能把零 SHA 当作可信范围。
 
-`install-ci` 生成的模板只包含质量基类与 `policy / full / release-ready`，不生成构建发布基类、部署作业或通知。已有模板必须使用当前标记，且正文与当前生成模板一致，才允许重复安装；旧模板、未知内容或人工修改会被拒绝并保留原文件，不提供自动转换。根托管区块也必须符合当前结构；自定义 include 或无法识别的区块需人工合并预览。构建和部署按独立的 `repo-guard.ops.json` 重新接入。
-
-## 多应用执行与负责人
-
-仓库通过 `projects` 清单明确配置前端、Node 后端及不重叠的目录。普通 `policy / full` 根据 Git 范围选择受影响应用；根清单变化选择全部应用，`sharedPaths` 可声明共享文件影响哪些应用。`release-ready` 默认选择全部应用。`--project api` 显式选择 `api` 并复核公共仓库规则，报告不会把未选择的前端显示为通过。
-
-公共规则执行一次，应用检查依次在各自目录运行。依赖、例外、文件归位、保护规则和外部门禁使用应用配置；根目录仅作为管理入口时不会额外对根 `package.json` 套用应用依赖规则。所选应用以外的工程配置及工具不加载。Git 变更路径转换为应用相对路径，跨应用重命名同时影响来源与目标应用。
-
-`repository.agent-policy` 同时核验仓库公共 `AGENTS.md` 和所选应用各自的 `AGENTS.md`，使用对应目录的配置生成期望内容。默认策略下，任一受管规范缺失、过期或被改写都会阻断。使用 `--project web` 时检查公共规范与 web 规范，不检查未选择的 api 规范；报告也不会宣称 api 已通过。
-
-如果清单中唯一应用声明 `root: "."` 并使用独立的应用配置文件，仓库与应用共用同一个 `AGENTS.md`。该文件只在应用范围按应用配置检查一次，避免同一路径被要求满足两种文本。
-
-| 报告 | 路径与内容 |
-|---|---|
-| 聚合报告 | 根目录 `ci.reportPath`，默认 `reports/repo-guard.json`；列出选择的应用、各目标退出码、独立报告和聚合门禁结果 |
-| 公共仓库报告 | `reports/repo-guard-workspace/repository.json` |
-| 应用报告 | 各应用目录内的 `reports/repo-guard-workspace/projects/<项目 id>.json` |
-| 最终交付证据报告 | `release-ready` 执行完成后的 `reports/repo-guard-workspace/evidence.json` |
-
-单应用、聚合报告、各目标报告及配置或范围错误报告统一使用 `version: 2`。写入和汇总只接受版本 2，嵌套目标中的版本 1 也会被拒绝；旧报告需重新运行 CI 生成，不会自动转换。各步骤的 `GateResult` 使用 `schemaVersion: 2`。
-
-聚合报告与各目标报告不得使用同一路径；报告不覆盖受跟踪文件或穿过符号链接。应用检查互相隔离，任何按策略必须阻断的失败都会使整体退出码非零。前后端负责人可在各自 CI 作业中选择应用；整仓复核使用不带 `--project` 的 `release-ready`。跨仓联调另按[独立交付合同](delivery-contract.md#执行联调与验收)的版本组合执行。
-
-整体退出码使用[公共码表与优先级](gate-result-and-reporting.md#整体退出码怎样确定)：配置或执行异常 `1` 优先于范围错误 `3`，范围错误优先于违规 `2`；没有阻断问题则为 `0`。汇总不取第一个失败，也不按数字大小排序，调换前后端顺序不会改变结果。CI 的只报告问题保留原始状态，但不参与阻断汇总；整体 `0` 不表示每项规则都实际通过。
-
-## CI 门禁策略
-
-`ci.gatePolicy` 只控制 `npx repo-guard ci` 使用的 `ci-policy`、`ci-full` 和 `release-ready` 环境，不会被 pre-commit 或 pre-push 读取。同一个 Gate 可以在提交时强制执行、在 CI 中关闭，也可以在提交时关闭、仅在 CI 中报告或强制执行。
-
-```json
-{
-  "ci": {
-    "enabled": true,
-    "profile": "policy",
-    "reportPath": "reports/repo-guard.json",
-    "protectedFiles": {
-      "action": "report"
-    },
-    "gatePolicy": {
-      "defaultMode": "inherit",
-      "gates": {
-        "security.source-security": {
-          "mode": "enforce",
-          "scope": "changed-files"
-        },
-        "dependencies.policy": {
-          "mode": "report"
-        },
-        "repository.maximum-file-lines": {
-          "mode": "off"
-        }
-      }
-    }
-  }
-}
-```
-
-<!-- config-fields:start -->
-**字段说明**（以下使用完整的 v2 配置路径）：
-
-| 字段 | 用途 | 可填值与默认值 | 约束与要求 |
-|---|---|---|---|
-| `ci.enabled` | 是否启用CI 门禁流程 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
-| `ci.profile` | policy 检查仓库策略；full 加入完整质量检查；release-ready 复核发布准备 | `"policy"` / `"full"` / `"release-ready"`<br>默认：`"policy"` | 只接受列出的值 |
-| `ci.reportPath` | 整体 CI JSON 报告的仓库相对路径 | 字符串<br>默认：`"reports/repo-guard.json"` | 仓库相对 reports/*.json 路径；必须在 reports/ 下以 .json 结尾，不覆盖已跟踪文件，不经过符号链接。 |
-| `ci.protectedFiles.action` | report 报告受保护变更；fail 阻断此类变更；block 级规则始终阻断 | `"report"` / `"fail"`<br>默认：`"report"` | 只接受列出的值 |
-| `ci.gatePolicy.defaultMode` | inherit 继承功能配置；off 跳过；report 执行但不阻断；enforce 执行并按失败阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>单应用默认：`"inherit"`；多应用未指定时继承根默认模式 | 只接受列出的值；填写其他 Gate 覆盖不会重置本字段 |
-| `ci.gatePolicy.gates.dependencies.policy.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `ci.gatePolicy.gates.security.source-security.scope` | 该 Gate 的检查范围；changed-files 只可用于 Registry 声明支持的能力 | `"all-files"` / `"changed-files"`<br>默认：`"all-files"` | 只接受列出的值 |
-| `ci.gatePolicy.gates.security.source-security.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-| `ci.gatePolicy.gates.repository.maximum-file-lines.mode` | 覆盖该 Gate 的 CI 模式：继承、跳过、只报告或强制阻断 | `"inherit"` / `"off"` / `"report"` / `"enforce"`<br>本对象内必填，无自动代填值 | 只接受列出的值 |
-
-<!-- config-fields:end -->
-
-| 模式 | CI 行为 |
-|---|---|
-| `inherit` | 沿用 Gate 原有 `enabled` 配置，失败会阻断 CI |
-| `off` | 在 setup 和执行之前跳过该 CI Gate，不阻断 CI |
-| `report` | 仅在隔离的 CI 上下文中启用并执行，失败写入步骤报告但不阻断 CI |
-| `enforce` | 仅在隔离的 CI 上下文中启用并执行，失败阻断 CI |
-
-`scope` 默认为 `all-files`。只有 Registry 明确声明支持文件范围的 Gate 才能使用 `changed-files`；不支持的组合会作为配置错误失败，而不是静默缩小检查范围。
-
-独立交付开启后，合同边界与最终证据门禁按必需约定复核，不能用 CI 的 `off / report` 让缺失证据变成完成。工程 Gate 被合同引用时，只把实际 `passed` 结果记录为完成证据；关闭或跳过仍不能满足合同。
-
-`release-ready` 包含完整工程检查，并在所有应用检查之后复核交付证据。具体构建和测试脚本分别由 `checks.build.script`、`checks.unitTest.script` 等配置；未启用或不适用的能力显示跳过。后端项目不会执行 Vue 专用检查，CI 模式不会把前端能力强制套用到后端。外部门禁只在受信任的 GitLab CI 中按声明追加。
-
-独立交付与工程同时开启时，执行方须准备合同登记的 runner 私钥，CI 才能为对应参与方保存签名证据。报告保留应用身份，不能仅凭同名 Gate 的聚合状态替另一参与方证明完成。签名验收密钥由负责人单独持有，不注入 AI 的普通检查任务。
-
-## 执行与复核
-
-执行入口：显式 CI 命令或托管 GitLab Job。功能开关、CI 模式与具体文件范围仍按上文配置生效。
-
-检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
-
-[实现入口](../../src/orchestration/execution-plans.js) · [多应用调度](../../src/orchestration/ci/workspace-runner.js) · [多应用测试](../../test/ci/workspace-ci.test.js)
+质量命令在目标提交的干净工作区运行。Git 历史深度设置为 0，依赖安装跳过 Hook。通过 npx --no-install、pnpm exec 或 yarn exec 调用已安装的工具；不在检查时自动下载新版 repo-guard。
 
 ## 包管理器与冻结安装
 
-托管质量 CI 根据单应用的 `repository.dependencyPolicy.packageManager` 及安装根清单中的 `packageManager` 精确版本生成准备命令。多应用根目录仅作管理入口时，使用根清单明确声明的包管理器。npm 执行 `npm ci`，pnpm 执行 `pnpm install --frozen-lockfile`，Yarn 1 执行 `yarn install --frozen-lockfile`，Yarn 现代版本执行 `yarn install --immutable`。启动门禁分别使用 `npx --no-install`、`pnpm exec`、`yarn exec`，以保留项目解析环境，包括 Yarn PnP。
+按项目声明的 npm、pnpm 或 Yarn 版本生成准备命令：npm ci、pnpm install --frozen-lockfile、Yarn 1 的 yarn install --frozen-lockfile、现代 Yarn 的 yarn install --immutable。模板只接受原生默认锁文件路径，自定义路径由项目单独维护并验证安装流程。
 
-托管模板目前仅接受对应包管理器的默认锁文件路径；自定义锁路径需要项目自行维护并验证安装流程，不能把缓存键指向自定义文件后宣称原生安装消费了该文件。静态锁文件核对不替代冻结安装，也不替代真实工程检查。上述变更仅影响质量 CI；独立部署仍按运维配置执行。
+## 报告、通知和部署
+
+无论质量成功或失败，模板收集根 reports/ 报告并保留七天。多应用独立报告仍位于应用目录，可按团队产物收集规则另外归档。CI 通知从仓库 ci.notification 读取企业微信或飞书配置，成功失败都发送；先完成 ci-notification-test，首次环境会自动测试。
+
+流水线中的依赖安装失败可能早于 repo-guard 启动，此时本命令不能发送通知；Runner 强制中断也不保证通知。平台合并条件与环境权限由 GitLab 设置。检查失败不会撤销已经推送的提交。
+
+只有用户另行启用运维配置时才生成构建与部署；CI 通知与运维通知独立。详见[独立运维](operations.md)、[结果与报告](gate-result-and-reporting.md)。
+
+[实现入口](../../src/operations/gitlab/gitlab-ci.js) · [CI 执行](../../src/orchestration/ci/command.js)

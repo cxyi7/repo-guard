@@ -34,7 +34,7 @@ npx repo-guard ops install
   "projects": {
     "api": {                 // 必须与质量配置的项目 id 一致；小写字母开头、字母数字或连字符，最多 48 位。
       "enabled": true,       // 布尔值；默认 false，控制此应用是否参与流水线。
-      "qualityProfile": "full", // full / release-ready；默认 full，不接受仅检查部分规则的 policy 档位。
+      "verifyDelivery": false, // 默认 false；true 时使用 delivery-check 额外复核最终交付证据。
       "buildScript": "build", // 应用 package.json 已声明的脚本名；不能填写整条命令。
       "artifactPaths": ["dist/"], // 相对应用目录的文件或目录；启用应用时至少一个，构建后必须存在且包含文件。
       "environments": {
@@ -67,7 +67,7 @@ api 的完整质量检查 → api 构建及产物验证 → api/test 或手动 a
 
 每个应用都有唯一作业名、环境名、部署互斥组和带提交标识的产物名。构建依赖本应用质量作业成功；部署同时依赖本应用质量与构建，并且只下载该构建作业的产物。质量、构建、部署任务不使用 `allow_failure: true`，也没有绕开质量检查的快捷发布。
 
-质量入口为 `repo-guard ci --project <id> --profile full`，实际仍遵循团队显式配置的检查项和阈值。完整档位不代表启用了全部可选检查，团队应将必要门禁及运维配置列入保护范围。
+质量入口为 `repo-guard ci --project <id>`，实际仍遵循团队显式配置的检查项和阈值。CI 沿用项目启用的可选检查，团队应将必要门禁及运维配置列入保护范围。
 
 前端、后端在同仓时，各自维护对应项目的脚本与环境；分仓时，各仓库生成自己的流水线。本功能不会自动触发另一个仓库，也不会自动把前后端绑定为一次联合发布。
 

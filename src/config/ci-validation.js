@@ -1,6 +1,6 @@
+import { validateCiNotification, CI_NOTIFICATION_TEST_REPORT } from './ci-notification.js';
 import {
   DEFAULT_CI_CONFIG,
-  DEFAULT_CI_GATE_POLICY_CONFIG,
 } from './defaults.js';
 import {
   CI_GATE_POLICY_MODES,
@@ -21,7 +21,8 @@ export function validateCiConfiguration(value, configPath) {
     ciValue,
     new Set([
       'enabled',
-      'profile',
+      'notification',
+      'branches',
       'reportPath',
       'protectedFiles',
       'gatePolicy',
@@ -32,19 +33,12 @@ export function validateCiConfiguration(value, configPath) {
   if (ciValue.enabled != null && typeof ciValue.enabled !== 'boolean') {
     throw configValidationError(`${configPath} ci.enabled 必须是布尔值`);
   }
-  if (
-    ciValue.profile != null &&
-    !['policy', 'full', 'release-ready'].includes(ciValue.profile)
-  ) {
-    throw configValidationError(
-      `${configPath} ci.profile 必须为 policy、full 或 release-ready`,
-    );
-  }
   const ciReportPath = validateCiReportPath(
     ciValue.reportPath ?? DEFAULT_CI_CONFIG.reportPath,
     `${configPath} ci.reportPath`,
   );
   const ciProtectedFilesValue = ciValue.protectedFiles ?? {};
+  if (ciReportPath.toLowerCase() === CI_NOTIFICATION_TEST_REPORT) throw configValidationError('ci.reportPath 不得使用通知测试保留路径');
   if (
     !ciProtectedFilesValue ||
     typeof ciProtectedFilesValue !== 'object' ||
@@ -74,16 +68,9 @@ export function validateCiConfiguration(value, configPath) {
   }
   assertKnownProperties(
     gatePolicyValue,
-    new Set(['defaultMode', 'gates']),
+    new Set(['gates']),
     `${configPath} ci.gatePolicy`,
   );
-  const defaultMode =
-    gatePolicyValue.defaultMode ?? DEFAULT_CI_GATE_POLICY_CONFIG.defaultMode;
-  if (!CI_GATE_POLICY_MODES.includes(defaultMode)) {
-    throw configValidationError(
-      `${configPath} ci.gatePolicy.defaultMode 必须为 inherit、off、report 或 enforce`,
-    );
-  }
   const gatePoliciesValue = gatePolicyValue.gates ?? {};
   if (
     !gatePoliciesValue ||
@@ -109,7 +96,7 @@ export function validateCiConfiguration(value, configPath) {
     }
     if (!CI_GATE_POLICY_MODES.includes(policy.mode)) {
       throw configValidationError(
-        `${label}.mode 必须为 inherit、off、report 或 enforce`,
+        `${label}.mode 必须为 inherit 或 off`,
       );
     }
     const scope = policy.scope ?? 'all-files';
@@ -237,6 +224,7 @@ export function validateCiConfiguration(value, configPath) {
       `${label}.report.path`,
     );
     const reportPathKey = reportPath.toLowerCase();
+    if (reportPathKey === CI_NOTIFICATION_TEST_REPORT) throw configValidationError('外部门禁报告不得使用通知测试保留路径');
     if (externalReportPaths.has(reportPathKey)) {
       throw configValidationError(
         `${configPath} 外部门禁报告路径重复： ${reportPath}`,
@@ -258,12 +246,19 @@ export function validateCiConfiguration(value, configPath) {
     );
   }
 
+  const branches = ciValue.branches ?? DEFAULT_CI_CONFIG.branches;
+  if (!Array.isArray(branches) || branches.length === 0 || new Set(branches).size !== branches.length
+    || branches.some((branch) => typeof branch !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch)
+      || branch.includes('..') || branch.includes('//') || branch.endsWith('/') || branch.endsWith('.') || branch.endsWith('.lock'))) {
+    throw configValidationError('ci.branches 必须是不重复的完整分支名，不能使用通配符或表达式');
+  }
   return {
     enabled: ciValue.enabled ?? DEFAULT_CI_CONFIG.enabled,
-    profile: ciValue.profile ?? DEFAULT_CI_CONFIG.profile,
+    notification: validateCiNotification(ciValue.notification),
+    branches,
     reportPath: ciReportPath,
     protectedFiles: { action: ciProtectedFilesAction },
-    gatePolicy: { defaultMode, gates: gatePolicies },
+    gatePolicy: { gates: gatePolicies },
     externalGates,
   };
 }

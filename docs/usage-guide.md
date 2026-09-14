@@ -110,51 +110,51 @@ npx repo-guard doctor
 
 | 功能名 | 配置位置 | 功能说明（点击查看用法） | 初始状态 | 自动入口 / 触发方式 |
 |---|---|---|---|---|
-| `eslint` | `checks.eslint` | [检查 JS、TS、Vue 代码问题，并按项目规则修复可修复项](features/eslint.md) | 开 | 提交、CI full/release-ready |
-| `prettier` | `checks.prettier` | [统一缩进、换行、引号等代码与文档格式](features/prettier.md) | 开 | 提交、CI full/release-ready |
-| `stylelint` | `checks.stylelint` | [统一普通样式规则、隔离治理及可选 Token](features/stylelint.md) | 前端开 | 提交、CI full/release-ready |
+| `eslint` | `checks.eslint` | [检查 JS、TS、Vue 代码问题，并按项目规则修复可修复项](features/eslint.md) | 开 | 提交、CI 与交付复核 |
+| `prettier` | `checks.prettier` | [统一缩进、换行、引号等代码与文档格式](features/prettier.md) | 开 | 提交、CI 与交付复核 |
+| `stylelint` | `checks.stylelint` | [统一普通样式规则、隔离治理及可选 Token](features/stylelint.md) | 前端开 | 提交、CI 与交付复核 |
 | `fileHeader` | `checks.fileHeader` | [按 Git 事实同步文件头信息，保留人工描述](features/file-header.md) | 前端新建预设开 | 提交 |
 | `functionDocs` | `checks.functionDocs` | [随函数签名同步文档标签，保留业务说明](features/function-documentation.md) | 前端新建预设开 | 提交 |
-| `asyncResourceCleanup` | `checks.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 前端新建预设开 | 提交、CI 三档 |
-| `pathNaming` | `checks.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 前端新建预设开 | 提交、CI 三档 |
-| `filePlacement` | `checks.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI 三档 |
-| `repositoryFilePlacement` | `repository.filePlacement` | [限制整个仓库的文件存放位置，覆盖应用与公共目录的历史文件](features/repository-file-placement.md) | 关 | 手动、提交、推送、CI 三档 |
-| `maxFileLines` | `checks.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI 三档 |
-| `codePlacement` | `repository.codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI 三档 |
-| `dependencies` | `repository.dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI 三档 |
-| `commitMessage` | `repository.commitMessage` | [统一提交信息格式，并在推送和 CI 复核提交历史](features/commit-message.md) | 新建默认开 | 提交信息、推送、CI 三档 |
-| `imageAssets` | `checks.imageAssets` | [检查图片命名、真实格式、重复内容及优化收益](features/image-assets.md) | 前端新建预设开 | 提交、CI 三档 |
-| `unusedImageAssets` | `checks.unusedImageAssets` | [查找没有有效引用的图片，支持限制新增历史债务](features/unused-image-assets.md) | 前端新建预设开启 | 推送、CI full/release-ready |
-| `deliveryContract` | `repository.deliveryContract` | [把需求、任务、测试、人工验收与反馈绑定为可复核交付](features/delivery-contract.md) | 关 | 提交、CI 三档 |
-| `typeCheck` | `checks.typeCheck` | [调用项目类型脚本，检查 TypeScript 或 Vue 类型错误](features/typecheck.md) | 前端 TypeScript 新建预设开 | 推送、CI full/release-ready |
-| `architecture` | `checks.architecture` | [检查循环依赖、导入解析与团队模块分层边界](features/architecture.md) | 前端新建预设开 | 推送、CI full/release-ready |
-| `deadCode` | `checks.deadCode` | [使用 Knip 检查无效文件、导出和依赖，支持历史基线](features/dead-code.md) | 前端新建预设开 | 推送、CI full/release-ready |
-| `build` | `checks.build` | [执行项目构建，并检查已配置的产物预算](features/build.md) | 前端开 | 推送、CI full/release-ready |
-| `lighthouse` | `checks.lighthouse` | [检查 Vue 页面的性能等 Lighthouse 指标和项目断言](features/lighthouse.md) | 前端开 | CI full/release-ready，推送可选 |
-| `unitTest` | `checks.unitTest` | [执行项目 Vitest，并检查源码与测试的对应关系](features/unit-test.md) | 前端开、后端关 | 推送、CI full/release-ready；policy 检查资料 |
+| `asyncResourceCleanup` | `checks.asyncResourceCleanup` | [检查 Vue 组件与组合函数的定时器、监听等资源清理](features/async-resource-cleanup.md) | 前端新建预设开 | 提交、CI |
+| `pathNaming` | `checks.pathNaming` | [统一文件与目录的 camelCase 或 kebab-case 命名](features/path-naming.md) | 前端新建预设开 | 提交、CI |
+| `filePlacement` | `checks.filePlacement` | [按文件类型限制存放目录，避免资源和文档散落](features/file-placement.md) | 开 | 提交、CI |
+| `repositoryFilePlacement` | `repository.filePlacement` | [限制整个仓库的文件存放位置，覆盖应用与公共目录的历史文件](features/repository-file-placement.md) | 关 | 手动、提交、推送、CI |
+| `maxFileLines` | `checks.maxFileLines` | [限制单文件规模，提示接近上限或阻断继续膨胀](features/maximum-file-lines.md) | 开 | 提交、CI |
+| `codePlacement` | `repository.codePlacement` | [限制指定代码文本只在允许的文件中出现](features/code-placement.md) | 关 | 提交、CI |
+| `dependencies` | `repository.dependencyPolicy` | [检查依赖版本、来源、重复声明和锁文件一致性](features/dependency-policy.md) | 开 | 提交、CI |
+| `commitMessage` | `repository.commitMessage` | [统一提交信息格式，并在推送和 CI 复核提交历史](features/commit-message.md) | 新建默认开 | 提交信息、推送、CI |
+| `imageAssets` | `checks.imageAssets` | [检查图片命名、真实格式、重复内容及优化收益](features/image-assets.md) | 前端新建预设开 | 提交、CI |
+| `unusedImageAssets` | `checks.unusedImageAssets` | [查找没有有效引用的图片，支持限制新增历史债务](features/unused-image-assets.md) | 前端新建预设开启 | 推送、CI 与交付复核 |
+| `deliveryContract` | `repository.deliveryContract` | [把需求、任务、测试、人工验收与反馈绑定为可复核交付](features/delivery-contract.md) | 关 | 提交、CI |
+| `typeCheck` | `checks.typeCheck` | [调用项目类型脚本，检查 TypeScript 或 Vue 类型错误](features/typecheck.md) | 前端 TypeScript 新建预设开 | 推送、CI 与交付复核 |
+| `architecture` | `checks.architecture` | [检查循环依赖、导入解析与团队模块分层边界](features/architecture.md) | 前端新建预设开 | 推送、CI 与交付复核 |
+| `deadCode` | `checks.deadCode` | [使用 Knip 检查无效文件、导出和依赖，支持历史基线](features/dead-code.md) | 前端新建预设开 | 推送、CI 与交付复核 |
+| `build` | `checks.build` | [执行项目构建，并检查已配置的产物预算](features/build.md) | 前端开 | 推送、CI 与交付复核 |
+| `lighthouse` | `checks.lighthouse` | [检查 Vue 页面的性能等 Lighthouse 指标和项目断言](features/lighthouse.md) | 前端开 | CI 与交付复核，推送可选 |
+| `unitTest` | `checks.unitTest` | [执行项目 Vitest，并检查源码与测试的对应关系](features/unit-test.md) | 前端开、后端关 | 推送、CI 与交付复核 |
 | `coverage` | `checks.coverage` | [检查测试覆盖率与本次变更行覆盖率是否达标](features/coverage.md) | 前端开、后端关 | 随完整单元测试执行 |
-| `mutationTest` | `checks.mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 前端开、后端关 | 手动、CI full/release-ready 或受保护构建 |
+| `mutationTest` | `checks.mutationTest` | [用 Stryker 改动代码验证测试能否发现错误](features/mutation-test.md) | 前端开、后端关 | 手动、CI 与交付复核 或受保护构建 |
 | `notification` | `reporting.notification` | [在适用的本地保护文件和构建失败流程发送企业微信通知](features/wecom-notification.md) | 开 | 适用的本地通知流程 |
 | `commitAnimation` | `reporting.commitAnimation` | [用小猫或小狗展示提交检查状态，真实提交成功后播放类型道具和彩蛋](features/commit-animation.md) | 关 | 本地 `pre-commit` / `post-commit` |
-| `ci` | `ci` | [在 CI 按固定配置档复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
-| `javaFormat` | `checks.javaFormat` | [统一 Java 格式并检查编码、行尾和文件末尾换行](features/java-source-checks.md) | 关 | 提交修复及复核、推送、CI full/release-ready |
-| `javaNaming` | `checks.javaNaming` | [检查 Java 类型、方法、变量与常量的命名规则](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaLayout` | `checks.javaLayout` | [检查 Java 包声明、目录路径与顶层类型文件关系](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaImports` | `checks.javaImports` | [检查 Java 通配符、重复和不必要的导入声明](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaSize` | `checks.javaSize` | [限制 Java 文件、方法、参数、嵌套与圈复杂度](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaDocs` | `checks.javaDocs` | [检查指定可见范围的 Java 类型与方法文档结构](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaLint` | `checks.javaLint` | [检查错误空值判断、空捕获块和直接控制台输出](features/java-source-checks.md) | 关 | 提交、推送、CI full/release-ready |
-| `javaDuplication` | `checks.javaDuplication` | [按最小重复代码 token 数量检查 Java 重复片段](features/java-source-checks.md) | 关 | 推送、CI full/release-ready |
-| `javaArchitecture` | `checks.javaArchitecture` | [执行项目声明的架构测试并核验必需测试类实际运行](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaDependencies` | `checks.javaDependencies` | [检查 Maven 生效的依赖与插件策略及解析结果](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaFiles` | `checks.javaFiles` | [限制 Java 工程文件目录并阻止生成产物进入 Git](features/java-engineering.md) | 关 | 提交、推送、CI 三档 |
-| `javaCompile` | `checks.javaCompile` | [执行 Java 编译并核验必需模块的实际编译产物](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaBuild` | `checks.javaBuild` | [执行 Maven 打包并核验模块声明的构建产物](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaTest` | `checks.javaTest` | [执行 Java 测试并阻断失败、缺报告、零执行或全跳过](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaCoverage` | `checks.javaCoverage` | [检查本次 Java 测试覆盖率及必需模块的报告完整性](features/java-engineering.md) | 关 | 推送、CI full/release-ready |
-| `javaPathNaming` | `checks.javaPathNaming` | [分别约束 Java 文件与包目录命名，并按目录要求文件后缀](features/java-path-naming.md) | 关 | 提交、推送、CI 三档 |
-| `javaSpotbugs` | `checks.javaSpotbugs` | [分析编译字节码的缺陷模式并核验本次 SpotBugs 原生报告](features/java-spotbugs.md) | 关 | 推送、CI full/release-ready |
-| `javaMutationTest` | `checks.javaMutationTest` | [运行 PIT 变异测试，验证测试能否发现错误并检查逐模块得分](features/java-mutation-test.md) | 关 | 推送、CI full/release-ready |
+| `ci` | `ci` | [在 CI 按项目配置复核规则并输出统一报告](features/gitlab-ci.md) | 关 | 显式 CI / 托管 Job |
+| `javaFormat` | `checks.javaFormat` | [统一 Java 格式并检查编码、行尾和文件末尾换行](features/java-source-checks.md) | 关 | 提交修复及复核、推送、CI 与交付复核 |
+| `javaNaming` | `checks.javaNaming` | [检查 Java 类型、方法、变量与常量的命名规则](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaLayout` | `checks.javaLayout` | [检查 Java 包声明、目录路径与顶层类型文件关系](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaImports` | `checks.javaImports` | [检查 Java 通配符、重复和不必要的导入声明](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaSize` | `checks.javaSize` | [限制 Java 文件、方法、参数、嵌套与圈复杂度](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaDocs` | `checks.javaDocs` | [检查指定可见范围的 Java 类型与方法文档结构](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaLint` | `checks.javaLint` | [检查错误空值判断、空捕获块和直接控制台输出](features/java-source-checks.md) | 关 | 提交、推送、CI 与交付复核 |
+| `javaDuplication` | `checks.javaDuplication` | [按最小重复代码 token 数量检查 Java 重复片段](features/java-source-checks.md) | 关 | 推送、CI 与交付复核 |
+| `javaArchitecture` | `checks.javaArchitecture` | [执行项目声明的架构测试并核验必需测试类实际运行](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaDependencies` | `checks.javaDependencies` | [检查 Maven 生效的依赖与插件策略及解析结果](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaFiles` | `checks.javaFiles` | [限制 Java 工程文件目录并阻止生成产物进入 Git](features/java-engineering.md) | 关 | 提交、推送、CI |
+| `javaCompile` | `checks.javaCompile` | [执行 Java 编译并核验必需模块的实际编译产物](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaBuild` | `checks.javaBuild` | [执行 Maven 打包并核验模块声明的构建产物](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaTest` | `checks.javaTest` | [执行 Java 测试并阻断失败、缺报告、零执行或全跳过](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaCoverage` | `checks.javaCoverage` | [检查本次 Java 测试覆盖率及必需模块的报告完整性](features/java-engineering.md) | 关 | 推送、CI 与交付复核 |
+| `javaPathNaming` | `checks.javaPathNaming` | [分别约束 Java 文件与包目录命名，并按目录要求文件后缀](features/java-path-naming.md) | 关 | 提交、推送、CI |
+| `javaSpotbugs` | `checks.javaSpotbugs` | [分析编译字节码的缺陷模式并核验本次 SpotBugs 原生报告](features/java-spotbugs.md) | 关 | 推送、CI 与交付复核 |
+| `javaMutationTest` | `checks.javaMutationTest` | [运行 PIT 变异测试，验证测试能否发现错误并检查逐模块得分](features/java-mutation-test.md) | 关 | 推送、CI 与交付复核 |
 
 **开关之间的联动：** `coverage` 会启用 `unitTest`；关闭 `unitTest` 会关闭覆盖率检查。Stylelint 主开关控制治理与 Token 的执行，关闭时保留子配置。`unusedImageAssets` 会启用图片治理，关闭图片治理会关闭无效图片检查。
 
@@ -512,7 +512,7 @@ npx repo-guard doctor
 npx repo-guard lighthouse
 ```
 
-前端新配置默认开启，先配置真实页面（自动接入 Skill 待实现）；显式执行、CI full 与发布就绪检查可运行，prePush 默认关闭，不进入 pre-commit。配置与报告位置见 [Lighthouse](features/lighthouse.md)。
+前端新配置默认开启，先配置真实页面（自动接入 Skill 待实现）；显式执行、CI 与交付复核检查可运行，prePush 默认关闭，不进入 pre-commit。配置与报告位置见 [Lighthouse](features/lighthouse.md)。
 
 ## 完整交付流程
 
@@ -547,8 +547,8 @@ npx repo-guard lighthouse
 ### GitLab CI
 
 ```bash
-npx repo-guard install-ci --provider gitlab --profile policy --dry-run
-npx repo-guard install-ci --provider gitlab --profile policy
+npx repo-guard install-ci --provider gitlab --dry-run
+npx repo-guard install-ci --provider gitlab
 npx repo-guard doctor --ci
 ```
 

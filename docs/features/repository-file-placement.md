@@ -74,7 +74,7 @@ npx repo-guard doctor
 | 手动命令 | 工作区中仍存在的受控文件和未被 Git 忽略的未跟踪文件 | 尚未暂存的错位文件；关闭时明确跳过 |
 | pre-commit | **完整 Git 索引** | 本次新增、移动及历史上已跟踪但未修改的错位文件；仅在工作区删除仍会被拦截，暂存删除后才移出范围 |
 | pre-push | 待推送提交的完整文件树 | 只修改公共说明也不能遗漏仓库中已有的错位文件；沿用统一推送快照校验 |
-| CI policy / full / release-ready | 可信 `revision.head` 的完整文件树 | 不受应用筛选、变更文件范围或本地未提交移动影响；根门禁只执行一次 |
+| CI / delivery-check | 可信 `revision.head` 的完整文件树 | 不受应用筛选、变更文件范围或本地未提交移动影响；根门禁只执行一次 |
 
 CI 使用 Gate `repository.global-file-placement`，遵循统一的 `ci.gatePolicy`。需要强制阻断时使用 `inherit` 配合已启用功能，或显式 `enforce`；`report` 保留违规证据但不阻断，`off` 跳过。强制执行但没有规则属于配置错误，不能变成通过。
 

@@ -1,3 +1,4 @@
+import { assertCiSubject } from './subject.js';
 import path from 'node:path';
 import { configurationError, errorStatus, toRepoGuardError } from '../../core/error/repo-guard-error.js';
 import { resolveCiRange } from './change-range.js';
@@ -21,7 +22,6 @@ import { scopeProjectChanges } from '../workspace/targets.js';
 import {
   createProjectCiFullPlan,
   createProjectReleaseReadyPlan,
-  executionPlans,
 } from '../execution-plans.js';
 import { orchestratePlan } from '../orchestrator.js';
 import { CI_REPORT_VERSION, writeCiReport } from './report.js';
@@ -30,14 +30,14 @@ import { deliveryDigest, deliveryTestDigest, hasDeliveryBinding, loadDeliveryWor
 import { assertCleanSubject, recordDeliveryGateResults } from '../delivery/execution.js';
 
 function isTrustedExternalGateCi(env) {
-  return env.GITLAB_CI === 'true' && env.CI_COMMIT_REF_PROTECTED === 'true';
+  return env.GITLAB_CI !== 'true' || env.CI_COMMIT_REF_PROTECTED === 'true';
 }
 
-function configurationErrorReport(profile, error) {
+function configurationErrorReport(phase, error) {
   return {
     version: CI_REPORT_VERSION,
     status: 'configuration-error',
-    profile: profile ?? null,
+    phase: phase ?? null,
     base: null,
     head: null,
     steps: [],
@@ -79,7 +79,7 @@ export async function runCiGate({
   config,
   base = null,
   head = null,
-  profile = config.ci.profile,
+  phase = 'ci',
   reportPath = config.ci.reportPath,
   env = process.env,
   scope = 'all',
@@ -115,19 +115,19 @@ export async function runCiGate({
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
     publishReport({
-      ...configurationErrorReport(profile, error),
+      ...configurationErrorReport(phase, error),
       gateResult,
     });
     return gateResultToExitCode(gateResult);
   }
-  if (!['policy', 'full', 'release-ready'].includes(profile)) {
+  if (!['ci', 'delivery-check'].includes(phase)) {
     const error = configurationError(
-      'ci/invalid-profile',
-      'CI 配置档必须为 policy、full 或 release-ready',
+      'ci/invalid-phase',
+      'CI 阶段只能是 ci 或 delivery-check',
     );
     const gateResult = writeCiLifecycleError('ci.configuration', 'configuration-error', error);
     publishReport({
-      ...configurationErrorReport(profile, error),
+      ...configurationErrorReport(phase, error),
       gateResult,
     });
     return gateResultToExitCode(gateResult);
@@ -145,7 +145,7 @@ export async function runCiGate({
     const report = {
       version: CI_REPORT_VERSION,
       status: gateResult.status,
-      profile,
+      phase,
       base: base ?? null,
       head: head ?? null,
       steps: [],
@@ -157,6 +157,8 @@ export async function runCiGate({
   }
 
   const reportPaths = new Set([reportPath, ...config.ci.externalGates.map(({ report }) => report.path)]);
+  const repositoryReports = [...reportPaths].map((file) => path.relative(repositoryRoot, path.join(root, file)).replaceAll('\\', '/'));
+  assertCiSubject(repositoryRoot, range.head, repositoryReports);
   const projectFiles = collectProjectFiles(root)
     .filter((file) => !reportPaths.has(file) && !file.startsWith('reports/.npm-cache/'));
   const steps = [];
@@ -170,18 +172,10 @@ export async function runCiGate({
   };
   const registry = createProjectGateRegistry(config);
   const delivery = hasDeliveryBinding(repositoryRoot) ? loadDeliveryWorkspace(repositoryRoot) : null;
-  if (delivery?.binding.enabled) config = { ...config, ci: { ...config.ci, gatePolicy: {
-    ...config.ci.gatePolicy, gates: { ...config.ci.gatePolicy.gates,
-      'repository.delivery-contract': { mode: 'enforce', scope: 'all-files' },
-      'release.delivery-evidence': { mode: 'enforce', scope: 'all-files' },
-    },
-  } } };
   const includeExternalGates = isTrustedExternalGateCi(env);
-  const originalPlan = profile === 'release-ready'
+  const originalPlan = phase === 'delivery-check'
     ? createProjectReleaseReadyPlan(config, registry, { includeExternalGates })
-    : profile === 'full'
-      ? createProjectCiFullPlan(config, registry, { includeExternalGates })
-      : executionPlans.get('ci-policy');
+    : createProjectCiFullPlan(config, registry, { includeExternalGates });
   const ciPlan = scopedPlan(originalPlan, scope, root, registry, { skipRepositoryAgentPolicy });
   const changeSet = createChangeSet({
     source: 'ci',
@@ -218,7 +212,7 @@ export async function runCiGate({
       typedError,
     );
     publishReport({
-      ...configurationErrorReport(profile, typedError),
+      ...configurationErrorReport(phase, typedError),
       status: gateResult.status,
       base: range.base,
       head: range.head,
@@ -252,7 +246,12 @@ export async function runCiGate({
       }
       return gatePolicy.prepareStepContext(options);
     },
-    beforeStep: gatePolicy.beforeStep,
+    beforeStep: (options) => {
+      const skipped = gatePolicy.beforeStep(options);
+      const setting = options.gate.configKey?.split('.').reduce((value, key) => value?.[key], options.context.config);
+      if (!skipped && setting?.enabled !== false) assertCiSubject(repositoryRoot, range.head, repositoryReports);
+      return skipped;
+    },
     onResult: ({ result, step }) => {
       recordResult(step.reportName ?? step.id, result, {
         includeGateResult: true,
@@ -265,12 +264,14 @@ export async function runCiGate({
           .map((check) => ({ id: check.id, definitionDigest: deliveryDigest(check),
             testDigest: deliveryTestDigest(workspace, check), status: result.status === 'passed' ? 'passed' : 'failed', resultDigest: deliveryDigest(result) }));
         if (checks.length) {
+          assertCiSubject(repositoryRoot, range.head, repositoryReports);
           assertCleanSubject(workspace, range.head);
-          recordDeliveryGateResults(workspace, checks, { preservePassed: profile === 'release-ready' });
+          recordDeliveryGateResults(workspace, checks, { preservePassed: phase === 'delivery-check' });
         }
       }
     },
   });
+  assertCiSubject(repositoryRoot, range.head, repositoryReports);
   const policyExecution = gatePolicy.evaluate(execution);
   for (const workspace of deliveryTargets) assertCleanSubject(workspace, range.head);
   const status = policyExecution.status === 'execution-error'
@@ -282,7 +283,7 @@ export async function runCiGate({
   const report = {
     version: CI_REPORT_VERSION,
     status,
-    profile,
+    phase,
     base: range.base,
     head: range.head,
     protectedFiles: protectedChanges.map((change) => ({

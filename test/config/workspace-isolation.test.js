@@ -14,7 +14,7 @@ import { runDoctor } from '../../src/orchestration/doctor/runner.js';
 function fixture(t) {
   const document = { version: 2, projects: [{ id: 'web', root: 'web' }, { id: 'api', root: 'api' }],
     repository: { rules: [{ pattern: '.githooks/**', category: '仓库基础文件', level: 'block' }] },
-    ci: { enabled: true, profile: 'full' } };
+    ci: { enabled: true, } };
   const files = { 'repo-guard.config.json': JSON.stringify(document) };
   for (const id of ['web', 'api']) files[`${id}/repo-guard.config.json`] = JSON.stringify({ version: 2,
     project: { id, role: id === 'web' ? 'frontend' : 'backend', stack: 'node', preset: id === 'web' ? 'vue-javascript' : 'node-javascript' },
@@ -121,42 +121,21 @@ function applicationPolicyDocument(gatePolicy) {
   };
 }
 
-function sharedPolicy(defaultMode) {
-  return { ci: { enabled: true, profile: 'full', gatePolicy: {
-    defaultMode,
-    gates: { 'quality.typecheck': { mode: 'off' } },
-  } } };
-}
+function sharedPolicy() { return { ci: { enabled: true } }; }
 
-for (const defaultMode of ['report', 'enforce', 'off']) {
-  test(`应用局部门禁覆盖保留仓库共同 ${defaultMode} 模式，不继承根 gates`, () => {
-    const document = applicationPolicyDocument({ gates: { 'quality.build': { mode: 'off' } } });
-    const shared = sharedPolicy(defaultMode);
-    const before = structuredClone({ document, shared });
-    const normalized = normalizeProjectDocument(document, { shared });
-
-    assert.deepEqual(normalized.ci.gatePolicy, {
-      defaultMode,
-      gates: { 'quality.build': { mode: 'off', scope: 'all-files' } },
-    });
-    assert.equal(normalized.ci.enabled, true);
-    assert.equal(normalized.ci.profile, 'full');
-    assert.deepEqual({ document, shared }, before);
-  });
-}
-
-test('应用明确的默认模式覆盖仓库模式，省略或空策略仍继承共同模式', () => {
+test('应用仅继承公共流程和通知，不继承其他应用或根的可选关闭项', () => {
+  const shared = { ci: { enabled: true, notification: { enabled: false }, gatePolicy: { gates: { 'quality.typecheck': { mode: 'off' } } } } };
+  const document = applicationPolicyDocument({ gates: { 'quality.build': { mode: 'off' } } });
+  const before = structuredClone({ document, shared });
+  const normalized = normalizeProjectDocument(document, { shared });
+  assert.deepEqual(normalized.ci.gatePolicy, { gates: { 'quality.build': { mode: 'off', scope: 'all-files' } } });
+  assert.equal(normalized.ci.enabled, true);
+  assert.equal(normalized.ci.notification.enabled, false);
+  assert.deepEqual({ document, shared }, before);
+});
+test('应用的旧 defaultMode 明确拒绝，不忽略也不转换', () => {
   for (const defaultMode of ['inherit', 'report', 'enforce', 'off']) {
-    const normalized = normalizeProjectDocument(applicationPolicyDocument({ defaultMode }), {
-      shared: sharedPolicy('report'),
-    });
-    assert.deepEqual(normalized.ci.gatePolicy, { defaultMode, gates: {} });
-  }
-  for (const gatePolicy of [undefined, {}, { gates: {} }, { defaultMode: undefined }]) {
-    const normalized = normalizeProjectDocument(applicationPolicyDocument(gatePolicy), {
-      shared: sharedPolicy('report'),
-    });
-    assert.deepEqual(normalized.ci.gatePolicy, { defaultMode: 'report', gates: {} });
+    assert.throws(() => normalizeProjectDocument(applicationPolicyDocument({ defaultMode }), { shared: { ci: { enabled: true } } }));
   }
 });
 

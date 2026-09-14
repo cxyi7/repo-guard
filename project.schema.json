@@ -45,7 +45,7 @@
     },
     "ci": {
       "type": "object",
-      "description": "本应用门禁的执行方式与外部检查；不覆盖公共 CI 开关、档案和报告入口。",
+      "description": "CI 按项目启用配置执行，公共必查项不可关闭；部署独立接入。",
       "additionalProperties": false,
       "properties": {
         "protectedFiles": {
@@ -53,7 +53,7 @@
         },
         "gatePolicy": {
           "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/gatePolicy",
-          "description": "应用 CI 策略。未填写 defaultMode 时继承仓库默认模式，仅覆盖 gates 不会重置默认模式；明确填写 defaultMode 后使用本方模式，具体 Gate 的覆盖不从根配置继承。"
+          "description": "应用 CI 只覆盖本方可选检查，mode 为 inherit 或 off；根的具体门禁覆盖不继承到应用，公共必检不能关闭。"
         },
         "externalGates": {
           "$ref": "./config.schema.json#/$defs/singleProjectDocument/properties/ci/properties/externalGates"

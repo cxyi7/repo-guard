@@ -4,8 +4,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { createGitProjectFixture, fixtureGit } from '../helpers/git-project.js';
+import { runCiNotificationTest } from '../../src/orchestration/ci/notification.js';
+import { EXIT_CODES } from '../../src/core/result/exit-code.js';
 
 const RUNNER_URL = new URL('../../src/orchestration/ci/runner.js', import.meta.url).href;
+
+test('通知测试缺少渠道或明确关闭时返回公共错误码，不伪报发送成功', async (t) => {
+  for (const notification of [{ channels: [] }, { enabled: false }]) {
+    const root = createGitProjectFixture(t, {
+      'repo-guard.config.json': JSON.stringify({ version: 2, ci: { notification } }),
+    });
+    assert.equal(await runCiNotificationTest(root), EXIT_CODES.error);
+  }
+});
 const CONFIG_URL = new URL('../../src/config/project-configuration.js', import.meta.url).href;
 const PROGRAM = `
 import { runCiGate } from ${JSON.stringify(RUNNER_URL)};

@@ -1,4 +1,6 @@
 import { dependencyInstallation } from './dependency-installation.js';
+import { DEFAULT_CI_CONFIG } from '../../config/defaults.js';
+import { markManagedContent, managedContentIsUnmodified } from './managed-content.js';
 import {
   existsSync,
   mkdirSync,
@@ -12,7 +14,7 @@ import { assertOperationsFileLocation } from '../config/file-location.js';
 
 export const GITLAB_CI_FILE = '.gitlab-ci.yml';
 export const GITLAB_TEMPLATE_FILE = '.gitlab/ci/repo-guard.yml';
-const TEMPLATE_MARKER = '# repo-guard-gitlab-template:v3';
+const TEMPLATE_MARKER = '# repo-guard-gitlab-template:v4';
 const ROOT_BEGIN = '# repo-guard-gitlab:start';
 const ROOT_END = '# repo-guard-gitlab:end';
 const DEFAULT_GITLAB_STAGES = Object.freeze(['.pre', 'build', 'test', 'deploy', '.post']);
@@ -49,7 +51,7 @@ function rootJobContent(content) {
 
 function templateContent(root, config) {
   const installation = dependencyInstallation(root, config);
-  return `${TEMPLATE_MARKER}
+  return markManagedContent(`${TEMPLATE_MARKER}
 .repo_guard_base:
   image: node:22.23.2
   variables:
@@ -74,34 +76,26 @@ ${installation.commands.map((command) => `    - ${JSON.stringify(command)}`).joi
     expire_in: 7 days
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+${(config.ci.branches ?? DEFAULT_CI_CONFIG.branches).map((branch) => `    - if: ${JSON.stringify(`$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "${branch}"`)}`).join("\n")}
 
-.repo_guard_policy:
+.repo_guard_ci:
   extends: .repo_guard_base
   script:
-    - ${installation.runner} repo-guard ci --profile policy
+    - ${installation.runner} repo-guard ci
 
-.repo_guard_full:
-  extends: .repo_guard_base
-  script:
-    - ${installation.runner} repo-guard ci --profile full
 
-.repo_guard_release_ready:
-  extends: .repo_guard_base
-  script:
-    - ${installation.runner} repo-guard ci --profile release-ready
-
-`;
+`);
 }
 
-function rootBlock(profile, stage) {
-  const templateProfile = profile.replaceAll('-', '_');
+function rootBlock(stage) {
   return `${ROOT_BEGIN}
 include:
   - local: /${GITLAB_TEMPLATE_FILE}
 
 repo_guard:
-  extends: .repo_guard_${templateProfile}
+  extends: .repo_guard_ci
   stage: ${stage}
 ${ROOT_END}`;
 }
@@ -199,9 +193,8 @@ function canIntegrateRoot(content) {
   }
   if (hasBegin) {
     const block = new RegExp(`${ROOT_BEGIN}[\\s\\S]*?${ROOT_END}`).exec(content)[0];
-    const profile = /extends:\s*\.repo_guard_(policy|full|release_ready)/.exec(block)?.[1]?.replaceAll('_', '-');
     const stage = /^\s+stage:\s*([^\s#]+)/m.exec(block)?.[1];
-    if (!profile || !stage || normalizeNewlines(block) !== rootBlock(profile, stage)) {
+    if (!stage || normalizeNewlines(block) !== rootBlock(stage)) {
       return '托管根区块存在人工修改；请人工合并预览片段，拒绝覆盖';
     }
   }
@@ -244,16 +237,11 @@ export function inspectGitLabCi(root, config) {
   if (rootContent && !managedBlock.includes(`local: /${GITLAB_TEMPLATE_FILE}`)) {
     problems.push(`${GITLAB_CI_FILE} 未包含 ${GITLAB_TEMPLATE_FILE}`);
   }
-  if (rootContent && !/extends:\s*\.repo_guard_(?:policy|full|release_ready)/.test(managedBlock)) {
+  if (rootContent && !/extends:\s*\.repo_guard_ci/.test(managedBlock)) {
     problems.push(`${GITLAB_CI_FILE} 没有继承托管模板的 repo_guard 作业`);
   }
-  if (rootContent && !managedBlock.includes(`extends: .repo_guard_${config.ci.profile.replaceAll('-', '_')}`)) {
-    problems.push(
-      `${GITLAB_CI_FILE} 的 repo_guard profile 与 ci.profile= 不匹配：${config.ci.profile}`,
-    );
-  }
   const stage = /^\s+stage:\s*([^\s#]+)/m.exec(jobContent)?.[1] ?? null;
-  if (stage && managedBlock !== rootBlock(config.ci.profile, stage)) {
+  if (stage && managedBlock !== rootBlock(stage)) {
     problems.push('repo_guard 托管根区块已被修改；请运行 repo-guard install-ci');
   }
   if (stage) {
@@ -282,20 +270,16 @@ export function inspectGitLabCi(root, config) {
 }
 
 export function installGitLabCiFiles(root, config, {
-  profile = config.ci.profile,
   stage = null,
   dryRun = false,
 } = {}) {
-  if (!['policy', 'full', 'release-ready'].includes(profile)) {
-    throw configurationError('gitlab-ci/invalid-profile', 'CI 配置档必须为 policy、full 或 release-ready');
-  }
   assertOperationsFileLocation(root, GITLAB_CI_FILE);
   assertOperationsFileLocation(root, GITLAB_TEMPLATE_FILE);
   const rootPath = path.join(root, GITLAB_CI_FILE);
   const templatePath = path.join(root, GITLAB_TEMPLATE_FILE);
   const currentRoot = existsSync(rootPath) ? readFileSync(rootPath, 'utf8') : '';
   const currentTemplate = existsSync(templatePath) ? readFileSync(templatePath, 'utf8') : '';
-  if (currentTemplate && normalizeNewlines(currentTemplate) !== templateContent(root, config)) {
+  if (currentTemplate && (!isManagedTemplate(currentTemplate) || !managedContentIsUnmodified(currentTemplate))) {
     throw securityError(
       'gitlab-ci/non-managed-template',
       `拒绝覆盖非托管或人工修改的 GitLab 模板： ${GITLAB_TEMPLATE_FILE}`,
@@ -314,13 +298,11 @@ export function installGitLabCiFiles(root, config, {
   const selectedStage = selection.stage;
   const conflict = canIntegrateRoot(currentRoot) || selection.conflict;
   const block = rootBlock(
-    profile,
     selectedStage || stage || '<existing-stage>',
   );
   const nextRoot = conflict ? currentRoot : replaceManagedRootBlock(currentRoot, block);
   const nextTemplate = templateContent(root, config);
   const preview = {
-    profile,
     stage: selectedStage,
     templateChanged: !managedTextIsCurrent(currentTemplate, nextTemplate),
     rootChanged: !conflict

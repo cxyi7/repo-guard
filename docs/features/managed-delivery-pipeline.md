@@ -38,7 +38,7 @@ api：完整质量检查 → api 构建 → api 产物检查 → api/test 或手
 | 构建 | 依赖本应用质量通过，执行指定构建脚本并检查产物 | 脚本生成可部署文件 |
 | 部署 | 只获取本应用成功构建的产物，按允许分支和环境触发 | 脚本上传或部署；平台落实环境权限和凭据 |
 
-构建和部署不得使用 `allow_failure: true`，没有绕过质量检查的快捷部署。生产环境默认且必须手动触发。完整质量档位会执行团队已配置的能力，不代表自动打开全部可选功能。
+构建和部署不得使用 `allow_failure: true`，没有绕过质量检查的快捷部署。生产环境默认且必须手动触发。CI 会执行团队已配置的能力，不代表自动打开全部可选功能。
 
 ## 配置与环境要求
 
@@ -51,7 +51,7 @@ api：完整质量检查 → api 构建 → api 产物检查 → api/test 或手
 | `provider` | 当前仅支持 `gitlab` |
 | `notifications.enabled` | 整条运维流水线企业微信通知开关，默认 `false`；CI 凭据与工具由 Runner 提供 |
 | `projects.<id>.enabled` | 应用发布开关，默认 `false`，`id` 必须与质量配置一致 |
-| `qualityProfile` | `full` / `release-ready`，默认 `full` |
+| `verifyDelivery` | `full` / `release-ready`，默认 `full` |
 | `buildScript` | 应用 `package.json` 中存在的脚本名，不能填写命令 |
 | `artifactPaths` | 相对应用目录的具体文件/目录，启用时至少一个，构建后必须非空 |
 | `environments.<环境>.script` | 此环境的部署脚本名，应用必须已声明 |

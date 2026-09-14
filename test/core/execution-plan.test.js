@@ -101,8 +101,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.code-placement',
       'repository.maximum-file-lines',
       'repository.delivery-contract',
-      'quality.unit-test-policy',
-      'repository.protected-files',
+            'repository.protected-files',
     ],
   );
   assert.deepEqual(
@@ -125,8 +124,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.code-placement',
       'repository.maximum-file-lines',
       'repository.delivery-contract',
-      'quality.unit-test-policy',
-      'repository.protected-files',
+            'repository.protected-files',
       'quality.stylelint-project',
       'quality.eslint-project',
       'quality.prettier-project',
@@ -162,8 +160,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.code-placement',
       'repository.maximum-file-lines',
       'repository.delivery-contract',
-      'quality.unit-test-policy',
-      'repository.protected-files',
+            'repository.protected-files',
       'quality.stylelint-project',
       'quality.eslint-project',
       'quality.prettier-project',
@@ -210,8 +207,7 @@ test('locks the reviewed lifecycle order independently from project configuratio
       'repository.code-placement',
       'repository.maximum-file-lines',
       'repository.delivery-contract',
-      'unit-test-policy',
-      'protected-files',
+        'protected-files',
       'stylelint',
       'eslint',
       'prettier',
@@ -547,7 +543,7 @@ test('keeps capability discovery in Registry and lifecycle order in Execution Pl
     sources['orchestration/doctor/runner'],
     /createProjectGateRegistry\(config\)\.all/,
   );
-  assert.match(sources['orchestration/ci/runner'], /executionPlans\.get/);
+  assert.match(sources['orchestration/ci/runner'], /createProjectCiFullPlan/);
   assert.doesNotMatch(
     sources['orchestration/ci/runner'],
     /executeStep|micromatch|quality\.(?:stylelint|eslint|prettier|typecheck|unit-test|accessibility-test|architecture|build)/,

@@ -9,15 +9,10 @@ const projectSchema = JSON.parse(readFileSync(new URL('../../project.schema.json
 for (const definition of ['singleProjectDocument', 'workspaceDocument']) {
   test(`${definition} 的 CI 说明只描述工程质量和交付复核，运维独立配置`, () => {
     const ci = configurationSchema.$defs[definition].properties.ci;
-    assert.match(ci.description, /质量 CI/);
-    assert.match(ci.description, /repo-guard\.ops\.json/);
-    assert.match(ci.description, /不生成应用部署或流水线通知作业/);
-    assert.match(ci.properties.profile.description, /policy.*full.*release-ready/);
-    assert.match(ci.properties.profile.description, /release-ready.*通用工程检查.*交付证据/);
-    assert.match(ci.properties.profile.description, /不执行发布或部署/);
-    for (const description of [ci.description, ci.properties.profile.description]) {
-      assert.doesNotMatch(description, /managed application-delivery|delivery jobs only invoke|package release conditions/i);
-    }
+    assert.match(ci.description, /项目启用配置/);
+    assert.equal(ci.properties.profile, undefined);
+    assert.equal(ci.properties.notification.properties.enabled.default, true);
+    assert.deepEqual(ci.properties.branches.default, ['dev', 'main']);
   });
 }
 
@@ -41,5 +36,5 @@ test('子应用 Schema 继续引用统一工程定义，不能重新接受根 CI
     checks: { unitTest: { enabled: true } },
   };
   assert.equal(validate(document), true, JSON.stringify(validate.errors));
-  assert.equal(validate({ ...document, ci: { profile: 'release-ready' } }), false);
+  assert.equal(validate({ ...document, ci: { enabled: true } }), false);
 });

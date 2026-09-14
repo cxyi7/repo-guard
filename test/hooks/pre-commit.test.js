@@ -1018,7 +1018,7 @@ test('blocks staged dynamic code execution when optional gates are disabled', as
 test('keeps CI Gate policy independent from the pre-commit Gate policy', async context => {
   const root = createRepository({
     ciGatePolicy: {
-      defaultMode: 'inherit',
+
       gates: {
         'security.source-security': {
           mode: 'off'

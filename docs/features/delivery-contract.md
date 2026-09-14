@@ -95,7 +95,7 @@ npx repo-guard delivery enable
 
 先提交代码、合同和绑定，再记录证据。执行前后要求代码保持干净且 HEAD 不变，不能把未提交代码的测试结果登记到另一个提交上。工程与合同同时使用时，普通 CI 会把本方合同引用的实际 Gate 结果记录为证据；必需检查被关闭、跳过或失败都会阻止完成。
 
-`ci --profile full` 用于收集本轮新证据，随后进行联合验证与人工验收。验收后的 `ci --profile release-ready` 会重新执行必需检查，但成功复核不会仅因耗时等运行信息变化而替换已验收的通过证据；本次完整结果仍保存在 CI 报告中。任何新的失败、关闭或跳过会更新失败证据，在最终交付检查前撤销原通过状态，即使普通 CI 策略将该检查设为观察模式，也不能据此完成交付。
+`ci` 用于收集本轮新证据，随后进行联合验证与人工验收。验收后的 `ci --profile release-ready` 会重新执行必需检查，但成功复核不会仅因耗时等运行信息变化而替换已验收的通过证据；本次完整结果仍保存在 CI 报告中。任何新的失败、关闭或跳过会更新失败证据，在最终交付检查前撤销原通过状态，即使普通 CI 策略将该检查设为观察模式，也不能据此完成交付。
 
 ```bash
 # 本方边界检查；同仓 run 必须明确选择参与方
@@ -254,14 +254,14 @@ npx repo-guard delivery-evidence
 准备好[发布就绪条件](release-ready.md)后，首轮结果采集与后续复核命令为：
 
 ```bash
-npx repo-guard ci --profile release-ready --report-json reports/release-ready-evidence.json
+npx repo-guard delivery-check --report-json reports/release-ready-evidence.json
 npx repo-guard delivery-evidence
 ```
 
 两条命令之间和之后都需要按上表整理证据与完成人工验收，不是直接连跑就能交付。验收完成后再次运行 `delivery-evidence` 更新摘要，提交允许的元数据，再执行：
 
 ```bash
-npx repo-guard ci --profile release-ready
+npx repo-guard delivery-check
 ```
 
 `subjectCommit` 之后只允许指定合同及证据元数据提交。代码、测试、需求、设计、目标基线或结果变化时，回到受影响步骤，重建证据并重新验收。最终检查还要求受跟踪工作区干净。

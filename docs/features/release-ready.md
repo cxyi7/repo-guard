@@ -1,5 +1,7 @@
 # 发布就绪检查
 
+当前公开入口为 `repo-guard delivery-check`，执行与普通 CI 相同的项目配置，再复核最终交付证据；原 `--profile release-ready` 已取消。下文 release-ready 仅表示内部交付执行环境。
+
 [返回使用说明](../usage-guide.md) · [功能索引](README.md)
 
 在交付决策前执行项目已配置的工程检查、测试和构建；启用交付合同时，再复核本轮证据。前端与 Node 后端使用同一套质量流程，具体工具和文件范围由各自预设及 `checks` 指定。
@@ -25,8 +27,7 @@
     }
   },
   "ci": {
-    "enabled": true,
-    "profile": "release-ready"
+    "enabled": true
   }
 }
 ```
@@ -43,24 +44,23 @@
 | `checks.build.enabled` | 执行构建验证 | 布尔值，默认 `false` | 使用项目真实构建脚本；构建失败阻断 |
 | `checks.build.script` | 应用构建入口 | npm 脚本名，默认 `build` | 保留项目自己的构建工具与产物配置 |
 | `ci.enabled` | 允许执行 CI 质量门禁 | 布尔值，默认 `false` | 多应用时只在仓库根配置 |
-| `ci.profile` | 选择执行档 | `policy` / `full` / `release-ready`，默认 `policy` | 本例选择交付前完整复核，不开启发布或部署 |
 
 <!-- config-fields:end -->
 
-多应用仓库的 `checks` 分别写入子应用配置；`ci.enabled / profile / reportPath` 写入仓库根配置，本方 `ci.protectedFiles / gatePolicy / externalGates` 写入应用配置。执行：
+多应用仓库的 `checks` 分别写入子应用配置；`ci.enabled / notification / branches / reportPath` 写入仓库根配置，本方 `ci.protectedFiles / gatePolicy / externalGates` 写入应用配置。执行：
 
 ```bash
-npx repo-guard ci --profile release-ready --base <sha> --head <sha>
-npx repo-guard ci --profile release-ready --project api --base <sha> --head <sha>
+npx repo-guard delivery-check --base <sha> --head <sha>
+npx repo-guard delivery-check --project api --base <sha> --head <sha>
 ```
 
 ## 检查顺序
 
-不传 `--project` 时，`release-ready` 复核清单中全部应用；这与普通 `policy / full` 按变更选择受影响应用不同。指定应用时只加载本方工程配置并复核公共规则，未选择应用不会显示为通过。
+不传 `--project` 时，`release-ready` 复核清单中全部应用；这与普通 CI 按变更选择受影响应用不同。指定应用时只加载本方工程配置并复核公共规则，未选择应用不会显示为通过。
 
 仓库公共规则 → 各应用的完整工程检查、测试和构建 → 适用且启用的 Lighthouse 与外部门禁 → 最终交付证据复核。
 
-发布就绪只有一套执行计划，包含 `full` 的检查步骤，再加入 Lighthouse、适用外部门禁和最终证据复核；不再按配置历史选择另一套计划。代码格式检查只读，真实测试和构建可以生成报告与产物。未开启的功能按配置跳过，后端项目不执行 Vue 专用规则；`skipped` 不能当作已经测试通过。
+发布就绪只有一套执行计划，包含普通 CI 的项目检查步骤，再加入交付环境的外部门禁和最终证据复核；不再按配置历史选择另一套计划。代码格式检查只读，真实测试和构建可以生成报告与产物。未开启的功能按配置跳过，后端项目不执行 Vue 专用规则；`skipped` 不能当作已经测试通过。
 
 应用无需成为可发布的 npm 包，也不必提供固定的 `check`、`test`、`pack:check` 脚本。检查使用 `checks` 中声明的入口。旧 `release.check / release.test / release.package` 已移除；团队如需额外检查，可注册 `project.*` 外部门禁。repo-guard 本仓库的 npm 发布验证由维护者发布 Skill 管理，不属于消费项目的默认检查。
 

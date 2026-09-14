@@ -160,7 +160,7 @@ test('根目录应用的初始化、修复、安装 CI 与 Doctor 使用同一�
   assert.deepEqual(repairRepository(root).repairErrors, []);
   assert.equal(await runDoctor(root), 0, lines.join('\n'));
   assert.equal(
-    runInstallCiCommand(root, { provider: 'gitlab', profile: 'policy' }),
+    runInstallCiCommand(root, { provider: 'gitlab', }),
     0,
   );
   assert.match(
@@ -234,13 +234,13 @@ test('未知项目选择在修复写入前失败', (context) => {
 
 test('多应用仓库的质量 CI 安装只更新公共配置且不生成部署作业', (context) => {
   const root = workspaceFixture(context);
-  const result = installGitLabCi(root, { profile: 'full' });
+  const result = installGitLabCi(root, { });
   assert.equal(result.integrated, true);
   assert.equal(Object.hasOwn(result, 'pipelineEnabled'), false);
   const rootConfig = JSON.parse(
     readFileSync(path.join(root, 'repo-guard.config.json'), 'utf8'),
   );
-  assert.equal(rootConfig.ci.profile, 'full');
+  assert.equal(Object.hasOwn(rootConfig.ci, 'profile'), false);
   assert.equal(rootConfig.ci.pipeline, undefined);
   const pipeline = readFileSync(path.join(root, '.gitlab-ci.yml'), 'utf8');
   assert.doesNotMatch(pipeline, /repo_guard_deploy|ci:deploy/);

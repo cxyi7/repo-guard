@@ -9,7 +9,7 @@ Vue JavaScript / TypeScript 应用将四项工具的团队默认规则保存到 
 ```bash
 npx repo-guard enable eslint prettier stylelint typeCheck --project web
 npx repo-guard doctor --project web
-npx repo-guard ci --project web --profile full
+npx repo-guard ci --project web
 ```
 
 启用前需准备消费项目自己的工具。首次 `init` 只为当前默认开启的 ESLint、Prettier 保存预设；Stylelint 和类型检查仍由明确启用选择。`enable` 为缺少 `options` 的检查补齐整份模板，即使该检查此前已开启。已有 `options`（包括空对象）不会重新填充或覆盖，重复启用不改写文件。关闭检查保留配置、依赖及原生工具文件。

@@ -14,6 +14,6 @@ export function installGitLabCi(root, options = {}) {
   assertManagedDocumentFormats(root, { workspace });
   const config = workspace.repositoryConfig;
   const preview = installGitLabCiFiles(root, config, options);
-  if (!options.dryRun && preview.integrated) configureCi(root, { profile: preview.profile });
+  if (!options.dryRun && preview.integrated) configureCi(root);
   return preview;
 }

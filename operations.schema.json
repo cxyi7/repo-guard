@@ -4,30 +4,60 @@
   "title": "repo-guard 独立运维配置",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version"],
+  "required": [
+    "version"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "version": { "const": 2, "description": "配置版本，必须为 2。" },
-    "enabled": { "type": "boolean", "default": false, "description": "是否显式启用运维流水线；缺省关闭。" },
-    "provider": { "const": "gitlab", "default": "gitlab", "description": "当前仅支持 GitLab。" },
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 2,
+      "description": "配置版本，必须为 2。"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否显式启用运维流水线；缺省关闭。"
+    },
+    "provider": {
+      "const": "gitlab",
+      "default": "gitlab",
+      "description": "当前仅支持 GitLab。"
+    },
     "notifications": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean", "default": false, "description": "启用整条运维流水线的企业微信成功、失败及尽力取消通知；成功和失败通知覆盖与质量、构建相同的合并请求及分支流水线。通知失败不改变质量或部署结果，凭据只从 CI 环境变量读取；配置更新后需重新执行 ops install。" }
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用整条运维流水线的企业微信成功、失败及尽力取消通知；成功和失败通知覆盖与质量、构建相同的合并请求及分支流水线。通知失败不改变质量或部署结果，凭据只从 CI 环境变量读取；配置更新后需重新执行 ops install。"
+        }
       }
     },
     "projects": {
       "type": "object",
       "default": {},
-      "propertyNames": { "$ref": "#/$defs/identifier" },
-      "additionalProperties": { "$ref": "#/$defs/project" },
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/project"
+      },
       "description": "键必须对应质量配置中显式声明的项目标识。"
     }
   },
   "$defs": {
-    "identifier": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$" },
-    "script": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$", "description": "项目 package.json 中已声明的脚本名；不得填写整条命令。" },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,47}$"
+    },
+    "script": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+      "description": "项目 package.json 中已声明的脚本名；不得填写整条命令。"
+    },
     "artifactPath": {
       "type": "string",
       "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*//)[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*/?$",
@@ -36,14 +66,26 @@
     "environment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["script", "branches"],
+      "required": [
+        "script",
+        "branches"
+      ],
       "properties": {
-        "script": { "$ref": "#/$defs/script" },
-        "production": { "type": "boolean", "default": true, "description": "true 为生产环境且必须手动触发；false 为测试环境。" },
+        "script": {
+          "$ref": "#/$defs/script"
+        },
+        "production": {
+          "type": "boolean",
+          "default": true,
+          "description": "true 为生产环境且必须手动触发；false 为测试环境。"
+        },
         "branches": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          },
           "description": "允许部署的明确分支名；不支持通配符或表达式。"
         }
       }
@@ -52,20 +94,59 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean", "default": false },
-        "qualityProfile": { "enum": ["full", "release-ready"], "default": "full" },
-        "buildScript": { "$ref": "#/$defs/script" },
-        "artifactPaths": { "type": "array", "items": { "$ref": "#/$defs/artifactPath" } },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "buildScript": {
+          "$ref": "#/$defs/script"
+        },
+        "artifactPaths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifactPath"
+          }
+        },
         "environments": {
           "type": "object",
-          "propertyNames": { "$ref": "#/$defs/identifier" },
-          "additionalProperties": { "$ref": "#/$defs/environment" }
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/environment"
+          }
+        },
+        "verifyDelivery": {
+          "type": "boolean",
+          "default": false,
+          "description": "构建部署前是否使用独立 delivery-check 入口复核最终交付条件。"
         }
       },
-      "allOf": [{
-        "if": { "required": ["enabled"], "properties": { "enabled": { "const": true } } },
-        "then": { "required": ["buildScript", "artifactPaths"], "properties": { "artifactPaths": { "minItems": 1 } } }
-      }]
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "buildScript",
+              "artifactPaths"
+            ],
+            "properties": {
+              "artifactPaths": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

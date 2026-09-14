@@ -128,10 +128,10 @@ test('starter configuration enables standard gates and leaves Stylelint opt-in',
   assert.deepEqual(config.checks.mutationTest.guardedBuilds, []);
   assert.equal(config.reporting.notification.enabled, true);
   assert.equal(config.ci.enabled, false);
-  assert.equal(config.ci.profile, 'policy');
+  assert.equal(Object.hasOwn(config.ci, 'profile'), false);
   assert.equal(config.ci.reportPath, 'reports/repo-guard.json');
   assert.deepEqual(config.ci.gatePolicy, {
-    defaultMode: 'inherit',
+
     gates: {},
   });
   assert.equal(Object.hasOwn(config.ci, 'pipeline'), false);

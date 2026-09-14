@@ -68,13 +68,10 @@ function environmentConfig(value, location) {
 
 function projectConfig(value, location) {
   requireObject(value, location, [
-    'enabled', 'qualityProfile', 'buildScript', 'artifactPaths', 'environments',
+    'enabled', 'verifyDelivery', 'buildScript', 'artifactPaths', 'environments',
   ]);
   const enabled = booleanValue(value.enabled, `${location}.enabled`, false);
-  const qualityProfile = value.qualityProfile ?? 'full';
-  if (!['full', 'release-ready'].includes(qualityProfile)) {
-    fail(`${location}.qualityProfile`, '必须为 full 或 release-ready');
-  }
+  const verifyDelivery = booleanValue(value.verifyDelivery, `${location}.verifyDelivery`, false);
   const environments = requireObject(value.environments ?? {}, `${location}.environments`);
   const parsedEnvironments = Object.fromEntries(Object.entries(environments).map(([id, environment]) => {
     requireIdentifier(id, `${location}.environments`);
@@ -88,7 +85,7 @@ function projectConfig(value, location) {
   }
   return {
     enabled,
-    qualityProfile,
+    verifyDelivery,
     buildScript: enabled || value.buildScript != null
       ? scriptName(value.buildScript, `${location}.buildScript`) : null,
     artifactPaths: [...new Set((value.artifactPaths ?? []).map((item) => requireRelativePath(

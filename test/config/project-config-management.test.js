@@ -101,9 +101,8 @@ test('多应用只改所选应用，公共 CI 独立写根', t => {
   assert.equal(read(root).reporting.notification.enabled, false);
   assert.equal(read(path.join(root, 'api')).reporting, undefined);
   configureCi(root, {
-    profile: 'full'
-  });
-  assert.equal(loadWorkspace(root).repositoryConfig.ci.profile, 'full');
+    });
+  assert.equal(Object.hasOwn(loadWorkspace(root).repositoryConfig.ci, 'profile'), false);
   assert.equal(read(root).ci.pipeline, undefined);
 });
 test('多应用 UI 契约与构建基线保护写入应用策略，保留既有仓库规则', t => {
@@ -197,8 +196,7 @@ for (const version of [1, 0, 3, '2', null, undefined]) {
     for (const invoke of [() => loadConfig(root), () => loadWorkspace(root), () => ensureProjectConfig(root, {
       project
     }), () => setFeaturesEnabled(root, ['eslint'], true), () => setFeaturesEnabled(root, ['eslint'], false), () => configureCi(root, {
-      profile: 'full'
-    })]) {
+      })]) {
       assert.throws(invoke, error => {
         assert.equal(error.code, 'config/unsupported-version');
         assert.match(error.message, /version: 2/);

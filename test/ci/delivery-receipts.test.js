@@ -1,3 +1,4 @@
+import { synchronizeCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -33,7 +34,7 @@ async function fixture(t, { enabled = true, mode = 'inherit', build = 'process.e
     checks: { eslint: { enabled: false }, prettier: { enabled: false }, build: { enabled } },
     repository: { dependencyPolicy: { enabled: false } },
     reporting: { notification: { enabled: false } },
-    ci: { enabled: true, profile: 'full', gatePolicy: { defaultMode: 'off', gates: { 'quality.build': { mode } } } },
+    ci: { enabled: true, gatePolicy: { gates: { 'quality.build': { mode } } } },
   });
   createDeliveryKey(root, 'reviewer');
   initializeDelivery(root, {
@@ -46,6 +47,7 @@ async function fixture(t, { enabled = true, mode = 'inherit', build = 'process.e
   writeDeliveryJson(root, 'docs/delivery/delivery.json', contract);
   bindDelivery(root, 'docs/delivery/delivery.json', 'api');
   assert.equal(await runDeliveryCommand(['approve', '--key-file', '.repo-guard/local/reviewer.pem'], root), 0);
+  synchronizeCiFixture(root);
   fixtureGit(root, ['add', '.']);
   fixtureGit(root, ['commit', '-m', 'test: 配置交付工程检查']);
   return { root, base, head: fixtureGit(root, ['rev-parse', 'HEAD']) };
@@ -79,7 +81,7 @@ test('CI 指定的历史提交与当前代码不一致时拒绝签署新证据',
   const repo = await fixture(t);
   fixtureGit(repo.root, ['commit', '--allow-empty', '-m', 'test: 更新当前提交']);
   assert.notEqual(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
-  assert.equal(read(repo.root, 'reports/repo-guard.json').gateResult.error.code, 'delivery/subject-changed');
+  assert.equal(read(repo.root, 'reports/repo-guard.json').gateResult.error.code, 'ci/subject-mismatch');
   assert.equal(existsSync(path.join(repo.root, 'reports/delivery/participants/api.json')), false);
 });
 
@@ -89,7 +91,7 @@ test('检查脚本执行期间修改 Git 提交时拒绝签署新证据', async 
   });
   assert.notEqual(await runCiCommand(repo.root, { base: repo.base, head: repo.head, env: {} }), 0);
   assert.notEqual(fixtureGit(repo.root, ['rev-parse', 'HEAD']), repo.head);
-  assert.equal(read(repo.root, 'reports/repo-guard.json').gateResult.error.code, 'delivery/subject-changed');
+  assert.equal(read(repo.root, 'reports/repo-guard.json').gateResult.error.code, 'ci/subject-mismatch');
   assert.equal(existsSync(path.join(repo.root, 'reports/delivery/participants/api.json')), false);
 });
 
@@ -103,18 +105,18 @@ test('已验收的单应用发布复核保留通过证据，退出码与最终�
   assert.equal(await runCiCommand(repo.root, options), 0);
   await accept(repo);
   const approvedReceipt = readFileSync(path.join(repo.root, 'reports/delivery/participants/api.json'), 'utf8');
-  assert.equal(await runCiCommand(repo.root, { ...options, profile: 'release-ready' }), 0);
+  assert.equal(await runCiCommand(repo.root, { ...options, phase: 'delivery-check' }), 0);
   assert.equal(await runDeliveryCommand(['verify'], repo.root), 0);
   assert.equal(readFileSync(path.join(repo.root, 'reports/delivery/participants/api.json'), 'utf8'), approvedReceipt);
 });
 
-test('发布复核的必需检查失败立即撤销通过证据，即使工程策略仅报告也不能沿用旧验收', async (t) => {
-  const repo = await fixture(t, { mode: 'report', build: 'process.exit(require("node:fs").existsSync(".repo-guard/local/build-fails") ? 1 : 0);\n' });
+test('发布复核的必需检查失败立即撤销通过证据，不能沿用旧验收', async (t) => {
+  const repo = await fixture(t, { mode: 'inherit', build: 'process.exit(require("node:fs").existsSync(".repo-guard/local/build-fails") ? 1 : 0);\n' });
   const options = { base: repo.base, head: repo.head, env: {} };
   assert.equal(await runCiCommand(repo.root, options), 0);
   await accept(repo);
   writeFileSync(path.join(repo.root, '.repo-guard/local/build-fails'), '模拟外部构建条件失败');
-  assert.notEqual(await runCiCommand(repo.root, { ...options, profile: 'release-ready' }), 0);
+  assert.notEqual(await runCiCommand(repo.root, { ...options, phase: 'delivery-check' }), 0);
   assert.equal(receipt(repo).checks[0].status, 'failed');
   assert.equal(await runDeliveryCommand(['verify'], repo.root), 2);
   const report = read(repo.root, 'reports/repo-guard.json');
@@ -130,10 +132,11 @@ test('已经验收后关闭检查或关闭其 CI 策略，发布复核与交付�
     if (setting === 'disabled') config.checks.build.enabled = false;
     else config.ci.gatePolicy.gates['quality.build'].mode = 'off';
     writeDeliveryJson(repo.root, 'repo-guard.config.json', config);
-    fixtureGit(repo.root, ['add', 'repo-guard.config.json']);
+    synchronizeCiFixture(repo.root);
+    fixtureGit(repo.root, ['add', '.']);
     fixtureGit(repo.root, ['commit', '-m', 'test: 关闭已验收的必需检查']);
     repo.head = fixtureGit(repo.root, ['rev-parse', 'HEAD']);
-    assert.notEqual(await runCiCommand(repo.root, { base: repo.base, head: repo.head, profile: 'release-ready', env: {} }), 0);
+    assert.notEqual(await runCiCommand(repo.root, { base: repo.base, head: repo.head, phase: 'delivery-check', env: {} }), 0);
     assert.equal(receipt(repo).checks[0].status, 'failed');
     assert.equal(await runDeliveryCommand(['verify'], repo.root), 2);
   }
@@ -148,11 +151,11 @@ async function workspaceFixture(t) {
   const root = createGitProjectFixture(t, files);
   const base = fixtureGit(root, ['rev-parse', 'HEAD']);
   writeDeliveryJson(root, 'repo-guard.config.json', { version: 2, projects: ['web', 'api'].map((id) => ({ id, root: `apps/${id}` })),
-    reporting: { notification: { enabled: false } }, ci: { enabled: true, profile: 'full', gatePolicy: { defaultMode: 'off' } } });
+    reporting: { notification: { enabled: false } }, ci: { enabled: true, gatePolicy: { } } });
   for (const id of ['web', 'api']) writeDeliveryJson(root, `apps/${id}/repo-guard.config.json`, {
     version: 2, project: { id, role: id === 'web' ? 'frontend' : 'backend', stack: 'node', preset: id === 'web' ? 'vue-javascript' : 'node-javascript' },
     checks: { eslint: { enabled: false }, prettier: { enabled: false }, build: { enabled: true } },
-    repository: { dependencyPolicy: { enabled: false } }, ci: { gatePolicy: { defaultMode: 'off', gates: { 'quality.build': { mode: 'inherit' } } } },
+    repository: { dependencyPolicy: { enabled: false } }, ci: { gatePolicy: { gates: { 'quality.build': { mode: 'inherit' } } } },
   });
   createDeliveryKey(root, 'reviewer');
   initializeDelivery(root, { id: 'delivery', participant: 'web', repository: 'workspace', role: 'frontend', reviewerPublicKey: '.repo-guard/reviewer.pub' });
@@ -166,6 +169,7 @@ async function workspaceFixture(t) {
   writeDeliveryJson(root, 'docs/delivery/delivery.json', contract);
   bindDelivery(root, 'docs/delivery/delivery.json', 'web,api');
   await runDeliveryCommand(['approve', '--key-file', '.repo-guard/local/reviewer.pem'], root);
+  synchronizeCiFixture(root);
   fixtureGit(root, ['add', '.']);
   fixtureGit(root, ['commit', '-m', 'test: 配置前后端联合交付']);
   return { root, base, head: fixtureGit(root, ['rev-parse', 'HEAD']) };
@@ -178,7 +182,7 @@ test('多应用发布复核不刷新已验收的参与方证据，联合验收�
   assert.equal(await runDeliveryCommand(['integrate', '--check', 'joint', '--key-file', '.repo-guard/local/runner.pem'], repo.root), 0);
   await accept(repo);
   const original = ['web', 'api'].map((id) => readFileSync(path.join(repo.root, `reports/delivery/participants/${id}.json`), 'utf8'));
-  assert.equal(await runCiCommand(repo.root, { ...options, profile: 'release-ready' }), 0);
+  assert.equal(await runCiCommand(repo.root, { ...options, phase: 'delivery-check' }), 0);
   assert.equal(await runDeliveryCommand(['verify'], repo.root), 0);
   assert.deepEqual(['web', 'api'].map((id) => readFileSync(path.join(repo.root, `reports/delivery/participants/${id}.json`), 'utf8')), original);
 });

@@ -44,7 +44,7 @@ test('两应用生成独立作业和环境，每次部署绑定本应用质量�
   const jobs = plan.projects.flatMap((project) => [project.quality.job, project.build.job, ...project.deployments.map((deployment) => deployment.job)]);
   assert.equal(new Set(jobs).size, jobs.length);
   for (const project of plan.projects) {
-    assert.equal(project.quality.command, `npx --no-install repo-guard ci --project ${project.projectId} --profile full`);
+    assert.equal(project.quality.command, `npx --no-install repo-guard ci --project ${project.projectId}`);
     assert.deepEqual(project.build.artifactPaths, [`apps/${project.projectId}/dist`]);
     const start = yaml.indexOf(`"repo_guard_deploy__${project.projectId}__production":`);
     const end = yaml.indexOf('\n\n', start);

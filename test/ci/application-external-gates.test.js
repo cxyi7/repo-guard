@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -6,16 +7,18 @@ import { createGitProjectFixture, fixtureGit, writeProjectFile } from '../helper
 import { runCiCommand } from '../../src/orchestration/ci/command.js';
 
 test('前后端同名外部门禁使用各自脚本和报告，后端失败不会被前端成功覆盖', async (t) => {
-  const files = { 'repo-guard.config.json': JSON.stringify({ version: 2,
+  const files = { '.gitignore': '**/reports/\nnode_modules/\n', 'repo-guard.config.json': JSON.stringify({ version: 2,
     projects: [{ id: 'web', root: 'web' }, { id: 'api', root: 'api' }],
-    ci: { enabled: true, profile: 'full', gatePolicy: { defaultMode: 'off' } },
+    ci: { enabled: true, gatePolicy: { } },
   }) };
   for (const id of ['web', 'api']) {
     const report = { schemaVersion: 2, gateId: 'project.team-check', status: id === 'web' ? 'passed' : 'violation',
       summary: `${id} 的团队检查结果`, findings: id === 'web' ? [] : [{ ruleId: 'team/required', severity: 'error', message: '后端缺少团队要求的工程内容' }], metrics: {}, artifacts: [] };
     files[`${id}/repo-guard.config.json`] = JSON.stringify({ version: 2,
       project: { id, role: id === 'web' ? 'frontend' : 'backend', stack: 'node', preset: id === 'web' ? 'vue-javascript' : 'node-javascript' },
-      ci: { gatePolicy: { defaultMode: 'off', gates: { 'project.team-check': { mode: 'enforce' } } },
+      checks: { eslint: { enabled: false }, prettier: { enabled: false }, stylelint: { enabled: false } },
+      repository: { dependencyPolicy: { enabled: false } },
+      ci: { gatePolicy: { gates: { 'project.team-check': { mode: 'inherit' } } },
         externalGates: [{ id: 'project.team-check', enabled: true, environments: ['manual', 'ci-full'],
           script: 'test:team', timeoutMs: 30000, report: { format: 'repo-guard-json-v2', path: 'reports/team.json' } }] },
     });
@@ -24,7 +27,8 @@ test('前后端同名外部门禁使用各自脚本和报告，后端失败不�
     files[`${id}/src/value.js`] = 'export const value = 1;\n';
   }
   const root = createGitProjectFixture(t, files);
-  const base = fixtureGit(root, ['rev-parse', 'HEAD']);
+  synchronizeCiFixture(root);
+  const base = commitCiFixture(root);
   for (const id of ['web', 'api']) writeProjectFile(root, `${id}/src/value.js`, 'export const value = 2;\n');
   fixtureGit(root, ['add', '.']);
   fixtureGit(root, ['commit', '-m', 'test: 前后端分别执行团队检查']);

@@ -1,3 +1,4 @@
+import { prepareCiNotification, notifyCiOutcome, testCiNotification } from './notification.js';
 import { loadWorkspace } from '../../config/configuration-loader.js';
 import { DEFAULT_CI_CONFIG } from '../../config/defaults.js';
 import { validateCiReportPath } from '../../config/validation-primitives.js';
@@ -12,6 +13,8 @@ import { findRepositoryRoot } from '../../git/repository.js';
 import path from 'node:path';
 import { selectProjects, projectAffected } from '../workspace/targets.js';
 import { resolveCiRange } from './change-range.js';
+import { assertCiConfiguration } from './subject.js';
+import { CI_NOTIFICATION_TEST_REPORT } from '../../config/ci-notification.js';
 
 function errorReport(options, error, {
   gateId = 'ci.configuration',
@@ -29,7 +32,7 @@ function errorReport(options, error, {
   return {
     version: CI_REPORT_VERSION,
     status,
-    profile: options.profile ?? null,
+    phase: options.phase ?? 'ci',
     base: options.base ?? null,
     head: options.head ?? null,
     steps: [],
@@ -70,15 +73,19 @@ function writeCommandError(gateId, error, status = 'configuration-error') {
   }), { label: gateId });
 }
 
-export async function runCiCommand(cwd = process.cwd(), options = {}) {
+async function executeCiCommand(cwd = process.cwd(), options = {}) {
   const root = findRepositoryRoot(cwd);
   let reportPath;
   try {
+    if (Object.hasOwn(options, 'profile')) throw configurationError('ci/removed-profile', 'CI 已取消档位，请移除 profile 并按项目配置执行');
     reportPath = options.reportPath == null
       ? null
       : validateCiReportPath(options.reportPath, '--report-json');
+    if (reportPath?.toLowerCase() === CI_NOTIFICATION_TEST_REPORT) throw configurationError('ci/report-path-collision', 'CI 汇总报告不得使用通知测试保留路径');
   } catch (error) {
-    tryWriteErrorReport(root, null, errorReport(options, error));
+    const report = errorReport(options, error);
+    options.onReport?.(report);
+    tryWriteErrorReport(root, null, report);
     writeCommandError('ci.configuration', error);
     return gateStatusToExitCode('configuration-error');
   }
@@ -89,7 +96,9 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     const range = workspace.document.projects ? resolveCiRange(root, options) : null;
     if (range) options = { ...options, resolvedRange: range };
   } catch (error) {
-    tryWriteErrorReport(root, null, errorReport(options, error, { status: errorStatus(error) }));
+    const report = errorReport(options, error, { status: errorStatus(error) });
+    options.onReport?.(report);
+    tryWriteErrorReport(root, null, report);
     writeCommandError('ci.configuration', error, errorStatus(error));
     return gateStatusToExitCode(errorStatus(error));
   }
@@ -104,13 +113,14 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
   ]);
   try {
     const selected = selectProjects(workspace, options.projectId).filter((project) => !options.resolvedRange
-      || options.projectId !== undefined || (options.profile ?? config.ci.profile) === 'release-ready'
+      || options.projectId !== undefined || options.phase === 'delivery-check'
       || projectAffected(workspace, project, options.resolvedRange.changes));
     for (const project of selected) {
       for (const { report } of project.config.ci.externalGates) {
         forbiddenReports.add(path.resolve(project.root, report.path).toLowerCase());
       }
     }
+    if (config.ci.enabled) assertCiConfiguration(root, [workspace.configPath, ...selected.map((project) => project.configPath)]);
     if (workspace.document.projects) {
       return await runWorkspaceCi({ workspace, options: { ...options, ...(reportPath ? { reportPath } : {}) } });
     }
@@ -119,6 +129,8 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     }
     return await runCiGate({ root, config, ...options });
   } catch (error) {
+    const report = errorReport(options, error, { gateId: 'ci.execution', status: errorStatus(error) });
+    options.onReport?.(report);
     tryWriteErrorReport(
       root,
       reportPath ?? config.ci.reportPath,
@@ -131,4 +143,24 @@ export async function runCiCommand(cwd = process.cwd(), options = {}) {
     writeCommandError('ci.execution', error, 'execution-error');
     return gateStatusToExitCode(errorStatus(error));
   }
+}
+
+/** 通知只在命令边界发送一次，多应用仍保留各自报告。 */
+export async function runCiCommand(cwd = process.cwd(), options = {}) {
+  const root = findRepositoryRoot(cwd);
+  const notification = prepareCiNotification(root);
+  if (notification) {
+    try { await testCiNotification(root, notification); }
+    catch { writeCommandError('ci.notification', configurationError('ci/notification-test-failed', '通知接入测试未完成，继续执行质量检查')); }
+  }
+  let report;
+  const exitCode = await executeCiCommand(cwd, { ...options, onReport: (value) => {
+    report = value;
+    options.onReport?.(value);
+  } });
+  if (notification) {
+    try { await notifyCiOutcome(root, notification, exitCode, report); }
+    catch { writeCommandError('ci.notification', configurationError('ci/notification-failed', 'CI 通知未能完成，请运行通知测试检查配置；质量结果保持不变')); }
+  }
+  return exitCode;
 }

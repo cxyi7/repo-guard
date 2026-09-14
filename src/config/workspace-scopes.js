@@ -22,19 +22,16 @@ export function applicationDocument(document, shared) {
   assertSection(document.repository, APPLICATION_REPOSITORY_FIELDS, '子应用 repository');
   assertSection(document.ci, APPLICATION_CI_FIELDS, '子应用 ci');
   const gatePolicy = document.ci?.gatePolicy;
-  assertSection(gatePolicy, ['defaultMode', 'gates'], '子应用 ci.gatePolicy');
+  assertSection(gatePolicy, ['gates'], '子应用 ci.gatePolicy');
   return {
     ...document,
     reporting: shared.reporting,
     ci: {
       enabled: shared.ci?.enabled,
-      profile: shared.ci?.profile,
+      notification: shared.ci?.notification,
+      branches: shared.ci?.branches,
       ...document.ci,
-      gatePolicy: {
-        ...gatePolicy,
-        defaultMode: gatePolicy?.defaultMode === undefined
-          ? shared.ci?.gatePolicy?.defaultMode : gatePolicy.defaultMode,
-      },
+      gatePolicy: { ...gatePolicy },
     },
   };
 }

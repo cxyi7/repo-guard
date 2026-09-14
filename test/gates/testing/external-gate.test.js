@@ -29,7 +29,11 @@ function git(root, args) {
 
 async function runCiGate(options) {
   syncAgentPolicies(options.root, options.config);
-  return executeCiGate(options);
+  writeFileSync(path.join(options.root, '.gitignore'), 'reports/\n');
+  git(options.root, ['add', '.']);
+  git(options.root, ['commit', '--allow-empty', '-m', 'test: 固定外部门禁配置']);
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: options.root, encoding: 'utf8' }).stdout.trim();
+  return executeCiGate({ ...options, head });
 }
 
 function externalConfig(extra = {}) {
@@ -165,31 +169,10 @@ test('appends enabled external gates only to the fixed end of CI full', () => {
   assert.equal(untrustedPlan.steps.some(({ id }) => id.startsWith('project.')), false);
 });
 
-test('lets explicit CI policy activate a disabled external Gate only in trusted CI', () => {
-  const config = validateConfig(projectConfig([externalConfig({
-    enabled: false,
-    environments: ['ci-full'],
-  })], {
-    gatePolicy: {
-      defaultMode: 'inherit',
-      gates: {
-        'project.api-contract': {
-          mode: 'enforce'
-        }
-      }
-    }
-  }));
-  const registry = createProjectGateRegistry(config);
-
-  assert.equal(
-    createProjectCiFullPlan(config, registry).steps.at(-1).id,
-    'project.api-contract',
-  );
-  assert.equal(
-    createProjectCiFullPlan(config, registry, { includeExternalGates: false })
-      .steps.some(({ id }) => id === 'project.api-contract'),
-    false,
-  );
+test('CI 不允许通过旧 enforce 模式强行启用关闭的外部门禁', () => {
+  assert.throws(() => validateConfig(projectConfig([externalConfig({ enabled: false })], {
+    gatePolicy: { gates: { 'project.api-contract': { mode: 'enforce' } } },
+  })), /mode 必须为 inherit 或 off/);
 });
 
 test('runs a project npm script and returns its native structured result', async (context) => {
@@ -228,23 +211,26 @@ test('runs enabled external gates at the end of CI full and records native JSON'
   git(root, ['config', 'user.email', 'test@example.com']);
   git(root, ['config', 'user.name', 'Test']);
   git(root, ['add', '.']);
-  git(root, ['commit', '-m', 'base']);
+  git(root, ['commit', '-m', 'chore: 基准']);
   const base = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   mkdirSync(path.join(root, 'src'));
   writeFileSync(path.join(root, 'src', 'next.js'), 'export const next = true;\n');
   git(root, ['add', 'src/next.js']);
-  git(root, ['commit', '-m', 'next']);
-  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  git(root, ['commit', '-m', 'feat: 新增代码']);
+  let head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   const config = validateConfig(projectConfig([externalConfig({
     environments: ['ci-full'],
   })], {
     enabled: true,
-    profile: 'full',
     reportPath: 'reports/ci.json',
     protectedFiles: {
       action: 'report'
     }
   }));
+  syncAgentPolicies(root, config);
+  git(root, ['add', '.']);
+  git(root, ['commit', '--allow-empty', '-m', 'chore: 同步规范']);
+  head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   assert.equal(await runCiGate({
     root,
     config,
@@ -261,13 +247,12 @@ test('runs enabled external gates at the end of CI full and records native JSON'
     environments: ['ci-full'],
   })], {
     enabled: true,
-    profile: 'full',
     reportPath: 'reports/forced-ci.json',
     gatePolicy: {
-      defaultMode: 'inherit',
+
       gates: {
         'project.api-contract': {
-          mode: 'enforce'
+          mode: 'off'
         }
       }
     }
@@ -285,9 +270,9 @@ test('runs enabled external gates at the end of CI full and records native JSON'
   ));
   assert.equal(forcedReport.steps.at(-1).name, 'project.api-contract');
   assert.deepEqual(forcedReport.steps.at(-1).gatePolicy, {
-    mode: 'enforce',
+    mode: 'off',
     scope: 'all-files',
-    blocking: true,
+    blocking: false,
   });
 
   assert.equal(await runCiGate({

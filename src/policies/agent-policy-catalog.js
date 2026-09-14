@@ -389,7 +389,7 @@ const entries = [
     id: 'typecheck', groupId: 'testing-policy',
     gates: ['quality.typecheck'], features: ['typeCheck'],
     when: enabled('checks.typeCheck'),
-    lines: ({ config }) => [`- TypeScript 类型检查使用 npm 脚本 ${code(config.checks.typeCheck.script)}，只在显式、pre-push 或 CI full 阶段运行，不进入 pre-commit。`],
+    lines: ({ config }) => [`- TypeScript 类型检查使用 npm 脚本 ${code(config.checks.typeCheck.script)}，只在显式、pre-push、CI 或交付复核阶段运行，不进入 pre-commit。`],
   }),
   entry({
     id: 'unit-test', groupId: 'testing-policy',
@@ -447,7 +447,7 @@ const entries = [
   entry({
     id: 'ci', groupId: 'delivery-policy', features: ['ci'],
     when: enabled('ci'),
-    lines: ({ config }) => [`- CI 使用 ${code(config.ci.profile)} 配置档并输出本地报告 ${code(config.ci.reportPath)}；所有托管策略必须在 CI 执行前保持同步。`],
+    lines: ({ config }) => [`- CI 按项目启用配置执行并输出本地报告 ${code(config.ci.reportPath)}；公共必查项不得关闭，所有托管策略必须在 CI 执行前保持同步。`],
   }),
   entry({
     id: 'notification', groupId: 'delivery-policy', features: ['notification'],

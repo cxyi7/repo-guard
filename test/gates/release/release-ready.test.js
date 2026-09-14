@@ -78,7 +78,6 @@ function config(project = FRONTEND, externalGates = []) {
     reporting: { notification: { enabled: false } },
     ci: {
       enabled: true,
-      profile: 'release-ready',
       reportPath: 'reports/release-ready.json',
       externalGates,
     },
@@ -193,18 +192,21 @@ for (const descriptor of [FRONTEND, BACKEND, JAVA]) {
     );
     git(root, ['add', 'index.js']);
     git(root, ['commit', '-m', 'feat: next']);
-    const head = git(root, ['rev-parse', 'HEAD']);
+    let head = git(root, ['rev-parse', 'HEAD']);
     const projectConfig = config(descriptor);
     syncAgentPolicies(root, projectConfig);
+    git(root, ['add', '.']);
+    git(root, ['commit', '-m', 'chore: 同步检查规范']);
+    head = git(root, ['rev-parse', 'HEAD']);
     const sourceBefore = readFileSync(path.join(root, 'index.js'), 'utf8');
     assert.equal(
-      await runCiGate({ root, config: projectConfig, base, head, env: {} }),
+      await runCiGate({ root, config: projectConfig, base, head, env: {}, phase: 'delivery-check' }),
       0,
     );
     const report = JSON.parse(
       readFileSync(path.join(root, 'reports/release-ready.json'), 'utf8'),
     );
-    assert.equal(report.profile, 'release-ready');
+    assert.equal(report.phase, 'delivery-check');
     assert.equal(report.status, 'passed');
     assert.deepEqual(
       report.steps.slice(-2).map(({ name, status }) => ({ name, status })),

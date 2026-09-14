@@ -29,7 +29,7 @@ Node 后端使用 `--role backend --stack node --preset node-javascript` 或 `no
 |---|---|
 | 根 `repository` | 提交信息、仓库内合同包、公共基础文件的 `rules / exclusions`，以及全仓 `filePlacement` |
 | 应用 `repository` | 本方 `rules / exclusions / exceptions / dependencyPolicy / codePlacement`，路径相对应用目录 |
-| 根 `ci` | `enabled / profile / reportPath` 及公共 Gate 策略；`gatePolicy.defaultMode` 作为应用默认模式 |
+| 根 `ci` | `enabled / notification / branches / reportPath` 及公共 Gate 策略；应用可选检查分别按本方配置执行 |
 | 应用 `ci` | 本方 `protectedFiles / gatePolicy / externalGates`，不覆盖全仓流程开关和报告路径 |
 | 根 `reporting / sharedPaths` | 统一通知与动画；共享文件变化应触发哪些应用 |
 

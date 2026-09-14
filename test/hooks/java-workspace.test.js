@@ -1,3 +1,4 @@
+import { synchronizeCiFixture, commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,18 +14,19 @@ function javaProject(id, checks) {
     version: 2,
     project: { id, role: 'backend', stack: 'java', preset: 'java-maven' },
     checks,
-    ci: { gatePolicy: { defaultMode: 'off', gates: { 'java.files': { mode: 'enforce' } } } },
+    ci: { gatePolicy: { gates: { 'java.files': { mode: 'inherit' } } } },
   });
 }
 
 function fixture(t) {
   t.mock.method(console, 'log', () => {});
   t.mock.method(console, 'error', () => {});
-  return createGitProjectFixture(t, {
+  const root = createGitProjectFixture(t, {
+    '.gitignore': '**/reports/\n',
     'repo-guard.config.json': JSON.stringify({
       version: 2,
       projects: [{ id: 'api', root: 'apps/api' }, { id: 'worker', root: 'services/worker' }],
-      ci: { enabled: true, gatePolicy: { defaultMode: 'off' } },
+      ci: { enabled: true, gatePolicy: { } },
       reporting: { notification: { enabled: false } },
     }),
     'apps/api/repo-guard.config.json': javaProject('api', { javaFiles: { enabled: true } }),
@@ -34,6 +36,9 @@ function fixture(t) {
     'apps/api/src/main/java/sample/Good.java': 'package sample;\npublic class Good {}\n',
     'services/worker/src/main/java/sample/Worker.java': 'package sample;\npublic class Worker {}\n',
   });
+  synchronizeCiFixture(root);
+  commitCiFixture(root);
+  return root;
 }
 
 test('Java 暂存违规在手动、Hook 和 CI 返回同一违规码，且不加载其他应用工具', async (t) => {
@@ -49,7 +54,7 @@ test('Java 暂存违规在手动、Hook 和 CI 返回同一违规码，且不加
   const manual = await runRegisteredManualGate('java-files', [], root, { projectId: 'api' });
   assert.equal(gateResultToExitCode(manual), EXIT_CODES.violation);
   fixtureGit(root, ['commit', '-m', 'test: 验证产物不能进入仓库']);
-  const ci = await runCiCommand(root, { base, head: fixtureGit(root, ['rev-parse', 'HEAD']), profile: 'full', env: {} });
+  const ci = await runCiCommand(root, { base, head: fixtureGit(root, ['rev-parse', 'HEAD']), env: {} });
   assert.equal(ci, EXIT_CODES.violation);
 });
 

@@ -1,3 +1,4 @@
+import { commitCiFixture } from '../helpers/ci-checkout.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,12 +19,13 @@ const AGENT_GATE = 'repository.agent-policy';
 const RULE_NAME = '全仓 SQL 集中存放';
 const APPLICATION_FILE = 'guard.project.json';
 
-function fixture(t, { relativeRoot = '.', mode = 'enforce' } = {}) {
+function fixture(t, { relativeRoot = '.', mode = 'inherit' } = {}) {
   const lines = [];
   t.mock.method(console, 'log', (...messages) => lines.push(messages.join(' ')));
   t.mock.method(console, 'error', (...messages) => lines.push(messages.join(' ')));
   const configFile = path.posix.join(relativeRoot, APPLICATION_FILE);
   const root = createGitProjectFixture(t, {
+    '.gitignore': '**/reports/\n',
     'repo-guard.config.json': JSON.stringify({
       version: 2,
       projects: [{ id: 'api', root: relativeRoot, config: APPLICATION_FILE }],
@@ -32,14 +34,14 @@ function fixture(t, { relativeRoot = '.', mode = 'enforce' } = {}) {
         suggestedDirectory: 'database/sql',
       }] } },
       reporting: { notification: { enabled: false }, commitAnimation: { enabled: false } },
-      ci: { enabled: true, gatePolicy: { defaultMode: 'off', gates: { [GLOBAL_GATE]: { mode: 'enforce' } } } },
+      ci: { enabled: true, gatePolicy: { gates: { [GLOBAL_GATE]: { mode: 'inherit' } } } },
     }),
     [configFile]: JSON.stringify({
       version: 2,
       project: { id: 'api', role: 'backend', stack: 'java', preset: 'java-maven' },
       repository: { rules: [{ pattern: 'team-policy.txt', category: '应用自己的保护规则', level: 'block' }] },
       checks: { javaPathNaming: { enabled: true } },
-      ci: { gatePolicy: { defaultMode: 'off', gates: { [AGENT_GATE]: { mode } } } },
+      ci: { gatePolicy: { gates: { [AGENT_GATE]: { mode } } } },
     }),
     'database/sql/schema.sql': 'select 1;\n',
     'README.md': '验收样例\n',
@@ -149,12 +151,12 @@ test('同根仅托管规范上下文合成公共规则，应用门禁与不同�
   }
 });
 
-for (const mode of ['enforce', 'report']) {
+for (const mode of ['inherit']) {
   test(`同根 CI 只验证一份完整规范，缺少公共规则按 ${mode} 策略处理且不重复执行归位`, async (t) => {
     const { root, lines } = fixture(t, { mode });
     assert.equal(runInit(root), EXIT_CODES.success);
-    const head = fixtureGit(root, ['rev-parse', 'HEAD']);
-    const options = { profile: 'policy', base: head, head, projectId: 'api', env: {} };
+    const head = commitCiFixture(root);
+    const options = { base: head, head, projectId: 'api', env: {} };
     assert.equal(await runCiCommand(root, options), EXIT_CODES.success, lines.join('\n'));
     const reports = () => ({
       repository: JSON.parse(read(root, 'reports/repo-guard-workspace/repository.json')),
@@ -168,7 +170,9 @@ for (const mode of ['enforce', 'report']) {
     assert.equal(initial.application.steps.find(({ gateResult }) => gateResult?.gateId === AGENT_GATE).gateResult.status, 'passed');
 
     removeOnlyRepositoryPolicy(root);
-    assert.equal(await runCiCommand(root, options), mode === 'enforce' ? EXIT_CODES.violation : EXIT_CODES.success, lines.join('\n'));
+    options.head = commitCiFixture(root);
+    options.base = options.head;
+    assert.equal(await runCiCommand(root, options), EXIT_CODES.violation, lines.join('\n'));
     const failed = reports();
     assert.equal(failed.application.steps.find(({ gateResult }) => gateResult?.gateId === AGENT_GATE).gateResult.status, 'violation');
     assert.equal(failed.repository.steps.find(({ gateResult }) => gateResult?.gateId === GLOBAL_GATE).gateResult.status, 'passed');
@@ -179,11 +183,11 @@ for (const mode of ['enforce', 'report']) {
 test('CI 没有受影响应用时仍按同根唯一规范核验一次，完整规范不误报且缺失公共规则可阻断', async (t) => {
   const { root, lines } = fixture(t);
   const document = JSON.parse(read(root, 'repo-guard.config.json'));
-  document.ci.gatePolicy.gates[AGENT_GATE] = { mode: 'enforce' };
+  document.ci.gatePolicy.gates[AGENT_GATE] = { mode: 'inherit' };
   writeProjectFile(root, 'repo-guard.config.json', JSON.stringify(document));
   assert.equal(runInit(root), EXIT_CODES.success);
-  const head = fixtureGit(root, ['rev-parse', 'HEAD']);
-  const options = { profile: 'policy', base: head, head, env: {} };
+  const head = commitCiFixture(root);
+  const options = { base: head, head, env: {} };
   assert.equal(await runCiCommand(root, options), EXIT_CODES.success, lines.join('\n'));
   const initial = JSON.parse(read(root, 'reports/repo-guard.json'));
   assert.deepEqual(initial.selectedProjects, []);
@@ -194,6 +198,8 @@ test('CI 没有受影响应用时仍按同根唯一规范核验一次，完整�
   assert.equal(steps.filter(({ gateResult }) => gateResult?.gateId === GLOBAL_GATE).length, 1);
 
   removeOnlyRepositoryPolicy(root);
+  options.head = commitCiFixture(root);
+  options.base = options.head;
   assert.equal(await runCiCommand(root, options), EXIT_CODES.violation, lines.join('\n'));
   const failed = JSON.parse(read(root, 'reports/repo-guard-workspace/repository.json'));
   assert.equal(failed.steps.find(({ gateResult }) => gateResult?.gateId === AGENT_GATE).gateResult.status, 'violation');

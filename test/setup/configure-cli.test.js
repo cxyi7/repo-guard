@@ -38,41 +38,26 @@ function run(root, args) {
   });
 }
 
-for (const profile of ['full', 'release-ready']) {
-  test(`CLI install-ci 省略配置档时保留 ${profile}，只在显式指定时覆盖`, (context) => {
-    const root = mkdtempSync(path.join(TEST_ROOT, 'install-ci-profile-'));
-    context.after(() => rmSync(root, { recursive: true, force: true }));
-    const gitResult = spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
-    assert.equal(gitResult.status, 0, gitResult.stderr);
-    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', packageManager: 'npm@10.9.8', version: '1.0.0' }));
-    const configPath = path.join(root, 'repo-guard.config.json');
-    const original = `${JSON.stringify({
-      version: 2,
-      project: { id: 'web', role: 'frontend', stack: 'node', preset: 'vue-javascript' },
-      ci: { enabled: true, profile },
-    }, null, 2)}\n`;
-    writeFileSync(configPath, original);
-
-    const preview = run(root, ['install-ci', '--provider', 'gitlab', '--dry-run']);
-    assert.equal(preview.status, 0, preview.stderr);
-    assert.match(preview.stdout, new RegExp(`配置档： ${profile}`));
-    assert.equal(readFileSync(configPath, 'utf8'), original);
-    assert.equal(existsSync(path.join(root, '.gitlab-ci.yml')), false);
-
-    const installed = run(root, ['install-ci', '--provider', 'gitlab']);
-    assert.equal(installed.status, 0, installed.stderr);
-    assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).ci.profile, profile);
-    assert.match(
-      readFileSync(path.join(root, '.gitlab-ci.yml'), 'utf8'),
-      new RegExp(`extends: \\.repo_guard_${profile.replaceAll('-', '_')}`),
-    );
-
-    const overridden = run(root, ['install-ci', '--provider', 'gitlab', '--profile', 'policy']);
-    assert.equal(overridden.status, 0, overridden.stderr);
-    assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).ci.profile, 'policy');
-    assert.match(readFileSync(path.join(root, '.gitlab-ci.yml'), 'utf8'), /extends: \.repo_guard_policy/);
-  });
-}
+test('CLI 安装唯一 CI 入口并拒绝旧档位参数', (context) => {
+  const root = mkdtempSync(path.join(TEST_ROOT, 'install-ci-configured-'));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.equal(spawnSync('git', ['init'], { cwd: root }).status, 0);
+  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', packageManager: 'npm@10.9.8' }));
+  const configPath = path.join(root, 'repo-guard.config.json');
+  const original = JSON.stringify({ version: 2, project: { id: 'web', role: 'frontend', stack: 'node', preset: 'vue-javascript' }, ci: { enabled: true } });
+  writeFileSync(configPath, original);
+  const preview = run(root, ['install-ci', '--provider', 'gitlab', '--dry-run']);
+  assert.equal(preview.status, 0, preview.stderr);
+  assert.equal(readFileSync(configPath, 'utf8'), original);
+  assert.equal(existsSync(path.join(root, '.gitlab-ci.yml')), false);
+  const installed = run(root, ['install-ci', '--provider', 'gitlab']);
+  assert.equal(installed.status, 0, installed.stderr);
+  assert.match(readFileSync(path.join(root, '.gitlab-ci.yml'), 'utf8'), /extends: \.repo_guard_ci/);
+  const saved = readFileSync(configPath, 'utf8');
+  const rejected = run(root, ['install-ci', '--profile', 'policy']);
+  assert.equal(rejected.status, 1);
+  assert.equal(readFileSync(configPath, 'utf8'), saved);
+});
 
 test('CLI 不再提供 migrate 命令，拒绝后保持用户文件不变', (context) => {
   const root = mkdtempSync(path.join(TEST_ROOT, 'unsupported-migrate-cli-'));

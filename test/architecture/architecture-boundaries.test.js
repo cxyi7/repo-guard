@@ -1367,7 +1367,7 @@ test('keeps managed GitLab CI files in operations with a configuration-only setu
   const gitLabCiSource = readFileSync(gitLabCiPath, 'utf8');
   assert.match(gitLabCiSource, /export function inspectGitLabCi/);
   assert.match(gitLabCiSource, /export function installGitLabCiFiles/);
-  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v3/);
+  assert.match(gitLabCiSource, /# repo-guard-gitlab-template:v4/);
   assert.doesNotMatch(gitLabCiSource, /# repo-guard-gitlab-template:v1/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:start/);
   assert.match(gitLabCiSource, /# repo-guard-gitlab:end/);

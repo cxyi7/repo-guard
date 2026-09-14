@@ -1,3 +1,4 @@
+import { runCiNotificationTest } from '../ci/notification.js';
 import { runAnimationPreview } from './animation-preview.js';
 import { runToolConfiguration } from './tool-configuration.js';
 import { readFileSync } from 'node:fs';
@@ -68,10 +69,12 @@ repo-guard - 仓库保护门禁
   repo-guard install-hooks
   repo-guard enable <${CONFIGURABLE_FEATURE_HELP}> [...]
   repo-guard disable <${CONFIGURABLE_FEATURE_HELP}> [...]
-  repo-guard doctor [--fix|--ci]
+  repo-guard doctor [--fix|--ci|--gitlab]
   repo-guard tool-config --tool eslint|prettier|stylelint|typeCheck [--file <path>] [--project <id>]
-  repo-guard install-ci --provider gitlab [--profile policy|full|release-ready] [--stage <name>] [--dry-run]
-  repo-guard ci [--profile policy|full|release-ready] [--base <sha>] [--head <sha>] [--report-json <path>]
+  repo-guard install-ci --provider gitlab [--stage <name>] [--dry-run]
+  repo-guard ci [--base <sha>] [--head <sha>] [--report-json <path>]
+  repo-guard delivery-check [--base <sha>] [--head <sha>] [--report-json <path>]
+  repo-guard ci-notification-test
   repo-guard ci-notify [--status success|failed|canceled]
   repo-guard ops plan
   repo-guard ops install [--dry-run]
@@ -165,36 +168,41 @@ const COMMAND_HANDLERS = Object.freeze({
     return runDisable(argumentsList, process.cwd(), options);
   },
   doctor: async (argumentsList, { projectId }) => {
-    ensureSupportedOptions(argumentsList, new Set(['--fix', '--ci']));
+    ensureSupportedOptions(argumentsList, new Set(['--fix', '--ci', '--gitlab']));
     return runDoctor(process.cwd(), {
       fix: argumentsList.includes('--fix'),
-      ci: argumentsList.includes('--ci'),
+      ci: argumentsList.includes('--ci') || argumentsList.includes('--gitlab'),
+      gitlab: argumentsList.includes('--gitlab'),
       projectId,
     });
   },
   'install-ci': async (argumentsList) => {
     const options = valuedOptions(
       argumentsList,
-      ['--provider', '--profile', '--stage'],
+      ['--provider', '--stage'],
       ['--dry-run'],
     );
     return runInstallCiCommand(process.cwd(), {
       provider: options.values['--provider'],
-      profile: options.values['--profile'],
       stage: options.values['--stage'] || null,
       dryRun: options.flags.has('--dry-run'),
     });
   },
   ci: async (argumentsList, { projectId }) => {
-    const options = valuedOptions(argumentsList, ['--profile', '--base', '--head', '--report-json']);
+    const options = valuedOptions(argumentsList, ['--base', '--head', '--report-json']);
     return runCiCommand(process.cwd(), {
-      profile: options.values['--profile'],
       base: options.values['--base'] || null,
       head: options.values['--head'] || null,
       reportPath: options.values['--report-json'],
       projectId,
     });
   },
+  'delivery-check': async (argumentsList, { projectId }) => {
+    const options = valuedOptions(argumentsList, ['--base', '--head', '--report-json']);
+    return runCiCommand(process.cwd(), { phase: 'delivery-check', base: options.values['--base'] || null,
+      head: options.values['--head'] || null, reportPath: options.values['--report-json'], projectId });
+  },
+  'ci-notification-test': withoutOptions(runCiNotificationTest),
   'ci-notify': async (argumentsList) => {
     const options = valuedOptions(argumentsList, ['--status']);
     return runGitLabCiNotification({
@@ -288,7 +296,7 @@ const COMMAND_HANDLERS = Object.freeze({
 async function runKnownCommand(command, argumentsList) {
   const gate = gateRegistry.findByManualCommand(command);
   const scopedCommands = new Set([
-    'init', 'enable', 'disable', 'doctor', 'ci', 'external', 'tool-config',
+    'init', 'enable', 'disable', 'doctor', 'ci', 'delivery-check', 'external', 'tool-config',
     'guarded-build', 'dead-code-baseline', 'build-artifact-baseline',
     'api-performance-runner', 'k6-runner',
   ]);

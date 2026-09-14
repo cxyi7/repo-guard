@@ -63,13 +63,13 @@ test('Java 保留语言无关的应用规则、公共流程和报告配置', () 
         scanPatterns: ['**/*.java'], allowedFiles: ['src/main/java/Application.java'],
       }] },
     },
-    ci: { enabled: true, profile: 'full' }, reporting: { notification: { enabled: false } },
+    ci: { enabled: true, }, reporting: { notification: { enabled: false } },
   });
   assert.equal(config.checks.javaFiles.enabled, true);
   assert.equal(config.repository.commitMessage.enabled, true);
   assert.equal(config.repository.codePlacement.enabled, true);
   assert.deepEqual(config.checks.maxFileLines.rules, [{ pattern: '**/*.java', maxLines: 1000 }]);
-  assert.equal(config.ci.profile, 'full');
+  assert.equal(Object.hasOwn(config.ci, 'profile'), false);
   assert.equal(config.reporting.notification.enabled, false);
 });
 

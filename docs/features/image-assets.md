@@ -119,7 +119,7 @@ npx repo-guard doctor
 | `checks.imageAssets.naming.densitySuffixes` | 文件名允许保留的倍率后缀，如 @2x | 字符串数组<br>默认：`["@2x","@3x"]` | 至少 1 项；元素不可重复；每项：只能使用 @2x 到 @9x |
 | `checks.imageAssets.naming.allowNinePatch` | 是否允许 Android 九宫格图片的 .9 命名部分 | `true` / `false`<br>默认：`false` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 | `checks.imageAssets.duplicates.exact` | off 不检查；error 阻断字节完全相同的重复图片 | `"off"` / `"error"`<br>默认：`"error"` | 只接受列出的值 |
-| `checks.imageAssets.duplicates.pixel` | off 不检查；report 报告；error 阻断像素重复图片 | `"off"` / `"report"` / `"error"`<br>默认：`"off"` | 不进入 pre-commit 或 CI policy 的像素分析。 |
+| `checks.imageAssets.duplicates.pixel` | off 不检查；report 报告；error 阻断像素重复图片 | `"off"` / `"report"` / `"error"`<br>默认：`"off"` | 不进入 pre-commit  的像素分析。 |
 | `checks.imageAssets.duplicates.canonicalRoots` | 选择重复图片规范保留位置时使用的目录优先顺序 | 字符串数组<br>默认：`["src/assets","public/assets","docs/assets"]` | 至少 1 项；元素不可重复；每项为非空字符串 |
 | `checks.imageAssets.compression.enabled` | 是否启用压缩收益检查 | `true` / `false`<br>默认：`true` | 使用 JSON 布尔值，不能写成字符串 "true" / "false" |
 | `checks.imageAssets.compression.action` | report 报告压缩收益；error 将满足优化条件的问题视为违规 | `"report"` / `"error"`<br>默认：`"report"` | 只接受列出的值 |
@@ -150,7 +150,7 @@ npx repo-guard doctor
 <!-- config-fields:end -->
 
 - `changedFiles` 只阻止本次新增或修改产生的新问题，适合旧项目接入；`allFiles` 每次治理完整范围。精确重复使用 Git blob 标识或内容哈希，不依赖文件名；`canonicalRoots` 接受仓库内目录或 glob，并决定建议保留路径。增量模式优先保留未变更的存量资源，工具不会自动删除副本。
-- `duplicates.pixel` 可设为 `report` 或 `error`，通过 Sharp 旋转归一、转换 sRGB 并解码静态像素后比较，能够发现 PNG/JPEG/WebP/AVIF 间的视觉重复；为保持 pre-commit 与 CI policy 轻量，该项只在手动、CI full 和 release-ready 执行。允许原图回退时，同目录同主名的原图/WebP 组合不会被当作像素重复。
+- `duplicates.pixel` 可设为 `report` 或 `error`，通过 Sharp 旋转归一、转换 sRGB 并解码静态像素后比较，能够发现 PNG/JPEG/WebP/AVIF 间的视觉重复；为保持 pre-commit  轻量，该项只在手动、CI 与交付复核 执行。允许原图回退时，同目录同主名的原图/WebP 组合不会被当作像素重复。
 - 压缩和 WebP 建议同时满足最小输入体积、最小节省字节数、最小节省比例才会报告。WebP 并不存在对所有 PNG 固定节省 70% 到 80% 的保证：照片、插画、透明图和已压缩素材差异很大，因此门禁只依据每个文件的真实候选结果判断。
 - `compression.enabled` 是原格式压缩和 WebP 转换的统一父开关；关闭后即使保留 `conversion.enabled: true` 也不会运行转换分析或写入。像素重复属于独立检查，不受该父开关影响。
 - PNG 默认只生成无损候选并复核像素一致性；JPEG/WebP 原格式压缩需先配置 `raster.allowLossy: true`。写入 JPEG/WebP 原格式压缩或 JPEG/有损 PNG 转 WebP 时，还必须传入 `--allow-lossy` 完成第二次确认；只读预览不会要求命令行确认。`metadata` 决定候选保留或移除元数据。
@@ -176,7 +176,7 @@ npx repo-guard image-optimize --to webp --write --allow-lossy -- src/assets/bann
 
 ## 执行与复核
 
-执行入口：质量检查进入手动、pre-commit、CI policy/full 和 release-ready；像素重复仅在手动、CI full 和 release-ready 分析。功能开关、CI 模式与具体文件范围仍按上文配置生效。
+执行入口：质量检查进入手动、pre-commit、CI 与交付复核；像素重复仅在手动、CI 与交付复核 分析。功能开关、CI 模式与具体文件范围仍按上文配置生效。
 
 检查失败时按报告中的规则、位置与证据修复；区分工具/配置错误和真实违规。修改源码后重新暂存，修改配置后同步托管文件，再使用相同入口复核。需要人工确认、基线维护或发布证据时，按本页对应流程完成。
 

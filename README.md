@@ -1,5 +1,7 @@
 # repo-guard
 
+CI 可在本地或 GitLab 运行，按项目配置执行，公共检查不可关闭；成功与失败通知支持仓库配置的企业微信、飞书机器人。配置后运行 `repo-guard ci-notification-test`，日常运行 `repo-guard ci`，最终验收运行 `repo-guard delivery-check`。[CI 使用与配置](docs/features/ci.md)。
+
 当前重构目标版本为 **2.0.0（未发布）**。本轮各功能统一在 `refactor/node-engineering-2.0.0` 汇总；历史审查文件名中的较高版本号仅保留为开发阶段索引。
 
 前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](docs/features/frontend-performance-presets.md)。
@@ -22,7 +24,7 @@ repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**�
 
 检查结果使用统一退出码：`0` 成功或无需阻断，`1` 配置或工具运行错误，`2` 规则或交付条件未满足，`3` Git 范围不可信。手动检查、Hook、CI 和交付入口采用相同含义，多应用结果按固定优先级汇总，便于 AI 判断下一步该修代码、补证据还是修环境。详见[结果与退出码](docs/features/gate-result-and-reporting.md)。
 
-多应用 CI 继承仓库的默认执行模式；子应用只调整某个 Gate 时，其余 Gate 仍使用仓库默认模式，只有显式填写应用 `defaultMode` 才覆盖该默认值。具体 Gate 的覆盖始终按仓库或应用分别配置。详见[CI 策略](docs/features/gitlab-ci.md)。
+多应用 CI 分别跟随各应用已启用的检查。每个应用可用 `ci.gatePolicy.gates` 的 `off` 关闭可选项，公共必检项不能关闭；根配置统一管理 CI 开关、通知和触发分支。[CI 策略](docs/features/ci.md)。
 
 工具从所选应用及其祖先的 `node_modules` 按就近顺序解析，支持工作区依赖提升和包目录链接；缺少或损坏的安装会明确报错。Git 快照读取失败与配置确实不存在分开处理，中文错误说明与第三方原始诊断分别展示。子进程超时或取消后使用统一清理时限，无法确认完整退出时报告执行错误。详见[应用工具解析](docs/features/project-workspace.md#应用工具如何定位)和[执行失败处理](docs/features/gate-result-and-reporting.md#执行失败与原始诊断)。
 
@@ -155,10 +157,10 @@ Maven 检查共用启动配置预检，防止 `.mvn` 文件或环境参数暗中
 
 ```bash
 # 只检查后端；使用后端目录内的工具、源码与脚本
-npx repo-guard ci --project api --profile full
+npx repo-guard ci --project api
 ```
 
-提交、推送及普通 CI 根据变更选择受影响应用；根清单变化触发所有应用，共享文件可用 `sharedPaths` 指定影响范围。只改前端时不会读取无关后端的工具与工程规则。`release-ready` 默认复核全部应用，也可以用 `--project` 明确只验证本方。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
+提交、推送及普通 CI 根据变更选择受影响应用；根清单变化触发所有应用，共享文件可用 `sharedPaths` 指定影响范围。只改前端时不会读取无关后端的工具与工程规则。`delivery-check` 默认复核全部应用，也可以用 `--project` 明确只验证本方。CI 质量检查与运维发布分开：`repo-guard.ops.json` 为各应用声明构建产物、环境和部署脚本，前后端可以独立发布、由不同成员负责。
 
 独立运维可显式开启整条流水线的成功、失败通知，覆盖合并请求与分支流水线；升级后需重新生成托管片段，见[运维通知与更新说明](docs/features/operations.md#流水线通知)。
 

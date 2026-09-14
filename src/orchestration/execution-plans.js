@@ -54,11 +54,6 @@ export const ciPolicyPlan = defineExecutionPlan({
     'repository.maximum-file-lines',
     'repository.delivery-contract',
     {
-      id: 'quality.unit-test-policy',
-      gateId: 'quality.unit-test',
-      reportName: 'unit-test-policy',
-    },
-    {
       id: 'repository.protected-files',
       gateId: 'repository.protected-files',
       mutation: 'read-only',
@@ -117,7 +112,6 @@ export const releaseReadyPlan = defineExecutionPlan({
 function includeExternalGate(config, gate, environment, includeExternalGates) {
   if (!includeExternalGates || !gate.environments.includes(environment)) return false;
   const mode = config.ci?.gatePolicy?.gates?.[gate.id]?.mode
-    ?? config.ci?.gatePolicy?.defaultMode
     ?? 'inherit';
   return gate.enabled || mode !== 'inherit';
 }
