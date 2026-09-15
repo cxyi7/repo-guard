@@ -53,15 +53,33 @@ function safeText(value, notification) {
     .slice(0, 160);
 }
 
+/** GitLab 按提交检出时使用平台上下文；标签不冒充普通分支。 */
+function revisionContext(root, env) {
+  if (env.GITLAB_CI === "true") {
+    const source = env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME?.trim();
+    if (source) return { label: "分支", value: source };
+    const tag = env.CI_COMMIT_TAG?.trim();
+    if (tag) return { label: "标签", value: tag };
+    const branch = env.CI_COMMIT_BRANCH?.trim();
+    if (branch) return { label: "分支", value: branch };
+    const ref = env.CI_COMMIT_REF_NAME?.trim();
+    if (ref) return { label: "引用", value: ref };
+  }
+  const branch = gitValue(["branch", "--show-current"], "", root);
+  return branch
+    ? { label: "分支", value: branch }
+    : { label: "检出方式", value: "指定提交检出（未附着分支）" };
+}
+
 export async function notifyCiOutcome(
   root,
   notification,
   exitCode,
   report,
-  { test = false, send } = {},
+  { test = false, send, env = process.env } = {},
 ) {
   if (!notification) return EXIT_CODES.error;
-  const branch = gitValue(["branch", "--show-current"], "未命名分支", root);
+  const ref = revisionContext(root, env);
   const head = report?.head ?? gitValue(["rev-parse", "HEAD"], "未知", root);
   const failures = (
     report?.targets
@@ -81,7 +99,7 @@ export async function notifyCiOutcome(
       ? "repo-guard CI 通知接入测试：请确认群内收到此消息。"
       : `repo-guard CI ${exitCode === EXIT_CODES.success ? "检查成功" : "检查失败"}`,
     `项目：${safeText(notification.name, notification)}`,
-    `分支：${safeText(branch, notification)}`,
+    `${ref.label}：${safeText(ref.value, notification)}`,
     `目标提交：${safeText(head, notification)}`,
     ...(failures.length
       ? [

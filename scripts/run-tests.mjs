@@ -81,7 +81,10 @@ export function runTests(argumentsList, { repositoryRoot = REPOSITORY_ROOT, spaw
   }
   const environment = { ...process.env };
   delete environment.NODE_TEST_CONTEXT;
-  const result = spawn(process.execPath, ['--test', ...options.nodeArguments, ...files], {
+  // 集成测试还会启动 npm、Git 和编译器，不能按宿主机全部逻辑核同时展开。
+  const concurrency = options.nodeArguments.some(argument => argument.startsWith('--test-concurrency'))
+    ? [] : ['--test-concurrency=4'];
+  const result = spawn(process.execPath, ['--test', ...concurrency, ...options.nodeArguments, ...files], {
     cwd: repositoryRoot,
     env: environment,
     shell: false,

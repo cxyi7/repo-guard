@@ -15,7 +15,7 @@ export function validateNodeReleaseScripts(repositoryRoot, project, unit) {
   } catch (cause) {
     throw configurationError('operations/project-manifest', `项目 ${project.id} 的目录或 package.json 无法读取`, { cause });
   }
-  const requiredScripts = [unit.buildScript, ...Object.values(unit.environments).map((environment) => environment.script)];
+  const requiredScripts = [unit.buildScript, ...Object.values(unit.environments).map((environment) => environment.script)].filter(Boolean);
   const missing = requiredScripts.filter((script) => typeof manifest.scripts?.[script] !== 'string'
     || !manifest.scripts[script].trim());
   if (missing.length) {

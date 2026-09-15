@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createHmac } from "node:crypto";
 import test from "node:test";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { notifyCiOutcome } from "../../src/orchestration/ci/notification.js";
+import { EXIT_CODES } from "../../src/core/result/exit-code.js";
 import { validateCiNotification } from "../../src/config/ci-notification.js";
 import {
   postRobotMessage,
@@ -19,6 +24,42 @@ const feishu = {
   webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/test-only",
   secret: "test-secret",
 };
+
+test("真实 detached HEAD 通知优先平台分支，正确区分合并请求、标签和本地检出", async (t) => {
+  mkdirSync("test/.tmp", { recursive: true });
+  const root = mkdtempSync(path.resolve("test/.tmp/notification-ref-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", windowsHide: true }).trim();
+  git("init", "-q", "-b", "local-topic");
+  git("-c", "core.hooksPath=", "-c", "user.name=测试", "-c", "user.email=test@example.invalid",
+    "commit", "--allow-empty", "-qm", "test: 通知检出状态");
+  const head = git("rev-parse", "HEAD");
+  const notification = { name: "api", config: { enabled: true, channels: [feishu] } };
+  const message = async (env, exitCode = EXIT_CODES.success) => {
+    let content;
+    await notifyCiOutcome(root, notification, exitCode, { head }, {
+      env, send: async (_, value) => { content = value; },
+    });
+    assert.ok(content.includes(`目标提交：${head}`));
+    assert.doesNotMatch(content, /未命名分支/);
+    return content;
+  };
+  assert.match(await message({ CI_COMMIT_BRANCH: "过期变量" }), /分支：local-topic/);
+  git("checkout", "--detach", "-q", head);
+  assert.equal(git("branch", "--show-current"), "");
+  for (const exitCode of [EXIT_CODES.success, EXIT_CODES.error]) {
+    assert.match(await message({ GITLAB_CI: "true", CI_COMMIT_BRANCH: " main " }, exitCode), /分支：main/);
+  }
+  assert.match(await message({ GITLAB_CI: "true", CI_MERGE_REQUEST_SOURCE_BRANCH_NAME: "feat/source",
+    CI_COMMIT_BRANCH: "main", CI_COMMIT_REF_NAME: "refs/merge-requests/1/merge" }), /分支：feat\/source/);
+  assert.match(await message({ GITLAB_CI: "true", CI_COMMIT_TAG: "v2.1.0", CI_COMMIT_REF_NAME: "v2.1.0" }), /标签：v2\.1\.0/);
+  assert.match(await message({ GITLAB_CI: "true", CI_COMMIT_BRANCH: " ", CI_COMMIT_REF_NAME: "refs/special" }), /引用：refs\/special/);
+  assert.match(await message({}), /检出方式：指定提交检出（未附着分支）/);
+  assert.match(await message({ GITLAB_CI: "true" }), /检出方式：指定提交检出（未附着分支）/);
+  const sanitized = await message({ GITLAB_CI: "true", CI_COMMIT_BRANCH: `topic\n${feishu.secret}` });
+  assert.match(sanitized, /分支：topic \[已隐藏\]/);
+  assert.ok(!sanitized.includes(feishu.secret));
+});
 function transport(status, body) {
   return (_url, _options, callback) => {
     const req = new EventEmitter();

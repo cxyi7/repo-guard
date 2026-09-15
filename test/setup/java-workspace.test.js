@@ -63,7 +63,7 @@ test('Java 新建全开模板缺项阻断；已有显式关闭配置仍可初始
   assert.match(policies, /Java 新建模板默认开启检查/);
   assert.match(policies, /通过 lint-staged.*暂存 Java 文件格式化，然后只读复核格式/);
   assert.match(policies, /保留部分暂存与未暂存内容/);
-  assert.match(policies, /尚未提供 Java 运维部署适配/);
+  assert.match(policies, /Java Maven 运维可通过独立蓝绿部署配置接入/);
   assert.doesNotMatch(policies, /ESLint|Prettier|Stylelint|Vitest|eval 或 Function|TypeScript JSDoc/);
 });
 

@@ -89,3 +89,14 @@ test('真实 Node 执行可以发现失败并返回非零结果', (t) => {
   assert.equal(status, 1);
   assert.match(output, /失败用例/);
 });
+
+test('默认限制测试文件并发但不减少发现的测试，显式并发由调用方决定', t => {
+  const root = createRepository(t, { 'test/core/first.test.js': '', 'test/core/second.test.js': '' });
+  const expected = collectTestFiles(root, parseTestArguments([]));
+  for (const args of [[], ['--test-concurrency=2']]) {
+    runTests(args, { repositoryRoot: root, spawn(command, actual) {
+      assert.deepEqual(actual, ['--test', args[0] ?? '--test-concurrency=4', ...expected]);
+      return { status: 0 };
+    } });
+  }
+});

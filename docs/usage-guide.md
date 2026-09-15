@@ -1,10 +1,12 @@
 # @cxyi7/repo-guard 使用说明
 
+新分支首次 GitLab push 请保留平台的 `CI_DEFAULT_BRANCH` 并设置 `GIT_DEPTH: "0"`；工具获取默认分支共同祖先作为范围基准，无需通过补一次提交规避检查。
+
 前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](features/frontend-performance-presets.md)。
 
 本手册帮助团队完成接入、配置规则、处理检查结果，并将需求到反馈的交付流程落到项目中。详细规则按功能独立维护，使用时从本页进入对应说明。
 
-- 当前源码版本：`2.0.0`
+- 当前源码版本：`2.1.0`
 - Node.js：`>=22.23.2`
 - 配置契约：`version: 2`，项目身份由人或 AI 明确配置
 
@@ -35,7 +37,7 @@
 ### 安装与初始化
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@2.0.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@2.1.0
 npx repo-guard init --project web --role frontend --stack node --preset vue-javascript
 npx repo-guard doctor
 ```

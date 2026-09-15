@@ -1,6 +1,7 @@
 import { configurationError } from '../../core/error/repo-guard-error.js';
 import { validateOperationsConfig, requireIdentifier, requireRelativePath } from '../config/validation.js';
 import { nodeArtifactVerificationCommand, nodeReleaseCommand, validateNodeReleaseScripts } from '../providers/node.js';
+import { nativeBuildCommand, validateJavaRelease } from '../providers/java.js';
 
 function normalizedProjects(projects) {
   const list = Array.isArray(projects)
@@ -19,29 +20,33 @@ function normalizedProjects(projects) {
 function projectPlan(repositoryRoot, id, unit, projects) {
   const project = projects.find((item) => item.id === id);
   if (!project) throw configurationError('operations/unknown-project', `运维配置引用了未声明的项目：${id}`);
-  if (project.stack !== 'node') {
+  if (!['node', 'java'].includes(project.stack)) {
     throw configurationError('operations/unsupported-runtime', `项目 ${id} 的 ${project.stack} 运维适配尚未提供；当前仅支持显式声明 stack=node 的应用`);
   }
-  validateNodeReleaseScripts(repositoryRoot, project, unit);
+  if (project.stack === 'java') validateJavaRelease(repositoryRoot, project, unit);
+  else validateNodeReleaseScripts(repositoryRoot, project, unit);
   const artifactPaths = unit.artifactPaths.map((artifact) => project.root === '.' ? artifact : `${project.root}/${artifact}`);
   return {
     projectId: id,
     root: project.root,
-    runtime: 'node',
+    runtime: project.stack,
     quality: {
       job: `repo_guard_quality__${id}`,
       command: `npx --no-install repo-guard ${unit.verifyDelivery ? 'delivery-check' : 'ci'} --project ${id}`,
     },
     build: {
       job: `repo_guard_build__${id}`,
-      command: nodeReleaseCommand(unit.buildScript),
+      command: unit.build ? nativeBuildCommand(unit.build) : nodeReleaseCommand(unit.buildScript),
       verifyArtifactsCommand: nodeArtifactVerificationCommand(unit.artifactPaths),
       artifactPaths,
       artifactName: `$CI_PROJECT_PATH_SLUG-${id}-$CI_COMMIT_SHA`,
     },
     deployments: Object.entries(unit.environments).map(([environmentId, environment]) => ({
       job: `repo_guard_deploy__${id}__${environmentId}`,
-      command: nodeReleaseCommand(environment.script),
+      command: environment.blueGreen
+        ? `npx --no-install repo-guard ops deploy --project ${id} --environment ${environmentId}`
+        : nodeReleaseCommand(environment.script),
+      blueGreen: Boolean(environment.blueGreen),
       environment: `${id}/${environmentId}`,
       resourceGroup: `${id}-${environmentId}`,
       production: environment.production,

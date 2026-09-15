@@ -370,22 +370,35 @@ test('rejects contradictory, unknown, sensitive, and stale report behavior', asy
 test('terminates the complete npm process tree when an external gate times out', async (context) => {
   const root = createFixture({
     report: passedReport(),
-    config: externalConfig({ timeoutMs: 1000 }),
+    config: externalConfig({ timeoutMs: 3000 }),
   });
   context.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(
     path.join(root, 'scripts', 'external.mjs'),
     [
       "import { spawn } from 'node:child_process';",
-      "import { mkdirSync } from 'node:fs';",
+      "import { mkdirSync, writeFileSync } from 'node:fs';",
       "mkdirSync('reports', { recursive: true });",
-      "spawn(process.execPath, ['-e', \"setTimeout(() => require('node:fs').writeFileSync('reports/orphan.txt', 'orphan'), 1500)\"], { stdio: 'ignore' });",
+      "const descendant = spawn(process.execPath, ['-e', \"setTimeout(() => require('node:fs').writeFileSync('reports/orphan.txt', 'orphan'), 6000)\"], { stdio: 'ignore' });",
+      "writeFileSync('reports/processes.json', JSON.stringify([process.pid, descendant.pid]));",
       'setInterval(() => {}, 1000);',
     ].join('\n'),
   );
   const result = await runExternalManualGate('project.api-contract', root);
   assert.equal(result.status, 'execution-error');
-  assert.match(result.summary, /超过 1000ms 超时时间/);
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  // Windows taskkill 可能保守报告清理未确认，原始超时原因必须仍然存在。
+  if (result.error.code === 'external-gate/termination-failed') {
+    assert.ok(result.error.evidence.some((item) => item.type === 'termination-reason'
+      && item.message.includes('orchestration/gate-timeout')));
+  } else {
+    assert.equal(result.error.code, 'orchestration/gate-timeout');
+  }
+  const pids = JSON.parse(readFileSync(path.join(root, 'reports', 'processes.json'), 'utf8'));
+  assert.equal(pids.length, 2);
+  for (const pid of pids) {
+    assert.ok(Number.isInteger(pid) && pid > 0);
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  }
+  await new Promise((resolve) => setTimeout(resolve, 6500));
   assert.equal(existsSync(path.join(root, 'reports', 'orphan.txt')), false);
 });

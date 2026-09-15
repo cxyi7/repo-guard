@@ -1,10 +1,14 @@
 # repo-guard 项目结构与能力总览
 
+蓝绿部署默认仅切换应用并保留当前数据；可通过 `blueGreen.backup.enabled: true` 启用已声明资源的快照与恢复。普通模式保留旧应用直到新入口健康检查通过，失败后验证回退结果；恢复失败保持维护并通知。
+
+2.1.0 新增 `operations/deployment/` 管理 Docker 蓝绿运行、服务器锁、恢复点和代理；`operations/providers/java.js` 提供 Maven 构建适配；`orchestration/cli/deployment.js` 组合已配置质量检查与部署，不把部署加入 Hook。详见[蓝绿部署](features/blue-green-deployment.md)。
+
 CI 命令与平台安装分离：orchestration/ci 负责统一执行、版本一致性、通知测试和结果汇总；gates/release/ci-notification 组合结果，integrations/notifications 调用企业微信/飞书。部署仍独立。公开档位已取消，详见 [CI](features/ci.md)。
 
 前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](features/frontend-performance-presets.md)。
 
-适用于版本 `2.0.0`。
+适用于版本 `2.1.0`（未发布）。
 
 本文维护当前 **v2 配置模型、模块职责和扩展边界**。repo-guard 通过统一的 npm 命令入口约束 AI 与开发者的工程行为；Vue 前端、Node 后端与 Java Maven 后端各自使用明确配置的工具、规则和执行目录，不承担接口契约、鉴权或其他业务验收判断。
 

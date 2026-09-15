@@ -83,18 +83,27 @@ test('redacts multiline private keys from live output', async () => {
 });
 
 test('returns a timeout result after terminating a long-running process', async () => {
+  let child;
   const execution = await runStreamingProcess({
     command: process.execPath,
     argumentsList: ['-e', "setInterval(() => {}, 1000);"],
     root: process.cwd(),
     timeoutMs: 100,
+  }, {
+    spawnProcess(...args) {
+      child = spawn(...args);
+      return child;
+    },
   });
 
   assert.equal(execution.timedOut, true);
-  assert.equal(execution.error?.code, 'project-process/timeout');
+  assert.equal(execution.error?.details?.reasonCode ?? execution.error?.code, 'project-process/timeout');
+  assert.ok(Number.isInteger(child.pid) && child.pid > 0);
+  assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
 });
 
 test('terminates and rejects with the caller cancellation reason', async () => {
+  let child;
   const controller = new AbortController();
   const reason = cancellationError('test/process-cancelled', '测试取消');
   const executionPromise = runStreamingProcess({
@@ -103,10 +112,18 @@ test('terminates and rejects with the caller cancellation reason', async () => {
     root: process.cwd(),
     timeoutMs: 5000,
     signal: controller.signal,
+  }, {
+    spawnProcess(...args) {
+      child = spawn(...args);
+      return child;
+    },
   });
   setTimeout(() => controller.abort(reason), 100);
 
-  await assert.rejects(executionPromise, (error) => error === reason);
+  await assert.rejects(executionPromise, (error) => error === reason
+    || (error.code === 'project-process/termination-failed' && error.details.reasonCode === reason.code));
+  assert.ok(Number.isInteger(child.pid) && child.pid > 0);
+  assert.throws(() => process.kill(child.pid, 0), { code: 'ESRCH' });
 });
 
 test('超时后的进程树清理失败仍返回可追溯的终止错误', async () => {

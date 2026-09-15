@@ -23,7 +23,7 @@
     "provider": {
       "const": "gitlab",
       "default": "gitlab",
-      "description": "当前仅支持 GitLab。"
+      "description": "GitLab 流水线生成器；蓝绿执行入口也可手动调用，无需 GitLab 运行时。"
     },
     "notifications": {
       "type": "object",
@@ -67,7 +67,6 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "script",
         "branches"
       ],
       "properties": {
@@ -87,8 +86,33 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
           },
           "description": "允许部署的明确分支名；不支持通配符或表达式。"
+        },
+        "blueGreen": {
+          "$ref": "#/$defs/blueGreen"
         }
-      }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "script"
+          ],
+          "not": {
+            "required": [
+              "blueGreen"
+            ]
+          }
+        },
+        {
+          "required": [
+            "blueGreen"
+          ],
+          "not": {
+            "required": [
+              "script"
+            ]
+          }
+        }
+      ]
     },
     "project": {
       "type": "object",
@@ -120,6 +144,30 @@
           "type": "boolean",
           "default": false,
           "description": "构建部署前是否使用独立 delivery-check 入口复核最终交付条件。"
+        },
+        "build": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "enum": [
+                "mvn",
+                "./mvnw"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "command",
+            "args"
+          ]
         }
       },
       "allOf": [
@@ -136,14 +184,247 @@
           },
           "then": {
             "required": [
-              "buildScript",
               "artifactPaths"
             ],
             "properties": {
               "artifactPaths": {
                 "minItems": 1
               }
+            },
+            "oneOf": [
+              {
+                "required": [
+                  "buildScript"
+                ],
+                "not": {
+                  "required": [
+                    "build"
+                  ]
+                }
+              },
+              {
+                "required": [
+                  "build"
+                ],
+                "not": {
+                  "required": [
+                    "buildScript"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "blueGreen": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "network": {
+          "$ref": "#/$defs/identifier"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "containerPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "dockerfile": {
+          "type": "string",
+          "minLength": 1,
+          "default": "Dockerfile"
+        },
+        "healthUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "正式入口的 /api/health 地址；只接受 HTTP 或 HTTPS，无认证信息、查询参数或片段。"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1800,
+          "default": 120
+        },
+        "env": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "应用环境变量到执行环境变量名称的映射，不填写秘密值。"
+        },
+        "backup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
             }
+          },
+          "description": "默认关闭，只回退应用并保留当前数据。启用后备份已声明的 MySQL、上传目录和 Redis；至少声明一种数据资源。"
+        },
+        "uploads": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "pattern": "^/(?:[a-zA-Z0-9_-][a-zA-Z0-9._-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9._-]*$"
+                },
+                "target": {
+                  "type": "string",
+                  "pattern": "^/(?:[a-zA-Z0-9_-][a-zA-Z0-9._-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9._-]*$"
+                }
+              },
+              "required": [
+                "source",
+                "target"
+              ]
+            }
+          ]
+        },
+        "mysql": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "container": {
+                  "$ref": "#/$defs/identifier"
+                },
+                "database": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_]{0,63}$"
+                },
+                "defaultsFile": {
+                  "type": "string",
+                  "pattern": "^/(?:[a-zA-Z0-9_-][a-zA-Z0-9._-]*/)*[a-zA-Z0-9_-][a-zA-Z0-9._-]*$"
+                }
+              },
+              "required": [
+                "container",
+                "database",
+                "defaultsFile"
+              ]
+            }
+          ]
+        },
+        "redis": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "container": {
+                  "$ref": "#/$defs/identifier"
+                },
+                "volume": {
+                  "$ref": "#/$defs/identifier"
+                }
+              },
+              "required": [
+                "container",
+                "volume"
+              ]
+            }
+          ]
+        },
+        "proxyImage": {
+          "type": "string",
+          "minLength": 1,
+          "default": "nginx:1.28-alpine"
+        },
+        "helperImage": {
+          "type": "string",
+          "minLength": 1,
+          "default": "node:22.23.2-alpine"
+        }
+      },
+      "required": [
+        "name",
+        "network",
+        "port",
+        "containerPort",
+        "healthUrl"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "backup"
+            ],
+            "properties": {
+              "backup": {
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "mysql"
+                ],
+                "properties": {
+                  "mysql": {
+                    "type": "object"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "uploads"
+                ],
+                "properties": {
+                  "uploads": {
+                    "type": "object"
+                  }
+                }
+              },
+              {
+                "required": [
+                  "redis"
+                ],
+                "properties": {
+                  "redis": {
+                    "type": "object"
+                  }
+                }
+              }
+            ]
           }
         }
       ]

@@ -1,8 +1,14 @@
 # repo-guard
 
-CI 可在本地或 GitLab 运行，按项目配置执行，公共检查不可关闭；成功与失败通知支持仓库配置的企业微信、飞书机器人。配置后运行 `repo-guard ci-notification-test`，日常运行 `repo-guard ci`，最终验收运行 `repo-guard delivery-check`。GitLab 托管模板启用 Bash 退出码保留机制，升级后重新运行 `install-ci --provider gitlab`。[CI 使用与配置](docs/features/ci.md)。
+GitLab 新分支首次 push 支持从远程默认分支建立可信共同祖先基准；仓库 `npm test` 默认运行 4 个测试文件并发，可用 `--test-concurrency` 显式调整。
 
-当前重构目标版本为 **2.0.0（未发布）**。本轮各功能统一在 `refactor/node-engineering-2.0.0` 汇总；历史审查文件名中的较高版本号仅保留为开发阶段索引。
+蓝绿部署默认仅切换应用并保留当前数据；可通过 `blueGreen.backup.enabled: true` 启用已声明资源的快照与恢复。普通模式保留旧应用直到新入口健康检查通过，失败后验证回退结果；恢复失败保持维护并通知。
+
+2.1.0 新增[蓝绿部署与数据恢复](docs/features/blue-green-deployment.md)：GitLab 与手动命令共用执行入口，支持 Java Maven／Node 构建、MySQL、本地上传目录和可选独立 Redis；发布以 `/api/health` 为成功判据，运维配置与工程检查保持分离，部署生命周期复用已配置的飞书／企业微信通知。未发布。
+
+CI 可在本地或 GitLab 运行，按项目配置执行，公共检查不可关闭；成功与失败通知支持仓库配置的企业微信、飞书机器人，GitLab 通知识别流水线分支、合并请求源分支及标签。配置后运行 `repo-guard ci-notification-test`，日常运行 `repo-guard ci`，最终验收运行 `repo-guard delivery-check`。GitLab 托管模板启用 Bash 退出码保留机制，升级后重新运行 `install-ci --provider gitlab`。[CI 使用与配置](docs/features/ci.md)。
+
+当前源码版本为 **2.1.0（未发布）**，在 2.0 重构基础上增加蓝绿部署；历史审查文件名中的较高版本号仅保留为开发阶段索引。
 
 前端新配置默认开启构建预算、包体积分析与 Lighthouse。项目依赖、路径和业务页面当前由接入者配置，npm 按保存的配置执行，原生用户配置优先；自动接入 Skill 暂不提供。详见[构建与性能预设](docs/features/frontend-performance-presets.md)。
 
@@ -55,7 +61,7 @@ repo-guard 是通过 npm 安装的 **团队工程规范与交付检查工具**�
 在要接入的 Git 项目根目录执行，需要 Node.js `>=22.23.2`：
 
 ```bash
-npm install --save-dev --save-exact @cxyi7/repo-guard@2.0.0
+npm install --save-dev --save-exact @cxyi7/repo-guard@2.1.0
 npx repo-guard init --project web --role frontend --stack node --preset vue-javascript
 npx repo-guard doctor
 ```
@@ -85,7 +91,7 @@ git commit -m "feat: 添加用户信息"
 
 检查未通过时，根据提示修复、重新暂存并提交。提交阶段的格式修复通过 `lint-staged` 处理暂存内容，保留部分暂存和未暂存改动。
 
-- 当前源码版本：`2.0.0`
+- 当前源码版本：`2.1.0`
 - npm 包：[`@cxyi7/repo-guard`](https://www.npmjs.com/package/@cxyi7/repo-guard)
 
 ## 配置规则
@@ -268,7 +274,7 @@ Vue 项目启用 ESLint、Prettier、Stylelint 或类型检查时，可将完整
 
 样式能力统一在 `checks.stylelint`：`options` 保存可修改的原生规则，`governance` 管理隔离与全局目录，`uiTokens` 管理设计变量。新前端预设开启 Stylelint 与治理，Token 待设计规范确认后开启；命令统一为 `repo-guard stylelint`。见[统一样式配置](docs/features/stylelint.md)。
 
-2.0.0 为当前未发布源码版本，本轮未执行 npm 发布。
+2.1.0 为当前未发布源码版本，本轮未执行 npm 发布。
 
 本轮样式合并的复现、修复与验证记录见 [4.0.0 统一 Stylelint 审查](docs/reviews/unified-stylelint-4.0.0.md)。
 

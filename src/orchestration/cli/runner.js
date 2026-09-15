@@ -36,6 +36,7 @@ import { runDeadCodeBaseline } from './dead-code-baseline.js';
 import { runBuildArtifactBaseline } from './build-artifact-baseline.js';
 import { runImageOptimize } from './image-optimize.js';
 import { runOperations } from './operations.js';
+import { runDeployment } from './deployment.js';
 import { runDeliveryCommand } from './delivery.js';
 
 const registeredManualGates = gateRegistry.all
@@ -78,6 +79,7 @@ repo-guard - 仓库保护门禁
   repo-guard ci-notify [--status success|failed|canceled]
   repo-guard ops plan
   repo-guard ops install [--dry-run]
+  repo-guard ops deploy|status|rollback|recover --project <id> --environment <id>
   repo-guard delivery <init|keygen|bind|enable|disable|approve|check|run|import|integrate|feedback|status|accept|verify> [选项]
 ${EARLY_MANUAL_HELP}
   repo-guard check
@@ -266,6 +268,10 @@ const COMMAND_HANDLERS = Object.freeze({
   }), process.cwd(), options),
   ops: (argumentsList) => {
     const [command, ...rest] = argumentsList;
+    if (['deploy', 'status', 'rollback', 'recover'].includes(command)) {
+      const options = valuedOptions(rest, ['--project', '--environment']);
+      return runDeployment(command, process.cwd(), { projectId: options.values['--project'], environmentId: options.values['--environment'] });
+    }
     const options = valuedOptions(rest, [], ['--dry-run']);
     return runOperations(command, process.cwd(), { dryRun: options.flags.has('--dry-run') });
   },

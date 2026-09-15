@@ -530,7 +530,7 @@ function renderProjectEntry(item, context) {
   if (config.project?.stack === 'java' && item.id === 'release-readiness') {
     return [
       ...lines,
-      '- 当前 Java 接入只提供工程质量检查，尚未提供 Java 运维部署适配；质量检查通过不表示部署已经完成。',
+      '- Java Maven 运维可通过独立蓝绿部署配置接入；质量检查通过不表示部署已经完成，部署须另外核对健康结果和发布记录。',
     ];
   }
   if (config.project?.role === 'backend') {

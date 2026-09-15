@@ -1,4 +1,5 @@
 import { configurationError } from '../../core/error/repo-guard-error.js';
+import { validateBlueGreen } from './blue-green.js';
 
 const IDENTIFIER = /^[a-z][a-z0-9-]{0,47}$/;
 const SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
@@ -53,14 +54,16 @@ function scriptName(value, location) {
 }
 
 function environmentConfig(value, location) {
-  requireObject(value, location, ['script', 'production', 'branches']);
+  requireObject(value, location, ['script', 'production', 'branches', 'blueGreen']);
+  if (value.script !== undefined && value.blueGreen !== undefined) fail(location, '部署脚本与蓝绿部署不能同时配置');
   if (!Array.isArray(value.branches) || value.branches.length === 0
       || value.branches.some((branch) => typeof branch !== 'string'
         || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(branch))) {
     fail(`${location}.branches`, '必须明确列出允许部署的分支，不支持通配符或表达式');
   }
   return {
-    script: scriptName(value.script, `${location}.script`),
+    ...(value.blueGreen !== undefined ? { blueGreen: validateBlueGreen(value.blueGreen) }
+      : { script: scriptName(value.script, `${location}.script`) }),
     production: booleanValue(value.production, `${location}.production`, true),
     branches: [...new Set(value.branches)],
   };
@@ -68,10 +71,19 @@ function environmentConfig(value, location) {
 
 function projectConfig(value, location) {
   requireObject(value, location, [
-    'enabled', 'verifyDelivery', 'buildScript', 'artifactPaths', 'environments',
+    'enabled', 'verifyDelivery', 'buildScript', 'build', 'artifactPaths', 'environments',
   ]);
   const enabled = booleanValue(value.enabled, `${location}.enabled`, false);
   const verifyDelivery = booleanValue(value.verifyDelivery, `${location}.verifyDelivery`, false);
+  if (value.build !== undefined) {
+    requireObject(value.build, `${location}.build`, ['command', 'args']);
+    if (!['mvn', './mvnw'].includes(value.build.command)
+      || !Array.isArray(value.build.args) || !value.build.args.length
+      || value.build.args.some((arg) => typeof arg !== 'string' || !arg || /[\r\n\0]/.test(arg))) {
+      fail(`${location}.build`, '必须声明 Maven 命令与非空参数数组');
+    }
+    if (value.buildScript !== undefined && value.buildScript !== null) fail(location, '原生构建与 npm 构建脚本不能同时配置');
+  }
   const environments = requireObject(value.environments ?? {}, `${location}.environments`);
   const parsedEnvironments = Object.fromEntries(Object.entries(environments).map(([id, environment]) => {
     requireIdentifier(id, `${location}.environments`);
@@ -86,7 +98,8 @@ function projectConfig(value, location) {
   return {
     enabled,
     verifyDelivery,
-    buildScript: enabled || value.buildScript != null
+    ...(value.build ? { build: { command: value.build.command, args: [...value.build.args] } } : {}),
+    buildScript: (enabled && !value.build) || value.buildScript != null
       ? scriptName(value.buildScript, `${location}.buildScript`) : null,
     artifactPaths: [...new Set((value.artifactPaths ?? []).map((item) => requireRelativePath(
       item, `${location}.artifactPaths`,

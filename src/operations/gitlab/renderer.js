@@ -82,7 +82,7 @@ function deploymentJob(project, deployment, notifications) {
     `    name: ${yaml(deployment.environment)}`,
     `    deployment_tier: ${deployment.production ? 'production' : 'testing'}`,
     `  resource_group: ${yaml(deployment.resourceGroup)}`,
-    ...scriptLines(project, deployment.command),
+    ...scriptLines(project, deployment.command, { quality: deployment.blueGreen }),
     '  rules:',
     ...deployment.branches.flatMap((branch) => [
       `    - if: ${yaml(`$CI_COMMIT_BRANCH == "${branch}"`)}`,
